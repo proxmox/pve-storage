@@ -1,0 +1,85 @@
+libpve-storage-perl (2.0-4) unstable; urgency=low
+
+  * return numeric values for channel/ID/LUN
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 05 Aug 2011 08:46:58 +0200
+
+libpve-storage-perl (2.0-3) unstable; urgency=low
+
+  * implemented node restrictions (storage can be restricted to specific
+    nodes - i.e. DRBD)
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 29 Jul 2011 08:55:11 +0200
+
+libpve-storage-perl (2.0-2) unstable; urgency=low
+
+  * backport fixes (multipath, cache) from stable
+
+ -- Proxmox Support Team <support@proxmox.com>  Mon, 25 Jul 2011 07:02:06 +0200
+
+libpve-storage-perl (2.0-1) unstable; urgency=low
+
+  * change copyright to AGPL
+
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 19 Aug 2010 10:15:46 +0200
+
+libpve-storage-perl (1.0-10) unstable; urgency=low
+
+  * fix used space compute
+
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 11 Feb 2010 10:48:58 +0100
+
+libpve-storage-perl (1.0-9) unstable; urgency=low
+
+  * also query used space as suggested by Slavio
+
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 04 Feb 2010 08:57:02 +0100
+
+libpve-storage-perl (1.0-8) unstable; urgency=low
+
+  * also list vmdk files
+
+ -- Proxmox Support Team <support@proxmox.com>  Mon, 25 Jan 2010 11:52:43 +0100
+
+libpve-storage-perl (1.0-7) unstable; urgency=low
+
+  * fix iscsi device detection on kernel 2.6.32
+
+ -- Proxmox Support Team <support@proxmox.com>  Mon, 18 Jan 2010 13:37:24 +0100
+
+libpve-storage-perl (1.0-6) unstable; urgency=low
+
+  * fix bug in parse_volume_id (ignore case)
+
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 29 Oct 2009 09:22:37 +0100
+
+libpve-storage-perl (1.0-5) unstable; urgency=low
+
+  * fix bug in parse_volume_id
+
+ -- Proxmox Support Team <support@proxmox.com>  Tue, 27 Oct 2009 10:45:49 +0100
+
+libpve-storage-perl (1.0-4) unstable; urgency=low
+
+  * new functions to list backup files
+
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 08 Oct 2009 13:34:45 +0200
+
+libpve-storage-perl (1.0-3) unstable; urgency=low
+
+  * new install/delete template functions
+
+ -- Proxmox Support Team <support@proxmox.com>  Wed, 07 Oct 2009 08:29:55 +0200
+
+libpve-storage-perl (1.0-2) unstable; urgency=low
+
+  * do not remove storage which is used as base for other storage.
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 18 Sep 2009 08:05:32 +0200
+
+libpve-storage-perl (1.0-1) unstable; urgency=low
+
+  * initial package
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 20 Mar 2009 11:13:19 +0100
+
