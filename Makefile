@@ -43,8 +43,6 @@ deb ${DEB}:
 	install -D -m 0644 copyright debian/${DOCDIR}/${PACKAGE}/copyright
 	install -m 0644 changelog.Debian debian/${DOCDIR}/${PACKAGE}/
 	gzip -9 debian/${DOCDIR}/${PACKAGE}/changelog.Debian
-	install -m 0644 ChangeLog debian/${DOCDIR}/${PACKAGE}/changelog
-	gzip -9 debian/${DOCDIR}/${PACKAGE}/changelog
 	dpkg-deb --build debian	
 	mv debian.deb ${DEB}
 	rm -rf debian
