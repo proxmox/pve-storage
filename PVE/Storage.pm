@@ -2061,6 +2061,7 @@ sub storage_info {
 	    total => 0, 
 	    avail => 0, 
 	    used => 0, 
+	    shared => $ids->{$storeid}->{shared} ? 1 : 0,
 	    content => content_hash_to_string($ids->{$storeid}->{content}),
 	    active => 0,
 	};
