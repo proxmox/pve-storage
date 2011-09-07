@@ -425,14 +425,12 @@ sub parse_config {
 
     my $ids = {};
 
-    my $sha1 = Digest::SHA1->new;
+    my $digest = Digest::SHA1::sha1_hex($raw);
 
     my $pri = 0;
 
     while ($raw && $raw =~ s/^(.*?)(\n|$)//) {
 	my $line = $1;
-
- 	$sha1->add ($line); # compute digest
 
 	next if $line =~ m/^\#/;
 	next if $line =~ m/^\s*$/;
@@ -525,8 +523,6 @@ sub parse_config {
 	    $d->{shared} = 1;
 	}
     }
-
-    my $digest = $sha1->hexdigest;
 
     my $cfg = { ids => $ids, digest => $digest};
 

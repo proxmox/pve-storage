@@ -254,6 +254,8 @@ __PACKAGE__->register_method ({
 	    },
 	    digest => {
 		type => 'string',
+		description => 'Prevent changes if current configuration file has different SHA1 digest. This can be used to prevent concurrent modifications.',
+		maxLength => 40,
 		optional => 1,
 	    }
 	},
