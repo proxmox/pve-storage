@@ -3,7 +3,7 @@ Version: @@VERSION@@-@@PKGRELEASE@@
 Section: perl
 Priority: optional
 Architecture: @@ARCH@@
-Depends: perl (>= 5.6.0-16), nfs-common, udev, libpve-common-perl
+Depends: perl (>= 5.6.0-16), nfs-common, udev, libpve-common-perl, lvm2, clvm
 Maintainer: Proxmox Support Team <support@proxmox.com>
 Description: Proxmox VE storage management library
  This package contains the storage management library used by Proxmox VE.
