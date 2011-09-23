@@ -425,7 +425,7 @@ sub parse_config {
 
     my $ids = {};
 
-    my $digest = Digest::SHA1::sha1_hex($raw);
+    my $digest = Digest::SHA1::sha1_hex(defined($raw) ? $raw : '');
 
     my $pri = 0;
 
