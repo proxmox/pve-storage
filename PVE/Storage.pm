@@ -1285,7 +1285,7 @@ sub vdisk_alloc {
 	    die "unable to allocate an image name for VM $vmid in storage '$storeid'\n"
 		if !$name;
 
-	    my $cmd = ['/sbin/lvcreate', '--addtag', "pve-vm-$vmid", '--size', "${size}k", '--name', $name, $vg];
+	    my $cmd = ['/sbin/lvcreate', '-aly', '--addtag', "pve-vm-$vmid", '--size', "${size}k", '--name', $name, $vg];
 
 	    run_command ($cmd);
 
