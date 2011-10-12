@@ -254,4 +254,77 @@ __PACKAGE__->register_method ({
 	return undef;
     }});
 
+__PACKAGE__->register_method ({
+    name => 'copy',
+    path => '{volume}',
+    method => 'POST',
+    description => "Copy a volume.",
+    protected => 1,
+    proxyto => 'node',
+    parameters => {
+    	additionalProperties => 0,
+	properties => { 
+	    node => get_standard_option('pve-node'),
+	    storage => get_standard_option('pve-storage-id', { optional => 1}),
+	    volume => {
+		description => "Source volume identifier",
+		type => 'string', 
+	    },
+	    target => {
+		description => "Target volume identifier",
+		type => 'string', 
+	    },
+	    target_node => get_standard_option('pve-node',  { 
+		description => "Target node. Default is local node.",
+		optional => 1,
+	    }),
+	},
+    },
+    returns => { 
+	type => 'string',
+    },
+    code => sub {
+	my ($param) = @_;
+
+	my $rpcenv = PVE::RPCEnvironment::get();
+
+	my $user = $rpcenv->get_user();
+
+	my $target_node = $param->{target_node} || PVE::INotify::nodename();
+	# pvesh examples
+	# cd /nodes/localhost/storage/local/content
+	# pve:/> create local:103/vm-103-disk-1.raw -target local:103/vm-103-disk-2.raw
+	# pve:/> create 103/vm-103-disk-1.raw -target 103/vm-103-disk-3.raw
+
+	my $src_volid = &$real_volume_id($param->{storage}, $param->{volume});
+	my $dst_volid = &$real_volume_id($param->{storage}, $param->{target});
+
+	print "DEBUG: COPY $src_volid TO $dst_volid\n";
+
+	my $cfg = cfs_read_file('storage.cfg');
+
+	# do all parameter checks first
+
+	# then do all short running task (to raise errors befor we go to background)
+
+	# then start the worker task
+	my $worker = sub  {
+	    my $upid = shift;
+
+	    print "DEBUG: starting worker $upid\n";
+
+	    my ($target_sid, $target_volname) = PVE::Storage::parse_volume_id($dst_volid);
+	    #my $target_ip = PVE::Cluster::remote_node_ip($target_node);
+
+	    # you need to get this working (fails currently, because storage_migrate() uses
+	    # ssh to connect to local host (which is not needed
+	    PVE::Storage::storage_migrate($cfg, $src_volid, $target_node, $target_sid, $target_volname);
+
+	    print "DEBUG: end worker $upid\n";
+
+	};
+
+	return $rpcenv->fork_worker('imgcopy', undef, $user, $worker);
+    }});
+
 1;
