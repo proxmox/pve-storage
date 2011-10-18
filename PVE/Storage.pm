@@ -405,12 +405,6 @@ sub check_type {
 	    }
 	}
 
-	# no backup to local storage
-	if ($storeid && $storeid eq 'local' && $res->{backup}) {
-		return undef if $noerr;
-		die "storage 'local' does not support backups\n";
-	}
-
 	return $res;	
     } elsif ($ct eq 'volume') {
 	return $value if parse_volume_id ($value, $noerr);
@@ -753,6 +747,15 @@ sub get_vztmpl_dir {
     return $tmpldir;
 }
 
+sub get_backup_dir {
+    my ($cfg, $storeid) = @_;
+
+    my $dir =  $cfg->{ids}->{$storeid}->{path};
+    $dir .= '/dump' if $storeid eq 'local';
+
+    return $dir;
+}
+
 # iscsi utility functions
 
 sub iscsi_session_list {
@@ -1045,9 +1048,10 @@ sub path_to_volume_id {
 	my $type = $ids->{$sid}->{type};
 	next if !($type eq 'dir' || $type eq 'nfs');
 	
-	my $imagedir = $ids->{$sid}->{path} . "/images";
-	my $isodir = get_iso_dir ($cfg, $sid);
-	my $tmpldir = get_vztmpl_dir ($cfg, $sid);
+	my $imagedir = get_image_dir($cfg, $sid);
+	my $isodir = get_iso_dir($cfg, $sid);
+	my $tmpldir = get_vztmpl_dir($cfg, $sid);
+	my $backupdir = get_backup_dir($cfg, $sid);
 
 	if ($path =~ m!^$imagedir/(\d+)/([^/\s]+)$!) {
 	    my $vmid = $1;
@@ -1059,6 +1063,9 @@ sub path_to_volume_id {
 	} elsif ($path =~ m!^$tmpldir/([^/]+\.tar\.gz)$!) {
 	    my $name = $1;
 	    return ('vztmpl', "$sid:vztmpl/$name");
+	} elsif ($path =~ m!^$backupdir/([^/]+\.(tar|tgz))$!) {
+	    my $name = $1;
+	    return ('iso', "$sid:backup/$name");	
 	}
     }
 
@@ -1080,9 +1087,10 @@ sub path {
 	my ($vtype, $name, $vmid) = parse_volname_dir ($volname);
 	$owner = $vmid;
 
-	my $imagedir = get_image_dir ($cfg, $storeid, $vmid);
-	my $isodir = get_iso_dir ($cfg, $storeid);
-	my $tmpldir = get_vztmpl_dir ($cfg, $storeid);
+	my $imagedir = get_image_dir($cfg, $storeid, $vmid);
+	my $isodir = get_iso_dir($cfg, $storeid);
+	my $tmpldir = get_vztmpl_dir($cfg, $storeid);
+	my $backupdir = get_backup_dir($cfg, $storeid);
 
 	if ($vtype eq 'image') {
 	    $path = "$imagedir/$name";
@@ -1090,6 +1098,8 @@ sub path {
 	    $path = "$isodir/$name";
 	} elsif ($vtype eq 'vztmpl') {
 	    $path = "$tmpldir/$name";
+	} elsif ($vtype eq 'backup') {
+	    $path = "$backupdir/$name";
 	} else {
 	    die "should not be reached";
 	}
@@ -1549,11 +1559,11 @@ sub template_list {
 
 	    my $path;
 	    if ($tt eq 'iso') {
-		$path = get_iso_dir ($cfg, $sid);
+		$path = get_iso_dir($cfg, $sid);
 	    } elsif ($tt eq 'vztmpl') {
-		$path = get_vztmpl_dir ($cfg, $sid);
+		$path = get_vztmpl_dir($cfg, $sid);
 	    } elsif ($tt eq 'backup') {
-		$path = $scfg->{path};
+		$path = get_backup_dir($cfg, $sid);
 	    } else {
 		die "unknown template type '$tt'\n";
 	    }
@@ -1856,9 +1866,10 @@ sub __activate_storage_full {
 		"directory '$path' does not exist\n" if ! -d $path;
 	}
 
-	my $imagedir = get_image_dir ($cfg, $storeid);
-	my $isodir = get_iso_dir ($cfg, $storeid);
-	my $tmpldir = get_vztmpl_dir ($cfg, $storeid);
+	my $imagedir = get_image_dir($cfg, $storeid);
+	my $isodir = get_iso_dir($cfg, $storeid);
+	my $tmpldir = get_vztmpl_dir($cfg, $storeid);
+	my $backupdir = get_backup_dir($cfg, $storeid);
 
 	if (defined($scfg->{content})) {
 	    mkpath $imagedir if $scfg->{content}->{images} &&
@@ -1867,6 +1878,8 @@ sub __activate_storage_full {
 		$isodir ne $path;
 	    mkpath $tmpldir if $scfg->{content}->{vztmpl} &&
 		$tmpldir ne $path;
+	    mkpath $backupdir if $scfg->{content}->{backup} &&
+		$backupdir ne $path;
 	}
 
     } elsif ($type eq 'lvm') {

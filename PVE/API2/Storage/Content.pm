@@ -66,17 +66,14 @@ __PACKAGE__->register_method ({
 	my $res = [];
 	foreach my $ct (@$cts) {
 	    my $data;
-	    if ($ct eq 'images') {
+	    if ($ct eq 'images' || defined($param->{vmid})) {
 		$data = PVE::Storage::vdisk_list ($cfg, $storeid, $param->{vmid});
 	    } elsif ($ct eq 'iso') {
-		$data = PVE::Storage::template_list ($cfg, $storeid, 'iso') 
-		    if !$param->{vmid};
+		$data = PVE::Storage::template_list ($cfg, $storeid, 'iso');
 	    } elsif ($ct eq 'vztmpl') {
-		$data = PVE::Storage::template_list ($cfg, $storeid, 'vztmpl') 
-		    if !$param->{vmid};
+		$data = PVE::Storage::template_list ($cfg, $storeid, 'vztmpl');
 	    } elsif ($ct eq 'backup') {
-		$data = PVE::Storage::template_list ($cfg, $storeid, 'backup') 
-		    if !$param->{vmid};
+		$data = PVE::Storage::template_list ($cfg, $storeid, 'backup');
 	    }
 
 	    next if !$data || !$data->{$storeid};
