@@ -9,7 +9,8 @@ PREFIX=/usr
 BINDIR=${PREFIX}/bin
 SBINDIR=${PREFIX}/sbin
 MANDIR=${PREFIX}/share/man
-DOCDIR=${PREFIX}/share/doc
+DOCDIR=${PREFIX}/share/doc/${PACKAGE}
+PODDIR=${DOCDIR}/pod
 MAN1DIR=${MANDIR}/man1/
 export PERLDIR=${PREFIX}/share/perl5
 
@@ -24,13 +25,22 @@ all: ${DEB}
 dinstall: deb
 	dpkg -i ${DEB}
 
+%.1.gz: %.1.pod
+	rm -f $@
+	cat $<|pod2man -n $* -s 1 -r ${VERSION} -c "Proxmox Documentation"|gzip -c9 >$@
+
+pvesm.1.pod: pvesm PVE/Storage.pm
+	perl -I. ./pvesm printmanpod >$@
+
 .PHONY: install
-install:
+install: pvesm.1.pod pvesm.1.gz
 	install -d ${DESTDIR}${SBINDIR}
 	install -m 0755 pvesm ${DESTDIR}${SBINDIR}
 	make -C PVE install
 	install -d ${DESTDIR}/usr/share/man/man1
-	pod2man -n pvesm -s 1 -r "proxmox 1.0" -c "Proxmox Documentation" <pvesm | gzip -9 > ${DESTDIR}/usr/share/man/man1/pvesm.1.gz
+	install -d ${DESTDIR}${PODDIR}
+	install -m 0644 pvesm.1.gz ${DESTDIR}/usr/share/man/man1/
+	install -m 0644 pvesm.1.pod ${DESTDIR}/${PODDIR}
 
 .PHONY: deb ${DEB}
 deb ${DEB}:
@@ -40,9 +50,9 @@ deb ${DEB}:
 	perl -I. ./pvesm verifyapi 
 	install -d -m 0755 debian/DEBIAN
 	sed -e s/@@VERSION@@/${VERSION}/ -e s/@@PKGRELEASE@@/${PKGREL}/ -e s/@@ARCH@@/${ARCH}/ <control.in >debian/DEBIAN/control
-	install -D -m 0644 copyright debian/${DOCDIR}/${PACKAGE}/copyright
-	install -m 0644 changelog.Debian debian/${DOCDIR}/${PACKAGE}/
-	gzip -9 debian/${DOCDIR}/${PACKAGE}/changelog.Debian
+	install -D -m 0644 copyright debian/${DOCDIR}/copyright
+	install -m 0644 changelog.Debian debian/${DOCDIR}/
+	gzip -9 debian/${DOCDIR}/changelog.Debian
 	dpkg-deb --build debian	
 	mv debian.deb ${DEB}
 	rm -rf debian
@@ -50,7 +60,7 @@ deb ${DEB}:
 
 .PHONY: clean
 clean: 	
-	rm -rf debian *.deb ${PACKAGE}-*.tar.gz dist
+	rm -rf debian *.deb ${PACKAGE}-*.tar.gz dist *.1.pod *.1.gz
 	find . -name '*~' -exec rm {} ';'
 
 .PHONY: distclean
