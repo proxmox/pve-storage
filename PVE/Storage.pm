@@ -995,7 +995,9 @@ sub parse_volname_dir {
 	return ('iso', $1);
     } elsif ($volname =~ m!^vztmpl/([^/]+\.tar\.gz)$!) {
 	return ('vztmpl', $1);
-    }
+     } elsif ($volname =~ m!^backup/([^/]+(\.tar|\.tgz))$!) {
+	return ('backup', $1);
+   }
     die "unable to parse directory volume name '$volname'\n";
 }
 
