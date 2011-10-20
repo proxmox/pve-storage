@@ -397,12 +397,9 @@ sub check_type {
 	    $res->{$c} = 1;
 	} 
 
-	# only local storage may have several content types
-	if ($res->{none} || !($storeid && $storeid eq 'local')) {
-	    if (scalar (keys %$res) > 1) {
+	if ($res->{none} && scalar (keys %$res) > 1) {
 		return undef if $noerr;
-		die "storage does not support multiple content types\n";
-	    }
+		die "unable to combine 'none' with other content types\n";
 	}
 
 	return $res;	
@@ -733,7 +730,7 @@ sub get_iso_dir {
     my ($cfg, $storeid) = @_;
 
     my $isodir =  $cfg->{ids}->{$storeid}->{path};
-    $isodir .= '/template/iso' if $storeid eq 'local';
+    $isodir .= '/template/iso';
 
     return $isodir;
 }
@@ -742,7 +739,7 @@ sub get_vztmpl_dir {
     my ($cfg, $storeid) = @_;
 
     my $tmpldir =  $cfg->{ids}->{$storeid}->{path};
-    $tmpldir .= '/template/cache' if $storeid eq 'local';
+    $tmpldir .= '/template/cache';
 
     return $tmpldir;
 }
@@ -751,7 +748,7 @@ sub get_backup_dir {
     my ($cfg, $storeid) = @_;
 
     my $dir =  $cfg->{ids}->{$storeid}->{path};
-    $dir .= '/dump' if $storeid eq 'local';
+    $dir .= '/dump';
 
     return $dir;
 }
