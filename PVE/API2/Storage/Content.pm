@@ -79,6 +79,7 @@ __PACKAGE__->register_method ({
 	    next if !$data || !$data->{$storeid};
 
 	    foreach my $item (@{$data->{$storeid}}) {
+		$item->{content} = $ct;
 		push @$res, $item;
 	    }
 	}
