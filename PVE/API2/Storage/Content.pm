@@ -100,7 +100,7 @@ __PACKAGE__->register_method ({
 	    node => get_standard_option('pve-node'),
 	    storage => get_standard_option('pve-storage-id'),
 	    filename => { 
-		description => "The name of the file to create/upload.",
+		description => "The name of the file to create.",
 		type => 'string',
 	    },
 	    vmid => get_standard_option('pve-vmid', { description => "Specify owner VM" } ),
