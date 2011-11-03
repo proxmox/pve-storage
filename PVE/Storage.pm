@@ -1482,50 +1482,6 @@ sub lvm_lvs {
     return $lvs;
 }
 
-#install iso or openvz template ($tt = <iso|vztmpl>)
-# we simply overwrite when file already exists
-sub install_template {
-    my ($cfg, $storeid, $tt, $srcfile, $destfile) = @_;
-
-    my $scfg = storage_config ($cfg, $storeid);
-
-    my $type = $scfg->{type};
-
-    die "invalid storage type '$type'" if !($type eq 'dir' || $type eq 'nfs');
-
-    my $path;
-
-    if ($tt eq 'iso') {
-	die "file '$destfile' has no '.iso' extension\n" 
-	    if $destfile !~ m![^/]+\.[Ii][Ss][Oo]$!;
-	die "storage '$storeid' does not support 'iso' content\n" 
-	    if !$scfg->{content}->{iso};
-	$path = get_iso_dir ($cfg, $storeid);
-    } elsif ($tt eq 'vztmpl') {
-	die "file '$destfile' has no '.tar.gz' extension\n"
-	    if $destfile !~ m![^/]+\.tar\.gz$!;
-	die "storage '$storeid' does not support 'vztmpl' content\n" 
-	    if !$scfg->{content}->{vztmpl};
-	$path = get_vztmpl_dir ($cfg, $storeid);
-    } else {
-	die "unknown template type '$tt'";
-    }
-
-    activate_storage ($cfg, $storeid);
-
-    my $dest = "$path/$destfile";
-
-    my $cmd = ['cp', $srcfile, $dest];
-
-    eval { run_command ($cmd); };
-    my $err = $@;
-
-    if ($err) {
-	unlink $dest;
-	die $err;
-    }
-}
-
 #list iso or openvz template ($tt = <iso|vztmpl|backup>)
 sub template_list {
     my ($cfg, $storeid, $tt) = @_;
