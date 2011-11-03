@@ -296,12 +296,12 @@ __PACKAGE__->register_method ({
 	    if ($filename !~ m![^/]+\.tar\.gz$!) {
 		raise_param_exc({ filename => "missing '.tar.gz' extension" });
 	    }
-	    $path = get_vztmpl_dir ($cfg, $param->{storage});
+	    $path = PVE::Storage::get_vztmpl_dir($cfg, $param->{storage});
 	} elsif ($content eq 'backup') {
 	    if ($filename !~  m!/([^/]+\.(tar|tgz))$!) {
 		raise_param_exc({ filename => "missing '.(tar|tgz)' extension" });
 	    }
-	    $path = get_backup_dir($cfg, $param->{storage});
+	    $path = PVE::Storage::get_backup_dir($cfg, $param->{storage});
 	} else {
 	    raise_param_exc({ content => "upload content type '$content' not implemented" });
 	}
@@ -335,7 +335,7 @@ __PACKAGE__->register_method ({
 	    $cmd = ['/usr/bin/scp', @ssh_options, $tmpfilename, "$remip:$dest"];
 	} else {
 	    PVE::Storage::activate_storage($cfg, $param->{storage});
-	    make_path($dirname);
+	    File::Path::make_path($dirname);
 	    $cmd = ['cp', $tmpfilename, $dest];
 	}
 
