@@ -1,3 +1,13 @@
+libpve-storage-perl (2.0-5) unstable; urgency=low
+
+  * allow container rootdir on NFS
+
+  * implement file upload API
+
+  * allow multiple content types
+
+ -- Proxmox Support Team <support@proxmox.com>  Wed, 09 Nov 2011 11:32:14 +0100
+
 libpve-storage-perl (2.0-4) unstable; urgency=low
 
   * return numeric values for channel/ID/LUN
