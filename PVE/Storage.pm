@@ -1002,7 +1002,9 @@ sub parse_volname_dir {
 	return ('iso', $1);
     } elsif ($volname =~ m!^vztmpl/([^/]+\.tar\.gz)$!) {
 	return ('vztmpl', $1);
-     } elsif ($volname =~ m!^backup/([^/]+(\.tar|\.tgz))$!) {
+    } elsif ($volname =~ m!^rootdir/(\d+)$!) {
+	return ('rootdir', $1, $1);
+    } elsif ($volname =~ m!^backup/([^/]+(\.tar|\.tgz))$!) {
 	return ('backup', $1);
    }
     die "unable to parse directory volume name '$volname'\n";
@@ -1058,6 +1060,7 @@ sub path_to_volume_id {
 	my $isodir = get_iso_dir($cfg, $sid);
 	my $tmpldir = get_vztmpl_dir($cfg, $sid);
 	my $backupdir = get_backup_dir($cfg, $sid);
+	my $privatedir = get_private_dir($cfg, $sid);
 
 	if ($path =~ m!^$imagedir/(\d+)/([^/\s]+)$!) {
 	    my $vmid = $1;
@@ -1069,6 +1072,9 @@ sub path_to_volume_id {
 	} elsif ($path =~ m!^$tmpldir/([^/]+\.tar\.gz)$!) {
 	    my $name = $1;
 	    return ('vztmpl', "$sid:vztmpl/$name");
+	} elsif ($path =~ m!^$privatedir/(\d+)$!) {
+	    my $vmid = $1;
+	    return ('rootdir', "$sid:rootdir/$vmid");
 	} elsif ($path =~ m!^$backupdir/([^/]+\.(tar|tgz))$!) {
 	    my $name = $1;
 	    return ('iso', "$sid:backup/$name");	
@@ -1097,6 +1103,7 @@ sub path {
 	my $isodir = get_iso_dir($cfg, $storeid);
 	my $tmpldir = get_vztmpl_dir($cfg, $storeid);
 	my $backupdir = get_backup_dir($cfg, $storeid);
+	my $privatedir = get_private_dir($cfg, $storeid);
 
 	if ($vtype eq 'image') {
 	    $path = "$imagedir/$name";
@@ -1104,6 +1111,8 @@ sub path {
 	    $path = "$isodir/$name";
 	} elsif ($vtype eq 'vztmpl') {
 	    $path = "$tmpldir/$name";
+	} elsif ($vtype eq 'rootdir') {
+	    $path = "$privatedir/$name";
 	} elsif ($vtype eq 'backup') {
 	    $path = "$backupdir/$name";
 	} else {
@@ -1832,6 +1841,7 @@ sub __activate_storage_full {
 	my $isodir = get_iso_dir($cfg, $storeid);
 	my $tmpldir = get_vztmpl_dir($cfg, $storeid);
 	my $backupdir = get_backup_dir($cfg, $storeid);
+	my $privatedir = get_private_dir($cfg, $storeid);
 
 	if (defined($scfg->{content})) {
 	    mkpath $imagedir if $scfg->{content}->{images} &&
@@ -1840,6 +1850,8 @@ sub __activate_storage_full {
 		$isodir ne $path;
 	    mkpath $tmpldir if $scfg->{content}->{vztmpl} &&
 		$tmpldir ne $path;
+	    mkpath $privatedir if $scfg->{content}->{rootdir} &&
+		$privatedir ne $path;
 	    mkpath $backupdir if $scfg->{content}->{backup} &&
 		$backupdir ne $path;
 	}
