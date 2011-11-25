@@ -770,7 +770,7 @@ sub iscsi_session_list {
 
     my $res = {};
 
-    run_command ($cmd, outfunc => sub {
+    run_command($cmd, outfunc => sub {
 	my $line = shift;
 
 	if ($line =~ m/^tcp:\s+\[(\S+)\]\s+\S+\s+(\S+)\s*$/) {
@@ -805,7 +805,7 @@ sub iscsi_discovery {
 
     return $res if !iscsi_test_portal($portal); # fixme: raise exception here?
 
-    run_command ($cmd, outfunc => sub {
+    run_command($cmd, outfunc => sub {
 	my $line = shift;
 
 	if ($line =~ m/^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}:\d+)\,\S+\s+(\S+)\s*$/) {
@@ -828,7 +828,7 @@ sub iscsi_login {
     warn $@ if $@;
 
     my $cmd = [$ISCSIADM, '--mode', 'node', '--targetname',  $target, '--login'];
-    run_command ($cmd);
+    run_command($cmd);
 }
 
 sub iscsi_logout {
@@ -837,7 +837,7 @@ sub iscsi_logout {
     check_iscsi_support ();
 
     my $cmd = [$ISCSIADM, '--mode', 'node', '--targetname', $target, '--logout'];
-    run_command ($cmd);
+    run_command($cmd);
 }
 
 my $rescan_filename = "/var/run/pve-iscsi-rescan.lock";
@@ -864,7 +864,7 @@ sub iscsi_session_rescan {
 
     foreach my $session (@$session_list) {
 	my $cmd = [$ISCSIADM, '--mode', 'session', '-r', $session, '-R'];
-	eval { run_command ($cmd, outfunc => sub {}); };
+	eval { run_command($cmd, outfunc => sub {}); };
 	warn $@ if $@;
     }
 }
@@ -1171,23 +1171,23 @@ sub storage_migrate {
 
 	    if ($tcfg->{shared}) { # we can do a local copy
 		
-		run_command (['/bin/mkdir', '-p', $dirname]);
+		run_command(['/bin/mkdir', '-p', $dirname]);
 
-		run_command (['/bin/cp', $src, $dst]);
+		run_command(['/bin/cp', $src, $dst]);
 
 	    } else {
 
-		run_command (['/usr/bin/ssh', "root\@${target_host}", 
-			      '/bin/mkdir', '-p', $dirname]);
+		run_command(['/usr/bin/ssh', "root\@${target_host}", 
+			     '/bin/mkdir', '-p', $dirname]);
 
 		# we use rsync with --sparse, so we can't use --inplace,
 		# so we remove file on the target if it already exists to
 		# save space
 		my ($size, $format) = file_size_info($src);
 		if ($format && ($format eq 'raw') && $size) {
-		    run_command (['/usr/bin/ssh', "root\@${target_host}", 
-				  'rm', '-f', $dst],
-				 outfunc => sub {});
+		    run_command(['/usr/bin/ssh', "root\@${target_host}", 
+				 'rm', '-f', $dst],
+				outfunc => sub {});
 		}
 
 		my $cmd = ['/usr/bin/rsync', '--progress', '--sparse', '--whole-file', 
@@ -1195,7 +1195,7 @@ sub storage_migrate {
 
 		my $percent = -1;
 
-		run_command ($cmd, outfunc => sub {
+		run_command($cmd, outfunc => sub {
 		    my $line = shift;
 
 		    if ($line =~ m/^\s*(\d+\s+(\d+)%\s.*)$/) {
@@ -1312,7 +1312,7 @@ sub vdisk_alloc {
 
 	    my $cmd = ['/sbin/lvcreate', '-aly', '--addtag', "pve-vm-$vmid", '--size', "${size}k", '--name', $name, $vg];
 
-	    run_command ($cmd);
+	    run_command($cmd, errmsg => "lvcreate '$vg/pve-vm-$vmid' error");
 
 	    return "$storeid:$name";
 
@@ -1350,7 +1350,7 @@ sub vdisk_free {
 
 	    my $cmd = ['/sbin/lvremove', '-f', "$vg/$volname"];
 
-	    run_command ($cmd);
+	    run_command($cmd, errmsg => "lvremove '$vg/$volname' error");
 	} elsif ($scfg->{type} eq 'iscsi') {
 	    die "can't free space in iscsi storage\n";
 	} else {
@@ -1369,7 +1369,7 @@ sub lvm_pv_info {
     my $has_label = 0;
 
     my $cmd = ['/usr/bin/file', '-L', '-s', $device];
-    run_command ($cmd, outfunc => sub {
+    run_command($cmd, outfunc => sub {
 	my $line = shift;
 	$has_label = 1 if $line =~ m/LVM2/;
     });
@@ -1381,7 +1381,7 @@ sub lvm_pv_info {
 	    'pv_name,pv_size,vg_name,pv_uuid', $device];
 
     my $pvinfo;
-    run_command ($cmd, outfunc => sub {
+    run_command($cmd, outfunc => sub {
 	my $line = shift;
 
 	$line = trim($line);
@@ -1428,12 +1428,12 @@ sub lvm_create_volume_group {
     # so pe_start is aligned on a 128k boundary (advantage for SSDs)
     my $cmd = ['/sbin/pvcreate', '--metadatasize', '250k', $device];
 
-    run_command ($cmd);
+    run_command($cmd, errmsg => "pvcreate '$device' error");
 
     $cmd = ['/sbin/vgcreate', $vgname, $device];
     # push @$cmd, '-c', 'y' if $shared; # we do not use this yet
 
-    run_command ($cmd);
+    run_command($cmd, errmsg => "vgcreate $vgname $device error");
 }
 
 sub lvm_vgs {
@@ -1443,7 +1443,7 @@ sub lvm_vgs {
 	       'vg_name,vg_size,vg_free'];
 
     my $vgs = {};
-    run_command ($cmd, outfunc => sub {
+    run_command($cmd, outfunc => sub {
 	my $line = shift;
 
 	$line = trim($line);
@@ -1466,7 +1466,7 @@ sub lvm_lvs {
     push @$cmd, $vgname if $vgname;
 
     my $lvs = {};
-    run_command ($cmd, outfunc => sub {
+    run_command($cmd, outfunc => sub {
 	my $line = shift;
 
 	$line = trim($line);
@@ -1582,7 +1582,7 @@ sub file_size_info {
     my $used = 0;
 
     eval {
-	run_command ($cmd, timeout => $timeout, outfunc => sub {
+	run_command($cmd, timeout => $timeout, outfunc => sub {
 	    my $line = shift;
 
 	    if ($line =~ m/^file format:\s+(\S+)\s*$/) {
@@ -1771,7 +1771,7 @@ sub nfs_mount {
 	push @$cmd, '-o', $options;
     } 
 
-    run_command ($cmd);
+    run_command($cmd, errmsg => "mount error");
 }
 
 sub uevent_seqnum {
@@ -1873,7 +1873,7 @@ sub __activate_storage_full {
 	    !$session->{vgs}->{$scfg->{vgname}}) {
 	    $session->{vgscaned} = 1;
 	    my $cmd = ['/sbin/vgscan', '--ignorelockingfailure', '--mknodes'];
-	    eval { run_command ($cmd, outfunc => sub {}); };
+	    eval { run_command($cmd, outfunc => sub {}); };
 	    warn $@ if $@;
 	}
 
@@ -1985,7 +1985,7 @@ sub deactivate_volumes {
 	    if ($lvs->{$scfg->{vgname}}->{$name}) {
 		my $path = path ($cfg, $volid);
 		my $cmd = ['/sbin/lvchange', '-aln', $path];
-		eval { run_command ($cmd, errmsg => "can't deactivate LV '$volid'"); };
+		eval { run_command($cmd, errmsg => "can't deactivate LV '$volid'"); };
 		if (my $err = $@) {
 		    warn $err;
 		    push @errlist, $volid;
@@ -2017,10 +2017,12 @@ sub deactivate_storage {
 
 	my $cmd = ['/bin/umount', $path];
 
-	run_command ($cmd) if nfs_is_mounted ($server, $export, $path, $mountdata); 
+	run_command($cmd, errmsg => 'umount error') 
+	    if nfs_is_mounted ($server, $export, $path, $mountdata); 
+
     } elsif ($type eq 'lvm') {
 	my $cmd = ['/sbin/vgchange', '-aln', $scfg->{vgname}];
-	run_command ($cmd);
+	run_command($cmd, errmsg => "can't deactivate VG '$scfg->{vgname}'");
     } elsif ($type eq 'iscsi') {
 	my $portal = $scfg->{portal};
 	my $target = $scfg->{target};
@@ -2168,7 +2170,7 @@ sub scan_nfs {
     my $cmd = ['/sbin/showmount',  '--no-headers', '--exports', $server];
 
     my $res = {};
-    run_command ($cmd, outfunc => sub {
+    run_command($cmd, outfunc => sub {
 	my $line = shift;
 
 	# note: howto handle white spaces in export path??
