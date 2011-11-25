@@ -1443,15 +1443,22 @@ sub lvm_vgs {
 	       'vg_name,vg_size,vg_free'];
 
     my $vgs = {};
-    run_command($cmd, outfunc => sub {
-	my $line = shift;
+    eval {
+	run_command($cmd, outfunc => sub {
+	    my $line = shift;
 
-	$line = trim($line);
+	    $line = trim($line);
 
-	my ($name, $size, $free) = split (':', $line);
+	    my ($name, $size, $free) = split (':', $line);
 
-	$vgs->{$name} = { size => int ($size), free => int ($free) };
-    });
+	    $vgs->{$name} = { size => int ($size), free => int ($free) };
+        });
+    };
+    my $err = $@;
+
+    # just warn (vgs return error code 5 if clvmd does not run)
+    # but output is still OK (list without clustered VGs)
+    warn $err if $err;
 
     return $vgs;
 }
