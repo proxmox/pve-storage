@@ -1877,8 +1877,8 @@ sub __activate_storage_full {
 	    warn $@ if $@;
 	}
 
-	my $cmd = ['/sbin/vgchange', '-aly', $scfg->{vgname}];
-	run_command ($cmd, outfunc => sub {});
+	# we do not acticate any volumes here ('vgchange -aly')
+	# instead, volumes are activate individually later
 
     } elsif ($type eq 'iscsi') {
 
@@ -1931,7 +1931,11 @@ sub activate_storage {
 }
 
 sub activate_volumes {
-    my ($cfg, $vollist) = @_;
+    my ($cfg, $vollist, $exclusive) = @_;
+
+    return if !($vollist && scalar(@$vollist));
+
+    my $lvm_activate_mode = $exclusive ? 'ey' : 'ly';
 
     my $storagehash = {};
     foreach my $volid (@$vollist) {
@@ -1949,9 +1953,8 @@ sub activate_volumes {
 	my $path = path ($cfg, $volid);
 
 	if ($scfg->{type} eq 'lvm') {
-	    my $cmd = ['/sbin/lvchange', '-aly', $path];
-	    eval { run_command ($cmd); };
-	    warn $@ if $@;
+	    my $cmd = ['/sbin/lvchange', "-a$lvm_activate_mode", $path];
+	    run_command($cmd, errmsg => "can't activate LV '$volid'");
 	}
 
 	# check is volume exists
@@ -1966,8 +1969,11 @@ sub activate_volumes {
 sub deactivate_volumes {
     my ($cfg, $vollist) = @_;
 
+    return if !($vollist && scalar(@$vollist));
+
     my $lvs = lvm_lvs ();
 
+    my @errlist = ();
     foreach my $volid (@$vollist) {
 	my ($storeid, $volname) = parse_volume_id ($volid);
 
@@ -1979,11 +1985,17 @@ sub deactivate_volumes {
 	    if ($lvs->{$scfg->{vgname}}->{$name}) {
 		my $path = path ($cfg, $volid);
 		my $cmd = ['/sbin/lvchange', '-aln', $path];
-		eval { run_command ($cmd); };
-		warn $@ if $@;
+		eval { run_command ($cmd, errmsg => "can't deactivate LV '$volid'"); };
+		if (my $err = $@) {
+		    warn $err;
+		    push @errlist, $volid;
+		}
 	    }
 	}
     }
+
+    die "volume deativation failed: " . join(' ', @errlist)
+	if scalar(@errlist);
 }
 
 sub deactivate_storage {
