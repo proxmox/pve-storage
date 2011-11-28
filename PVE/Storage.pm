@@ -916,7 +916,7 @@ sub iscsi_device_list {
 
 	    $res->{$target}->{$volid} = {
 		'format' => 'raw', 
-		'size' => int($size / 2), 
+		'size' => int($size * 512), 
 		'vmid' => 0, # not assigned to any vm
 		'channel' => int($channel),
 		'id' => int($id),
