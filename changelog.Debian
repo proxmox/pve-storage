@@ -1,3 +1,9 @@
+libpve-storage-perl (2.0-9) unstable; urgency=low
+
+  * use -e (instead of -f) to test if volume exists
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 02 Dec 2011 10:31:01 +0100
+
 libpve-storage-perl (2.0-8) unstable; urgency=low
 
   * fix iscsi size bug

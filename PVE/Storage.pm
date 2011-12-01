@@ -1271,7 +1271,7 @@ sub vdisk_alloc {
 
 	    my $path = "$imagedir/$name";
 
-	    die "disk image '$path' already exists\n" if -f $path;
+	    die "disk image '$path' already exists\n" if -e $path;
 
 	    run_command("/usr/bin/qemu-img create -f $fmt '$path' ${size}K", 
 			errmsg => "unable to create image");
@@ -1966,7 +1966,7 @@ sub activate_volumes {
 
 	# check is volume exists
 	if ($scfg->{type} eq 'dir' || $scfg->{type} eq 'nfs') {
-	    die "volume '$volid' does not exist\n" if ! -f $path;
+	    die "volume '$volid' does not exist\n" if ! -e $path;
 	} else {
 	    die "volume '$volid' does not exist\n" if ! -b $path;
 	}
