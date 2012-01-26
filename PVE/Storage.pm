@@ -431,7 +431,7 @@ sub parse_config {
 	    my $type = $1;
 	    my $ignore = 0;
 
-	    if (!parse_storage_id ($storeid, 1)) {
+	    if (!PVE::JSONSchema::parse_storage_id($storeid, 1)) {
 		$ignore = 1;
 		warn "ignoring storage '$storeid' - (illegal characters)\n";
 	    } elsif (!$default_config->{$type}) {
@@ -1210,9 +1210,9 @@ sub vdisk_alloc {
 
     die "no storage id specified\n" if !$storeid;
 
-    parse_storage_id ($storeid);
+    PVE::JSONSchema::parse_storage_id($storeid);
 
-    my $scfg = storage_config ($cfg, $storeid);
+    my $scfg = storage_config($cfg, $storeid);
 
     die "no VMID specified\n" if !$vmid;
 
