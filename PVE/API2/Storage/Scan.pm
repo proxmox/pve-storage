@@ -17,6 +17,9 @@ __PACKAGE__->register_method ({
     path => '', 
     method => 'GET',
     description => "Index of available scan methods",
+    permissions => { 
+	user => 'all',
+    },
     parameters => {
     	additionalProperties => 0,
 	properties => {
@@ -51,6 +54,9 @@ __PACKAGE__->register_method ({
     description => "Scan remote NFS server.",
     protected => 1,
     proxyto => "node",
+    permissions => { 
+	check => ['perm', '/storage', ['Datastore.Allocate']],
+    },
     parameters => {
     	additionalProperties => 0,
 	properties => {
@@ -88,6 +94,9 @@ __PACKAGE__->register_method ({
     description => "Scan remote iSCSI server.",
     protected => 1,
     proxyto => "node",
+    permissions => { 
+	check => ['perm', '/storage', ['Datastore.Allocate']],
+    },
     parameters => {
     	additionalProperties => 0,
 	properties => {
@@ -125,6 +134,9 @@ __PACKAGE__->register_method ({
     description => "List local LVM volume groups.",
     protected => 1,
     proxyto => "node",
+    permissions => { 
+	check => ['perm', '/storage', ['Datastore.Allocate']],
+    },
     parameters => {
     	additionalProperties => 0,
 	properties => {
@@ -154,6 +166,9 @@ __PACKAGE__->register_method ({
     description => "List local USB devices.",
     protected => 1,
     proxyto => "node",
+    permissions => { 
+	check => ['perm', '/', ['Sys.Modify']],
+    },
     parameters => {
     	additionalProperties => 0,
 	properties => {

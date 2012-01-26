@@ -30,6 +30,10 @@ __PACKAGE__->register_method ({
     path => '',
     method => 'GET',
     description => "Get status for all datastores.",
+    permissions => { 
+	description => "Only list entries where you have 'Datastore.Audit' or 'Datastore.AllocateSpace' permissions on '/storage/<storage>'",
+	user => 'all',
+    },
     protected => 1,
     proxyto => 'node',
     parameters => {
@@ -59,21 +63,26 @@ __PACKAGE__->register_method ({
     code => sub {
 	my ($param) = @_;
 
+	my $rpcenv = PVE::RPCEnvironment::get();
+	my $authuser = $rpcenv->get_user();
+
 	my $cfg = cfs_read_file("storage.cfg");
 
 	my $info = PVE::Storage::storage_info($cfg, $param->{content});
 
-	if ($param->{storage}) {
-	    my $data = $info->{$param->{storage}};
-
-	    raise_param_exc({ storage => "No such storage." })
-		if !defined($data);
-
-	    $data->{storage} = $param->{storage};
-
-	    return [ $data ];
+	raise_param_exc({ storage => "No such storage." })
+	    if $param->{storage} && !defined($info->{$param->{storage}});
+	
+	my $res = {};
+	my @sids = PVE::Storage::storage_ids($cfg);
+	foreach my $storeid (@sids) {
+	    my $privs = [ 'Datastore.Audit', 'Datastore.AllocateSpace' ];
+	    next if !$rpcenv->check_any($authuser, "/storage/$storeid", $privs, 1);
+	    next if $param->{storage} && $param->{storage} ne $storeid;
+	    $res->{$storeid} = $info->{$storeid};
 	}
-	return PVE::RESTHandler::hash_to_array($info, 'storage');
+
+	return PVE::RESTHandler::hash_to_array($res, 'storage');
     }});
 
 __PACKAGE__->register_method ({
@@ -81,6 +90,9 @@ __PACKAGE__->register_method ({
     path => '{storage}', 
     method => 'GET',
     description => "",
+    permissions => { 
+	check => ['perm', '/storage/{storage}', ['Datastore.Audit', 'Datastore.AllocateSpace'], any => 1],
+    },
     parameters => {
     	additionalProperties => 0,
 	properties => {
@@ -117,6 +129,9 @@ __PACKAGE__->register_method ({
     path => '{storage}/status', 
     method => 'GET',
     description => "Read storage status.",
+    permissions => { 
+	check => ['perm', '/storage/{storage}', ['Datastore.Audit', 'Datastore.AllocateSpace'], any => 1],
+    },
     protected => 1,
     proxyto => 'node',
     parameters => {
@@ -150,6 +165,9 @@ __PACKAGE__->register_method ({
     path => '{storage}/rrd', 
     method => 'GET',
     description => "Read storage RRD statistics (returns PNG).",
+    permissions => { 
+	check => ['perm', '/storage/{storage}', ['Datastore.Audit', 'Datastore.AllocateSpace'], any => 1],
+    },
     protected => 1,
     proxyto => 'node',
     parameters => {
@@ -194,6 +212,9 @@ __PACKAGE__->register_method ({
     path => '{storage}/rrddata', 
     method => 'GET',
     description => "Read storage RRD statistics.",
+    permissions => { 
+	check => ['perm', '/storage/{storage}', ['Datastore.Audit', 'Datastore.AllocateSpace'], any => 1],
+    },
     protected => 1,
     proxyto => 'node',
     parameters => {
@@ -234,6 +255,9 @@ __PACKAGE__->register_method ({
     path => '{storage}/upload', 
     method => 'POST',
     description => "Upload file.",
+    permissions => { 
+	check => ['perm', '/storage/{storage}', ['Datastore.AllocateSpace']],
+    },
     protected => 1,
     parameters => {
     	additionalProperties => 0,

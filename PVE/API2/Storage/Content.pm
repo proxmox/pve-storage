@@ -21,6 +21,9 @@ __PACKAGE__->register_method ({
     path => '',
     method => 'GET',
     description => "List storage content.",
+    permissions => { 
+	check => ['perm', '/storage/{storage}', ['Datastore.Audit', 'Datastore.AllocateSpace'], any => 1],
+    },
     protected => 1,
     proxyto => 'node',
     parameters => {
@@ -92,6 +95,9 @@ __PACKAGE__->register_method ({
     path => '',
     method => 'POST',
     description => "Allocate disk images.",
+    permissions => { 
+	check => ['perm', '/storage/{storage}', ['Datastore.AllocateSpace']],
+    },
     protected => 1,
     proxyto => 'node',
     parameters => {
@@ -189,6 +195,9 @@ __PACKAGE__->register_method ({
     path => '{volume}',
     method => 'GET',
     description => "Get volume attributes",
+    permissions => { 
+	check => ['perm', '/storage/{storage}', ['Datastore.Audit', 'Datastore.AllocateSpace'], any => 1],
+    },
     protected => 1,
     proxyto => 'node',
     parameters => {
@@ -226,6 +235,9 @@ __PACKAGE__->register_method ({
     path => '{volume}',
     method => 'DELETE',
     description => "Delete volume",
+    permissions => { 
+	check => ['perm', '/storage/{storage}', ['Datastore.AllocateSpace']],
+    },
     protected => 1,
     proxyto => 'node',
     parameters => {
@@ -256,7 +268,7 @@ __PACKAGE__->register_method ({
     name => 'copy',
     path => '{volume}',
     method => 'POST',
-    description => "Copy a volume.",
+    description => "Copy a volume. This is experimental code - do not use.",
     protected => 1,
     proxyto => 'node',
     parameters => {

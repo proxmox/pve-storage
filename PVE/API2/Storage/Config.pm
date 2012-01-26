@@ -9,8 +9,7 @@ use PVE::Storage;
 use HTTP::Status qw(:constants);
 use Storable qw(dclone);
 use PVE::JSONSchema qw(get_standard_option);
-
-use Data::Dumper; # fixme: remove
+use PVE::RPCEnvironment;
 
 use PVE::RESTHandler;
 
@@ -41,6 +40,10 @@ __PACKAGE__->register_method ({
     path => '',
     method => 'GET',
     description => "Storage index.",
+    permissions => { 
+	description => "Only list entries where you have 'Datastore.Audit' or 'Datastore.AllocateSpace' permissions on '/storage/<storage>'",
+	user => 'all',
+    },
     parameters => {
     	additionalProperties => 0,
 	properties => {
@@ -64,12 +67,18 @@ __PACKAGE__->register_method ({
     code => sub {
 	my ($param) = @_;
 
+	my $rpcenv = PVE::RPCEnvironment::get();
+	my $authuser = $rpcenv->get_user();
+
 	my $cfg = cfs_read_file("storage.cfg");
 
-	my @sids =  PVE::Storage::storage_ids($cfg);
+	my @sids = PVE::Storage::storage_ids($cfg);
 
 	my $res = [];
 	foreach my $storeid (@sids) {
+	    my $privs = [ 'Datastore.Audit', 'Datastore.AllocateSpace' ];
+	    next if !$rpcenv->check_any($authuser, "/storage/$storeid", $privs, 1);
+
 	    my $scfg = &$api_storage_config($cfg, $storeid);
 	    next if $param->{type} && $param->{type} ne $scfg->{type};
 	    push @$res, $scfg;
@@ -83,6 +92,9 @@ __PACKAGE__->register_method ({
     path => '{storage}',
     method => 'GET',
     description => "Read storage configuration.",
+    permissions => { 
+	check => ['perm', '/storage/{storage}', ['Datastore.Allocate']],
+    },
     parameters => {
     	additionalProperties => 0,
 	properties => {
@@ -104,6 +116,9 @@ __PACKAGE__->register_method ({
     path => '', 
     method => 'POST',
     description => "Create a new storage.",
+    permissions => { 
+	check => ['perm', '/storage', ['Datastore.Allocate']],
+    },
     parameters => {
     	additionalProperties => 0,
 	properties => { 
@@ -227,6 +242,9 @@ __PACKAGE__->register_method ({
     path => '{storage}',
     method => 'PUT',
     description => "Update storage configuration.",
+    permissions => { 
+	check => ['perm', '/storage', ['Datastore.Allocate']],
+    },
     parameters => {
     	additionalProperties => 0,
 	properties => { 
@@ -298,6 +316,9 @@ __PACKAGE__->register_method ({
     path => '{storage}', # /storage/config/{storage}
     method => 'DELETE',
     description => "Delete storage configuration.",
+    permissions => { 
+	check => ['perm', '/storage', ['Datastore.Allocate']],
+    },
     parameters => {
     	additionalProperties => 0,
 	properties => { 
