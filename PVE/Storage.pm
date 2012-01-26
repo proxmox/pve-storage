@@ -933,23 +933,6 @@ sub iscsi_device_list {
 
 # library implementation
 
-
-PVE::JSONSchema::register_format('pve-storage-id', \&parse_storage_id);
-sub parse_storage_id {
-    my ($storeid, $noerr) = @_;
-
-    if ($storeid !~ m/^[a-z][a-z0-9\-\_\.]*[a-z0-9]$/i) {
-	return undef if $noerr;
-	die "storage ID '$storeid' contains illegal characters\n";
-    }
-    return $storeid;
-}
-
-PVE::JSONSchema::register_standard_option('pve-storage-id', {
-    description => "The storage identifier.",
-    type => 'string', format => 'pve-storage-id',
-}); 
-
 PVE::JSONSchema::register_format('pve-storage-vgname', \&parse_lvm_name);
 sub parse_lvm_name {
     my ($name, $noerr) = @_;
