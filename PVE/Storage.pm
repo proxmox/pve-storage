@@ -1761,7 +1761,7 @@ sub nfs_is_mounted {
 
     $mountdata = read_proc_mounts() if !$mountdata;
 
-    if ($mountdata =~ m/^$source\s$mountpoint\snfs/m) {
+    if ($mountdata =~ m|^$source/?\s$mountpoint\snfs|m) {
 	return $mountpoint;
     } 
 
