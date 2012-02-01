@@ -988,7 +988,11 @@ sub parse_volname_dir {
     } elsif ($volname =~ m!^rootdir/(\d+)$!) {
 	return ('rootdir', $1, $1);
     } elsif ($volname =~ m!^backup/([^/]+(\.tar|\.tgz))$!) {
-	return ('backup', $1);
+	my $fn = $1;
+	if ($fn =~ m/^vzdump-(openvz|qemu)-(\d+)-.+/) {
+	    return ('backup', $fn, $2);
+	}
+	return ('backup', $fn);
    }
     die "unable to parse directory volume name '$volname'\n";
 }
@@ -1077,9 +1081,11 @@ sub path {
 
     my $path;
     my $owner;
+    my $vtype = 'image';
 
     if ($scfg->{type} eq 'dir' || $scfg->{type} eq 'nfs') {
-	my ($vtype, $name, $vmid) = parse_volname_dir ($volname);
+	my ($name, $vmid);
+	($vtype, $name, $vmid) = parse_volname_dir ($volname);
 	$owner = $vmid;
 
 	my $imagedir = get_image_dir($cfg, $storeid, $vmid);
@@ -1118,7 +1124,7 @@ sub path {
 	die "unknown storage type '$scfg->{type}'";
     }
 
-    return wantarray ? ($path, $owner) : $path;
+    return wantarray ? ($path, $owner, $vtype) : $path;
 }
 
 sub storage_migrate {
