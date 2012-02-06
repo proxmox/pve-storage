@@ -250,13 +250,15 @@ __PACKAGE__->register_method ({
 	    $param->{timeframe}, $param->{cf});	      
     }});
 
+# makes no sense for big images and backup files (because it 
+# create a copy of the file).
 __PACKAGE__->register_method ({
     name => 'upload',
     path => '{storage}/upload', 
     method => 'POST',
-    description => "Upload file.",
+    description => "Upload templates and ISO images.",
     permissions => { 
-	check => ['perm', '/storage/{storage}', ['Datastore.AllocateSpace']],
+	check => ['perm', '/storage/{storage}', ['Datastore.AllocateTemplate']],
     },
     protected => 1,
     parameters => {
@@ -321,13 +323,8 @@ __PACKAGE__->register_method ({
 		raise_param_exc({ filename => "missing '.tar.gz' extension" });
 	    }
 	    $path = PVE::Storage::get_vztmpl_dir($cfg, $param->{storage});
-	} elsif ($content eq 'backup') {
-	    if ($filename !~  m!/([^/]+\.(tar|tgz))$!) {
-		raise_param_exc({ filename => "missing '.(tar|tgz)' extension" });
-	    }
-	    $path = PVE::Storage::get_backup_dir($cfg, $param->{storage});
 	} else {
-	    raise_param_exc({ content => "upload content type '$content' not implemented" });
+	    raise_param_exc({ content => "upload content type '$content' not allowed" });
 	}
 
 	die "storage '$param->{storage}' does not support '$content' content\n" 
