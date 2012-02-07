@@ -987,7 +987,7 @@ sub parse_volname_dir {
 	return ('vztmpl', $1);
     } elsif ($volname =~ m!^rootdir/(\d+)$!) {
 	return ('rootdir', $1, $1);
-    } elsif ($volname =~ m!^backup/([^/]+(\.tar|\.tgz))$!) {
+    } elsif ($volname =~ m!^backup/([^/]+(\.(tar|tar\.gz|tar\.lzo|tgz)))$!) {
 	my $fn = $1;
 	if ($fn =~ m/^vzdump-(openvz|qemu)-(\d+)-.+/) {
 	    return ('backup', $fn, $2);
@@ -1062,7 +1062,7 @@ sub path_to_volume_id {
 	} elsif ($path =~ m!^$privatedir/(\d+)$!) {
 	    my $vmid = $1;
 	    return ('rootdir', "$sid:rootdir/$vmid");
-	} elsif ($path =~ m!^$backupdir/([^/]+\.(tar|tgz))$!) {
+	} elsif ($path =~ m!^$backupdir/([^/]+\.(tar|tar\.gz|tar\.lzo|tgz))$!) {
 	    my $name = $1;
 	    return ('iso', "$sid:backup/$name");	
 	}
@@ -1550,7 +1550,7 @@ sub template_list {
 		    $info = { volid => "$sid:vztmpl/$1", format => 'tgz' };
 
 		} elsif ($tt eq 'backup') {
-		    next if $fn !~ m!/([^/]+\.(tar|tgz))$!;
+		    next if $fn !~ m!/([^/]+\.(tar|tar\.gz|tar\.lzo|tgz))$!;
 		    
 		    $info = { volid => "$sid:backup/$1", format => $2 };
 		}
