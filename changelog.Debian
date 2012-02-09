@@ -1,3 +1,15 @@
+libpve-storage-perl (2.0-10) unstable; urgency=low
+
+  * also list tar.gz and tar.lzo backup files
+
+  * fix upload permissions. Only allow iso/tmpl upload
+
+  * parse backup files and return owner vmid
+
+  * add permission checks
+  
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 09 Feb 2012 14:08:49 +0100
+
 libpve-storage-perl (2.0-9) unstable; urgency=low
 
   * use -e (instead of -f) to test if volume exists
