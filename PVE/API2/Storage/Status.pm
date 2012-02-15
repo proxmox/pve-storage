@@ -76,6 +76,7 @@ __PACKAGE__->register_method ({
 	my $res = {};
 	my @sids = PVE::Storage::storage_ids($cfg);
 	foreach my $storeid (@sids) {
+	    next if !$info->{$storeid};
 	    my $privs = [ 'Datastore.Audit', 'Datastore.AllocateSpace' ];
 	    next if !$rpcenv->check_any($authuser, "/storage/$storeid", $privs, 1);
 	    next if $param->{storage} && $param->{storage} ne $storeid;

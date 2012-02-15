@@ -1,3 +1,9 @@
+libpve-storage-perl (2.0-11) unstable; urgency=low
+
+  * only list iscsi when enabled (content == images)
+
+ -- Proxmox Support Team <support@proxmox.com>  Wed, 15 Feb 2012 09:33:01 +0100
+
 libpve-storage-perl (2.0-10) unstable; urgency=low
 
   * also list tar.gz and tar.lzo backup files
