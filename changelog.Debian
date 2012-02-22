@@ -1,3 +1,9 @@
+libpve-storage-perl (2.0-12) unstable; urgency=low
+
+  * fix permission checks (delete volume requires Datastore.Allocate)
+
+ -- Proxmox Support Team <support@proxmox.com>  Wed, 22 Feb 2012 12:08:16 +0100
+
 libpve-storage-perl (2.0-11) unstable; urgency=low
 
   * only list iscsi when enabled (content == images)

@@ -177,6 +177,7 @@ my $real_volume_id = sub {
 	    raise_param_exc({ storage => "storage ID missmatch" }) 
 		if $storeid && $sid ne $storeid;
 	    $volid = $volume;
+	    $storeid = $sid;
 	};
 	raise_param_exc({ volume => $@}) if $@; 
 	   
@@ -187,7 +188,7 @@ my $real_volume_id = sub {
 	$volid = "$storeid:$volume";
     }
 
-    return $volid;
+    return wantarray ? ($volid, $storeid) : $volid;
 };
 
 __PACKAGE__->register_method ({
@@ -196,7 +197,8 @@ __PACKAGE__->register_method ({
     method => 'GET',
     description => "Get volume attributes",
     permissions => { 
-	check => ['perm', '/storage/{storage}', ['Datastore.Audit', 'Datastore.AllocateSpace'], any => 1],
+	description => "You need 'Datastore.Audit' or 'Datastore.AllocateSpace' privilege on the storage.",
+	user => 'all',
     },
     protected => 1,
     proxyto => 'node',
@@ -215,7 +217,12 @@ __PACKAGE__->register_method ({
     code => sub {
 	my ($param) = @_;
 
-	my $volid = &$real_volume_id($param->{storage}, $param->{volume});
+	my $rpcenv = PVE::RPCEnvironment::get();
+	my $authuser = $rpcenv->get_user();
+
+	my ($volid, $storeid) = &$real_volume_id($param->{storage}, $param->{volume});
+
+	$rpcenv->check_any($authuser, "/storage/$storeid", ['Datastore.Audit', 'Datastore.AllocateSpace']);
 
 	my $cfg = cfs_read_file('storage.cfg');
 
@@ -236,7 +243,8 @@ __PACKAGE__->register_method ({
     method => 'DELETE',
     description => "Delete volume",
     permissions => { 
-	check => ['perm', '/storage/{storage}', ['Datastore.AllocateSpace']],
+	description => "You need 'Datastore.Allocate' privilege on the storage ('Datastore.AllocateSpace' is not enough).",
+	user => 'all',
     },
     protected => 1,
     proxyto => 'node',
@@ -255,8 +263,13 @@ __PACKAGE__->register_method ({
     code => sub {
 	my ($param) = @_;
 
-	my $volid = &$real_volume_id($param->{storage}, $param->{volume});
+	my $rpcenv = PVE::RPCEnvironment::get();
+	my $authuser = $rpcenv->get_user();
+
+	my ($volid, $storeid) = &$real_volume_id($param->{storage}, $param->{volume});
 	
+	$rpcenv->check($authuser, "/storage/$storeid", ['Datastore.Allocate']);
+
 	my $cfg = cfs_read_file('storage.cfg');
 
 	PVE::Storage::vdisk_free ($cfg, $volid);
