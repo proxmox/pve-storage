@@ -21,6 +21,7 @@ use PVE::Cluster qw(cfs_register_file cfs_read_file cfs_write_file cfs_lock_file
 use PVE::Exception qw(raise_param_exc);
 use PVE::JSONSchema;
 use PVE::INotify;
+use PVE::RPCEnvironment;
 
 my $ISCSIADM = '/usr/bin/iscsiadm';
 my $UDEVADM = '/sbin/udevadm';
@@ -1322,6 +1323,11 @@ sub vdisk_free {
 
     activate_storage ($cfg, $storeid);
 
+    # we need to zero out LVM data for security reasons
+    # and to allow thin provisioning
+
+    my $vg;
+
     # lock shared storage
     cluster_lock_storage($storeid, $scfg->{shared}, undef, sub {
 
@@ -1335,17 +1341,39 @@ sub vdisk_free {
 	    }
 	} elsif ($scfg->{type} eq 'lvm') {
 
-	    my $vg = $scfg->{vgname};
+	    $vg = $scfg->{vgname};
 
-	    my $cmd = ['/sbin/lvremove', '-f', "$vg/$volname"];
+	    # avoid long running task, so we only rename here
+	    my $cmd = ['/sbin/lvrename', $vg, $volname, "del-$volname"];
+	    run_command($cmd, errmsg => "lvrename '$vg/$volname' error");
 
-	    run_command($cmd, errmsg => "lvremove '$vg/$volname' error");
+
 	} elsif ($scfg->{type} eq 'iscsi') {
 	    die "can't free space in iscsi storage\n";
 	} else {
 	    die "unknown storage type '$scfg->{type}'";
 	}
     });
+
+    return if !$vg;
+
+    my $zero_out_worker = sub {
+	print "zero-out data on image $volname\n";
+	my $cmd = ['dd', "if=/dev/zero", "of=/dev/$vg/del-$volname", "bs=1M"];
+	eval { run_command($cmd, errmsg => "zero out failed"); };
+	warn $@ if $@;
+
+	cluster_lock_storage($storeid, $scfg->{shared}, undef, sub {
+	    my $cmd = ['/sbin/lvremove', '-f', "$vg/del-$volname"];
+	    run_command($cmd, errmsg => "lvremove '$vg/del-$volname' error");
+	});
+	print "successfully removed volume $volname\n";
+    };
+
+    my $rpcenv = PVE::RPCEnvironment::get();
+    my $authuser = $rpcenv->get_user();
+
+    $rpcenv->fork_worker('imgdel', undef, $authuser, $zero_out_worker);
 }
 
 # lvm utility functions
