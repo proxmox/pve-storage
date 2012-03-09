@@ -1,3 +1,9 @@
+libpve-storage-perl (2.0-13) unstable; urgency=low
+
+  * new lvm option 'saferemove' to zero-out data when removing LVs
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 09 Mar 2012 09:37:02 +0100
+
 libpve-storage-perl (2.0-12) unstable; urgency=low
 
   * fix permission checks (delete volume requires Datastore.Allocate)

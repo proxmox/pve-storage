@@ -138,6 +138,7 @@ my $confvars = {
     path => 'path',
     shared => 'bool',
     disable => 'bool',
+    saferemove => 'bool',
     format => 'format',
     content => 'content',
     server => 'server',
@@ -192,6 +193,7 @@ my $default_config = {
         nodes => 0,
 	shared => 0,
 	disable => 0,
+        saferemove => 0,
 	content => [ {images => 1}, { images => 1 }],
         base => 1,
     },
@@ -1341,12 +1343,16 @@ sub vdisk_free {
 	    }
 	} elsif ($scfg->{type} eq 'lvm') {
 
-	    $vg = $scfg->{vgname};
-
-	    # avoid long running task, so we only rename here
-	    my $cmd = ['/sbin/lvrename', $vg, $volname, "del-$volname"];
-	    run_command($cmd, errmsg => "lvrename '$vg/$volname' error");
-
+	    if ($scfg->{saferemove}) {
+		# avoid long running task, so we only rename here
+		$vg = $scfg->{vgname};
+		my $cmd = ['/sbin/lvrename', $vg, $volname, "del-$volname"];
+		run_command($cmd, errmsg => "lvrename '$vg/$volname' error");
+	    } else {
+		my $tmpvg = $scfg->{vgname};
+		my $cmd = ['/sbin/lvremove', '-f', "$tmpvg/$volname"];
+		run_command($cmd, errmsg => "lvremove '$tmpvg/$volname' error");
+	    }
 
 	} elsif ($scfg->{type} eq 'iscsi') {
 	    die "can't free space in iscsi storage\n";
