@@ -1,3 +1,9 @@
+libpve-storage-perl (2.0-14) unstable; urgency=low
+
+  * use Digest::SHA instead of Digest::SHA1
+
+ -- Proxmox Support Team <support@proxmox.com>  Tue, 20 Mar 2012 11:27:24 +0100
+
 libpve-storage-perl (2.0-13) unstable; urgency=low
 
   * new lvm option 'saferemove' to zero-out data when removing LVs

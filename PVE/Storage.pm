@@ -13,7 +13,7 @@ use IPC::Open2;
 use Cwd 'abs_path';
 use Getopt::Long qw(GetOptionsFromArray);
 use Socket;
-use Digest::SHA1;
+use Digest::SHA;
 use Net::Ping;
 
 use PVE::Tools qw(run_command file_read_firstline trim);
@@ -419,7 +419,7 @@ sub parse_config {
 
     my $ids = {};
 
-    my $digest = Digest::SHA1::sha1_hex(defined($raw) ? $raw : '');
+    my $digest = Digest::SHA::sha1_hex(defined($raw) ? $raw : '');
 
     my $pri = 0;
 
