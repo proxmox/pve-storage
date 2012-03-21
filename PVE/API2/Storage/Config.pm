@@ -168,6 +168,11 @@ __PACKAGE__->register_method ({
 		type => 'boolean',
 		optional => 1,
 	    },
+	    maxfiles => {
+		type => 'integer',
+		optional => 1,
+		minimum => 0,
+	    },
 	    shared => {
 		type => 'boolean',
 		optional => 1,
@@ -269,6 +274,11 @@ __PACKAGE__->register_method ({
 	    options => {
 		type => 'string', format => 'pve-storage-options',
 		optional => 1,
+	    },
+	    maxfiles => {
+		type => 'integer',
+		optional => 1,
+		minimum => 0,
 	    },
 	    digest => {
 		type => 'string',

@@ -149,6 +149,7 @@ my $confvars = {
     target => 'target',
     nodes => 'nodes',
     options => 'options',
+    maxfiles => 'natural',
 };
 
 my $required_config = {
@@ -171,6 +172,7 @@ my $default_config = {
         nodes => 0,
 	shared => 0,
 	disable => 0,
+        maxfiles => 0, 
 	content => [ { images => 1, rootdir => 1, vztmpl => 1, iso => 1, backup => 1, none => 1 },
 		     { images => 1,  rootdir => 1 }],
 	format => [ { raw => 1, qcow2 => 1, vmdk => 1 } , 'raw' ],
@@ -183,6 +185,7 @@ my $default_config = {
         server => 1,
         export => 1,
         options => 0,
+        maxfiles => 0, 
 	content => [ { images => 1, rootdir => 1, vztmpl => 1, iso => 1, backup => 1},
 		     { images => 1 }],
 	format => [ { raw => 1, qcow2 => 1, vmdk => 1 } , 'raw' ],
@@ -357,6 +360,10 @@ sub check_type {
 	return parse_lvm_name ($value, $noerr);
     } elsif ($ct eq 'portal') {
 	return verify_portal($value, $noerr);
+    } elsif ($ct eq 'natural') {
+	return int($value) if $value =~ m/^\d+$/; 
+	return undef if $noerr;
+	die "type check ('natural') failed - got '$value'\n";
     } elsif ($ct eq 'nodes') {
 	my $res = {};
 
@@ -711,9 +718,9 @@ sub write_config {
 
 	foreach my $k (keys %$def) {
 	    next if defined ($done_hash->{$k});
-	    if (defined (my $v = $ids->{$storeid}->{$k})) {
-		$data .= sprint_config_line ($k, $v);
-	    }
+	    my $v = $ids->{$storeid}->{$k};
+	    next if !defined($v);
+	    $data .= sprint_config_line ($k, $v);
 	}
 
 	$out .= "$data\n";
