@@ -617,7 +617,7 @@ sub storage_check_node {
     if ($scfg->{nodes}) {
 	$node = PVE::INotify::nodename() if !$node || ($node eq 'localhost');
 	if (!$scfg->{nodes}->{$node}) {
-	    die "storage '$storeid' is not available on node '$node'" if !$noerr;
+	    die "storage '$storeid' is not available on node '$node'\n" if !$noerr;
 	    return undef;
 	}
     }
