@@ -16,7 +16,7 @@ use Socket;
 use Digest::SHA;
 use Net::Ping;
 
-use PVE::Tools qw(run_command file_read_firstline trim);
+use PVE::Tools qw(run_command file_read_firstline trim dir_glob_regex dir_glob_foreach);
 use PVE::Cluster qw(cfs_register_file cfs_read_file cfs_write_file cfs_lock_file);
 use PVE::Exception qw(raise_param_exc);
 use PVE::JSONSchema;
@@ -77,36 +77,6 @@ sub load_stable_scsi_paths {
        $dh->close;
     }
     return $stable_paths;
-}
-
-sub dir_glob_regex {
-    my ($dir, $regex) = @_;
-
-    my $dh = IO::Dir->new ($dir);
-    return wantarray ? () : undef if !$dh;
-  
-    while (defined(my $tmp = $dh->read)) { 
-	if (my @res = $tmp =~ m/^($regex)$/) {
-	    $dh->close;
-	    return wantarray ? @res : $tmp;
-	}
-    }
-    $dh->close;
-
-    return wantarray ? () : undef;
-}
-
-sub dir_glob_foreach {
-    my ($dir, $regex, $func) = @_;
-
-    my $dh = IO::Dir->new ($dir);
-    if (defined $dh) {
-	while (defined(my $tmp = $dh->read)) {
-	    if (my @res = $tmp =~ m/^($regex)$/) {
-		&$func (@res);
-	    }
-	}
-    } 
 }
 
 sub read_proc_mounts {
