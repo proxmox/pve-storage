@@ -458,7 +458,8 @@ sub parse_config {
 	$ids->{local} = {
 	    type => 'dir',
 	    priority => $pri++,
-	    path => '/var/lib/vz',    
+	    path => '/var/lib/vz',
+	    maxfiles => 0,
 	    content => { images => 1, rootdir => 1, vztmpl => 1, iso => 1},
 	};
     }
