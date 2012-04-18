@@ -1018,7 +1018,9 @@ sub path_to_volume_id {
 	return ('');
     }
 
-    $path = abs_path ($path);
+    # Note: abs_path() return undef if $path doesn not exist 
+    # for example when nfs storage is not mounted
+    $path = abs_path($path) || $path;
 
     foreach my $sid (keys %$ids) {
 	my $type = $ids->{$sid}->{type};

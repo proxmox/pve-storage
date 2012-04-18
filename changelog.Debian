@@ -1,3 +1,9 @@
+libpve-storage-perl (2.0-18) unstable; urgency=low
+
+  * fix bug #171: fix path_to_volume_id for unmounted NFS
+
+ -- Proxmox Support Team <support@proxmox.com>  Wed, 18 Apr 2012 12:34:11 +0200
+
 libpve-storage-perl (2.0-17) unstable; urgency=low
 
   * fix bug #148: set maxfiles for default local storage
