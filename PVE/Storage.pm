@@ -1981,8 +1981,6 @@ sub deactivate_volumes {
 
     return if !($vollist && scalar(@$vollist));
 
-    my $lvs = lvm_lvs ();
-
     my @errlist = ();
     foreach my $volid (@$vollist) {
 	my ($storeid, $volname) = parse_volume_id ($volid);
@@ -1990,16 +1988,14 @@ sub deactivate_volumes {
 	my $scfg = storage_config ($cfg, $storeid);
 
 	if ($scfg->{type} eq 'lvm') {
-	    my ($name) = parse_volname_lvm ($volname);
+	    my $path = path ($cfg, $volid);
+	    next if ! -b $path;
 
-	    if ($lvs->{$scfg->{vgname}}->{$name}) {
-		my $path = path ($cfg, $volid);
-		my $cmd = ['/sbin/lvchange', '-aln', $path];
-		eval { run_command($cmd, errmsg => "can't deactivate LV '$volid'"); };
-		if (my $err = $@) {
-		    warn $err;
-		    push @errlist, $volid;
-		}
+	    my $cmd = ['/sbin/lvchange', '-aln', $path];
+	    eval { run_command($cmd, errmsg => "can't deactivate LV '$volid'"); };
+	    if (my $err = $@) {
+		warn $err;
+		push @errlist, $volid;
 	    }
 	}
     }
