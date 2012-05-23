@@ -280,7 +280,7 @@ sub path {
     
     my $path = "/dev/disk/by-id/$name";
 
-    return ($path, $vmid, $vtype);
+    return wantarray ? ($path, $vmid, $vtype) : $path;
 }
 
 sub alloc_image {

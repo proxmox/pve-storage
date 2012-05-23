@@ -575,7 +575,7 @@ sub activate_volumes {
     activate_storage_list($cfg, [keys %$storagehash], $cache);
 
     foreach my $volid (@$vollist) {
-	my ($storeid, $volname) = parse_volume_id ($volid);
+	my ($storeid, $volname) = parse_volume_id($volid);
 	my $scfg = storage_config($cfg, $storeid);
 	my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
 	$plugin->activate_volume($storeid, $scfg, $volname, $exclusive, $cache);
