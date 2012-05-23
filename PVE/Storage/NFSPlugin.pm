@@ -4,6 +4,7 @@ use strict;
 use warnings;
 use IO::File;
 use File::Path;
+use PVE::Tools qw(run_command);
 use PVE::Storage::Plugin;
 use PVE::JSONSchema qw(get_standard_option);
 
