@@ -7,6 +7,7 @@ use IO::File;
 use File::Basename;
 use File::Path;
 use Cwd 'abs_path';
+use Socket;
 
 use PVE::Tools qw(run_command file_read_firstline);
 use PVE::Cluster qw(cfs_read_file cfs_lock_file);
