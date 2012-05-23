@@ -3,6 +3,7 @@ package PVE::Storage::NFSPlugin;
 use strict;
 use warnings;
 use IO::File;
+use File::Path;
 use PVE::Storage::Plugin;
 use PVE::JSONSchema qw(get_standard_option);
 
