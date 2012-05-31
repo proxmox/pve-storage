@@ -21,12 +21,15 @@ use PVE::Storage::DirPlugin;
 use PVE::Storage::LVMPlugin;
 use PVE::Storage::NFSPlugin;
 use PVE::Storage::ISCSIPlugin;
+use PVE::Storage::RBDPlugin;
 
 # load and initialize all plugins
 PVE::Storage::DirPlugin->register();
 PVE::Storage::LVMPlugin->register();
 PVE::Storage::NFSPlugin->register();
 PVE::Storage::ISCSIPlugin->register();
+PVE::Storage::RBDPlugin->register();
+
 PVE::Storage::Plugin->init();
 
 my $UDEVADM = '/sbin/udevadm';
