@@ -11,13 +11,13 @@ use base qw(PVE::Storage::Plugin);
 
 
 sub rbd_ls{
- my ($scfg) = @_;
+ my ($scfg, $storeid) = @_;
 
-    my $rbdpool = $scfg->{rbd_pool};
-    my $monhost = $scfg->{rbd_monhost};
+    my $rbdpool = $scfg->{pool};
+    my $monhost = $scfg->{monhost};
     $monhost =~ s/;/,/g;
 
-    my $cmd = ['/usr/bin/rbd', '-p', $rbdpool, '-m', $monhost, '-n', "client.".$scfg->{rbd_id} ,'--key',$scfg->{rbd_key} ,'ls' ];
+    my $cmd = ['/usr/bin/rbd', '-p', $rbdpool, '-m', $monhost, '-n', "client.".$scfg->{username} ,'--keyfile', '/etc/pve/priv/ceph/'.$storeid.'.'.$scfg->{username}.'.key', '--auth_supported',$scfg->{authsupported}, 'ls' ];
     my $list = {};
     run_command($cmd, errfunc => sub {},outfunc => sub {
         my $line = shift;
@@ -44,10 +44,10 @@ sub addslashes {
     return $text;
 }
 
-# Configuration 
+# Configuration
 
-PVE::JSONSchema::register_format('pve-storage-rbd-mon', \&parse_rbd_mon);
-sub parse_rbd_mon {
+PVE::JSONSchema::register_format('pve-storage-monhost', \&parse_monhost);
+sub parse_monhost {
     my ($name, $noerr) = @_;
 
     if ($name !~ m/^[a-z][a-z0-9\-\_\.]*[a-z0-9]$/i) {
@@ -71,23 +71,19 @@ sub plugindata {
 
 sub properties {
     return {
-	rbd_monhost => {
+	monhost => {
 	    description => "Monitors daemon ips.",
-	    type => 'string', 
+	    type => 'string',
 	},
-	rbd_pool => {
-	    description => "RBD Pool.",
-	    type => 'string', 
+	pool => {
+	    description => "Pool.",
+	    type => 'string',
 	},
-	rbd_id => {
+	username => {
 	    description => "RBD Id.",
 	    type => 'string',
 	},
-	rbd_key => {
-	    description => "Key.",
-	    type => 'string',
-	},
-	rbd_authsupported => {
+	authsupported => {
 	    description => "Authsupported.",
 	    type => 'string',
 	},
@@ -96,11 +92,10 @@ sub properties {
 
 sub options {
     return {
-	rbd_monhost => { fixed => 1 },
-        rbd_pool => { fixed => 1 },
-	rbd_id => { fixed => 1 },
-	rbd_key => { fixed => 1 },
-        rbd_authsupported => { fixed => 1 },
+	monhost => { fixed => 1 },
+        pool => { fixed => 1 },
+	username => { fixed => 1 },
+        authsupported => { fixed => 1 },
 	content => { optional => 1 },
     };
 }
@@ -118,17 +113,16 @@ sub parse_volname {
 }
 
 sub path {
-    my ($class, $scfg, $volname) = @_;
+    my ($class, $scfg, $volname, $storeid) = @_;
 
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
 
-    my $monhost = addslashes($scfg->{rbd_monhost});
-    my $pool = $scfg->{rbd_pool};
-    my $id = $scfg->{rbd_id};
-    my $key = $scfg->{rbd_key};
-    my $authsupported = addslashes($scfg->{rbd_authsupported});
-
-    my $path = "rbd:$pool/$name:id=$id:key=$key:auth_supported=$authsupported:mon_host=$monhost";
+    my $monhost = addslashes($scfg->{monhost});
+    my $pool = $scfg->{pool};
+    my $username = $scfg->{username};
+    my $authsupported = addslashes($scfg->{authsupported});
+    
+    my $path = "rbd:$pool/$name:id=$username:auth_supported=$authsupported:keyfile=/etc/pve/priv/ceph/$storeid.$username.key:mon_host=$monhost";
 
     return ($path, $vmid, $vtype);
 }
@@ -137,14 +131,14 @@ sub alloc_image {
     my ($class, $storeid, $scfg, $vmid, $fmt, $name, $size) = @_;
 
 
-    die "illegal name '$name' - sould be 'vm-$vmid-*'\n" 
+    die "illegal name '$name' - sould be 'vm-$vmid-*'\n"
 	if  $name && $name !~ m/^vm-$vmid-/;
-    my $rbdpool = $scfg->{rbd_pool};
-    my $monhost = $scfg->{rbd_monhost};
+    my $rbdpool = $scfg->{pool};
+    my $monhost = $scfg->{monhost};
     $monhost =~ s/;/,/g;
 
     if (!$name) {
-	my $rdb = rbd_ls($scfg);
+	my $rdb = rbd_ls($scfg, $storeid);
 
 	for (my $i = 1; $i < 100; $i++) {
 	    my $tn = "vm-$vmid-disk-$i";
@@ -158,7 +152,7 @@ sub alloc_image {
     die "unable to allocate an image name for VM $vmid in storage '$storeid'\n"
 	if !$name;
 
-    my $cmd = ['/usr/bin/rbd', '-p', $rbdpool, '-m', $monhost, '-n', "client.".$scfg->{rbd_id}, '--key', $scfg->{rbd_key}, 'create', '--size', ($size/1024), $name  ];
+    my $cmd = ['/usr/bin/rbd', '-p', $rbdpool, '-m', $monhost, '-n', "client.".$scfg->{username}, '--keyfile','/etc/pve/priv/ceph/'.$storeid.'.'.$scfg->{username}.'.key','--auth_supported', $scfg->{authsupported}, 'create', '--size', ($size/1024), $name  ];
     run_command($cmd, errmsg => "rbd create $name' error");
 
     return $name;
@@ -167,11 +161,11 @@ sub alloc_image {
 sub free_image {
     my ($class, $storeid, $scfg, $volname) = @_;
 
-    my $rbdpool = $scfg->{rbd_pool};
-    my $monhost = $scfg->{rbd_monhost};
+    my $rbdpool = $scfg->{pool};
+    my $monhost = $scfg->{monhost};
     $monhost =~ s/;/,/g;
 
-    my $cmd = ['/usr/bin/rbd', '-p', $rbdpool, '-m', $monhost, '-n', "client.".$scfg->{rbd_id}, '--key',$scfg->{rbd_key}, 'rm', $volname  ];
+    my $cmd = ['/usr/bin/rbd', '-p', $rbdpool, '-m', $monhost, '-n', "client.".$scfg->{username}, '--keyfile','/etc/pve/priv/ceph/'.$storeid.'.'.$scfg->{username}.'.key','--auth_supported',$scfg->{authsupported}, 'rm', $volname  ];
     run_command($cmd, errmsg => "rbd rm $volname' error");
 
     return undef;
@@ -180,8 +174,8 @@ sub free_image {
 sub list_images {
     my ($class, $storeid, $scfg, $vmid, $vollist, $cache) = @_;
 
-    $cache->{rbd} = rbd_ls($scfg) if !$cache->{rbd};
-    my $rbdpool = $scfg->{rbd_pool};
+    $cache->{rbd} = rbd_ls($scfg, $storeid) if !$cache->{rbd};
+    my $rbdpool = $scfg->{pool};
     my $res = [];
 
     if (my $dat = $cache->{rbd}->{$rbdpool}) {
@@ -213,7 +207,6 @@ sub list_images {
 
 sub status {
     my ($class, $storeid, $scfg, $cache) = @_;
-
 
     my $total = 0;
     my $free = 0;

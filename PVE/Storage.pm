@@ -236,7 +236,7 @@ sub path {
     my $scfg = storage_config($cfg, $storeid);
 
     my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
-    my ($path, $owner, $vtype) = $plugin->path($scfg, $volname);
+    my ($path, $owner, $vtype) = $plugin->path($scfg, $volname, $storeid);
     return wantarray ? ($path, $owner, $vtype) : $path;
 }
 
