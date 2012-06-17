@@ -19,19 +19,29 @@ sub rbd_ls{
 
     my $cmd = ['/usr/bin/rbd', '-p', $rbdpool, '-m', $monhost, '-n', "client.".$scfg->{username} ,'--keyfile', '/etc/pve/priv/ceph/'.$storeid.'.'.$scfg->{username}.'.key', '--auth_supported',$scfg->{authsupported}, 'ls' ];
     my $list = {};
-    run_command($cmd, errfunc => sub {},outfunc => sub {
+
+    my $errfunc = sub {
         my $line = shift;
+	die $line if $line;	
+    };
 
-        $line = trim($line);
-        my ($image) = $line;
+    eval {   
+	run_command($cmd, errmsg => "rbd error", errfunc => $errfunc,outfunc => sub {
+            my $line = shift;
+
+            $line = trim($line);
+            my ($image) = $line;
 	
-        $list->{$rbdpool}->{$image} = {
-            name => $image,
-            size => "",
-        };
+	    $list->{$rbdpool}->{$image} = {
+                name => $image,
+	        size => "",
+            };
 
-    });
+	});
+    };
 
+    my $err = $@;
+    die $err if $err && $err !~ m/doesn't contain rbd images/ ;
 
     return $list;
 
