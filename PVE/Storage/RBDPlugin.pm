@@ -17,7 +17,7 @@ sub rbd_ls{
     my $monhost = $scfg->{monhost};
     $monhost =~ s/;/,/g;
 
-    my $cmd = ['/usr/bin/rbd', '-p', $rbdpool, '-m', $monhost, '-n', "client.".$scfg->{username} ,'--keyfile', '/etc/pve/priv/ceph/'.$storeid.'.'.$scfg->{username}.'.key', '--auth_supported',$scfg->{authsupported}, 'ls' ];
+    my $cmd = ['/usr/bin/rbd', '-p', $rbdpool, '-m', $monhost, '-n', "client.".$scfg->{username} ,'--keyring', '/etc/pve/priv/ceph/'.$storeid.'.keyring', '--auth_supported',$scfg->{authsupported}, 'ls' ];
     my $list = {};
 
     my $errfunc = sub {
@@ -132,7 +132,7 @@ sub path {
     my $username = $scfg->{username};
     my $authsupported = addslashes($scfg->{authsupported});
     
-    my $path = "rbd:$pool/$name:id=$username:auth_supported=$authsupported:keyfile=/etc/pve/priv/ceph/$storeid.$username.key:mon_host=$monhost";
+    my $path = "rbd:$pool/$name:id=$username:auth_supported=$authsupported:keyring=/etc/pve/priv/ceph/$storeid.keyring:mon_host=$monhost";
 
     return ($path, $vmid, $vtype);
 }
@@ -162,7 +162,7 @@ sub alloc_image {
     die "unable to allocate an image name for VM $vmid in storage '$storeid'\n"
 	if !$name;
 
-    my $cmd = ['/usr/bin/rbd', '-p', $rbdpool, '-m', $monhost, '-n', "client.".$scfg->{username}, '--keyfile','/etc/pve/priv/ceph/'.$storeid.'.'.$scfg->{username}.'.key','--auth_supported', $scfg->{authsupported}, 'create', '--size', ($size/1024), $name  ];
+    my $cmd = ['/usr/bin/rbd', '-p', $rbdpool, '-m', $monhost, '-n', "client.".$scfg->{username}, '--keyring','/etc/pve/priv/ceph/'.$storeid.'.keyring','--auth_supported', $scfg->{authsupported}, 'create', '--size', ($size/1024), $name  ];
     run_command($cmd, errmsg => "rbd create $name' error");
 
     return $name;
@@ -175,7 +175,7 @@ sub free_image {
     my $monhost = $scfg->{monhost};
     $monhost =~ s/;/,/g;
 
-    my $cmd = ['/usr/bin/rbd', '-p', $rbdpool, '-m', $monhost, '-n', "client.".$scfg->{username}, '--keyfile','/etc/pve/priv/ceph/'.$storeid.'.'.$scfg->{username}.'.key','--auth_supported',$scfg->{authsupported}, 'rm', $volname  ];
+    my $cmd = ['/usr/bin/rbd', '-p', $rbdpool, '-m', $monhost, '-n', "client.".$scfg->{username}, '--keyring','/etc/pve/priv/ceph/'.$storeid.'.keyring','--auth_supported',$scfg->{authsupported}, 'rm', $volname  ];
     run_command($cmd, errmsg => "rbd rm $volname' error");
 
     return undef;
