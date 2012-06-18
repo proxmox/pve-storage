@@ -31,12 +31,18 @@ sub rbd_ls{
 
             $line = trim($line);
             my ($image) = $line;
-	
+
+	    my $owner;
+	    if ($image =~ m/^(vm-(\d+)-\S+)$/) {
+		$owner = $2;
+	    }
+
 	    $list->{$rbdpool}->{$image} = {
                 name => $image,
-	        size => "",
+                size => "",
+                vmid => $owner
             };
-
+	
 	});
     };
 
