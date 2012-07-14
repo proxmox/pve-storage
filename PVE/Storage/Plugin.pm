@@ -300,7 +300,7 @@ sub parse_config {
 	    $d->{content} = $def->{content}->[1] if !$d->{content};
 	}
 
-	if ($type eq 'iscsi' || $type eq 'nfs' || $type eq 'rbd' || $type eq 'sheepdog' || $type eq 'iscsidirect' ) {
+	if ($type eq 'iscsi' || $type eq 'nfs' || $type eq 'rbd' || $type eq 'sheepdog' || $type eq 'iscsidirect' || $type eq 'nexenta' ) {
 	    $d->{shared} = 1;
 	}
     }
