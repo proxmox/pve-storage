@@ -16,7 +16,7 @@ my $collie_cmd = sub {
     my ($server, $port) = split(':', $portal);
     my $cmd = ['/usr/sbin/collie', $class, $op, '-a', $server];
     push @$cmd, '-p', $port if $port;
- 
+
     push @$cmd, @options if scalar(@options);
 
     return $cmd;
@@ -32,7 +32,7 @@ sub sheepdog_ls {
     run_command($cmd, outfunc => sub {
         my $line = shift;
         $line = trim($line);
-	if ($line =~ /= (vm-(\d+)-\S+)\s+(\d+)\s+(\d+)\s(\d+)\s(\d+)\s/) { 
+	if ($line =~ /= (vm-(\d+)-\S+)\s+(\d+)\s+(\d+)\s(\d+)\s(\d+)\s/) {
 	    my $image = $1;
 	    my $owner = $2;
 	    my $size = $4;
@@ -87,7 +87,7 @@ sub path {
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
 
     my $portal = $scfg->{portal};
-    
+
     my $path = "sheepdog:$portal:$name";
 
     return ($path, $vmid, $vtype);
@@ -145,7 +145,6 @@ sub list_images {
 
             my $volid = "$storeid:$volname";
 
-
             my $owner = $dat->{$volname}->{vmid};
             if ($vollist) {
                 my $found = grep { $_ eq $volid } @$vollist;
@@ -160,7 +159,7 @@ sub list_images {
             push @$res, $info;
         }
     }
-    
+
    return $res;
 }
 
