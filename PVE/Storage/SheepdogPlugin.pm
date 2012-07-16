@@ -171,6 +171,20 @@ sub status {
     my $free = 0;
     my $used = 0;
     my $active = 1;
+
+    my $cmd = &$collie_cmd($scfg, 'node', 'info' , '-r');
+
+    my $parser = sub {
+        my $line = shift;
+	if ($line =~ m/^Total\s(\d+)\s(\d+)\s/) {
+	    $total = $1;
+	    $used = $2;
+	    $free = $total - $used;
+	}
+    };
+
+    run_command($cmd, outfunc => $parser, errmsg => "sheepdog node info error");
+
     return ($total,$free,$used,$active);
 
     return undef;
