@@ -9,21 +9,30 @@ use PVE::JSONSchema qw(get_standard_option);
 
 use base qw(PVE::Storage::Plugin);
 
-
-sub sheepdog_ls{
- my ($scfg, $storeid) = @_;
+my $collie_cmd = sub {
+    my ($scfg, $class, $op, @options) = @_;
 
     my $portal = $scfg->{portal};
     my ($server, $port) = split(':', $portal);
-    my $cmd = ['/usr/sbin/collie', 'vdi', 'list', '-a', $server ];
+    my $cmd = ['/usr/sbin/collie', $class, $op, '-a', $server];
+    push @$cmd, '-p', $port if $port;
+ 
+    push @$cmd, @options if scalar(@options);
+
+    return $cmd;
+};
+
+sub sheepdog_ls {
+    my ($scfg, $storeid) = @_;
+
+    my $cmd = &$collie_cmd($scfg, 'vdi', 'list', '-r');
+
     my $list = {};
 
-
-    run_command($cmd,outfunc => sub {
+    run_command($cmd, outfunc => sub {
         my $line = shift;
         $line = trim($line);
-	if( $line =~ /(vm-(\d+)-\S+)\s+(\d+)\s+([\.0-9]*)\s(\w+)\s+([\.0-9]*)\s(\w+)\W+([\.0-9]*)\s(\w+)\s+([\-0-9]*)\s([:0-9]*)\W+/ ) { 
-
+	if ($line =~ /= (vm-(\d+)-\S+)\s+(\d+)\s+(\d+)\s(\d+)\s(\d+)\s/) { 
 	    my $image = $1;
 	    my $owner = $2;
 	    my $size = $4;
@@ -33,14 +42,10 @@ sub sheepdog_ls{
 		size => $size,
 		vmid => $owner
 	    };
-
-	    
-
 	}
     });
 
     return $list;
-
 }
 
 # Configuration
@@ -94,8 +99,6 @@ sub alloc_image {
 
     die "illegal name '$name' - sould be 'vm-$vmid-*'\n"
 	if  $name && $name !~ m/^vm-$vmid-/;
-    my $portal = $scfg->{portal};
-    my ($server, $port) = split(':', $portal);
 
     if (!$name) {
 	my $sheepdog = sheepdog_ls($scfg, $storeid);
@@ -111,7 +114,9 @@ sub alloc_image {
 
     die "unable to allocate an image name for VM $vmid in storage '$storeid'\n"
 	if !$name;
-    my $cmd = ['/usr/sbin/collie', 'vdi', 'create' , $name , $size.'KB', '-a', $server ];
+
+    my $cmd = &$collie_cmd($scfg, 'vdi', 'create', $name , "${size}KB");
+
     run_command($cmd, errmsg => "sheepdog create $name' error");
 
     return $name;
@@ -120,10 +125,7 @@ sub alloc_image {
 sub free_image {
     my ($class, $storeid, $scfg, $volname) = @_;
 
-    my $portal = $scfg->{portal};
-    my ($server, $port) = split(':', $portal);
-
-    my $cmd = ['/usr/sbin/collie', 'vdi', 'delete' , $volname, '-a', $server ];
+    my $cmd = &$collie_cmd($scfg, 'vdi', 'delete' , $volname);
 
     run_command($cmd, errmsg => "sheepdog delete $volname' error");
 
@@ -154,7 +156,7 @@ sub list_images {
 
             my $info = $dat->{$volname};
             $info->{volid} = $volid;
-
+	    $info->{format} = 'raw';
             push @$res, $info;
         }
     }
