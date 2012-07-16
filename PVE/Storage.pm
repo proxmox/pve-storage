@@ -243,15 +243,15 @@ sub path {
 sub storage_migrate {
     my ($cfg, $volid, $target_host, $target_storeid, $target_volname) = @_;
 
-    my ($storeid, $volname) = parse_volume_id ($volid);
+    my ($storeid, $volname) = parse_volume_id($volid);
     $target_volname = $volname if !$target_volname;
 
-    my $scfg = storage_config ($cfg, $storeid);
+    my $scfg = storage_config($cfg, $storeid);
 
     # no need to migrate shared content
     return if $storeid eq $target_storeid && $scfg->{shared};
 
-    my $tcfg = storage_config ($cfg, $target_storeid);
+    my $tcfg = storage_config($cfg, $target_storeid);
 
     my $target_volid = "${target_storeid}:${target_volname}";
 
@@ -269,8 +269,8 @@ sub storage_migrate {
 
 	    my $src_plugin = PVE::Storage::Plugin->lookup($scfg->{type});
 	    my $dst_plugin = PVE::Storage::Plugin->lookup($tcfg->{type});
-	    my $src = $src_plugin->path($scfg, $volid);
-	    my $dst = $dst_plugin->path($tcfg, $target_volid);
+	    my $src = $src_plugin->path($scfg, $volname, $storeid);
+	    my $dst = $dst_plugin->path($tcfg, $target_volname, $target_storeid);
 
 	    my $dirname = dirname($dst);
 

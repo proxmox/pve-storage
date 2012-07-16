@@ -384,7 +384,7 @@ sub get_subdir {
 }
 
 sub path {
-    my ($class, $scfg, $volname) = @_;
+    my ($class, $scfg, $volname, $storeid) = @_;
 
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
 
