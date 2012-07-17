@@ -9,48 +9,44 @@ use PVE::JSONSchema qw(get_standard_option);
 
 use base qw(PVE::Storage::Plugin);
 
+my $rbd_cmd = sub {
+    my ($scfg, $storeid, $op, @options) = @_;
 
-sub rbd_ls{
- my ($scfg, $storeid) = @_;
-
-    my $rbdpool = $scfg->{pool};
     my $monhost = $scfg->{monhost};
     $monhost =~ s/;/,/g;
 
-    my $cmd = ['/usr/bin/rbd', '-p', $rbdpool, '-m', $monhost, '-n', "client.".$scfg->{username} ,'--keyring', '/etc/pve/priv/ceph/'.$storeid.'.keyring', '--auth_supported',$scfg->{authsupported}, 'ls' ];
+    my $cmd = ['/usr/bin/rbd', '-p', $scfg->{pool}, '-m', $monhost, '-n', 
+	       "client.$scfg->{username}", 
+	       '--keyring', "/etc/pve/priv/ceph/${storeid}.keyring", 
+	       '--auth_supported', $scfg->{authsupported}, $op];
+
+    push @$cmd, @options if scalar(@options);
+
+    return $cmd;
+};
+
+sub rbd_ls {
+    my ($scfg, $storeid) = @_;
+
+    my $cmd = &$rbd_cmd($scfg, $storeid, 'ls');
+
     my $list = {};
 
-    my $errfunc = sub {
-        my $line = shift;
-	die $line if $line;	
-    };
+    run_command($cmd, errmsg => "rbd error", errfunc => sub {}, outfunc => sub {
+	my $line = shift;
 
-    eval {   
-	run_command($cmd, errmsg => "rbd error", errfunc => $errfunc,outfunc => sub {
-            my $line = shift;
+	if ($line =~ m/^(vm-(\d+)-\S+)$/) {
+	    my ($image, $owner) = ($1, $2);
 
-            $line = trim($line);
-            my ($image) = $line;
-
-	    my $owner;
-	    if ($image =~ m/^(vm-(\d+)-\S+)$/) {
-		$owner = $2;
-	    }
-
-	    $list->{$rbdpool}->{$image} = {
-                name => $image,
-                size => "",
-                vmid => $owner
-            };
-	
-	});
-    };
-
-    my $err = $@;
-    die $err if $err && $err !~ m/doesn't contain rbd images/ ;
-
+	    $list->{$scfg->{pool}}->{$image} = {
+		name => $image,
+		size => 0,
+		vmid => $owner
+	    };
+	}
+    });
+  
     return $list;
-
 }
 
 sub addslashes {
@@ -73,7 +69,6 @@ sub parse_monhost {
 
     return $name;
 }
-
 
 sub type {
     return 'rbd';
@@ -149,16 +144,13 @@ sub alloc_image {
 
     die "illegal name '$name' - sould be 'vm-$vmid-*'\n"
 	if  $name && $name !~ m/^vm-$vmid-/;
-    my $rbdpool = $scfg->{pool};
-    my $monhost = $scfg->{monhost};
-    $monhost =~ s/;/,/g;
 
     if (!$name) {
 	my $rdb = rbd_ls($scfg, $storeid);
 
 	for (my $i = 1; $i < 100; $i++) {
 	    my $tn = "vm-$vmid-disk-$i";
-	    if (!defined ($rdb->{$rbdpool}->{$tn})) {
+	    if (!defined ($rdb->{$scfg->{pool}}->{$tn})) {
 		$name = $tn;
 		last;
 	    }
@@ -168,8 +160,8 @@ sub alloc_image {
     die "unable to allocate an image name for VM $vmid in storage '$storeid'\n"
 	if !$name;
 
-    my $cmd = ['/usr/bin/rbd', '-p', $rbdpool, '-m', $monhost, '-n', "client.".$scfg->{username}, '--keyring','/etc/pve/priv/ceph/'.$storeid.'.keyring','--auth_supported', $scfg->{authsupported}, 'create', '--size', ($size/1024), $name  ];
-    run_command($cmd, errmsg => "rbd create $name' error");
+    my $cmd = &$rbd_cmd($scfg, $storeid, 'create', '--size', ($size/1024), $name);
+    run_command($cmd, errmsg => "rbd create $name' error", errfunc => sub {});
 
     return $name;
 }
@@ -177,12 +169,8 @@ sub alloc_image {
 sub free_image {
     my ($class, $storeid, $scfg, $volname) = @_;
 
-    my $rbdpool = $scfg->{pool};
-    my $monhost = $scfg->{monhost};
-    $monhost =~ s/;/,/g;
-
-    my $cmd = ['/usr/bin/rbd', '-p', $rbdpool, '-m', $monhost, '-n', "client.".$scfg->{username}, '--keyring','/etc/pve/priv/ceph/'.$storeid.'.keyring','--auth_supported',$scfg->{authsupported}, 'rm', $volname  ];
-    run_command($cmd, errmsg => "rbd rm $volname' error");
+    my $cmd = &$rbd_cmd($scfg, $storeid, 'rm', $volname);
+    run_command($cmd, errmsg => "rbd rm $volname' error", outfunc => sub {}, errfunc => sub {});
 
     return undef;
 }
@@ -191,16 +179,15 @@ sub list_images {
     my ($class, $storeid, $scfg, $vmid, $vollist, $cache) = @_;
 
     $cache->{rbd} = rbd_ls($scfg, $storeid) if !$cache->{rbd};
-    my $rbdpool = $scfg->{pool};
+
     my $res = [];
 
-    if (my $dat = $cache->{rbd}->{$rbdpool}) {
+    if (my $dat = $cache->{rbd}->{$scfg->{pool}}) {
         foreach my $image (keys %$dat) {
 
             my $volname = $dat->{$image}->{name};
 
             my $volid = "$storeid:$volname";
-
 
             my $owner = $dat->{$volname}->{vmid};
             if ($vollist) {
@@ -212,14 +199,14 @@ sub list_images {
 
             my $info = $dat->{$volname};
             $info->{volid} = $volid;
+	    $info->{format} = 'raw';
 
             push @$res, $info;
         }
     }
     
-   return $res;
+    return $res;
 }
-
 
 sub status {
     my ($class, $storeid, $scfg, $cache) = @_;
@@ -228,9 +215,8 @@ sub status {
     my $free = 0;
     my $used = 0;
     my $active = 1;
-    return ($total,$free,$used,$active);
 
-    return undef;
+    return ($total, $free, $used, $active);
 }
 
 sub activate_storage {
