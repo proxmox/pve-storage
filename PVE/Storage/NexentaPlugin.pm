@@ -13,140 +13,119 @@ use PVE::JSONSchema qw(get_standard_option);
 
 use base qw(PVE::Storage::Plugin);
 
-
-
 sub nexenta_request {
- my ($scfg, $json) = @_;
+    my ($scfg, $json) = @_;
 
-        my $uri = "http://".$scfg->{portal}.":2000/rest/nms/";
-        my $req = HTTP::Request->new( 'POST', $uri );
+    my $uri = "http://".$scfg->{portal}.":2000/rest/nms/";
+    my $req = HTTP::Request->new( 'POST', $uri );
 
-        $req->header( 'Content-Type' => 'application/json' );
-        $req->content( $json );
-        my $token = encode_base64("$scfg->{login}:$scfg->{password}");
-        $req->header( Authorization => "Basic $token" );
+    $req->header( 'Content-Type' => 'application/json' );
+    $req->content( $json );
+    my $token = encode_base64("$scfg->{login}:$scfg->{password}");
+    $req->header( Authorization => "Basic $token" );
 
-        my $ua = LWP::UserAgent->new; # You might want some options here
-        my $res = $ua->request($req);
-        if (!$res->is_success) {
-                die $res->content;
-
-        }
-        my $obj = from_json($res->content);
-        print $obj->{error}->{message} if $obj->{error}->{message};
-        return undef if $obj->{error}->{message};
-        return $obj->{result} if $obj->{result};
-        return 1;
+    my $ua = LWP::UserAgent->new; # You might want some options here
+    my $res = $ua->request($req);
+    if (!$res->is_success) {
+	die $res->content;
+    }
+    my $obj = from_json($res->content);
+    print $obj->{error}->{message} if $obj->{error}->{message};
+    return undef if $obj->{error}->{message};
+    return $obj->{result} if $obj->{result};
+    return 1;
 }
 
-
 sub nexenta_list_lun_mapping_entries {
- my ($zvol, $scfg) = @_;
-       
+    my ($zvol, $scfg) = @_;
 
-       my $json = '{"method": "list_lun_mapping_entries","object" : "scsidisk","params": ["'.$scfg->{pool}.'/'.$zvol.'"]}';
-       my $map = nexenta_request($scfg,$json);
-       return $map if $map;
-       return undef;
-
+    my $json = '{"method": "list_lun_mapping_entries","object" : "scsidisk","params": ["'.$scfg->{pool}.'/'.$zvol.'"]}';
+    my $map = nexenta_request($scfg,$json);
+    return $map if $map;
+    return undef;
 }
 
 sub nexenta_add_lun_mapping_entry {
- my ($zvol, $scfg) = @_;
+    my ($zvol, $scfg) = @_;
 
-      
-	my $json = '{"method": "add_lun_mapping_entry","object" : "scsidisk","params": ["'.$scfg->{pool}.'/'.$zvol.'",{"target_group": "All"}]}';
- 
-        return undef if !nexenta_request($scfg, $json);
-	return 1;
+    my $json = '{"method": "add_lun_mapping_entry","object" : "scsidisk","params": ["'.$scfg->{pool}.'/'.$zvol.'",{"target_group": "All"}]}';
 
+    return undef if !nexenta_request($scfg, $json);
+    return 1;
 }
 
-
 sub nexenta_delete_lu {
- my ($zvol, $scfg) = @_;
+    my ($zvol, $scfg) = @_;
 
-        my $json = '{"method": "delete_lu","object" : "scsidisk","params": ["'.$scfg->{pool}.'/'.$zvol.'"]}';
-        return undef if !nexenta_request($scfg, $json);
-	return 1;
-
+    my $json = '{"method": "delete_lu","object" : "scsidisk","params": ["'.$scfg->{pool}.'/'.$zvol.'"]}';
+    return undef if !nexenta_request($scfg, $json);
+    return 1;
 }
 
 sub nexenta_create_lu {
     my ($zvol, $scfg) = @_;
 
-	my $json = '{"method": "create_lu","object" : "scsidisk","params": ["'.$scfg->{pool}.'/'.$zvol.'",{}]}';
+    my $json = '{"method": "create_lu","object" : "scsidisk","params": ["'.$scfg->{pool}.'/'.$zvol.'",{}]}';
 
-        return undef if !nexenta_request($scfg, $json);
-	return 1;
-
+    return undef if !nexenta_request($scfg, $json);
+    return 1;
 }
 
 sub nexenta_create_zvol {
-   my ($zvol, $size, $scfg) = @_;
+    my ($zvol, $size, $scfg) = @_;
 
-        
-        my $blocksize = $scfg->{blocksize};
-        my $nexentapool = $scfg->{pool};
+    my $blocksize = $scfg->{blocksize};
+    my $nexentapool = $scfg->{pool};
 
-	my $json = '{"method": "create","object" : "zvol","params": ["'.$nexentapool.'/'.$zvol.'", "'.$size.'KB", "'.$blocksize.'", "1"]}';
-        
-        return undef if !nexenta_request($scfg, $json);
-	return 1;
+    my $json = '{"method": "create","object" : "zvol","params": ["'.$nexentapool.'/'.$zvol.'", "'.$size.'KB", "'.$blocksize.'", "1"]}';
 
+    return undef if !nexenta_request($scfg, $json);
+    return 1;
 }
+
 sub nexenta_delete_zvol {
     my ($zvol, $scfg) = @_;
-	sleep 5;
-        my $json = '{"method": "destroy","object" : "zvol","params": ["'.$scfg->{pool}.'/'.$zvol.'", ""]}';
-	return undef if !nexenta_request($scfg, $json);
-	return 1;
 
+    sleep 5;
+    my $json = '{"method": "destroy","object" : "zvol","params": ["'.$scfg->{pool}.'/'.$zvol.'", ""]}';
+    return undef if !nexenta_request($scfg, $json);
+    return 1;
 }
- 
 
 sub nexenta_list_zvol {
     my ($scfg) = @_;
 
+    my $json = '{"method": "get_names","object" : "zvol","params": [""]}';
+    my $volumes = {};
 
+    my $zvols = nexenta_request($scfg, $json);
+    return undef if !$zvols;
 
-	my $json = '{"method": "get_names","object" : "zvol","params": [""]}';
-	my $volumes = {};
-	
-	my $zvols = nexenta_request($scfg, $json);
-	return undef if !$zvols;
+    my $list = {};
 
-	my $list = {};
+    foreach my $zvol (@$zvols) {
+	my @values = split('/', $zvol);
+	#$volumes->{$values[0]}->{$values[1]}->{volname} = $values[1];
 
-	foreach my $zvol (@$zvols) {
-	  my @values = split('/', $zvol);
-	  #$volumes->{$values[0]}->{$values[1]}->{volname} = $values[1];
-
-	  my $pool = $values[0];
-          my $image = $values[1];
-          my $owner;
-          if ($image =~ m/^(vm-(\d+)-\S+)$/) {
-                $owner = $2;
-          }
-
-          $list->{$pool}->{$image} = {
-             name => $image,
-             size => "",
-             vmid => $owner
-           };
-
+	my $pool = $values[0];
+	my $image = $values[1];
+	my $owner;
+	if ($image =~ m/^(vm-(\d+)-\S+)$/) {
+	    $owner = $2;
 	}
 
+	$list->{$pool}->{$image} = {
+	    name => $image,
+	    size => "",
+	    vmid => $owner
+	};
 
-	return $list;
+    }
 
+    return $list;
 }
 
-
-
-
-# Configuration 
-
+# Configuration
 
 sub type {
     return 'nexenta';
@@ -158,10 +137,8 @@ sub plugindata {
     };
 }
 
-
 sub properties {
     return {
-
 	login => {
 	    description => "login",
 	    type => 'string',
@@ -174,7 +151,6 @@ sub properties {
 	    description => "block size",
 	    type => 'string',
 	},
-
     };
 }
 
@@ -195,7 +171,6 @@ sub options {
 sub parse_volname {
     my ($class, $volname) = @_;
 
-   
     if ($volname =~ m/^(vm-(\d+)-\S+)$/) {
 	return ('images', $1, $2);
     }
@@ -216,7 +191,6 @@ sub path {
     die "could not find lun number" if !$map;
     my $lun = @$map[0]->{lun};
 
-
     my $path = "iscsi://$portal/$target/$lun";
 
     return ($path, $vmid, $vtype);
@@ -228,15 +202,12 @@ sub alloc_image {
 
     die "unsupported format '$fmt'" if $fmt ne 'raw';
 
-    die "illegal name '$name' - sould be 'vm-$vmid-*'\n" 
+    die "illegal name '$name' - sould be 'vm-$vmid-*'\n"
 	if  $name && $name !~ m/^vm-$vmid-/;
-
-  
 
     my $nexentapool = $scfg->{'pool'};
 
     if (!$name) {
-	
 	my $volumes = nexenta_list_zvol($scfg);
 	die "unable de get zvol list" if !$volumes;
 
@@ -339,6 +310,5 @@ sub deactivate_volume {
     my ($class, $storeid, $scfg, $volname, $exclusive, $cache) = @_;
     return 1;
 }
-
 
 1;

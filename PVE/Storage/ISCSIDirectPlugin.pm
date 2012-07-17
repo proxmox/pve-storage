@@ -11,16 +11,14 @@ use PVE::JSONSchema qw(get_standard_option);
 
 use base qw(PVE::Storage::Plugin);
 
-
-sub iscsi_ls{
- my ($scfg, $storeid) = @_;
-
+sub iscsi_ls {
+    my ($scfg, $storeid) = @_;
 
     my $portal = $scfg->{portal};
     my $cmd = ['/usr/bin/iscsi-ls', '-s', 'iscsi://'.$portal ];
     my $list = {};
     my $test  = "";
- 
+
      my $errfunc = sub {
          my $line = shift;
          $line = trim($line);
@@ -30,15 +28,15 @@ sub iscsi_ls{
 
     eval {
 
-	    run_command($cmd, errmsg => "iscsi error", errfunc => $errfunc,outfunc => sub {
+	    run_command($cmd, errmsg => "iscsi error", errfunc => $errfunc, outfunc => sub {
 	        my $line = shift;
 	        $line = trim($line);
 	        if( $line =~ /Lun:(\d+)\s+([A-Za-z0-9\-\_\.\:]*)\s+\(Size:(\d+)G\)/ ) {
 		$test = $1;
-	
+
 	            my $image = $1;
 	            my $size = $3;
-		    
+
 	            $list->{$storeid}->{$image} = {
 	                name => $image,
 	                size => $size,
@@ -50,7 +48,6 @@ sub iscsi_ls{
     my $err = $@;
     die $err if $err && $err !~ m/TESTUNITREADY failed with SENSE KEY/ ;
     return $list;
-
 }
 
 # Configuration
@@ -75,13 +72,12 @@ sub options {
     };
 }
 
-
 # Storage implementation
 
 sub parse_volname {
     my ($class, $volname) = @_;
 
-   
+
     if ($volname =~ m/^(\d+)$/) {
 	return ('images', $1, undef);
     }
@@ -184,6 +180,5 @@ sub deactivate_volume {
     my ($class, $storeid, $scfg, $volname, $exclusive, $cache) = @_;
     return 1;
 }
-
 
 1;
