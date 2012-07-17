@@ -1,3 +1,9 @@
+libpve-storage-perl (2.0-22) unstable; urgency=low
+
+  * include iscsidirect and nexenta plugin (experimental)
+
+ -- Proxmox Support Team <support@proxmox.com>  Tue, 17 Jul 2012 11:56:51 +0200
+
 libpve-storage-perl (2.0-21) unstable; urgency=low
 
   * include sheepdog plugin
