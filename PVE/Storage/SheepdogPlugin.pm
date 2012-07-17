@@ -87,8 +87,10 @@ sub path {
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
 
     my $portal = $scfg->{portal};
+    my ($server, $port) = split(':', $portal);
+    $port = 7000 if !$port;
 
-    my $path = "sheepdog:$portal:$name";
+    my $path = "sheepdog:$server:$port:$name";
 
     return ($path, $vmid, $vtype);
 }
