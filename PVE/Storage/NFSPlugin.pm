@@ -162,4 +162,12 @@ sub deactivate_storage {
     }
 }
 
+sub check_connection {
+    my ($class, $storeid, $scfg) = @_;
+
+    my $server = $scfg->{server};
+    my $p = Net::Ping->new();
+    return $p->ping($server, 2);
+
+}
 1;
