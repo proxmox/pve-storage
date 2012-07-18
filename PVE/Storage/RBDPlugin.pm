@@ -32,7 +32,7 @@ sub rbd_ls {
 
     my $list = {};
 
-    run_command($cmd, errmsg => "rbd error", errfunc => sub {}, outfunc => sub {
+    my $parser = sub {
 	my $line = shift;
 
 	if ($line =~ m/^(vm-(\d+)-\S+)$/) {
@@ -44,7 +44,14 @@ sub rbd_ls {
 		vmid => $owner
 	    };
 	}
-    });
+    };
+
+    eval {
+	run_command($cmd, errmsg => "rbd error", errfunc => sub {}, outfunc => $parser);
+    };
+    my $err = $@;
+
+    die $err if $err && $err !~ m/doesn't contain rbd images/ ;
   
     return $list;
 }
