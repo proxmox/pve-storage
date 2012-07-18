@@ -93,6 +93,12 @@ sub storage_check_enabled {
 	return undef;
     }
 
+    my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
+    if (!$plugin->check_connection($storeid, $scfg)) {
+	die "storage '$storeid' is not available\n" if !$noerr;
+	return undef;
+    }
+
     return storage_check_node($cfg, $storeid, $node, $noerr);
 }
 

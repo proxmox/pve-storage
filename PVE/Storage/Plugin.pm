@@ -579,4 +579,10 @@ sub deactivate_volume {
     # do nothing by default
 }
 
+sub check_connection {
+    my ($class, $storeid, $scfg) = @_;
+    # do nothing by default
+    return 1;
+}
+
 1;
