@@ -371,4 +371,11 @@ sub deactivate_storage {
     }
 }
 
+sub check_connection {
+    my ($class, $storeid, $scfg) = @_;
+
+    my $portal = $scfg->{portal};
+    return iscsi_test_portal($portal);
+}
+
 1;
