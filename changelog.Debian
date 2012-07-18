@@ -1,3 +1,9 @@
+libpve-storage-perl (2.0-25) unstable; urgency=low
+
+  * rbd: re-add hack for empty pool
+
+ -- Proxmox Support Team <support@proxmox.com>  Wed, 18 Jul 2012 14:03:14 +0200
+
 libpve-storage-perl (2.0-24) unstable; urgency=low
 
   * sheepdog: fix path() method, else kvm complains.
