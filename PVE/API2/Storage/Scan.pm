@@ -5,6 +5,7 @@ use warnings;
 
 use PVE::SafeSyslog;
 use PVE::Storage;
+use PVE::Storage::LVMPlugin;
 use HTTP::Status qw(:constants);
 use PVE::JSONSchema qw(get_standard_option);
 
@@ -155,7 +156,7 @@ __PACKAGE__->register_method ({
     code => sub {
 	my ($param) = @_;
 
-	my $res = PVE::Storage::lvm_vgs();
+	my $res = PVE::Storage::LVMPlugin::lvm_vgs();
 	return PVE::RESTHandler::hash_to_array($res, 'vg');
     }});
 
