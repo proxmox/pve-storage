@@ -481,6 +481,13 @@ sub file_size_info {
     return wantarray ? ($size, $format, $used) : $size;
 }
 
+sub volume_size_info {
+    my ($class, $scfg, $storeid, $volname, $timeout) = @_;
+    my $path = $class->path($scfg, $volname);
+    return file_size_info($path, $timeout);
+
+}
+
 sub list_images {
     my ($class, $storeid, $scfg, $vmid, $vollist, $cache) = @_;
 
@@ -584,5 +591,6 @@ sub check_connection {
     # do nothing by default
     return 1;
 }
+
 
 1;
