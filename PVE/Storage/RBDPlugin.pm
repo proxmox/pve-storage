@@ -246,4 +246,10 @@ sub deactivate_volume {
     return 1;
 }
 
+sub volume_size_info {
+    my ($class, $scfg, $storeid, $volname, $timeout) = @_;
+
+    return undef;
+}
+
 1;
