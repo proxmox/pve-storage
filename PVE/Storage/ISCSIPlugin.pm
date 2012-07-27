@@ -378,4 +378,10 @@ sub check_connection {
     return iscsi_test_portal($portal);
 }
 
+sub volume_size_info {
+    my ($class, $scfg, $storeid, $volname, $timeout) = @_;
+
+    return undef;
+}
+
 1;
