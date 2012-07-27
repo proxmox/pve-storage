@@ -114,6 +114,16 @@ sub file_size_info {
     return PVE::Storage::Plugin::file_size_info($filename, $timeout);
 }
 
+sub volume_size_info {
+    my ($cfg, $volid, $timeout) = @_;
+
+    my ($storeid, $volname) = parse_volume_id($volid);
+
+    my $scfg = storage_config($cfg, $storeid);
+    my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
+    return $plugin->volume_size_info($scfg, $storeid, $volname, $timeout);
+}
+
 sub get_image_dir {
     my ($cfg, $storeid, $vmid) = @_;
 
@@ -454,6 +464,7 @@ sub template_list {
 
     return $res;
 }
+
 
 sub vdisk_list {
     my ($cfg, $storeid, $vmid, $vollist) = @_;
