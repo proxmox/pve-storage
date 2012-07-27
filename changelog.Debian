@@ -1,3 +1,9 @@
+libpve-storage-perl (2.0-28) unstable; urgency=low
+
+  * add volume_size_info()
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 27 Jul 2012 10:46:39 +0200
+
 libpve-storage-perl (2.0-27) unstable; urgency=low
 
   * fix lvmscan
