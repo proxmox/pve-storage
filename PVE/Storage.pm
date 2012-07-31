@@ -117,11 +117,16 @@ sub file_size_info {
 sub volume_size_info {
     my ($cfg, $volid, $timeout) = @_;
 
-    my ($storeid, $volname) = parse_volume_id($volid);
-
-    my $scfg = storage_config($cfg, $storeid);
-    my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
-    return $plugin->volume_size_info($scfg, $storeid, $volname, $timeout);
+    my ($storeid, $volname) = parse_volume_id($volid, 1);
+    if ($storeid) {
+	my $scfg = storage_config($cfg, $storeid);
+	my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
+	return $plugin->volume_size_info($scfg, $storeid, $volname, $timeout);
+    } elsif ($volid =~ m|^(/.+)$| && -e $volid) {
+	return file_size_info($volid, $timeout);
+    } else {
+	return 0;
+    }
 }
 
 sub get_image_dir {
