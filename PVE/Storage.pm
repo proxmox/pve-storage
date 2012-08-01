@@ -93,12 +93,6 @@ sub storage_check_enabled {
 	return undef;
     }
 
-    my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
-    if (!$plugin->check_connection($storeid, $scfg)) {
-	die "storage '$storeid' is not available\n" if !$noerr;
-	return undef;
-    }
-
     return storage_check_node($cfg, $storeid, $node, $noerr);
 }
 
@@ -530,8 +524,10 @@ sub uevent_seqnum {
     return $seqnum;
 }
 
-sub __activate_storage_full {
+sub activate_storage {
     my ($cfg, $storeid, $cache) = @_;
+
+    $cache = {} if !$cache;
 
     my $scfg = storage_check_enabled($cfg, $storeid);
 
@@ -543,7 +539,11 @@ sub __activate_storage_full {
 
     if ($scfg->{base}) {
 	my ($baseid, undef) = parse_volume_id ($scfg->{base});
-	__activate_storage_full ($cfg, $baseid, $cache);
+	activate_storage($cfg, $baseid, $cache);
+    }
+
+    if (!$plugin->check_connection($storeid, $scfg)) {
+	die "storage '$storeid' is not online\n";
     }
 
     $plugin->activate_storage($storeid, $scfg, $cache);
@@ -566,18 +566,9 @@ sub activate_storage_list {
     $cache = {} if !$cache;
 
     foreach my $storeid (@$storeid_list) {
-	__activate_storage_full ($cfg, $storeid, $cache);
+	activate_storage($cfg, $storeid, $cache);
     }
 }
-
-sub activate_storage {
-    my ($cfg, $storeid) = @_;
-
-    my $cache = {};
-
-    __activate_storage_full ($cfg, $storeid, $cache);
-}
-
 
 sub deactivate_storage {
     my ($cfg, $storeid) = @_;
@@ -670,11 +661,15 @@ sub storage_info {
 
     my $cache = {};
 
-    eval { activate_storage_list($cfg, $slist, $cache); };
-
     foreach my $storeid (keys %$ids) {
 	my $scfg = $ids->{$storeid};
 	next if !$info->{$storeid};
+
+	eval { activate_storage($cfg, $storeid, $cache); };
+	if (my $err = $@) {
+	    warn $err;
+	    next;
+	}
 
 	my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
 	my ($total, $avail, $used, $active);
