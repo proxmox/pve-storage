@@ -166,8 +166,18 @@ sub check_connection {
     my ($class, $storeid, $scfg) = @_;
 
     my $server = $scfg->{server};
-    my $p = Net::Ping->new();
-    return $p->ping($server, 2);
 
+    # test connection to portmapper
+    my $cmd = ['/usr/bin/rpcinfo', '-p', $server];
+
+    eval {
+	run_command($cmd, timeout => 2, outfunc => sub {}, errfunc => sub {});
+    };
+    if (my $err = $@) {
+	return 0;
+    }
+
+    return 1;
 }
+
 1;
