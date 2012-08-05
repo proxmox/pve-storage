@@ -17,29 +17,25 @@ sub iscsi_ls {
     my $portal = $scfg->{portal};
     my $cmd = ['/usr/bin/iscsi-ls', '-s', 'iscsi://'.$portal ];
     my $list = {};
-    my $test  = "";
-
-     my $errfunc = sub {
-         my $line = shift;
-         $line = trim($line);
-
-         die $line if $line;
-    };
-
+    my %unittobytes = (
+       "k"  => 1024,
+       "M" => 1024*1024,
+       "G" => 1024*1024*1024,
+       "T"   => 1024*1024*1024*1024
+    );
     eval {
 
-	    run_command($cmd, errmsg => "iscsi error", errfunc => $errfunc, outfunc => sub {
+	    run_command($cmd, errmsg => "iscsi error", errfunc => sub {}, outfunc => sub {
 	        my $line = shift;
 	        $line = trim($line);
-	        if( $line =~ /Lun:(\d+)\s+([A-Za-z0-9\-\_\.\:]*)\s+\(Size:(\d+)G\)/ ) {
-		$test = $1;
-
-	            my $image = $1;
+	        if( $line =~ /Lun:(\d+)\s+([A-Za-z0-9\-\_\.\:]*)\s+\(Size:([0-9\.]*)(k|M|G|T)\)/ ) {
+	            my $image = "lun".$1;
 	            my $size = $3;
-
+	            my $unit = $4;
+				
 	            $list->{$storeid}->{$image} = {
 	                name => $image,
-	                size => $size,
+	                size => $size * $unittobytes{$unit},
 	            };
 	        }
 	    });
@@ -47,7 +43,9 @@ sub iscsi_ls {
 
     my $err = $@;
     die $err if $err && $err !~ m/TESTUNITREADY failed with SENSE KEY/ ;
+
     return $list;
+
 }
 
 # Configuration
@@ -78,7 +76,7 @@ sub parse_volname {
     my ($class, $volname) = @_;
 
 
-    if ($volname =~ m/^(\d+)$/) {
+    if ($volname =~ m/^lun(\d+)$/) {
 	return ('images', $1, undef);
     }
 
