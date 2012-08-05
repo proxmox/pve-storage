@@ -182,7 +182,10 @@ sub deactivate_volume {
 sub volume_size_info {
     my ($class, $scfg, $storeid, $volname, $timeout) = @_;
 
-    return undef;
+    my $vollist = iscsi_ls($scfg,$storeid);
+    my $info = $vollist->{$storeid}->{$volname};
+
+    return $info->{size};
 }
 
 1;
