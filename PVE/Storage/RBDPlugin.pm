@@ -249,7 +249,21 @@ sub deactivate_volume {
 sub volume_size_info {
     my ($class, $scfg, $storeid, $volname, $timeout) = @_;
 
-    return undef;
+    my $cmd = &$rbd_cmd($scfg, $storeid, 'info', $volname);
+    my $size = undef;
+    my $parser = sub {
+        my $line = shift;
+
+        if ($line =~ m/size (\d+) MB in (\d+) objects/) {
+            $size = $1;
+        }
+    };
+
+    run_command($cmd, errmsg => "rbd error", errfunc => sub {}, outfunc => $parser);
+
+    $size = $size*1024*1024 if $size;
+
+    return $size;
 }
 
 1;
