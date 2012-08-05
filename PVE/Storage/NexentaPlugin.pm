@@ -314,7 +314,9 @@ sub deactivate_volume {
 sub volume_size_info {
     my ($class, $scfg, $storeid, $volname, $timeout) = @_;
 
-    return undef;
+    my $json = '{"method": "get_child_prop","object" : "zvol","params": ["'.$scfg->{pool}.'/'.$volname.'", "size_bytes"]}';
+    my $size = nexenta_request($scfg, $json);
+    return $size;
 }
 
 1;
