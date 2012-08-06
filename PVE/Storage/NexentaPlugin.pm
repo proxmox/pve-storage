@@ -319,4 +319,12 @@ sub volume_size_info {
     return $size;
 }
 
+sub volume_resize {
+    my ($class, $scfg, $storeid, $volname, $size, $running) = @_;
+
+    my $json = '{"method": "set_child_prop","object" : "zvol","params": ["'.$scfg->{pool}.'/'.$volname.'", "volsize", "'.($size/1024).'KB"]}';
+    die "error resize" if !nexenta_request($scfg, $json);
+    return undef;
+}
+
 1;
