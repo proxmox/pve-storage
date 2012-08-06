@@ -378,5 +378,10 @@ sub check_connection {
     return iscsi_test_portal($portal);
 }
 
+sub volume_resize {
+    my ($class, $scfg, $storeid, $volname, $size, $running) = @_;
+    die "volume resize is not possible on iscsi device";
+}
+
 
 1;
