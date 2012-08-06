@@ -231,4 +231,13 @@ sub volume_size_info {
     return $size;
 }
 
+sub volume_resize {
+    my ($class, $scfg, $storeid, $volname, $size, $running) = @_;
+
+    my $cmd = &$collie_cmd($scfg, 'vdi', 'resize' , $volname, $size);
+    run_command($cmd, errmsg => "sheepdog resize $volname' error");
+
+    return undef;
+}
+
 1;
