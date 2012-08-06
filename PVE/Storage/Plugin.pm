@@ -488,6 +488,22 @@ sub volume_size_info {
 
 }
 
+sub volume_resize {
+    my ($class, $scfg, $storeid, $volname, $size, $running) = @_;
+
+    die "can't resize this image format" if $volname !~ m/\.(raw|qcow2)$/;
+
+    return 1 if $running;
+
+    my $path = $class->path($scfg, $volname);
+
+    my $cmd = ['/usr/bin/qemu-img', 'resize', $path , $size];
+
+    run_command($cmd, timeout => 1);
+
+    return undef;
+}
+
 sub list_images {
     my ($class, $storeid, $scfg, $vmid, $vollist, $cache) = @_;
 
