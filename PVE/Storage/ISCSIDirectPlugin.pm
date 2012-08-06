@@ -188,4 +188,9 @@ sub volume_size_info {
     return $info->{size};
 }
 
+sub volume_resize {
+    my ($class, $scfg, $storeid, $volname, $size, $running) = @_;
+    die "volume resize is not possible on iscsi device";
+}
+
 1;
