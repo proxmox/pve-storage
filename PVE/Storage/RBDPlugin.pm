@@ -266,4 +266,14 @@ sub volume_size_info {
     return $size;
 }
 
+sub volume_resize {
+    my ($class, $scfg, $storeid, $volname, $size, $running) = @_;
+
+    return 1 if $running;
+
+    my $cmd = &$rbd_cmd($scfg, $storeid, 'resize', '--size', ($size/1024/1024), $volname);
+    run_command($cmd, errmsg => "rbd resize $volname' error", errfunc => sub {});
+    return undef;
+}
+
 1;
