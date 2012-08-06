@@ -408,4 +408,16 @@ sub deactivate_volume {
     run_command($cmd, errmsg => "can't deactivate LV '$path'");
 }
 
+sub volume_resize {
+    my ($class, $scfg, $storeid, $volname, $size, $running) = @_;
+
+    $size = ($size/1024/1024) . "M";
+
+    my $path = $class->path($scfg, $volname);
+    my $cmd = ['/sbin/lvextend', '-L', $size, $path];
+    run_command($cmd, errmsg => "error resizing volume '$path'");
+
+    return 1;
+}
+
 1;
