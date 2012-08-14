@@ -1,3 +1,9 @@
+libpve-storage-perl (2.0-30) unstable; urgency=low
+
+  * add volume_resize functions
+
+ -- Proxmox Support Team <support@proxmox.com>  Tue, 14 Aug 2012 12:40:07 +0200
+
 libpve-storage-perl (2.0-29) unstable; urgency=low
 
   * improve tests for NFS server status
