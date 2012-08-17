@@ -156,6 +156,8 @@ sub properties {
 
 sub options {
     return {
+        nodes => { optional => 1 },
+        disable => { optional => 1 },
 	target => { fixed => 1 },
         portal => { fixed => 1 },
 	login => { fixed => 1 },
