@@ -168,7 +168,7 @@ sub options {
 	password => { fixed => 1 },
         pool => { fixed => 1 },
         blocksize => { fixed => 1 },
-        ssl => { fixed => 1 },
+        ssl => { optional => 1 },
 	content => { optional => 1 },
     };
 
