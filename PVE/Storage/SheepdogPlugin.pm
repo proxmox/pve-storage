@@ -64,6 +64,8 @@ sub plugindata {
 
 sub options {
     return {
+        nodes => { optional => 1 },
+        disable => { optional => 1 },
 	portal => { fixed => 1 },
 	content => { optional => 1 },
     };
