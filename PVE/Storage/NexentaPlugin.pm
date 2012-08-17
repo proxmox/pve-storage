@@ -16,7 +16,7 @@ use base qw(PVE::Storage::Plugin);
 sub nexenta_request {
     my ($scfg, $json) = @_;
 
-    my $uri = "http://".$scfg->{portal}.":2000/rest/nms/";
+    my $uri = ( $scfg->{ssl} ? "https" : "http" ) . "://" . $scfg->{portal} . ":2000/rest/nms/";
     my $req = HTTP::Request->new( 'POST', $uri );
 
     $req->header( 'Content-Type' => 'application/json' );
@@ -29,9 +29,9 @@ sub nexenta_request {
     if (!$res->is_success) {
 	die $res->content;
     }
-    my $obj = from_json($res->content);
-    print $obj->{error}->{message} if $obj->{error}->{message};
-    return undef if $obj->{error}->{message};
+    my $obj = eval { from_json($res->content); };
+    die "JSON not valid. Content: " . $res->content if ($@);
+    die "Nexenta API Error: " . $obj->{error}->{message} if $obj->{error}->{message};
     return $obj->{result} if $obj->{result};
     return 1;
 }
@@ -50,7 +50,7 @@ sub nexenta_add_lun_mapping_entry {
 
     my $json = '{"method": "add_lun_mapping_entry","object" : "scsidisk","params": ["'.$scfg->{pool}.'/'.$zvol.'",{"target_group": "All"}]}';
 
-    return undef if !nexenta_request($scfg, $json);
+    nexenta_request($scfg, $json);
     return 1;
 }
 
@@ -58,7 +58,7 @@ sub nexenta_delete_lu {
     my ($zvol, $scfg) = @_;
 
     my $json = '{"method": "delete_lu","object" : "scsidisk","params": ["'.$scfg->{pool}.'/'.$zvol.'"]}';
-    return undef if !nexenta_request($scfg, $json);
+    nexenta_request($scfg, $json);
     return 1;
 }
 
@@ -67,7 +67,7 @@ sub nexenta_create_lu {
 
     my $json = '{"method": "create_lu","object" : "scsidisk","params": ["'.$scfg->{pool}.'/'.$zvol.'",{}]}';
 
-    return undef if !nexenta_request($scfg, $json);
+    nexenta_request($scfg, $json);
     return 1;
 }
 
@@ -79,7 +79,7 @@ sub nexenta_create_zvol {
 
     my $json = '{"method": "create","object" : "zvol","params": ["'.$nexentapool.'/'.$zvol.'", "'.$size.'KB", "'.$blocksize.'", "1"]}';
 
-    return undef if !nexenta_request($scfg, $json);
+    nexenta_request($scfg, $json);
     return 1;
 }
 
@@ -88,7 +88,7 @@ sub nexenta_delete_zvol {
 
     sleep 5;
     my $json = '{"method": "destroy","object" : "zvol","params": ["'.$scfg->{pool}.'/'.$zvol.'", ""]}';
-    return undef if !nexenta_request($scfg, $json);
+    nexenta_request($scfg, $json);
     return 1;
 }
 
@@ -151,6 +151,10 @@ sub properties {
 	    description => "block size",
 	    type => 'string',
 	},
+	ssl => {
+	    description => "ssl",
+	    type => 'boolean',
+	},
     };
 }
 
@@ -164,8 +168,10 @@ sub options {
 	password => { fixed => 1 },
         pool => { fixed => 1 },
         blocksize => { fixed => 1 },
+        ssl => { fixed => 1 },
 	content => { optional => 1 },
     };
+
 }
 
 # Storage implementation
@@ -226,11 +232,11 @@ sub alloc_image {
     die "unable to allocate an image name for VM $vmid in storage '$storeid'\n"
 	if !$name;
 
-    nexenta_create_zvol($name, $size, $scfg);
+    eval { nexenta_create_zvol($name, $size, $scfg); };
     sleep 1;
-    nexenta_create_lu($name, $scfg);
+    eval { nexenta_create_lu($name, $scfg); };
     sleep 1;
-    die "error create zvol" if !nexenta_add_lun_mapping_entry($name, $scfg);
+    nexenta_add_lun_mapping_entry($name, $scfg);
 
     return $name;
 }
@@ -240,9 +246,9 @@ sub free_image {
 
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
 
-    nexenta_delete_lu($name, $scfg);
+    eval { nexenta_delete_lu($name, $scfg); };
     sleep 5;
-    die "error deleting volume" if !nexenta_delete_zvol($name, $scfg);
+    nexenta_delete_zvol($name, $scfg);
 
 
     return undef;
@@ -325,7 +331,7 @@ sub volume_resize {
     my ($class, $scfg, $storeid, $volname, $size, $running) = @_;
 
     my $json = '{"method": "set_child_prop","object" : "zvol","params": ["'.$scfg->{pool}.'/'.$volname.'", "volsize", "'.($size/1024).'KB"]}';
-    die "error resize" if !nexenta_request($scfg, $json);
+    nexenta_request($scfg, $json);
     return undef;
 }
 
