@@ -110,10 +110,12 @@ sub properties {
 
 sub options {
     return {
+	nodes => { optional => 1 },
+	disable => { optional => 1 },
 	monhost => { fixed => 1 },
-        pool => { fixed => 1 },
+	pool => { fixed => 1 },
 	username => { fixed => 1 },
-        authsupported => { fixed => 1 },
+	authsupported => { fixed => 1 },
 	content => { optional => 1 },
     };
 }
