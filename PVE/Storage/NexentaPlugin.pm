@@ -198,7 +198,8 @@ sub path {
     my $map = nexenta_list_lun_mapping_entries($name,$scfg);
     die "could not find lun number" if !$map;
     my $lun = @$map[0]->{lun};
-
+    $lun =~ m/^(\d+)$/ or die "lun is not OK\n";
+    $lun = $1;    
     my $path = "iscsi://$portal/$target/$lun";
 
     return ($path, $vmid, $vtype);
