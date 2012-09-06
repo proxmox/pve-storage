@@ -203,4 +203,9 @@ sub volume_snapshot_rollback {
     die "volume snapshot rollback is not possible on iscsi device";
 }
 
+sub volume_snapshot_delete {
+    my ($class, $scfg, $storeid, $volname, $snap) = @_;
+    die "volume snapshot delete is not possible on iscsi device";
+}
+
 1;
