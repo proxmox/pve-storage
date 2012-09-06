@@ -432,4 +432,10 @@ sub volume_snapshot_rollback {
     die "lvm snapshot rollback is not implemented";
 }
 
+sub volume_snapshot_delete {
+    my ($class, $scfg, $storeid, $volname, $snap) = @_;
+
+    die "lvm snapshot delete is not implemented";
+}
+
 1;
