@@ -242,4 +242,15 @@ sub volume_resize {
     return undef;
 }
 
+sub volume_snapshot {
+    my ($class, $scfg, $storeid, $volname, $snap, $running) = @_;
+
+    return 1 if $running;
+
+    my $cmd = &$collie_cmd($scfg, 'vdi', 'snapshot', '-s', $snap, $volname);
+    run_command($cmd, errmsg => "sheepdog snapshot $volname' error");
+
+    return undef;
+}
+
 1;
