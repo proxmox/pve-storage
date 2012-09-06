@@ -153,6 +153,21 @@ sub volume_snapshot {
     }
 }
 
+sub volume_snapshot_rollback {
+    my ($cfg, $volid, $snap) = @_;
+
+    my ($storeid, $volname) = parse_volume_id($volid, 1);
+    if ($storeid) {
+        my $scfg = storage_config($cfg, $storeid);
+        my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
+        return $plugin->volume_snapshot_rollback($scfg, $storeid, $volname, $snap);
+    } elsif ($volid =~ m|^(/.+)$| && -e $volid) {
+        die "snapshot rollback device is not possible";
+    } else {
+        die "can't snapshot";
+    }
+}
+
 sub get_image_dir {
     my ($cfg, $storeid, $vmid) = @_;
 
