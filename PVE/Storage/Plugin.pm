@@ -504,6 +504,22 @@ sub volume_resize {
     return undef;
 }
 
+sub volume_snapshot {
+    my ($class, $scfg, $storeid, $volname, $snap, $running) = @_;
+
+    die "can't snapshot this image format" if $volname !~ m/\.(qcow2|qed)$/;
+
+    return 1 if $running;
+
+    my $path = $class->path($scfg, $volname);
+
+    my $cmd = ['/usr/bin/qemu-img', 'snapshot','-c', $snap, $path];
+
+    run_command($cmd, timeout => 1);
+
+    return undef;
+}
+
 sub list_images {
     my ($class, $storeid, $scfg, $vmid, $vollist, $cache) = @_;
 
