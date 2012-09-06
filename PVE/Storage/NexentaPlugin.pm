@@ -357,4 +357,11 @@ sub volume_snapshot_rollback {
     nexenta_add_lun_mapping_entry($volname, $scfg);
 }
 
+sub volume_snapshot_delete {
+    my ($class, $scfg, $storeid, $volname, $snap, $running) = @_;
+
+    my $json = '{"method": "destroy","object" : "snapshot","params": ["'.$scfg->{pool}.'/'.$volname.'@'.$snap.'"]}';
+    nexenta_request($scfg, $json);
+}
+
 1;
