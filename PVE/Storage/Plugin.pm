@@ -520,6 +520,20 @@ sub volume_snapshot {
     return undef;
 }
 
+sub volume_snapshot_rollback {
+    my ($class, $scfg, $storeid, $volname, $snap) = @_;
+
+    die "can't rollback snapshot this image format" if $volname !~ m/\.(qcow2|qed)$/;
+
+    my $path = $class->path($scfg, $volname);
+
+    my $cmd = ['/usr/bin/qemu-img', 'snapshot','-a', $snap, $path];
+
+    run_command($cmd, timeout => 1);
+
+    return undef;
+}
+
 sub list_images {
     my ($class, $storeid, $scfg, $vmid, $vollist, $cache) = @_;
 
