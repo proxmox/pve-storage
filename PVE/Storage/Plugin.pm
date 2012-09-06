@@ -534,6 +534,22 @@ sub volume_snapshot_rollback {
     return undef;
 }
 
+sub volume_snapshot_delete {
+    my ($class, $scfg, $storeid, $volname, $snap, $running) = @_;
+
+    die "can't delete snapshot for this image format" if $volname !~ m/\.(qcow2|qed)$/;
+
+    return 1 if $running;
+
+    my $path = $class->path($scfg, $volname);
+
+    my $cmd = ['/usr/bin/qemu-img', 'snapshot','-d', $snap, $path];
+
+    run_command($cmd, timeout => 1);
+
+    return undef;
+}
+
 sub list_images {
     my ($class, $storeid, $scfg, $vmid, $vollist, $cache) = @_;
 
