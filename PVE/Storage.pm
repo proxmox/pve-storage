@@ -168,6 +168,21 @@ sub volume_snapshot_rollback {
     }
 }
 
+sub volume_snapshot_delete {
+    my ($cfg, $volid, $snap, $running) = @_;
+
+    my ($storeid, $volname) = parse_volume_id($volid, 1);
+    if ($storeid) {
+        my $scfg = storage_config($cfg, $storeid);
+        my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
+        return $plugin->volume_snapshot_rollback_delete($scfg, $storeid, $volname, $snap, $running);
+    } elsif ($volid =~ m|^(/.+)$| && -e $volid) {
+        die "snapshot delete device is not possible";
+    } else {
+        die "can't delete snapshot";
+    }
+}
+
 sub get_image_dir {
     my ($cfg, $storeid, $vmid) = @_;
 
