@@ -193,4 +193,9 @@ sub volume_resize {
     die "volume resize is not possible on iscsi device";
 }
 
+sub volume_snapshot {
+    my ($class, $scfg, $storeid, $volname, $snap, $running) = @_;
+    die "volume snapshot is not possible on iscsi device";
+}
+
 1;
