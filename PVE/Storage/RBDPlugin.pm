@@ -278,4 +278,14 @@ sub volume_resize {
     return undef;
 }
 
+sub volume_snapshot {
+    my ($class, $scfg, $storeid, $volname, $snap, $running) = @_;
+
+    return 1 if $running;
+
+    my $cmd = &$rbd_cmd($scfg, $storeid, 'snap', 'create', '--snap', $snap, $volname);
+    run_command($cmd, errmsg => "rbd snapshot $volname' error", errfunc => sub {});
+    return undef;
+}
+
 1;
