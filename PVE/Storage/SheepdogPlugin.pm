@@ -261,4 +261,15 @@ sub volume_snapshot_rollback {
 
 }
 
+sub volume_snapshot_delete {
+    my ($class, $scfg, $storeid, $volname, $snap, $running) = @_;
+
+    return 1 if $running;
+
+    my $cmd = &$collie_cmd($scfg, 'vdi', 'delete', '-s', $snap, $volname);
+    run_command($cmd, errmsg => "sheepdog snapshot $volname' error");
+
+    return undef;
+}
+
 1;
