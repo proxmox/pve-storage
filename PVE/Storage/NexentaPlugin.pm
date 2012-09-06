@@ -336,4 +336,12 @@ sub volume_resize {
     return undef;
 }
 
+sub volume_snapshot {
+    my ($class, $scfg, $storeid, $volname, $snap, $running) = @_;
+
+    my $json = '{"method": "create_snapshot","object" : "zvol","params": ["'.$scfg->{pool}.'/'.$volname.'", "'.$snap.'", ""]}';
+    nexenta_request($scfg, $json);
+    return undef;
+}
+
 1;
