@@ -321,7 +321,7 @@ sub volume_resize {
 sub volume_snapshot {
     my ($class, $scfg, $storeid, $volname, $snap, $running) = @_;
 
-    nexenta_request($scfg, 'create_snapshot', 'zvol', "$scfg->{pool}/$volname", $snap, 0);
+    nexenta_request($scfg, 'create_snapshot', 'zvol', "$scfg->{pool}/$volname", $snap, '');
 }
 
 sub volume_snapshot_rollback {
