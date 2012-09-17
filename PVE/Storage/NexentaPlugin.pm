@@ -14,119 +14,88 @@ use PVE::JSONSchema qw(get_standard_option);
 use base qw(PVE::Storage::Plugin);
 
 sub nexenta_request {
-    my ($scfg, $json) = @_;
+    my ($scfg, $method, $object, @params) = @_;
+
+    my $apicall = { method => $method, object => $object, params => [ @params ] };
+
+    my $json = encode_json($apicall);
 
     my $uri = ( $scfg->{ssl} ? "https" : "http" ) . "://" . $scfg->{portal} . ":2000/rest/nms/";
     my $req = HTTP::Request->new( 'POST', $uri );
 
-    $req->header( 'Content-Type' => 'application/json' );
-    $req->content( $json );
+    $req->header('Content-Type' => 'application/json');
+    $req->content($json);
     my $token = encode_base64("$scfg->{login}:$scfg->{password}");
     $req->header( Authorization => "Basic $token" );
 
     my $ua = LWP::UserAgent->new; # You might want some options here
     my $res = $ua->request($req);
-    if (!$res->is_success) {
-	die $res->content;
-    }
+    die $res->content if !$res->is_success;
+
     my $obj = eval { from_json($res->content); };
     die "JSON not valid. Content: " . $res->content if ($@);
-    die "Nexenta API Error: " . $obj->{error}->{message} if $obj->{error}->{message};
-    return $obj->{result} if $obj->{result};
-    return 1;
+    die "Nexenta API Error: $obj->{error}->{message}\n" if $obj->{error}->{message};
+    return $obj->{result};
 }
 
-sub nexenta_get_zvol_size {
-    my ($zvol, $scfg) = @_;
 
-    my $json = '{"method": "get_child_prop", "object": "zvol", "params": ["' . $zvol . '", "volsize"]}';
-    my $volsize = nexenta_request($scfg, $json);
-    if ($volsize =~ /^(\d+)([KMGT])$/) {
-	my ($size, $unit) = ($1, $2);
-	if ($unit eq 'K') {
-	    $size *= 1024;
-	} elsif ($unit eq 'M') {
-	    $size *= 1024*1024;
-	} elsif ($unit eq 'G') {
-	    $size *= 1024*1024*1024;
-	} elsif ($unit eq 'T') {
-	    $size *= 1024*1024*1024*1024;
-	}
-	return $size;
-    }
-    die "got undefined size '$volsize'\n";
+sub nexenta_get_zvol_size {
+    my ($scfg, $zvol) = @_;
+
+    return nexenta_request($scfg, 'get_child_prop', 'zvol', $zvol, 'size_bytes');
 }
 
 sub nexenta_list_lun_mapping_entries {
-    my ($zvol, $scfg) = @_;
+    my ($scfg, $zvol) = @_;
 
-    my $json = '{"method": "list_lun_mapping_entries","object" : "scsidisk","params": ["'.$scfg->{pool}.'/'.$zvol.'"]}';
-    my $map = nexenta_request($scfg,$json);
-    return $map if $map;
-    return undef;
+    return nexenta_request($scfg, 'list_lun_mapping_entries', 'scsidisk', "$scfg->{pool}/$zvol");
 }
 
 sub nexenta_add_lun_mapping_entry {
-    my ($zvol, $scfg) = @_;
+    my ($scfg, $zvol) = @_;
 
-    my $json = '{"method": "add_lun_mapping_entry","object" : "scsidisk","params": ["'.$scfg->{pool}.'/'.$zvol.'",{"target_group": "All"}]}';
-
-    nexenta_request($scfg, $json);
-    return 1;
+    nexenta_request($scfg, 'add_lun_mapping_entry', 'scsidisk', 
+			   "$scfg->{pool}/$zvol", { target_group => "All" });
 }
 
 sub nexenta_delete_lu {
-    my ($zvol, $scfg) = @_;
+    my ($scfg, $zvol) = @_;
 
-    my $json = '{"method": "delete_lu","object" : "scsidisk","params": ["'.$scfg->{pool}.'/'.$zvol.'"]}';
-    nexenta_request($scfg, $json);
-    return 1;
+    nexenta_request($scfg, 'delete_lu', 'scsidisk', "$scfg->{pool}/$zvol");
 }
 
 sub nexenta_create_lu {
-    my ($zvol, $scfg) = @_;
+    my ($scfg, $zvol) = @_;
 
-    my $json = '{"method": "create_lu","object" : "scsidisk","params": ["'.$scfg->{pool}.'/'.$zvol.'",{}]}';
+    nexenta_request($scfg, 'create_lu', 'scsidisk', "$scfg->{pool}/$zvol", {});
 
-    nexenta_request($scfg, $json);
     return 1;
 }
 
 sub nexenta_create_zvol {
-    my ($zvol, $size, $scfg) = @_;
+    my ($scfg, $zvol, $size) = @_;
 
-    my $blocksize = $scfg->{blocksize};
-    my $nexentapool = $scfg->{pool};
+    nexenta_request($scfg, 'create', 'zvol', "$scfg->{pool}/$zvol", "${size}KB",
+		    $scfg->{blocksize}, 1);
 
-    my $json = '{"method": "create","object" : "zvol","params": ["'.$nexentapool.'/'.$zvol.'", "'.$size.'KB", "'.$blocksize.'", "1"]}';
-
-    nexenta_request($scfg, $json);
     return 1;
 }
 
 sub nexenta_delete_zvol {
-    my ($zvol, $scfg) = @_;
+    my ($scfg, $zvol) = @_;
 
-    sleep 5;
-    my $json = '{"method": "destroy","object" : "zvol","params": ["'.$scfg->{pool}.'/'.$zvol.'", ""]}';
-    nexenta_request($scfg, $json);
-    return 1;
+    nexenta_request($scfg, 'destroy', 'zvol', "$scfg->{pool}/$zvol", '');
 }
 
 sub nexenta_list_zvol {
     my ($scfg) = @_;
 
-    my $json = '{"method": "get_names","object" : "zvol","params": [""]}';
-    my $volumes = {};
-
-    my $zvols = nexenta_request($scfg, $json);
+    my $zvols = nexenta_request($scfg, 'get_names', 'zvol', '');
     return undef if !$zvols;
 
     my $list = {};
-
     foreach my $zvol (@$zvols) {
 	my @values = split('/', $zvol);
-	#$volumes->{$values[0]}->{$values[1]}->{volname} = $values[1];
 
 	my $pool = $values[0];
 	my $image = $values[1];
@@ -137,11 +106,10 @@ sub nexenta_list_zvol {
 
 	$list->{$pool}->{$image} = {
 	    name => $image,
-	    size => nexenta_get_zvol_size($zvol, $scfg),
+	    size => nexenta_get_zvol_size($scfg, $zvol),
 	    format => 'raw',
 	    vmid => $owner
 	};
-
     }
 
     return $list;
@@ -217,7 +185,7 @@ sub path {
     my $target = $scfg->{target};
     my $portal = $scfg->{portal};
 
-    my $map = nexenta_list_lun_mapping_entries($name,$scfg);
+    my $map = nexenta_list_lun_mapping_entries($scfg, $name);
     die "could not find lun number" if !$map;
     my $lun = @$map[0]->{lun};
     $lun =~ m/^(\d+)$/ or die "lun is not OK\n";
@@ -255,11 +223,9 @@ sub alloc_image {
     die "unable to allocate an image name for VM $vmid in storage '$storeid'\n"
 	if !$name;
 
-    eval { nexenta_create_zvol($name, $size, $scfg); };
-    sleep 1;
-    eval { nexenta_create_lu($name, $scfg); };
-    sleep 1;
-    nexenta_add_lun_mapping_entry($name, $scfg);
+    nexenta_create_zvol($scfg, $name, $size);
+    nexenta_create_lu($scfg, $name);
+    nexenta_add_lun_mapping_entry($scfg, $name);
 
     return $name;
 }
@@ -269,10 +235,8 @@ sub free_image {
 
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
 
-    eval { nexenta_delete_lu($name, $scfg); };
-    sleep 5;
-    nexenta_delete_zvol($name, $scfg);
-
+    nexenta_delete_lu($scfg, $name);
+    nexenta_delete_zvol($scfg, $name);
 
     return undef;
 }
@@ -345,45 +309,37 @@ sub deactivate_volume {
 sub volume_size_info {
     my ($class, $scfg, $storeid, $volname, $timeout) = @_;
 
-    my $json = '{"method": "get_child_prop","object" : "zvol","params": ["'.$scfg->{pool}.'/'.$volname.'", "size_bytes"]}';
-    my $size = nexenta_request($scfg, $json);
-    return $size;
+    return nexenta_get_zvol_size($scfg, "$scfg->{pool}/$volname"),
 }
 
 sub volume_resize {
     my ($class, $scfg, $storeid, $volname, $size, $running) = @_;
 
-    my $json = '{"method": "set_child_prop","object" : "zvol","params": ["'.$scfg->{pool}.'/'.$volname.'", "volsize", "'.($size/1024).'KB"]}';
-    nexenta_request($scfg, $json);
-    return undef;
+    nexenta_request($scfg, 'set_child_prop', 'zvol', "$scfg->{pool}/$volname", 'volsize', ($size/1024) . 'KB');
 }
 
 sub volume_snapshot {
     my ($class, $scfg, $storeid, $volname, $snap, $running) = @_;
 
-    my $json = '{"method": "create_snapshot","object" : "zvol","params": ["'.$scfg->{pool}.'/'.$volname.'", "'.$snap.'", ""]}';
-    nexenta_request($scfg, $json);
-    return undef;
+    nexenta_request($scfg, 'create_snapshot', 'zvol', "$scfg->{pool}/$volname", $snap, 0);
 }
 
 sub volume_snapshot_rollback {
     my ($class, $scfg, $storeid, $volname, $snap) = @_;
 
-    eval { nexenta_delete_lu($volname, $scfg); };
+    nexenta_delete_lu($scfg, $volname);
 
-    my $json = '{"method": "rollback","object" : "snapshot","params": ["'.$scfg->{pool}.'/'.$volname.'@'.$snap.'", ""]}';
-    nexenta_request($scfg, $json);
+    nexenta_request($scfg, 'rollback', 'snapshot', "$scfg->{pool}/$volname\@$snap", '');
     
-    eval { nexenta_create_lu($volname, $scfg); };
-
-    nexenta_add_lun_mapping_entry($volname, $scfg);
+    nexenta_create_lu($scfg, $volname);
+    
+    nexenta_add_lun_mapping_entry($scfg, $volname);
 }
 
 sub volume_snapshot_delete {
     my ($class, $scfg, $storeid, $volname, $snap, $running) = @_;
 
-    my $json = '{"method": "destroy","object" : "snapshot","params": ["'.$scfg->{pool}.'/'.$volname.'@'.$snap.'"]}';
-    nexenta_request($scfg, $json);
+    nexenta_request($scfg, 'destroy', 'snapshot', "$scfg->{pool}/$volname\@$snap", '');
 }
 
 1;
