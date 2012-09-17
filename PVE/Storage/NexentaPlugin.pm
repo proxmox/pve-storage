@@ -36,6 +36,27 @@ sub nexenta_request {
     return 1;
 }
 
+sub nexenta_get_zvol_size {
+    my ($zvol, $scfg) = @_;
+
+    my $json = '{"method": "get_child_prop", "object": "zvol", "params": ["' . $zvol . '", "volsize"]}';
+    my $volsize = nexenta_request($scfg, $json);
+    if ($volsize =~ /^(\d+)([KMGT])$/) {
+	my ($size, $unit) = ($1, $2);
+	if ($unit eq 'K') {
+	    $size *= 1024;
+	} elsif ($unit eq 'M') {
+	    $size *= 1024*1024;
+	} elsif ($unit eq 'G') {
+	    $size *= 1024*1024*1024;
+	} elsif ($unit eq 'T') {
+	    $size *= 1024*1024*1024*1024;
+	}
+	return $size;
+    }
+    die "got undefined size '$volsize'\n";
+}
+
 sub nexenta_list_lun_mapping_entries {
     my ($zvol, $scfg) = @_;
 
@@ -116,7 +137,8 @@ sub nexenta_list_zvol {
 
 	$list->{$pool}->{$image} = {
 	    name => $image,
-	    size => "",
+	    size => nexenta_get_zvol_size($zvol, $scfg),
+	    format => 'raw',
 	    vmid => $owner
 	};
 
