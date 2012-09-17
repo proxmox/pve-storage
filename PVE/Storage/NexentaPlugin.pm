@@ -84,7 +84,7 @@ sub nexenta_create_zvol {
 sub nexenta_delete_zvol {
     my ($scfg, $zvol) = @_;
 
-    nexenta_request($scfg, 'destroy', 'zvol', "$scfg->{pool}/$zvol", '');
+    nexenta_request($scfg, 'destroy', 'zvol', "$scfg->{pool}/$zvol", '-r');
 }
 
 sub nexenta_list_zvol {
