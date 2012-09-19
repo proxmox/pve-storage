@@ -272,16 +272,46 @@ sub list_images {
     return $res;
 }
 
+sub nexenta_parse_size {
+    my ($text) = @_;
+
+    return 0 if !$text;
+
+    if ($text =~ m/^(\d+)([TGMK])?$/) {
+	my ($size, $unit) = ($1, $2);
+	return $size if !$unit;
+	if ($unit eq 'K') {
+	    $size *= 1024;
+	} elsif ($unit eq 'M') {
+	    $size *= 1024*1024;
+	} elsif ($unit eq 'G') {
+	    $size *= 1024*1024*1024;
+	} elsif ($unit eq 'T') {
+	    $size *= 1024*1024*1024*1024;
+	}
+	return $size;
+    } else {
+	return 0;
+    }
+}
 sub status {
     my ($class, $storeid, $scfg, $cache) = @_;
 
     my $total = 0;
     my $free = 0;
     my $used = 0;
-    my $active = 1;
-    return ($total,$free,$used,$active);
+    my $active = 0;
 
-    return undef;
+    eval {
+	my $map = nexenta_request($scfg, 'get_child_props', 'volume', $scfg->{pool}, '');
+	$active = 1;
+	$total = nexenta_parse_size($map->{size});
+	$used = nexenta_parse_size($map->{used});
+	$free = $total - $used;
+    };
+    warn $@ if $@;
+
+    return ($total, $free, $used, $active);
 }
 
 sub activate_storage {
