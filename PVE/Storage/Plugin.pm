@@ -499,7 +499,7 @@ sub volume_resize {
 
     my $cmd = ['/usr/bin/qemu-img', 'resize', $path , $size];
 
-    run_command($cmd, timeout => 1);
+    run_command($cmd, timeout => 10);
 
     return undef;
 }
@@ -515,7 +515,7 @@ sub volume_snapshot {
 
     my $cmd = ['/usr/bin/qemu-img', 'snapshot','-c', $snap, $path];
 
-    run_command($cmd, timeout => 1);
+    run_command($cmd, timeout => 30);
 
     return undef;
 }
@@ -529,7 +529,7 @@ sub volume_snapshot_rollback {
 
     my $cmd = ['/usr/bin/qemu-img', 'snapshot','-a', $snap, $path];
 
-    run_command($cmd, timeout => 1);
+    run_command($cmd, timeout => 30);
 
     return undef;
 }
@@ -545,7 +545,7 @@ sub volume_snapshot_delete {
 
     my $cmd = ['/usr/bin/qemu-img', 'snapshot','-d', $snap, $path];
 
-    run_command($cmd, timeout => 1);
+    run_command($cmd, timeout => 30);
 
     return undef;
 }
