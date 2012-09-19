@@ -70,6 +70,12 @@ sub nexenta_create_lu {
     nexenta_request($scfg, 'create_lu', 'scsidisk', "$scfg->{pool}/$zvol", {});
 }
 
+sub nexenta_import_lu {
+    my ($scfg, $zvol) = @_;
+
+    nexenta_request($scfg, 'import_lu', 'scsidisk', "$scfg->{pool}/$zvol");
+}
+
 sub nexenta_create_zvol {
     my ($scfg, $zvol, $size) = @_;
 
@@ -196,7 +202,7 @@ sub alloc_image {
     die "unsupported format '$fmt'" if $fmt ne 'raw';
 
     die "illegal name '$name' - sould be 'vm-$vmid-*'\n"
-	if  $name && $name !~ m/^vm-$vmid-/;
+	if $name && $name !~ m/^vm-$vmid-/;
 
     my $nexentapool = $scfg->{'pool'};
 
@@ -205,7 +211,6 @@ sub alloc_image {
 	die "unable de get zvol list" if !$volumes;
 
 	for (my $i = 1; $i < 100; $i++) {
-
 	    my $tn = "vm-$vmid-disk-$i";
 	    if (!defined ($volumes->{$nexentapool}->{$tn})) {
 		$name = $tn;
@@ -247,7 +252,6 @@ sub list_images {
             my $volname = $dat->{$image}->{name};
 
             my $volid = "$storeid:$volname";
-
 
             my $owner = $dat->{$volname}->{vmid};
             if ($vollist) {
@@ -325,7 +329,7 @@ sub volume_snapshot_rollback {
 
     nexenta_request($scfg, 'rollback', 'snapshot', "$scfg->{pool}/$volname\@$snap", '');
     
-    nexenta_create_lu($scfg, $volname);
+    nexenta_import_lu($scfg, $volname);
     
     nexenta_add_lun_mapping_entry($scfg, $volname);
 }
