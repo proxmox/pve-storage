@@ -20,13 +20,13 @@ sub nexenta_request {
 
     my $json = encode_json($apicall);
 
-    my $uri = ( $scfg->{ssl} ? "https" : "http" ) . "://" . $scfg->{portal} . ":2000/rest/nms/";
-    my $req = HTTP::Request->new( 'POST', $uri );
+    my $uri = ($scfg->{ssl} ? "https" : "http") . "://" . $scfg->{portal} . ":2000/rest/nms/";
+    my $req = HTTP::Request->new('POST', $uri);
 
     $req->header('Content-Type' => 'application/json');
     $req->content($json);
     my $token = encode_base64("$scfg->{login}:$scfg->{password}");
-    $req->header( Authorization => "Basic $token" );
+    $req->header(Authorization => "Basic $token");
 
     my $ua = LWP::UserAgent->new; # You might want some options here
     my $res = $ua->request($req);
@@ -68,8 +68,6 @@ sub nexenta_create_lu {
     my ($scfg, $zvol) = @_;
 
     nexenta_request($scfg, 'create_lu', 'scsidisk', "$scfg->{pool}/$zvol", {});
-
-    return 1;
 }
 
 sub nexenta_create_zvol {
@@ -77,8 +75,6 @@ sub nexenta_create_zvol {
 
     nexenta_request($scfg, 'create', 'zvol', "$scfg->{pool}/$zvol", "${size}KB",
 		    $scfg->{blocksize}, 1);
-
-    return 1;
 }
 
 sub nexenta_delete_zvol {
@@ -161,7 +157,6 @@ sub options {
         ssl => { optional => 1 },
 	content => { optional => 1 },
     };
-
 }
 
 # Storage implementation
@@ -173,8 +168,7 @@ sub parse_volname {
 	return ('images', $1, $2);
     }
 
-    return('images',$volname,'');
-    #die "unable to parse lvm volume name '$volname'\n";
+    die "unable to parse nexenta volume name '$volname'\n";
 }
 
 sub path {
