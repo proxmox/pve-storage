@@ -427,7 +427,10 @@ sub alloc_image {
 
     die "disk image '$path' already exists\n" if -e $path;
 
-    run_command("/usr/bin/qemu-img create -f $fmt '$path' ${size}K", 
+    my $options = "";
+    $options = "-o preallocation=metadata" if $fmt eq 'qcow2';
+
+    run_command("/usr/bin/qemu-img create $options -f $fmt '$path' ${size}K", 
 		errmsg => "unable to create image");
 
     return "$vmid/$name";
