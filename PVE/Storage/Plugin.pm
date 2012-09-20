@@ -11,7 +11,7 @@ use Data::Dumper;
 
 use base qw(PVE::SectionConfig);
 
-cfs_register_file ('storage.cfg', 
+cfs_register_file ('storage.cfg',
 		   sub { __PACKAGE__->parse_config(@_); },
 		   sub { __PACKAGE__->write_config(@_); });
 
@@ -41,7 +41,7 @@ my $defaultData = {
 	    type => 'boolean',
 	    optional => 1,
 	},
-	'format' => { 
+	'format' => {
 	    description => "Default Image format.",
 	    type => 'string', format => 'pve-storage-format',
 	    optional => 1,
@@ -55,7 +55,7 @@ sub content_hash_to_string {
     my @cta;
     foreach my $ct (keys %$hash) {
 	push @cta, $ct if $hash->{$ct};
-    } 
+    }
 
     return join(',', @cta);
 }
@@ -75,7 +75,7 @@ sub default_format {
 
     my $type = $scfg->{type};
     my $def = $defaultData->{plugindata}->{$type};
- 
+
     my $def_format = 'raw';
     my $valid_formats = [ $def_format ];
 
@@ -83,7 +83,7 @@ sub default_format {
 	$def_format = $scfg->{format} || $def->{format}->[1];
 	$valid_formats = [ sort keys %{$def->{format}->[0]} ];
     }
-   
+
     return wantarray ? ($def_format, $valid_formats) : $def_format;
 }
 
@@ -143,7 +143,7 @@ sub verify_content {
     my ($ct, $noerr) = @_;
 
     my $valid_content = valid_content_types('dir'); # dir includes all types
- 
+
     if (!$valid_content->{$ct}) {
 	return undef if $noerr;
 	die "invalid content type '$ct'\n";
@@ -203,7 +203,7 @@ sub decode_value {
 
     if ($key eq 'content') {
 	my $valid_content = $def->{content}->[0];
-	
+
 	my $res = {};
 
 	foreach my $c (PVE::Tools::split_list($value)) {
@@ -211,7 +211,7 @@ sub decode_value {
 		die "storage does not support content type '$c'\n";
 	    }
 	    $res->{$c} = 1;
-	} 
+	}
 
 	if ($res->{none} && scalar (keys %$res) > 1) {
 	    die "unable to combine 'none' with other content types\n";
@@ -278,7 +278,7 @@ sub parse_config {
 	    content => { images => 1, rootdir => 1, vztmpl => 1, iso => 1},
 	};
     }
-    
+
     # we always need this for OpenVZ
     $ids->{local}->{content}->{rootdir} = 1;
     $ids->{local}->{content}->{vztmpl} = 1;
@@ -318,12 +318,12 @@ sub cluster_lock_storage {
 	my $lockid = "pve-storage-$storeid";
 	my $lockdir = "/var/lock/pve-manager";
 	mkdir $lockdir;
-	$res = PVE::Tools::lock_file("$lockdir/$lockid", $timeout, $func, @param); 
+	$res = PVE::Tools::lock_file("$lockdir/$lockid", $timeout, $func, @param);
 	die $@ if $@;
     } else {
 	$res = PVE::Cluster::cfs_lock_storage($storeid, $timeout, $func, @param);
 	die $@ if $@;
-    }	
+    }
     return $res;
 }
 
@@ -361,7 +361,7 @@ sub parse_volname {
     die "unable to parse directory volume name '$volname'\n";
 }
 
-my $vtype_subdirs = { 
+my $vtype_subdirs = {
     images => 'images',
     rootdir => 'private',
     iso => 'template/iso',
@@ -380,7 +380,7 @@ sub get_subdir {
 
     die "unknown vtype '$vtype'\n" if !defined($subdir);
 
-    return "$path/$subdir"; 
+    return "$path/$subdir";
 }
 
 sub path {
@@ -420,18 +420,20 @@ sub alloc_image {
 
     my (undef, $tmpfmt) = parse_name_dir($name);
 
-    die "illegal name '$name' - wrong extension for format ('$tmpfmt != '$fmt')\n" 
+    die "illegal name '$name' - wrong extension for format ('$tmpfmt != '$fmt')\n"
 	if $tmpfmt ne $fmt;
 
     my $path = "$imagedir/$name";
 
     die "disk image '$path' already exists\n" if -e $path;
 
-    my $options = "";
-    $options = "-o preallocation=metadata" if $fmt eq 'qcow2';
+    my $cmd = ['/usr/bin/qemu-img', 'create'];
 
-    run_command("/usr/bin/qemu-img create $options -f $fmt '$path' ${size}K", 
-		errmsg => "unable to create image");
+    push @$cmd, '-o', 'preallocation=metadata' if $fmt eq 'qcow2';
+
+    push @$cmd, '-f', $fmt, $path, "${size}K";
+
+    run_command($cmd, errmsg => "unable to create image");
 
     return "$vmid/$name";
 }
@@ -559,7 +561,7 @@ sub list_images {
     my $imagedir = $class->get_subdir($scfg, 'images');
 
     my ($defFmt, $vaidFmts) = default_format($scfg);
-    my $fmts = join ('|', @$vaidFmts); 
+    my $fmts = join ('|', @$vaidFmts);
 
     my $res = [];
 
@@ -582,7 +584,7 @@ sub list_images {
 	my ($size, $format, $used) = file_size_info($fn);
 
 	if ($format && $size) {
-	    push @$res, { 
+	    push @$res, {
 		volid => $volid, format => $format,
 		size => $size, vmid => $owner, used => $used };
 	}
@@ -598,7 +600,7 @@ sub status {
     my $path = $scfg->{path};
 
     die "storage definintion has no path\n" if !$path;
-	    
+
     my $timeout = 2;
     my $res = PVE::Tools::df($path, $timeout);
 
