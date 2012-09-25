@@ -1,3 +1,13 @@
+libpve-storage-perl (2.0-32) unstable; urgency=low
+
+  * qcow2 : preallocate metadatas at file creation
+  
+  * nexenta: implement storage status, several fixes
+
+  * add snapshot support
+
+ -- Proxmox Support Team <support@proxmox.com>  Tue, 25 Sep 2012 06:02:35 +0200
+
 libpve-storage-perl (2.0-31) unstable; urgency=low
 
   * fixes for nexenta, sheepdog and rbd
