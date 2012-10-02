@@ -1,3 +1,9 @@
+libpve-storage-perl (2.0-33) unstable; urgency=low
+
+  * create 'dump' directory if storage contains containers
+
+ -- Proxmox Support Team <support@proxmox.com>  Tue, 02 Oct 2012 13:36:35 +0200
+
 libpve-storage-perl (2.0-32) unstable; urgency=low
 
   * qcow2 : preallocate metadatas at file creation

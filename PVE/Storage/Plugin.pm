@@ -621,9 +621,12 @@ sub activate_storage {
 
     if (defined($scfg->{content})) {
 	foreach my $vtype (keys %$vtype_subdirs) {
-	    next if !defined($scfg->{content}->{$vtype});
-	    my $subdir = $class->get_subdir($scfg, $vtype);
-	    mkpath $subdir if $subdir ne $path;
+	    # OpenVZMigrate uses backup (dump) dir
+	    if (defined($scfg->{content}->{$vtype}) ||
+		($vtype eq 'backup' && defined($scfg->{content}->{'rootdir'}))) {
+		my $subdir = $class->get_subdir($scfg, $vtype);
+		mkpath $subdir if $subdir ne $path;
+	    }
 	}
     }
 }
