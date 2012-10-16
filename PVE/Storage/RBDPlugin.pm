@@ -25,6 +25,22 @@ my $rbd_cmd = sub {
     return $cmd;
 };
 
+my $rados_cmd = sub {
+    my ($scfg, $storeid, $op, @options) = @_;
+
+    my $monhost = $scfg->{monhost};
+    $monhost =~ s/;/,/g;
+
+    my $cmd = ['/usr/bin/rados', '-p', $scfg->{pool}, '-m', $monhost, '-n', 
+	       "client.$scfg->{username}", 
+	       '--keyring', "/etc/pve/priv/ceph/${storeid}.keyring", 
+	       '--auth_supported', $scfg->{authsupported}, $op];
+
+    push @$cmd, @options if scalar(@options);
+
+    return $cmd;
+};
+
 sub rbd_ls {
     my ($scfg, $storeid) = @_;
 
@@ -220,9 +236,24 @@ sub list_images {
 sub status {
     my ($class, $storeid, $scfg, $cache) = @_;
 
-    my $total = 0;
-    my $free = 0;
-    my $used = 0;
+    my $cmd = &$rados_cmd($scfg, $storeid, 'df');
+
+    my $stats = {};
+
+    my $parser = sub {
+	my $line = shift;
+	if ($line =~ m/^\s+total\s(\S+)\s+(\d+)/) {
+	    $stats->{$1} = $2;
+	}
+    };
+
+    eval {
+	run_command($cmd, errmsg => "rados error", errfunc => sub {}, outfunc => $parser);
+    };
+
+    my $total = $stats->{space} ? $stats->{space}*1024 : 0;
+    my $free = $stats->{avail} ? $stats->{avail}*1024 : 0;
+    my $used = $stats->{used} ? $stats->{used}*1024: 0;
     my $active = 1;
 
     return ($total, $free, $used, $active);
