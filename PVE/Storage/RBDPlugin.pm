@@ -56,7 +56,7 @@ sub rbd_ls {
 
 	    $list->{$scfg->{pool}}->{$image} = {
 		name => $image,
-		size => 0,
+		size => rbd_volume_size($scfg, $storeid, $image),
 		vmid => $owner
 	    };
 	}
@@ -70,6 +70,26 @@ sub rbd_ls {
     die $err if $err && $err !~ m/doesn't contain rbd images/ ;
   
     return $list;
+}
+
+sub rbd_volume_size {
+    my ($scfg, $storeid, $volname) = @_;
+
+    my $cmd = &$rbd_cmd($scfg, $storeid, 'info', $volname);
+    my $size = undef;
+    my $parser = sub {
+	my $line = shift;
+
+	if ($line =~ m/size (\d+) MB in (\d+) objects/) {
+	    $size = $1;
+	}
+    };
+
+    run_command($cmd, errmsg => "rbd error", errfunc => sub {}, outfunc => $parser);
+
+    $size = $size*1024*1024 if $size;
+
+    return $size;
 }
 
 sub addslashes {
@@ -282,21 +302,7 @@ sub deactivate_volume {
 sub volume_size_info {
     my ($class, $scfg, $storeid, $volname, $timeout) = @_;
 
-    my $cmd = &$rbd_cmd($scfg, $storeid, 'info', $volname);
-    my $size = undef;
-    my $parser = sub {
-        my $line = shift;
-
-        if ($line =~ m/size (\d+) MB in (\d+) objects/) {
-            $size = $1;
-        }
-    };
-
-    run_command($cmd, errmsg => "rbd error", errfunc => sub {}, outfunc => $parser);
-
-    $size = $size*1024*1024 if $size;
-
-    return $size;
+    return rbd_volume_size($scfg, $storeid, $volname);
 }
 
 sub volume_resize {
