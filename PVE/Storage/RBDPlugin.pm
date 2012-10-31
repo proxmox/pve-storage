@@ -214,7 +214,10 @@ sub alloc_image {
 sub free_image {
     my ($class, $storeid, $scfg, $volname) = @_;
 
-    my $cmd = &$rbd_cmd($scfg, $storeid, 'rm', $volname);
+    my $cmd = &$rbd_cmd($scfg, $storeid, 'snap', 'purge',  $volname);
+    run_command($cmd, errmsg => "rbd snap purge $volname' error", outfunc => sub {}, errfunc => sub {});
+
+    $cmd = &$rbd_cmd($scfg, $storeid, 'rm', $volname);
     run_command($cmd, errmsg => "rbd rm $volname' error", outfunc => sub {}, errfunc => sub {});
 
     return undef;
