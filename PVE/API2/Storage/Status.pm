@@ -340,7 +340,7 @@ __PACKAGE__->register_method ({
 	if ($node ne 'localhost' && $node ne PVE::INotify::nodename()) {
 	    my $remip = PVE::Cluster::remote_node_ip($node);
 
-	    my @ssh_options = ('-o', 'BatchMode=yes', '-c', 'blowfish-cbc');
+	    my @ssh_options = ('-o', 'BatchMode=yes');
 
 	    my @remcmd = ('/usr/bin/ssh', @ssh_options, $remip);
 

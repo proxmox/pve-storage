@@ -337,8 +337,7 @@ sub storage_migrate {
 
     my $errstr = "unable to migrate '$volid' to '${target_volid}' on host '$target_host'";
 
-    # blowfish is a fast block cipher, much faster then 3des
-    my $sshoptions = "-c blowfish -o 'BatchMode=yes'";
+    my $sshoptions = "-o 'BatchMode=yes'";
     my $ssh = "/usr/bin/ssh $sshoptions";
 
     local $ENV{RSYNC_RSH} = $ssh;
