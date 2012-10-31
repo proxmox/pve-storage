@@ -1,3 +1,11 @@
+libpve-storage-perl (2.0-35) unstable; urgency=low
+
+  * remove hardcoded blowfish cipher
+  
+  * purge snapshots before delete volume
+  
+ -- Proxmox Support Team <support@proxmox.com>  Wed, 31 Oct 2012 14:07:52 +0100
+
 libpve-storage-perl (2.0-34) unstable; urgency=low
 
   * rbd: add storage space stats, get volume size for volumes list
