@@ -48,6 +48,23 @@ sub sheepdog_ls {
     return $list;
 }
 
+sub sheepdog_snapshot_ls {
+    my ($scfg, $volname) = @_;
+
+    my $cmd = &$collie_cmd($scfg, 'vdi', 'list', '-r');
+
+    my $list = {};
+    run_command($cmd, outfunc => sub {
+        my $line = shift;
+        $line = trim($line);
+	if ($line =~ /s\s(\S+)\s(\d+)\s(\d+)\s(\d+)\s(\d+)\s(\d+)\s(\S+)\s(\d+)\s(\S+)/) {
+	    $list->{$9} = 1;
+	}
+    });
+
+    return $list;
+}
+
 # Configuration
 
 
@@ -128,6 +145,12 @@ sub alloc_image {
 
 sub free_image {
     my ($class, $storeid, $scfg, $volname) = @_;
+
+    my $snapshots = sheepdog_snapshot_ls($scfg, $volname);
+    while (my ($snapname) = each %$snapshots) {
+	my $cmd = &$collie_cmd($scfg, 'vdi', 'delete' , '-s', $snapname, $volname);
+	run_command($cmd, errmsg => "sheepdog delete snapshot $snapname $volname' error");
+    }
 
     my $cmd = &$collie_cmd($scfg, 'vdi', 'delete' , $volname);
 
