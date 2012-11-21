@@ -25,21 +25,51 @@ my $collie_cmd = sub {
 sub sheepdog_ls {
     my ($scfg, $storeid) = @_;
 
-    my $cmd = &$collie_cmd($scfg, 'vdi', 'list', '-r');
+    my $cmd = &$collie_cmd($scfg, 'vdi', 'graph');
+
+    my $relationship = {};
+    my $child = undef;
+
+    run_command($cmd, outfunc => sub {
+        my $line = shift;
+
+	my $parent = undef;
+	my $name = undef;
+
+        $line = trim($line);
+
+	if ($line =~ /\"(\S+)\"\s->\s\"(\S+)\"/) {
+	    $parent = $1;
+	    $child = $2;
+	    $relationship->{$child}->{parent} = $parent;
+	}
+	elsif ($line =~ /group\s\=\s\"(\S+)\",/) {
+	    $name = $1;
+	    $relationship->{$child}->{name} = $name if $child;
+
+	}
+
+    });
+
+
+    $cmd = &$collie_cmd($scfg, 'vdi', 'list', '-r');
 
     my $list = {};
 
     run_command($cmd, outfunc => sub {
         my $line = shift;
         $line = trim($line);
-	if ($line =~ /= (vm-(\d+)-\S+)\s+(\d+)\s+(\d+)\s(\d+)\s(\d+)\s/) {
-	    my $image = $1;
-	    my $owner = $2;
+	if ($line =~ /(=|c) (vm-(\d+)-\S+)\s+(\d+)\s+(\d+)\s(\d+)\s(\d+)\s(\d+)\s(\S+)\s(\d+)/) {
+	    my $image = $2;
+	    my $owner = $3;
 	    my $size = $4;
-
+	    my $idvdi = $9;
+	    my $parentid = $relationship->{$idvdi}->{parent} if $relationship->{$idvdi}->{parent};
+	    my $parent = $relationship->{$parentid}->{name};
 	    $list->{$storeid}->{$image} = {
 		name => $image,
 		size => $size,
+		parent => $parent,
 		vmid => $owner
 	    };
 	}
