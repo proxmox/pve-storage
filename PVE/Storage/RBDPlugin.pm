@@ -54,9 +54,11 @@ sub rbd_ls {
 	if ($line =~ m/^(vm-(\d+)-\S+)$/) {
 	    my ($image, $owner) = ($1, $2);
 
+	    my ($size, $parent) = rbd_volume_info($scfg, $storeid, $image);
 	    $list->{$scfg->{pool}}->{$image} = {
 		name => $image,
-		size => rbd_volume_size($scfg, $storeid, $image),
+		size => $size,
+		parent => $parent,
 		vmid => $owner
 	    };
 	}
@@ -72,16 +74,20 @@ sub rbd_ls {
     return $list;
 }
 
-sub rbd_volume_size {
+sub rbd_volume_info {
     my ($scfg, $storeid, $volname) = @_;
 
     my $cmd = &$rbd_cmd($scfg, $storeid, 'info', $volname);
     my $size = undef;
+    my $parent = undef;
+
     my $parser = sub {
 	my $line = shift;
 
 	if ($line =~ m/size (\d+) MB in (\d+) objects/) {
 	    $size = $1;
+	} elsif ($line =~ m/parent:\s(\S+)\/(\S+)/) {
+	    $parent = $2;
 	}
     };
 
@@ -89,7 +95,7 @@ sub rbd_volume_size {
 
     $size = $size*1024*1024 if $size;
 
-    return $size;
+    return ($size, $parent);
 }
 
 sub addslashes {
@@ -305,7 +311,8 @@ sub deactivate_volume {
 sub volume_size_info {
     my ($class, $scfg, $storeid, $volname, $timeout) = @_;
 
-    return rbd_volume_size($scfg, $storeid, $volname);
+    my ($size, undef) = rbd_volume_info($scfg, $storeid, $volname);
+    return $size;
 }
 
 sub volume_resize {
