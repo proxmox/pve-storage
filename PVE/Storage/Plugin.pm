@@ -458,6 +458,7 @@ sub file_size_info {
     my $cmd = ['/usr/bin/qemu-img', 'info', $filename];
 
     my $format;
+    my $parent;
     my $size = 0;
     my $used = 0;
 
@@ -467,6 +468,8 @@ sub file_size_info {
 
 	    if ($line =~ m/^file format:\s+(\S+)\s*$/) {
 		$format = $1;
+	    } elsif ($line =~ m/^backing file:\s(\S+)\s/) {
+		$parent = $1;
 	    } elsif ($line =~ m/^virtual size:\s\S+\s+\((\d+)\s+bytes\)$/) {
 		$size = int($1);
 	    } elsif ($line =~ m/^disk size:\s+(\d+(.\d+)?)([KMGT])\s*$/) {
@@ -483,7 +486,7 @@ sub file_size_info {
 	});
     };
 
-    return wantarray ? ($size, $format, $used) : $size;
+    return wantarray ? ($size, $format, $used, $parent) : $size;
 }
 
 sub volume_size_info {
@@ -581,12 +584,12 @@ sub list_images {
 	    next if defined($vmid) && ($owner ne $vmid);
 	}
 
-	my ($size, $format, $used) = file_size_info($fn);
+	my ($size, $format, $used, $parent) = file_size_info($fn);
 
 	if ($format && $size) {
 	    push @$res, {
 		volid => $volid, format => $format,
-		size => $size, vmid => $owner, used => $used };
+		size => $size, vmid => $owner, used => $used, parent => $parent };
 	}
 
     }
