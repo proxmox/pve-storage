@@ -45,6 +45,13 @@ sub nexenta_get_zvol_size {
     return nexenta_request($scfg, 'get_child_prop', 'zvol', $zvol, 'size_bytes');
 }
 
+sub nexenta_get_zvol_props {
+    my ($scfg, $zvol) = @_;
+
+    my $props = nexenta_request($scfg, 'get_child_props', 'zvol', $zvol, '');
+    return $props;
+}
+
 sub nexenta_list_lun_mapping_entries {
     my ($scfg, $zvol) = @_;
 
@@ -106,9 +113,12 @@ sub nexenta_list_zvol {
 	    $owner = $2;
 	}
 
+	my $props = nexenta_get_zvol_props($scfg, $zvol);
+
 	$list->{$pool}->{$image} = {
 	    name => $image,
-	    size => nexenta_get_zvol_size($scfg, $zvol),
+	    size => $props->{size_bytes},
+	    parent => $props->{origin},
 	    format => 'raw',
 	    vmid => $owner
 	};
