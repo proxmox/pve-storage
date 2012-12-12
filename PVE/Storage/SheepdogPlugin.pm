@@ -65,7 +65,7 @@ sub sheepdog_ls {
 	    my $size = $4;
 	    my $idvdi = $9;
 	    my $parentid = $relationship->{$idvdi}->{parent} if $relationship->{$idvdi}->{parent};
-	    my $parent = $relationship->{$parentid}->{name};
+	    my $parent = $relationship->{$parentid}->{name} if $parentid;
 	    $list->{$storeid}->{$image} = {
 		name => $image,
 		size => $size,
@@ -272,13 +272,13 @@ sub volume_size_info {
 
     my $size = undef;
 
-    my $cmd = &$collie_cmd($scfg, 'vdi', 'list', '-r', $volname);
+    my $cmd = &$collie_cmd($scfg, 'vdi', 'list', '-r');
 
     run_command($cmd, outfunc => sub {
         my $line = shift;
         $line = trim($line);
-        if ($line =~ /= (vm-(\d+)-\S+)\s+(\d+)\s+(\d+)\s(\d+)\s(\d+)\s/) {
-            $size = $4;
+        if ($line =~ /(=|c) $volname\s+(\d+)\s+(\d+)\s(\d+)\s(\d+)\s/) {
+            $size = $3;
 
         }
     });
