@@ -350,7 +350,7 @@ sub parse_volname {
 	return ('vztmpl', $1);
     } elsif ($volname =~ m!^rootdir/(\d+)$!) {
 	return ('rootdir', $1, $1);
-    } elsif ($volname =~ m!^backup/([^/]+(\.(tar|tar\.gz|tar\.lzo|tgz)))$!) {
+    } elsif ($volname =~ m!^backup/([^/]+(\.(tar|tar\.gz|tar\.lzo|tgz|vma|vma\.gz|vma\.lzo)))$!) {
 	my $fn = $1;
 	if ($fn =~ m/^vzdump-(openvz|qemu)-(\d+)-.+/) {
 	    return ('backup', $fn, $2);

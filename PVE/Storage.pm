@@ -298,7 +298,7 @@ sub path_to_volume_id {
 	} elsif ($path =~ m!^$privatedir/(\d+)$!) {
 	    my $vmid = $1;
 	    return ('rootdir', "$sid:rootdir/$vmid");
-	} elsif ($path =~ m!^$backupdir/([^/]+\.(tar|tar\.gz|tar\.lzo|tgz))$!) {
+	} elsif ($path =~ m!^$backupdir/([^/]+\.(tar|tar\.gz|tar\.lzo|tgz|vma|vma\.gz|vma\.lzo))$!) {
 	    my $name = $1;
 	    return ('iso', "$sid:backup/$name");	
 	}
@@ -505,7 +505,7 @@ sub template_list {
 		    $info = { volid => "$sid:vztmpl/$1", format => 'tgz' };
 
 		} elsif ($tt eq 'backup') {
-		    next if $fn !~ m!/([^/]+\.(tar|tar\.gz|tar\.lzo|tgz))$!;
+		    next if $fn !~ m!/([^/]+\.(tar|tar\.gz|tar\.lzo|tgz|vma|vma\.gz|vma\.lzo))$!;
 		    
 		    $info = { volid => "$sid:backup/$1", format => $2 };
 		}
