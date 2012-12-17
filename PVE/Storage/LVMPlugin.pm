@@ -246,7 +246,7 @@ sub alloc_image {
 
     my $vg = $scfg->{vgname};
 
-    die "no such volume gruoup '$vg'\n" if !defined ($vgs->{$vg});
+    die "no such volume group '$vg'\n" if !defined ($vgs->{$vg});
 
     my $free = int($vgs->{$vg}->{free});
 
