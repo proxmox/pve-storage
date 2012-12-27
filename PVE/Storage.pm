@@ -183,6 +183,21 @@ sub volume_snapshot_delete {
     }
 }
 
+sub volume_has_feature {
+    my ($cfg, $feature, $volid, $snap, $running) = @_;
+
+    my ($storeid, $volname) = parse_volume_id($volid, 1);
+    if ($storeid) {
+        my $scfg = storage_config($cfg, $storeid);
+        my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
+        return $plugin->volume_has_feature($scfg, $feature, $storeid, $volname, $snap, $running);
+    } elsif ($volid =~ m|^(/.+)$| && -e $volid) {
+	return undef;
+    } else {
+	return undef;
+    }
+}
+
 sub get_image_dir {
     my ($cfg, $storeid, $vmid) = @_;
 
