@@ -208,4 +208,10 @@ sub volume_snapshot_delete {
     die "volume snapshot delete is not possible on iscsi device";
 }
 
+sub volume_has_feature {
+    my ($class, $scfg, $feature, $storeid, $volname, $snapname, $running) = @_;
+    
+    return undef;
+}
+
 1;
