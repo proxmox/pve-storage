@@ -380,4 +380,18 @@ sub volume_snapshot_delete {
     nexenta_request($scfg, 'destroy', 'snapshot', "$scfg->{pool}/$volname\@$snap", '');
 }
 
+sub volume_has_feature {
+    my ($class, $scfg, $feature, $storeid, $volname, $snapname, $running) = @_;
+
+    my $features = {
+        snapshot => { current => 1, snap => 1},
+        clone => { snap => 1},
+    };
+
+    my $snap = $snapname ? 'snap' : 'current';
+    return 1 if $features->{$feature}->{$snap};
+
+    return undef;
+}
+
 1;
