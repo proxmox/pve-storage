@@ -438,4 +438,10 @@ sub volume_snapshot_delete {
     die "lvm snapshot delete is not implemented";
 }
 
+sub volume_has_feature {
+    my ($class, $scfg, $feature, $storeid, $volname, $snapname, $running) = @_;
+
+    return undef;
+}
+
 1;
