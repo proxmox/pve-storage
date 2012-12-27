@@ -383,5 +383,11 @@ sub volume_resize {
     die "volume resize is not possible on iscsi device";
 }
 
+sub volume_has_feature {
+    my ($class, $scfg, $feature, $storeid, $volname, $snapname, $running) = @_;
+
+    return undef;
+}
+
 
 1;
