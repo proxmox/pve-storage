@@ -558,6 +558,24 @@ sub volume_snapshot_delete {
     return undef;
 }
 
+sub volume_has_feature {
+    my ($class, $scfg, $feature, $storeid, $volname, $snapname, $running) = @_;
+
+    my $features = {
+        snapshot => { current => { qcow2 => 1}, snap => { qcow2 => 1} },
+        clone => { current => {qcow2 => 1, raw => 1, vmdk => 1} },
+    };
+
+    if ($volname =~ m!^(\d+)/(\S+)$!) {
+        my ($vmid, $name) = ($1, $2);
+        my (undef, $format) = parse_name_dir($name);
+	my $snap = $snapname ? 'snap' : 'current';
+	return 1 if defined($features->{$feature}->{$snap}->{$format});
+
+    }
+    return undef;
+}
+
 sub list_images {
     my ($class, $storeid, $scfg, $vmid, $vollist, $cache) = @_;
 
