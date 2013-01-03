@@ -210,7 +210,7 @@ sub alloc_image {
     die "unable to allocate an image name for VM $vmid in storage '$storeid'\n"
 	if !$name;
 
-    my $cmd = &$rbd_cmd($scfg, $storeid, 'create', '--size', ($size/1024), $name);
+    my $cmd = &$rbd_cmd($scfg, $storeid, 'create', '--format' , 2, '--size', ($size/1024), $name);
     run_command($cmd, errmsg => "rbd create $name' error", errfunc => sub {});
 
     return $name;
