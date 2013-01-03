@@ -1,3 +1,9 @@
+libpve-storage-perl (2.3-2) unstable; urgency=low
+
+  * updates for new stable ceph release (0.56)
+
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 03 Jan 2013 11:46:07 +0100
+
 libpve-storage-perl (2.3-1) unstable; urgency=low
 
   * also list vma backup archives
