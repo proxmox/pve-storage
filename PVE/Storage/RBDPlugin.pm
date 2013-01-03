@@ -44,20 +44,19 @@ my $rados_cmd = sub {
 sub rbd_ls {
     my ($scfg, $storeid) = @_;
 
-    my $cmd = &$rbd_cmd($scfg, $storeid, 'ls');
+    my $cmd = &$rbd_cmd($scfg, $storeid, 'ls', '-l');
 
     my $list = {};
 
     my $parser = sub {
 	my $line = shift;
 
-	if ($line =~ m/^(vm-(\d+)-\S+)$/) {
-	    my ($image, $owner) = ($1, $2);
+	if ($line =~  m/^(vm-(\d+)-disk-\d+)\s+(\d+)M\s((\S+)\/(vm-\d+-\S+@\S+))?/) {
+	    my ($image, $owner, $size, $parent) = ($1, $2, $3, $6);
 
-	    my ($size, $parent) = rbd_volume_info($scfg, $storeid, $image);
 	    $list->{$scfg->{pool}}->{$image} = {
 		name => $image,
-		size => $size,
+		size => $size*1024*1024,
 		parent => $parent,
 		vmid => $owner
 	    };
