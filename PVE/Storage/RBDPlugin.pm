@@ -9,6 +9,14 @@ use PVE::JSONSchema qw(get_standard_option);
 
 use base qw(PVE::Storage::Plugin);
 
+sub rbd_unittobytes {
+  {
+       "M"  => 1024*1024,
+       "G"  => 1024*1024*1024,
+       "T"  => 1024*1024*1024*1024,
+  }
+}
+
 my $rbd_cmd = sub {
     my ($scfg, $storeid, $op, @options) = @_;
 
@@ -51,12 +59,12 @@ sub rbd_ls {
     my $parser = sub {
 	my $line = shift;
 
-	if ($line =~  m/^(vm-(\d+)-disk-\d+)\s+(\d+)M\s((\S+)\/(vm-\d+-\S+@\S+))?/) {
-	    my ($image, $owner, $size, $parent) = ($1, $2, $3, $6);
+	if ($line =~  m/^(vm-(\d+)-disk-\d+)\s+(\d+)(M|G|T)\s((\S+)\/(vm-\d+-\S+@\S+))?/) {
+	    my ($image, $owner, $size, $unit, $parent) = ($1, $2, $3, $4, $7);
 
 	    $list->{$scfg->{pool}}->{$image} = {
 		name => $image,
-		size => $size*1024*1024,
+		size => $size*rbd_unittobytes()->{$unit},
 		parent => $parent,
 		vmid => $owner
 	    };
@@ -83,16 +91,14 @@ sub rbd_volume_info {
     my $parser = sub {
 	my $line = shift;
 
-	if ($line =~ m/size (\d+) MB in (\d+) objects/) {
-	    $size = $1;
+	if ($line =~ m/size (\d+) (M|G|T)B in (\d+) objects/) {
+	    $size = $1 * rbd_unittobytes()->{$2} if ($1);
 	} elsif ($line =~ m/parent:\s(\S+)\/(\S+)/) {
 	    $parent = $2;
 	}
     };
 
     run_command($cmd, errmsg => "rbd error", errfunc => sub {}, outfunc => $parser);
-
-    $size = $size*1024*1024 if $size;
 
     return ($size, $parent);
 }
