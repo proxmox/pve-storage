@@ -417,6 +417,42 @@ sub storage_migrate {
     }
 }
 
+sub vdisk_clone {
+    my ($cfg, $volid, $vmid) = @_;
+    
+    my ($storeid, $volname) = parse_volume_id($volid);
+
+    my $scfg = storage_config($cfg, $storeid);
+
+    my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
+    
+    activate_storage($cfg, $storeid);
+
+    # lock shared storage
+    return $plugin->cluster_lock_storage($storeid, $scfg->{shared}, undef, sub {
+	my $volname = $plugin->clone_image($scfg, $storeid, $volname, $vmid);
+	return "$storeid:$volname";
+    });
+}
+
+sub vdisk_create_base {
+    my ($cfg, $volid) = @_;
+
+    my ($storeid, $volname) = parse_volume_id($volid);
+
+    my $scfg = storage_config($cfg, $storeid);
+
+    my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
+    
+    activate_storage($cfg, $storeid);
+
+    # lock shared storage
+    return $plugin->cluster_lock_storage($storeid, $scfg->{shared}, undef, sub {
+	my $volname = $plugin->create_base($storeid, $scfg, $volname);
+	return "$storeid:$volname";
+    });
+}
+
 sub vdisk_alloc {
     my ($cfg, $storeid, $vmid, $fmt, $name, $size) = @_;
 

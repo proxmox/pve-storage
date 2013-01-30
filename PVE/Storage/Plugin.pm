@@ -2,6 +2,7 @@ package PVE::Storage::Plugin;
 
 use strict;
 use warnings;
+use Cwd;
 use File::Path;
 use PVE::Tools qw(run_command);
 use PVE::JSONSchema qw(get_standard_option);
@@ -330,8 +331,8 @@ sub cluster_lock_storage {
 sub parse_name_dir {
     my $name = shift;
 
-    if ($name =~ m!^([^/\s]+\.(raw|qcow2|vmdk))$!) {
-	return ($1, $2);
+    if ($name =~ m!^((base-)?[^/\s]+\.(raw|qcow2|vmdk))$!) {
+	return ($1, $3, $2);
     }
 
     die "unable to parse volume filename '$name'\n";
@@ -340,10 +341,16 @@ sub parse_name_dir {
 sub parse_volname {
     my ($class, $volname) = @_;
 
-    if ($volname =~ m!^(\d+)/(\S+)$!) {
+    if ($volname =~ m!^(\d+)/(\S+)/(\d+)/(\S+)$!) {
+	my ($basedvmid, $basename) = ($1, $2);
+	parse_name_dir($basename);
+	my ($vmid, $name) = ($3, $4);
+	my (undef, undef, $isBase) = parse_name_dir($name);
+	return ('images', $name, $vmid, $basename, $basedvmid, $isBase);
+    } elsif ($volname =~ m!^(\d+)/(\S+)$!) {
 	my ($vmid, $name) = ($1, $2);
-	parse_name_dir($name);
-	return ('images', $name, $vmid);
+	my (undef, undef, $isBase) = parse_name_dir($name);
+	return ('images', $name, $vmid, undef, undef, $isBase);
     } elsif ($volname =~ m!^iso/([^/]+\.[Ii][Ss][Oo])$!) {
 	return ('iso', $1);
     } elsif ($volname =~ m!^vztmpl/([^/]+\.tar\.gz)$!) {
@@ -397,6 +404,110 @@ sub path {
     return wantarray ? ($path, $vmid, $vtype) : $path;
 }
 
+sub create_base {
+    my ($class, $storeid, $scfg, $volname) = @_;
+
+    # this only works for file based storage types
+    die "storage definintion has no path\n" if !$scfg->{path};
+
+    my ($vtype, $name, $vmid, $basename, $basevmid, $isBase) = 
+	$class->parse_volname($volname);
+
+    die "create_base on wrong vtype '$vtype'\n" if $vtype ne 'images';
+
+    die "create_base not possible with base image\n" if $isBase;
+
+    my $path = $class->path($scfg, $volname);
+
+    my ($size, $format, $used, $parent) = file_size_info($path);
+    die "file_size_info on '$volname' failed\n" if !($format && $size);
+
+    die "volname '$volname' contains wrong information about parent\n"
+	if $basename && (!$parent || $parent ne "../$basevmid/$basename");
+
+    my $newname = $name;
+    $newname =~ s/^vm-/base-/;
+
+    my $newvolname = $basename ? "$basevmid/$basename/$vmid/$newname" :
+	"$vmid/$newname";
+
+    my $newpath = $class->path($scfg, $newvolname);
+
+    die "file '$newpath' already exists\n" if -f $newpath;
+
+    rename($path, $newpath) || 
+	die "rename '$path' to '$newpath' failed - $!\n";
+
+    chmod(0444, $newpath);
+
+    return $newvolname;
+}
+
+my $find_free_diskname = sub {
+    my ($imgdir, $vmid, $fmt) = @_;
+
+    my $disk_ids = {};
+    PVE::Tools::dir_glob_foreach($imgdir, 
+				 qr!(vm|base)-$vmid-disk-(\d+)\..*!,
+				 sub {
+				     my ($fn, $type, $disk) = @_; 
+				     $disk_ids->{$disk} = 1;
+				 });
+
+    for (my $i = 1; $i < 100; $i++) {
+	if (!$disk_ids->{$i}) {
+	    return "vm-$vmid-disk-$i.$fmt";
+	}
+    }
+
+    die "unable to allocate a new image name for VM $vmid in '$imgdir'\n";
+};
+
+sub clone_image {
+    my ($class, $scfg, $storeid, $volname, $vmid) = @_;
+
+    # this only works for file based storage types
+    die "storage definintion has no path\n" if !$scfg->{path};
+
+    my ($vtype, $basename, $basevmid, undef, undef, $isBase) = 
+	$class->parse_volname($volname);
+
+    die "clone_image on wrong vtype '$vtype'\n" if $vtype ne 'images';
+
+    die "clone_image onyl works on base images\n" if !$isBase;
+
+    my $imagedir = $class->get_subdir($scfg, 'images');
+    $imagedir .= "/$vmid";
+
+    mkpath $imagedir;
+
+    my $name = &$find_free_diskname($imagedir, $vmid, "qcow2");
+
+    warn "clone $volname: $vtype, $name, $vmid to $name (base=../$basevmid/$basename)\n";
+
+    my $newvol = "$basevmid/$basename/$vmid/$name";
+
+    my $path = $class->path($scfg, $newvol);
+
+    # Note: we use relative paths, so we need to call chdir before qemu-img
+    my $oldcwd = cwd();
+    eval {
+	chdir $imagedir;
+
+	my $cmd = ['/usr/bin/qemu-img', 'create', '-b', "../$basevmid/$basename", 
+		   '-f', 'qcow2', $path];
+   
+	run_command($cmd);
+    };
+    my $err = $@;
+
+    chdir $oldcwd;
+
+    die $err if $err;
+
+    return $newvol;
+}
+
 sub alloc_image {
     my ($class, $storeid, $scfg, $vmid, $fmt, $name, $size) = @_;
 
@@ -405,19 +516,8 @@ sub alloc_image {
 
     mkpath $imagedir;
 
-    if (!$name) {
-	for (my $i = 1; $i < 100; $i++) {
-	    my @gr = <$imagedir/vm-$vmid-disk-$i.*>;
-	    if (!scalar(@gr)) {
-		$name = "vm-$vmid-disk-$i.$fmt";
-		last;
-	    }
-	}
-    }
-
-    die "unable to allocate an image name for VM $vmid in storage '$storeid'\n"
-	if !$name;
-
+    $name = &$find_free_diskname($imagedir, $vmid, $fmt) if !$name;
+ 
     my (undef, $tmpfmt) = parse_name_dir($name);
 
     die "illegal name '$name' - wrong extension for format ('$tmpfmt != '$fmt')\n"
@@ -465,7 +565,6 @@ sub file_size_info {
     eval {
 	run_command($cmd, timeout => $timeout, outfunc => sub {
 	    my $line = shift;
-
 	    if ($line =~ m/^file format:\s+(\S+)\s*$/) {
 		$format = $1;
 	    } elsif ($line =~ m/^backing file:\s(\S+)\s/) {
@@ -593,23 +692,29 @@ sub list_images {
 
 	my $owner = $2;
 	my $name = $3;
-	my $volid = "$storeid:$owner/$name";
+
+	next if !$vollist && defined($vmid) && ($owner ne $vmid);
+
+	my ($size, $format, $used, $parent) = file_size_info($fn);
+	next if !($format && $size);
+
+	my $volid;
+	if ($parent && $parent =~ m!^../(\d+)/([^/]+\.($fmts))$!) {
+	    my ($basevmid, $basename) = ($1, $2);
+	    $volid = "$storeid:$basevmid/$basename/$owner/$name";
+	} else {
+	    $volid = "$storeid:$owner/$name";
+	}
 
 	if ($vollist) {
 	    my $found = grep { $_ eq $volid } @$vollist;
 	    next if !$found;
-	} else {
-	    next if defined($vmid) && ($owner ne $vmid);
 	}
 
-	my ($size, $format, $used, $parent) = file_size_info($fn);
-
-	if ($format && $size) {
-	    push @$res, {
-		volid => $volid, format => $format,
-		size => $size, vmid => $owner, used => $used, parent => $parent };
-	}
-
+	push @$res, {
+	    volid => $volid, format => $format,
+	    size => $size, vmid => $owner, used => $used, parent => $parent 
+	};
     }
 
     return $res;
