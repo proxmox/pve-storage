@@ -298,7 +298,7 @@ sub path_to_volume_id {
     my ($sid, $volname) = parse_volume_id($path, 1);
     if ($sid) {
 	if (my $scfg = $ids->{$sid}) {
-	    if (my $path = $scfg->{path}) {
+	    if ($scfg->{path}) {
 		my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
 		my ($vtype, $name, $vmid) = $plugin->parse_volname($volname);
 		return ($vtype, $path);
