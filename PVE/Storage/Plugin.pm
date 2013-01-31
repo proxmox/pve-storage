@@ -178,6 +178,17 @@ sub verify_options {
     return $value;
 }
 
+PVE::JSONSchema::register_format('pve-volume-id', \&parse_volume_id);
+sub parse_volume_id {
+    my ($volid, $noerr) = @_;
+
+    if ($volid =~ m/^([a-z][a-z0-9\-\_\.]*[a-z0-9]):(.+)$/i) {
+	return wantarray ? ($1, $2) : $1;
+    }
+    return undef if $noerr;
+    die "unable to parse volume ID '$volid'\n";
+}
+
 
 sub private {
     return $defaultData;
@@ -545,9 +556,28 @@ sub free_image {
 
     if (! -f $path) {
 	warn "disk image '$path' does not exists\n";
-    } else {
-	unlink $path;
+	return undef;
     }
+
+    my ($vtype, $name, $vmid, undef, undef, $isBase) = 
+	$class->parse_volname($volname);
+
+    if ($isBase) {
+	my $vollist = $class->list_images($storeid, $scfg);
+	foreach my $info (@$vollist) {
+	    my (undef, $tmpvolname) = parse_volume_id($info->{volid});
+
+	    my (undef, undef, undef, $basename, $basevmid) = 
+		$class->parse_volname($tmpvolname);
+
+	    if ($basename && $basevmid == $vmid && $basename eq $name) {
+		die "base volume '$volname' is still in use " .
+		    "(use by '$tmpvolname')\n";
+	    }
+	}
+    }
+
+    unlink $path;
 
     return undef;
 }

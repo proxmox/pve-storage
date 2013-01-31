@@ -257,15 +257,10 @@ sub parse_vmid {
     return int($vmid);
 }
 
-PVE::JSONSchema::register_format('pve-volume-id', \&parse_volume_id);
 sub parse_volume_id {
     my ($volid, $noerr) = @_;
 
-    if ($volid =~ m/^([a-z][a-z0-9\-\_\.]*[a-z0-9]):(.+)$/i) {
-	return wantarray ? ($1, $2) : $1;
-    }
-    return undef if $noerr;
-    die "unable to parse volume ID '$volid'\n";
+    return PVE::Storage::Plugin::parse_volume_id($volid, $noerr);
 }
 
 sub volume_is_base {
