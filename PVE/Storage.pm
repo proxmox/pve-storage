@@ -303,7 +303,15 @@ sub path_to_volume_id {
 	if ($path =~ m!^$imagedir/(\d+)/([^/\s]+)$!) {
 	    my $vmid = $1;
 	    my $name = $2;
-	    return ('images', "$sid:$vmid/$name");
+
+	    my $vollist = $plugin->list_images($sid, $scfg, $vmid);
+	    foreach my $info (@$vollist) {
+		my ($storeid, $volname) = parse_volume_id($info->{volid});
+		my $volpath = $plugin->path($scfg, $volname, $storeid);
+		if ($volpath eq $path) {
+		    return ('images', $info->{volid});
+		}
+	    }
 	} elsif ($path =~ m!^$isodir/([^/]+\.[Ii][Ss][Oo])$!) {
 	    my $name = $1;
 	    return ('iso', "$sid:iso/$name");	
