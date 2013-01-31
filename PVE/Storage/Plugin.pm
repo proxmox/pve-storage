@@ -449,8 +449,14 @@ sub create_base {
     rename($path, $newpath) || 
 	die "rename '$path' to '$newpath' failed - $!\n";
 
-    chmod(0444, $newpath);
+    # We try to protect base volume
 
+    chmod(0444, $newpath); # nobody should write anything
+
+    # also try to set immutable flag
+    eval { run_command(['/usr/bin/chattr', '+i', $newpath]); };
+    warn $@ if $@;
+    
     return $newvolname;
 }
 
@@ -575,9 +581,13 @@ sub free_image {
 		    "(use by '$tmpvolname')\n";
 	    }
 	}
+ 
+	# try to remove immutable flag
+	eval { run_command(['/usr/bin/chattr', '-i', $path]); };
+	warn $@ if $@;
     }
 
-    unlink $path;
+    unlink($path) || die "unlink '$path' failed - $!\n";
 
     return undef;
 }
