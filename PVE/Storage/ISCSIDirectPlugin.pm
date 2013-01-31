@@ -97,6 +97,17 @@ sub path {
     return ($path, $vmid, $vtype);
 }
 
+sub create_base {
+    my ($class, $storeid, $scfg, $volname) = @_;
+
+    die "can't create base images in iscsi storage\n";
+}
+
+sub clone_image {
+    my ($class, $scfg, $storeid, $volname, $vmid) = @_;
+
+    die "can't clone images in iscsi storage\n";
+}
 
 sub alloc_image {
     my ($class, $storeid, $scfg, $vmid, $fmt, $name, $size) = @_;

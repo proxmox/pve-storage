@@ -205,6 +205,17 @@ sub path {
     return ($path, $vmid, $vtype);
 }
 
+sub create_base {
+    my ($class, $storeid, $scfg, $volname) = @_;
+
+    die "not implemented";
+}
+
+sub clone_image {
+    my ($class, $scfg, $storeid, $volname, $vmid) = @_;
+
+    die "not implemented";
+}
 
 sub alloc_image {
     my ($class, $storeid, $scfg, $vmid, $fmt, $name, $size) = @_;
