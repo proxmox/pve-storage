@@ -556,7 +556,7 @@ sub alloc_image {
 }
 
 sub free_image {
-    my ($class, $storeid, $scfg, $volname) = @_;
+    my ($class, $storeid, $scfg, $volname, $isBase) = @_;
 
     my $path = $class->path($scfg, $volname);
 
@@ -565,23 +565,7 @@ sub free_image {
 	return undef;
     }
 
-    my ($vtype, $name, $vmid, undef, undef, $isBase) = 
-	$class->parse_volname($volname);
-
     if ($isBase) {
-	my $vollist = $class->list_images($storeid, $scfg);
-	foreach my $info (@$vollist) {
-	    my (undef, $tmpvolname) = parse_volume_id($info->{volid});
-
-	    my (undef, undef, undef, $basename, $basevmid) = 
-		$class->parse_volname($tmpvolname);
-
-	    if ($basename && $basevmid == $vmid && $basename eq $name) {
-		die "base volume '$volname' is still in use " .
-		    "(use by '$tmpvolname')\n";
-	    }
-	}
- 
 	# try to remove immutable flag
 	eval { run_command(['/usr/bin/chattr', '-i', $path]); };
 	warn $@ if $@;

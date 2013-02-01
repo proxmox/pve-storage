@@ -520,7 +520,26 @@ sub vdisk_free {
 
     # lock shared storage
     $plugin->cluster_lock_storage($storeid, $scfg->{shared}, undef, sub {
-	my $cleanup_worker = $plugin->free_image($storeid, $scfg, $volname);
+
+	my ($vtype, $name, $vmid, undef, undef, $isBase) = 
+	    $plugin->parse_volname($volname);
+
+	if ($isBase) {
+	    my $vollist = $plugin->list_images($storeid, $scfg);
+	    foreach my $info (@$vollist) {
+		my (undef, $tmpvolname) = parse_volume_id($info->{volid});
+
+		my (undef, undef, undef, $basename, $basevmid) = 
+		    $plugin->parse_volname($tmpvolname);
+
+		if ($basename && $basevmid == $vmid && $basename eq $name) {
+		    die "base volume '$volname' is still in use " .
+			"(use by '$tmpvolname')\n";
+		}
+	    }
+	}
+
+	my $cleanup_worker = $plugin->free_image($storeid, $scfg, $volname, $isBase);
     });
 
     return if !$cleanup_worker;

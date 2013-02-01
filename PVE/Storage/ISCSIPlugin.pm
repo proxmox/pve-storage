@@ -302,7 +302,7 @@ sub alloc_image {
 }
 
 sub free_image {
-    my ($class, $storeid, $scfg, $volname) = @_;
+    my ($class, $storeid, $scfg, $volname, $isBase) = @_;
 
     die "can't free space in iscsi storage\n";
 }

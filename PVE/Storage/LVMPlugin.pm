@@ -287,7 +287,7 @@ sub alloc_image {
 }
 
 sub free_image {
-    my ($class, $storeid, $scfg, $volname) = @_;
+    my ($class, $storeid, $scfg, $volname, $isBase) = @_;
 
     my $vg = $scfg->{vgname};
     
