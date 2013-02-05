@@ -170,7 +170,47 @@ my $find_free_diskname = sub {
 sub create_base {
     my ($class, $storeid, $scfg, $volname) = @_;
 
-    die "not implemented";
+    my $snap = '__base__';
+
+    my ($vtype, $name, $vmid, $basename, $basevmid, $isBase) =
+        $class->parse_volname($volname);
+
+    die "create_base not possible with base image\n" if $isBase;
+
+    my $sheepdog = sheepdog_ls($scfg, $storeid);
+    die "sheepdog volume info on '$name' failed\n" if !($sheepdog->{sheepdog}->{$name});
+    my $parent = $sheepdog->{sheepdog}->{$name}->{parent};
+
+    die "volname '$volname' contains wrong information about parent $parent $basename\n"
+        if $basename && (!$parent || $parent ne $basename);
+
+    my $newname = $name;
+    $newname =~ s/^vm-/base-/;
+
+    my $newvolname = $basename ? "$basename/$newname" : "$newname";
+
+    #sheepdog can't rename, so we clone then delete the parent
+
+    my $tempsnap = '__tempforbase__';
+
+    my $cmd = &$collie_cmd($scfg, 'vdi', 'snapshot', '-s', $tempsnap, $name);
+    run_command($cmd, errmsg => "sheepdog snapshot $volname' error");
+
+    $cmd = &$collie_cmd($scfg, 'vdi', 'clone', '-s', $tempsnap, $name, $newname);
+    run_command($cmd, errmsg => "sheepdog clone $volname' error");
+
+    $cmd = &$collie_cmd($scfg, 'vdi', 'delete', '-s', $tempsnap, $name);
+    run_command($cmd, errmsg => "sheepdog delete snapshot $volname' error");
+
+    $cmd = &$collie_cmd($scfg, 'vdi', 'delete' , $name);
+    run_command($cmd, errmsg => "sheepdog delete $volname' error");
+
+    #create the base snapshot
+    my $running  = undef; #fixme : is create_base always offline ?
+
+    $class->volume_snapshot($scfg, $storeid, $newname, $snap, $running);
+
+    return $newvolname;
 }
 
 sub clone_image {
