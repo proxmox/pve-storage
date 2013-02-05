@@ -456,13 +456,15 @@ sub volume_snapshot {
 sub volume_snapshot_rollback {
     my ($class, $scfg, $storeid, $volname, $snap) = @_;
 
-    nexenta_delete_lu($scfg, $volname);
+    my ($vtype, $name, $vmid) = $class->parse_volname($volname);
 
-    nexenta_request($scfg, 'rollback', 'snapshot', "$scfg->{pool}/$volname\@$snap", '');
+    nexenta_delete_lu($scfg, $name);
+
+    nexenta_request($scfg, 'rollback', 'snapshot', "$scfg->{pool}/$name\@$snap", '');
     
-    nexenta_import_lu($scfg, $volname);
+    nexenta_import_lu($scfg, $name);
     
-    nexenta_add_lun_mapping_entry($scfg, $volname);
+    nexenta_add_lun_mapping_entry($scfg, $name);
 }
 
 sub volume_snapshot_delete {
