@@ -180,8 +180,8 @@ sub options {
 sub parse_volname {
     my ($class, $volname) = @_;
 
-    if ($volname =~ m/^(vm-(\d+)-\S+)$/) {
-	return ('images', $1, $2);
+    if ($volname =~ m/^(((base|vm)-(\d+)-\S+)\/)?((base)?(vm)?-(\d+)-\S+)$/) {
+	return ('images', $5, $8, $2, $4, $6);
     }
 
     die "unable to parse nexenta volume name '$volname'\n";
