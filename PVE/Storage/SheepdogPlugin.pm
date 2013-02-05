@@ -144,6 +144,29 @@ sub path {
     return ($path, $vmid, $vtype);
 }
 
+my $find_free_diskname = sub {
+    my ($storeid, $scfg, $vmid) = @_;
+
+    my $sheepdog = sheepdog_ls($scfg, $storeid);
+    my $dat = $sheepdog->{sheepdog};
+    my $disk_ids = {};
+
+    foreach my $image (keys %$dat) {
+	my $volname = $dat->{$image}->{name};
+	if ($volname =~ m/(vm|base)-$vmid-disk-(\d+)/){
+	    $disk_ids->{$2} = 1;
+	}
+    }
+
+    for (my $i = 1; $i < 100; $i++) {
+	if (!$disk_ids->{$i}) {
+	    return "vm-$vmid-disk-$i";
+	}
+    }
+
+    die "unable to allocate an image name for VM $vmid in storage '$storeid'\n";
+};
+
 sub create_base {
     my ($class, $storeid, $scfg, $volname) = @_;
 
@@ -159,24 +182,10 @@ sub clone_image {
 sub alloc_image {
     my ($class, $storeid, $scfg, $vmid, $fmt, $name, $size) = @_;
 
-
     die "illegal name '$name' - sould be 'vm-$vmid-*'\n"
 	if  $name && $name !~ m/^vm-$vmid-/;
 
-    if (!$name) {
-	my $sheepdog = sheepdog_ls($scfg, $storeid);
-
-	for (my $i = 1; $i < 100; $i++) {
-	    my $tn = "vm-$vmid-disk-$i";
-	    if (!defined ($sheepdog->{$storeid}->{$tn})) {
-		$name = $tn;
-		last;
-	    }
-	}
-    }
-
-    die "unable to allocate an image name for VM $vmid in storage '$storeid'\n"
-	if !$name;
+    $name = &$find_free_diskname($storeid, $scfg, $vmid);
 
     my $cmd = &$collie_cmd($scfg, 'vdi', 'create', $name , "${size}KB");
 
