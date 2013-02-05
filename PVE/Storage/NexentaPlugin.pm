@@ -210,6 +210,34 @@ sub path {
     return ($path, $vmid, $vtype);
 }
 
+my $find_free_diskname = sub {
+    my ($storeid, $scfg, $vmid) = @_;
+
+    my $name = undef;
+    my $volumes = nexenta_list_zvol($scfg);
+	die "unable de get zvol list" if !$volumes;
+
+    my $disk_ids = {};
+    my $dat = $volumes->{$scfg->{pool}};
+
+    foreach my $image (keys %$dat) {
+        my $volname = $dat->{$image}->{name};
+        if ($volname =~ m/(vm|base)-$vmid-disk-(\d+)/){
+            $disk_ids->{$2} = 1;
+        }
+    }
+
+    #fix: can we search in $rbd hash key with a regex to find (vm|base) ?
+    for (my $i = 1; $i < 100; $i++) {
+        if (!$disk_ids->{$i}) {
+            return "vm-$vmid-disk-$i";
+        }
+    }
+
+    die "unable to allocate an image name for VM $vmid in storage '$storeid'\n"
+
+};
+
 sub create_base {
     my ($class, $storeid, $scfg, $volname) = @_;
 
@@ -228,25 +256,9 @@ sub alloc_image {
     die "unsupported format '$fmt'" if $fmt ne 'raw';
 
     die "illegal name '$name' - sould be 'vm-$vmid-*'\n"
-	if $name && $name !~ m/^vm-$vmid-/;
+        if $name && $name !~ m/^vm-$vmid-/;
 
-    my $nexentapool = $scfg->{'pool'};
-
-    if (!$name) {
-	my $volumes = nexenta_list_zvol($scfg);
-	die "unable de get zvol list" if !$volumes;
-
-	for (my $i = 1; $i < 100; $i++) {
-	    my $tn = "vm-$vmid-disk-$i";
-	    if (!defined ($volumes->{$nexentapool}->{$tn})) {
-		$name = $tn;
-		last;
-	    }
-	}
-    }
-
-    die "unable to allocate an image name for VM $vmid in storage '$storeid'\n"
-	if !$name;
+    $name = &$find_free_diskname($storeid, $scfg, $vmid);
 
     nexenta_create_zvol($scfg, $name, $size);
     nexenta_create_lu($scfg, $name);
