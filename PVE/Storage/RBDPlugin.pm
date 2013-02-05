@@ -252,7 +252,23 @@ sub create_base {
 sub clone_image {
     my ($class, $scfg, $storeid, $volname, $vmid) = @_;
 
-    die "not implemented";
+    my $snap = '__base__';
+
+    my ($vtype, $basename, $basevmid, undef, undef, $isBase) =
+        $class->parse_volname($volname);
+
+    die "clone_image onyl works on base images\n" if !$isBase;
+
+    my $name = &$find_free_diskname($storeid, $scfg, $vmid);
+
+    warn "clone $volname: $basename to $name\n";
+
+    my $newvol = "$basename/$name";
+
+    my $cmd = &$rbd_cmd($scfg, $storeid, 'clone', $basename, '--snap', $snap, $name);
+    run_command($cmd, errmsg => "rbd clone $basename' error", errfunc => sub {});
+
+    return $newvol;
 }
 
 my $find_free_diskname = sub {
