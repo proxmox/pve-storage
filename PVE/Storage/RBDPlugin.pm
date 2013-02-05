@@ -415,7 +415,8 @@ sub deactivate_volume {
 sub volume_size_info {
     my ($class, $scfg, $storeid, $volname, $timeout) = @_;
 
-    my ($size, undef) = rbd_volume_info($scfg, $storeid, $volname);
+    my ($vtype, $name, $vmid) = $class->parse_volname($volname);
+    my ($size, undef) = rbd_volume_info($scfg, $storeid, $name);
     return $size;
 }
 
