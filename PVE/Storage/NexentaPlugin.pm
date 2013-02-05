@@ -470,7 +470,9 @@ sub volume_snapshot_rollback {
 sub volume_snapshot_delete {
     my ($class, $scfg, $storeid, $volname, $snap, $running) = @_;
 
-    nexenta_request($scfg, 'destroy', 'snapshot', "$scfg->{pool}/$volname\@$snap", '');
+    my ($vtype, $name, $vmid) = $class->parse_volname($volname);
+
+    nexenta_request($scfg, 'destroy', 'snapshot', "$scfg->{pool}/$name\@$snap", '');
 }
 
 sub volume_has_feature {
