@@ -59,8 +59,8 @@ sub rbd_ls {
     my $parser = sub {
 	my $line = shift;
 
-	if ($line =~  m/^(vm-(\d+)-disk-\d+)\s+(\d+)(M|G|T)\s((\S+)\/(vm-\d+-\S+@\S+))?/) {
-	    my ($image, $owner, $size, $unit, $parent) = ($1, $2, $3, $4, $7);
+	if ($line =~  m/^((vm|base)-(\d+)-disk-\d+)\s+(\d+)(M|G|T)\s((\S+)\/((vm|base)-\d+-\S+@\S+))?/) {
+	    my ($image, $owner, $size, $unit, $parent) = ($1, $3, $4, $5, $8);
 
 	    $list->{$scfg->{pool}}->{$image} = {
 		name => $image,
