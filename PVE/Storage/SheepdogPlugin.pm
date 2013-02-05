@@ -279,8 +279,14 @@ sub list_images {
         foreach my $image (keys %$dat) {
 
             my $volname = $dat->{$image}->{name};
+            my $parent = $dat->{$image}->{parent};
 
-            my $volid = "$storeid:$volname";
+            my $volid = undef;
+            if ($parent && $parent ne $volname) {
+                $volid = "$storeid:$parent/$volname";
+            } else {
+                $volid = "$storeid:$volname";
+            }
 
             my $owner = $dat->{$volname}->{vmid};
             if ($vollist) {
