@@ -437,7 +437,9 @@ sub volume_snapshot {
 
     return 1 if $running;
 
-    my $cmd = &$rbd_cmd($scfg, $storeid, 'snap', 'create', '--snap', $snap, $volname);
+    my ($vtype, $name, $vmid) = $class->parse_volname($volname);
+
+    my $cmd = &$rbd_cmd($scfg, $storeid, 'snap', 'create', '--snap', $snap, $name);
     run_command($cmd, errmsg => "rbd snapshot $volname' error", errfunc => sub {});
     return undef;
 }
