@@ -432,7 +432,9 @@ sub deactivate_volume {
 sub volume_size_info {
     my ($class, $scfg, $storeid, $volname, $timeout) = @_;
 
-    return nexenta_get_zvol_size($scfg, "$scfg->{pool}/$volname"),
+    my ($vtype, $name, $vmid) = $class->parse_volname($volname);
+
+    return nexenta_get_zvol_size($scfg, "$scfg->{pool}/$name"),
 }
 
 sub volume_resize {
