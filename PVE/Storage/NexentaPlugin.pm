@@ -241,7 +241,32 @@ my $find_free_diskname = sub {
 sub create_base {
     my ($class, $storeid, $scfg, $volname) = @_;
 
-    die "not implemented";
+    my $snap = '__base__';
+
+    my ($vtype, $name, $vmid, $basename, $basevmid, $isBase) =
+        $class->parse_volname($volname);
+
+    die "create_base not possible with base image\n" if $isBase;
+
+#    die "volname '$volname' contains wrong information about parent $parent $basename\n"
+#        if $basename && (!$parent || $parent ne $basename."@".$snap);
+
+    my $newname = $name;
+    $newname =~ s/^vm-/base-/;
+
+    my $newvolname = $basename ? "$basename/$newname" : "$newname";
+
+    #we can't rename a nexenta volume, so clone it to a new volname
+    nexenta_request($scfg, 'create_snapshot', 'zvol', "$scfg->{pool}/$name", $snap, '');
+    nexenta_request($scfg, 'clone', 'zvol', "$scfg->{pool}/$name\@$snap", "$scfg->{pool}/$newname");
+    nexenta_create_lu($scfg, $newname);
+    nexenta_add_lun_mapping_entry($scfg, $newname);
+
+    my $running  = undef; #fixme : is create_base always offline ?
+
+    $class->volume_snapshot($scfg, $storeid, $newname, $snap, $running);
+
+    return $newvolname;
 }
 
 sub clone_image {
