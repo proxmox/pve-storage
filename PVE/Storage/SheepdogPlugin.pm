@@ -253,15 +253,18 @@ sub alloc_image {
 sub free_image {
     my ($class, $storeid, $scfg, $volname, $isBase) = @_;
 
-    my $snapshots = sheepdog_snapshot_ls($scfg, $volname);
+    my ($vtype, $name, $vmid, undef, undef, undef) =
+	$class->parse_volname($volname);
+
+    my $snapshots = sheepdog_snapshot_ls($scfg, $name);
     while (my ($snapname) = each %$snapshots) {
-	my $cmd = &$collie_cmd($scfg, 'vdi', 'delete' , '-s', $snapname, $volname);
-	run_command($cmd, errmsg => "sheepdog delete snapshot $snapname $volname' error");
+	my $cmd = &$collie_cmd($scfg, 'vdi', 'delete' , '-s', $snapname, $name);
+	run_command($cmd, errmsg => "sheepdog delete snapshot $snapname $name' error");
     }
 
-    my $cmd = &$collie_cmd($scfg, 'vdi', 'delete' , $volname);
+    my $cmd = &$collie_cmd($scfg, 'vdi', 'delete' , $name);
 
-    run_command($cmd, errmsg => "sheepdog delete $volname' error");
+    run_command($cmd, errmsg => "sheepdog delete $name' error");
 
     return undef;
 }
