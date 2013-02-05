@@ -523,7 +523,6 @@ sub vdisk_free {
 
 	my ($vtype, $name, $vmid, undef, undef, $isBase) = 
 	    $plugin->parse_volname($volname);
-
 	if ($isBase) {
 	    my $vollist = $plugin->list_images($storeid, $scfg);
 	    foreach my $info (@$vollist) {
@@ -542,7 +541,6 @@ sub vdisk_free {
 		}
 	    }
 	}
-
 	my $cleanup_worker = $plugin->free_image($storeid, $scfg, $volname, $isBase);
     });
 

@@ -109,16 +109,21 @@ sub nexenta_list_zvol {
 	my $pool = $values[0];
 	my $image = $values[1];
 	my $owner;
-	if ($image =~ m/^(vm-(\d+)-\S+)$/) {
-	    $owner = $2;
+
+	if ($image =~ m/^((vm|base)-(\d+)-\S+)$/) {
+	    $owner = $3;
 	}
 
 	my $props = nexenta_get_zvol_props($scfg, $zvol);
+	my $parent = $props->{origin};
+	if($parent && $parent =~ m/^$scfg->{pool}\/(\S+)$/){
+	    $parent = $1;
+	}
 
 	$list->{$pool}->{$image} = {
 	    name => $image,
 	    size => $props->{size_bytes},
-	    parent => $props->{origin},
+	    parent => $parent,
 	    format => 'raw',
 	    vmid => $owner
 	};
