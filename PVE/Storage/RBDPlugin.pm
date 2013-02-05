@@ -82,11 +82,20 @@ sub rbd_ls {
 }
 
 sub rbd_volume_info {
-    my ($scfg, $storeid, $volname) = @_;
+    my ($scfg, $storeid, $volname, $snap) = @_;
 
-    my $cmd = &$rbd_cmd($scfg, $storeid, 'info', $volname);
+    my $cmd = undef;
+
+    if($snap){
+       $cmd = &$rbd_cmd($scfg, $storeid, 'info', $volname, '--snap', $snap);
+    }else{
+       $cmd = &$rbd_cmd($scfg, $storeid, 'info', $volname);
+    }
+
     my $size = undef;
     my $parent = undef;
+    my $format = undef;
+    my $protected = undef;
 
     my $parser = sub {
 	my $line = shift;
@@ -95,12 +104,17 @@ sub rbd_volume_info {
 	    $size = $1 * rbd_unittobytes()->{$2} if ($1);
 	} elsif ($line =~ m/parent:\s(\S+)\/(\S+)/) {
 	    $parent = $2;
+	} elsif ($line =~ m/format:\s(\d+)/) {
+	    $format = $1;
+	} elsif ($line =~ m/protected:\s(\S+)/) {
+	    $protected = 1 if $1 eq "True";
 	}
+
     };
 
     run_command($cmd, errmsg => "rbd error", errfunc => sub {}, outfunc => $parser);
 
-    return ($size, $parent);
+    return ($size, $parent, $format, $protected);
 }
 
 sub addslashes {
@@ -197,7 +211,42 @@ sub path {
 sub create_base {
     my ($class, $storeid, $scfg, $volname) = @_;
 
-    die "not implemented";
+    my $snap = '__base__';
+
+    my ($vtype, $name, $vmid, $basename, $basevmid, $isBase) =
+        $class->parse_volname($volname);
+
+    die "create_base not possible with base image\n" if $isBase;
+
+    my ($size, $parent, $format, undef) = rbd_volume_info($scfg, $storeid, $name);
+    die "rbd volume info on '$name' failed\n" if !($size);
+
+    die "rbd image must be at format V2" if $format ne "2";
+
+    die "volname '$volname' contains wrong information about parent $parent $basename\n"
+        if $basename && (!$parent || $parent ne $basename."@".$snap);
+
+    my $newname = $name;
+    $newname =~ s/^vm-/base-/;
+
+    my $newvolname = $basename ? "$basename/$newname" : "$newname";
+
+    my $cmd = &$rbd_cmd($scfg, $storeid, 'rename', $name, $newname);
+    run_command($cmd, errmsg => "rbd rename $name' error", errfunc => sub {});
+
+    my $running  = undef; #fixme : is create_base always offline ?
+
+    $class->volume_snapshot($scfg, $storeid, $newname, $snap, $running);
+
+    my (undef, undef, undef, $protected) = rbd_volume_info($scfg, $storeid, $newname, $snap);
+
+    if (!$protected){
+	my $cmd = &$rbd_cmd($scfg, $storeid, 'snap', 'protect', $newname, '--snap', $snap);
+	run_command($cmd, errmsg => "rbd protect $newname snap $snap' error", errfunc => sub {});
+    }
+
+    return $newvolname;
+
 }
 
 sub clone_image {
