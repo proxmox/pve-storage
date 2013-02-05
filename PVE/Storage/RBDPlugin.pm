@@ -312,10 +312,22 @@ sub alloc_image {
 sub free_image {
     my ($class, $storeid, $scfg, $volname, $isBase) = @_;
 
-    my $cmd = &$rbd_cmd($scfg, $storeid, 'snap', 'purge',  $volname);
+    my ($vtype, $name, $vmid, undef, undef, undef) =
+	$class->parse_volname($volname);
+
+    if ($isBase) {
+	my $snap = '__base__';
+	my (undef, undef, undef, $protected) = rbd_volume_info($scfg, $storeid, $name, $snap);
+	if ($protected){
+	    my $cmd = &$rbd_cmd($scfg, $storeid, 'snap', 'unprotect', $name, '--snap', $snap);
+	    run_command($cmd, errmsg => "rbd unprotect $name snap $snap' error", errfunc => sub {});
+	}
+    }
+
+    my $cmd = &$rbd_cmd($scfg, $storeid, 'snap', 'purge',  $name);
     run_command($cmd, errmsg => "rbd snap purge $volname' error", outfunc => sub {}, errfunc => sub {});
 
-    $cmd = &$rbd_cmd($scfg, $storeid, 'rm', $volname);
+    $cmd = &$rbd_cmd($scfg, $storeid, 'rm', $name);
     run_command($cmd, errmsg => "rbd rm $volname' error", outfunc => sub {}, errfunc => sub {});
 
     return undef;
