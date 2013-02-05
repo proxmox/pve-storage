@@ -356,6 +356,9 @@ sub deactivate_volume {
 sub volume_size_info {
     my ($class, $scfg, $storeid, $volname, $timeout) = @_;
 
+    my ($vtype, $name, $vmid, $basename, $basevmid, $isBase) =
+	$class->parse_volname($volname);
+
     my $size = undef;
 
     my $cmd = &$collie_cmd($scfg, 'vdi', 'list', '-r');
@@ -363,7 +366,7 @@ sub volume_size_info {
     run_command($cmd, outfunc => sub {
         my $line = shift;
         $line = trim($line);
-        if ($line =~ /(=|c) $volname\s+(\d+)\s+(\d+)\s(\d+)\s(\d+)\s/) {
+        if ($line =~ /(=|c) $name\s+(\d+)\s+(\d+)\s(\d+)\s(\d+)\s/) {
             $size = $3;
 
         }
