@@ -208,6 +208,29 @@ sub path {
     return ($path, $vmid, $vtype);
 }
 
+my $find_free_diskname = sub {
+    my ($storeid, $scfg, $vmid) = @_;
+
+    my $rbd = rbd_ls($scfg, $storeid);
+    my $disk_ids = {};
+    my $dat = $rbd->{$scfg->{pool}};
+
+    foreach my $image (keys %$dat) {
+	my $volname = $dat->{$image}->{name};
+	if ($volname =~ m/(vm|base)-$vmid-disk-(\d+)/){
+	    $disk_ids->{$2} = 1;
+	}
+    }
+    #fix: can we search in $rbd hash key with a regex to find (vm|base) ?
+    for (my $i = 1; $i < 100; $i++) {
+        if (!$disk_ids->{$i}) {
+            return "vm-$vmid-disk-$i";
+        }
+    }
+
+    die "unable to allocate an image name for VM $vmid in storage '$storeid'\n";
+};
+
 sub create_base {
     my ($class, $storeid, $scfg, $volname) = @_;
 
@@ -270,29 +293,6 @@ sub clone_image {
 
     return $newvol;
 }
-
-my $find_free_diskname = sub {
-    my ($storeid, $scfg, $vmid) = @_;
-
-    my $rbd = rbd_ls($scfg, $storeid);
-    my $disk_ids = {};
-    my $dat = $rbd->{$scfg->{pool}};
-
-    foreach my $image (keys %$dat) {
-	my $volname = $dat->{$image}->{name};
-	if ($volname =~ m/(vm|base)-$vmid-disk-(\d+)/){
-	    $disk_ids->{$2} = 1;
-	}
-    }
-    #fix: can we search in $rbd hash key with a regex to find (vm|base) ?
-    for (my $i = 1; $i < 100; $i++) {
-        if (!$disk_ids->{$i}) {
-            return "vm-$vmid-disk-$i";
-        }
-    } 
-
-    die "unable to allocate an image name for VM $vmid in storage '$storeid'\n";
-};
 
 sub alloc_image {
     my ($class, $storeid, $scfg, $vmid, $fmt, $name, $size) = @_;
