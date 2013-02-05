@@ -59,11 +59,11 @@ sub sheepdog_ls {
     run_command($cmd, outfunc => sub {
         my $line = shift;
         $line = trim($line);
-	if ($line =~ /(=|c) (vm-(\d+)-\S+)\s+(\d+)\s+(\d+)\s(\d+)\s(\d+)\s(\d+)\s(\S+)\s(\d+)/) {
+	if ($line =~ /(=|c) ((vm|base)-(\d+)-\S+)\s+(\d+)\s+(\d+)\s(\d+)\s(\d+)\s(\d+)\s(\S+)\s(\d+)/) {
 	    my $image = $2;
-	    my $owner = $3;
-	    my $size = $4;
-	    my $idvdi = $9;
+	    my $owner = $4;
+	    my $size = $5;
+	    my $idvdi = $10;
 	    my $parentid = $relationship->{$idvdi}->{parent} if $relationship->{$idvdi}->{parent};
 	    my $parent = $relationship->{$parentid}->{name} if $parentid;
 	    $list->{$storeid}->{$image} = {
