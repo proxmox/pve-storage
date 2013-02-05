@@ -87,8 +87,8 @@ sub sheepdog_snapshot_ls {
     run_command($cmd, outfunc => sub {
         my $line = shift;
         $line = trim($line);
-	if ($line =~ /s\s(\S+)\s(\d+)\s(\d+)\s(\d+)\s(\d+)\s(\d+)\s(\S+)\s(\d+)\s(\S+)/) {
-	    $list->{$9} = 1;
+	if ($line =~ m/s $volname (\d+) (\d+) (\d+) (\d+) (\d+) (\S+) (\d+) (\S+)/) {
+	    $list->{$8} = 1;
 	}
     });
 
