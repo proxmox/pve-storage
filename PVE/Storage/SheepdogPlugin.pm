@@ -404,8 +404,11 @@ sub volume_snapshot {
 sub volume_snapshot_rollback {
     my ($class, $scfg, $storeid, $volname, $snap) = @_;
 
-    my $cmd = &$collie_cmd($scfg, 'vdi', 'rollback', '-s', $snap, $volname);
-    run_command($cmd, errmsg => "sheepdog snapshot $volname' error");
+    my ($vtype, $name, $vmid, $basename, $basevmid, $isBase) =
+        $class->parse_volname($volname);
+
+    my $cmd = &$collie_cmd($scfg, 'vdi', 'rollback', '-s', $snap, $name);
+    run_command($cmd, errmsg => "sheepdog snapshot $name' error");
 
 }
 
