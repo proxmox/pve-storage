@@ -528,11 +528,15 @@ sub vdisk_free {
 	    my $vollist = $plugin->list_images($storeid, $scfg);
 	    foreach my $info (@$vollist) {
 		my (undef, $tmpvolname) = parse_volume_id($info->{volid});
+		my $basename = undef;
+		my $basevmid = undef;
 
-		my (undef, undef, undef, $basename, $basevmid) = 
-		    $plugin->parse_volname($tmpvolname);
+		eval{
+		    (undef, undef, undef, $basename, $basevmid) = 
+			$plugin->parse_volname($tmpvolname);
+		};
 
-		if ($basename && $basevmid == $vmid && $basename eq $name) {
+		if ($basename && $basevmid && $basevmid == $vmid && $basename eq $name) {
 		    die "base volume '$volname' is still in use " .
 			"(use by '$tmpvolname')\n";
 		}
