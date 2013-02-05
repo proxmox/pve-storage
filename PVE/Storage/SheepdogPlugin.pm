@@ -216,7 +216,23 @@ sub create_base {
 sub clone_image {
     my ($class, $scfg, $storeid, $volname, $vmid) = @_;
 
-    die "not implemented";
+    my $snap = '__base__';
+
+    my ($vtype, $basename, $basevmid, undef, undef, $isBase) =
+	$class->parse_volname($volname);
+
+    die "clone_image only works on base images\n" if !$isBase;
+
+    my $name = &$find_free_diskname($storeid, $scfg, $vmid);
+
+    warn "clone $volname: $basename to $name\n";
+
+    my $newvol = "$basename/$name";
+
+    my $cmd = &$collie_cmd($scfg, 'vdi', 'clone', '-s', $snap, $basename, $name);
+    run_command($cmd, errmsg => "sheepdog clone $volname' error");
+
+    return $newvol;
 }
 
 sub alloc_image {
