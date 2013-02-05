@@ -440,7 +440,9 @@ sub volume_size_info {
 sub volume_resize {
     my ($class, $scfg, $storeid, $volname, $size, $running) = @_;
 
-    nexenta_request($scfg, 'set_child_prop', 'zvol', "$scfg->{pool}/$volname", 'volsize', ($size/1024) . 'KB');
+    my ($vtype, $name, $vmid) = $class->parse_volname($volname);
+
+    nexenta_request($scfg, 'set_child_prop', 'zvol', "$scfg->{pool}/$name", 'volsize', ($size/1024) . 'KB');
 }
 
 sub volume_snapshot {
