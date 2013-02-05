@@ -318,6 +318,13 @@ sub free_image {
     nexenta_delete_lu($scfg, $name);
     nexenta_delete_zvol($scfg, $name);
 
+    #if base volume, we delete also the original cloned volume
+    if ($isBase) {
+	$name =~ s/^base-/vm-/;
+	nexenta_delete_lu($scfg, $name);
+	nexenta_delete_zvol($scfg, $name);
+    }
+
     return undef;
 }
 
