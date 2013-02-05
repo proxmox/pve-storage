@@ -123,8 +123,8 @@ sub options {
 sub parse_volname {
     my ($class, $volname) = @_;
 
-    if ($volname =~ m/^(vm-(\d+)-\S+)$/) {
-	return ('images', $1, $2);
+    if ($volname =~ m/^((base-(\d+)-\S+)\/)?((base)?(vm)?-(\d+)-\S+)$/) {
+	return ('images', $4, $7, $2, $3, $5);
     }
 
     die "unable to parse rbd volume name '$volname'\n";
