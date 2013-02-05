@@ -417,8 +417,11 @@ sub volume_snapshot_delete {
 
     return 1 if $running;
 
-    my $cmd = &$collie_cmd($scfg, 'vdi', 'delete', '-s', $snap, $volname);
-    run_command($cmd, errmsg => "sheepdog snapshot $volname' error");
+    my ($vtype, $name, $vmid, $basename, $basevmid, $isBase) =
+	$class->parse_volname($volname);
+
+    my $cmd = &$collie_cmd($scfg, 'vdi', 'delete', '-s', $snap, $name);
+    run_command($cmd, errmsg => "sheepdog snapshot $name' error");
 
     return undef;
 }
