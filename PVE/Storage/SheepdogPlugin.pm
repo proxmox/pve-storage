@@ -392,7 +392,10 @@ sub volume_snapshot {
 
     return 1 if $running;
 
-    my $cmd = &$collie_cmd($scfg, 'vdi', 'snapshot', '-s', $snap, $volname);
+    my ($vtype, $name, $vmid, $basename, $basevmid, $isBase) =
+	$class->parse_volname($volname);
+
+    my $cmd = &$collie_cmd($scfg, 'vdi', 'snapshot', '-s', $snap, $name);
     run_command($cmd, errmsg => "sheepdog snapshot $volname' error");
 
     return undef;
