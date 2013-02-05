@@ -447,7 +447,9 @@ sub volume_snapshot {
 sub volume_snapshot_rollback {
     my ($class, $scfg, $storeid, $volname, $snap) = @_;
 
-    my $cmd = &$rbd_cmd($scfg, $storeid, 'snap', 'rollback', '--snap', $snap, $volname);
+    my ($vtype, $name, $vmid) = $class->parse_volname($volname);
+
+    my $cmd = &$rbd_cmd($scfg, $storeid, 'snap', 'rollback', '--snap', $snap, $name);
     run_command($cmd, errmsg => "rbd snapshot $volname to $snap' error", errfunc => sub {});
 }
 
