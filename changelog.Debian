@@ -1,6 +1,8 @@
 libpve-storage-perl (2.3-2) unstable; urgency=low
 
   * updates for new stable ceph release (0.56)
+  
+  * depend on libfile-chdir-perl
 
  -- Proxmox Support Team <support@proxmox.com>  Thu, 03 Jan 2013 11:46:07 +0100
 
