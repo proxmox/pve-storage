@@ -2,7 +2,7 @@ package PVE::Storage::Plugin;
 
 use strict;
 use warnings;
-use Cwd;
+use File::chdir;
 use File::Path;
 use PVE::Tools qw(run_command);
 use PVE::JSONSchema qw(get_standard_option);
@@ -506,10 +506,9 @@ sub clone_image {
 
     my $path = $class->path($scfg, $newvol);
 
-    # Note: we use relative paths, so we need to call chdir before qemu-img
-    my $oldcwd = cwd();
+    # Note: we use relative paths, so we need to call chdir before qemu-img  
     eval {
-	chdir $imagedir;
+	local $CWD = $imagedir;
 
 	my $cmd = ['/usr/bin/qemu-img', 'create', '-b', "../$basevmid/$basename", 
 		   '-f', 'qcow2', $path];
@@ -517,8 +516,6 @@ sub clone_image {
 	run_command($cmd);
     };
     my $err = $@;
-
-    chdir $oldcwd;
 
     die $err if $err;
 
