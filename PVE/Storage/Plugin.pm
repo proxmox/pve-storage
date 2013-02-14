@@ -683,16 +683,23 @@ sub volume_has_feature {
 
     my $features = {
         snapshot => { current => { qcow2 => 1}, snap => { qcow2 => 1} },
-        clone => { current => {qcow2 => 1, raw => 1, vmdk => 1} },
+        clone => { base => {qcow2 => 1, raw => 1, vmdk => 1} },
     };
 
-    if ($volname =~ m!^(\d+)/(\S+)$!) {
-        my ($vmid, $name) = ($1, $2);
-        my (undef, $format) = parse_name_dir($name);
-	my $snap = $snapname ? 'snap' : 'current';
-	return 1 if defined($features->{$feature}->{$snap}->{$format});
+    my ($vtype, $name, $vmid, $basename, $basevmid, $isBase) =
+	$class->parse_volname($volname);
 
+    my (undef, $format) = parse_name_dir($name);
+
+    my $key = undef;
+    if($snapname){
+        $key = $snapname
+    }else{
+        $key =  $isBase ? 'base' : 'current';
     }
+
+    return 1 if defined($features->{$feature}->{$key}->{$format});
+
     return undef;
 }
 
