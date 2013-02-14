@@ -536,7 +536,7 @@ sub vdisk_free {
 			$plugin->parse_volname($tmpvolname);
 		};
 
-		if ($basename && $basevmid && $basevmid == $vmid && $basename eq $name) {
+		if ($basename && defined($basevmid) && $basevmid == $vmid && $basename eq $name) {
 		    die "base volume '$volname' is still in use " .
 			"(use by '$tmpvolname')\n";
 		}
