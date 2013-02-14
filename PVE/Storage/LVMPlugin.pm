@@ -453,6 +453,21 @@ sub volume_snapshot_delete {
 sub volume_has_feature {
     my ($class, $scfg, $feature, $storeid, $volname, $snapname, $running) = @_;
 
+    my $features = {
+	copy => { base => 1, current => 1},
+    };
+
+    my ($vtype, $name, $vmid, $basename, $basevmid, $isBase) =
+	$class->parse_volname($volname);
+
+    my $key = undef;
+    if($snapname){
+	$key = $snapname
+    }else{
+	$key =  $isBase ? 'base' : 'current';
+    }
+    return 1 if $features->{$feature}->{$key};
+
     return undef;
 }
 
