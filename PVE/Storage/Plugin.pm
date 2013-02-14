@@ -684,6 +684,9 @@ sub volume_has_feature {
     my $features = {
         snapshot => { current => { qcow2 => 1}, snap => { qcow2 => 1} },
         clone => { base => {qcow2 => 1, raw => 1, vmdk => 1} },
+        copy => { base => {qcow2 => 1, raw => 1, vmdk => 1},
+		  current => {qcow2 => 1, raw => 1, vmdk => 1},
+		  snap => {qcow2 => 1} },
     };
 
     my ($vtype, $name, $vmid, $basename, $basevmid, $isBase) =
