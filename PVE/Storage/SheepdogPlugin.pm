@@ -440,7 +440,7 @@ sub volume_has_feature {
 
     my $key = undef;
     if($snapname){
-	$key = $snapname
+	$key = 'snap';
     }else{
 	$key =  $isBase ? 'base' : 'current';
     }
