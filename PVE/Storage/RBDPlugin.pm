@@ -469,9 +469,10 @@ sub volume_has_feature {
     my ($class, $scfg, $feature, $storeid, $volname, $snapname, $running) = @_;
 
    my $features = {
-        snapshot => { current => 1, snap => 1},
-        clone => { base => 1},
-        copy => { base => 1, current => 1, snap => 1},
+	snapshot => { current => 1, snap => 1},
+	clone => { base => 1},
+	template => { current => 1},
+	copy => { base => 1, current => 1, snap => 1},
     };
 
     my ($vtype, $name, $vmid, $basename, $basevmid, $isBase) =

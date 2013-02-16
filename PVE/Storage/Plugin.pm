@@ -682,9 +682,10 @@ sub volume_has_feature {
     my ($class, $scfg, $feature, $storeid, $volname, $snapname, $running) = @_;
 
     my $features = {
-        snapshot => { current => { qcow2 => 1}, snap => { qcow2 => 1} },
-        clone => { base => {qcow2 => 1, raw => 1, vmdk => 1} },
-        copy => { base => {qcow2 => 1, raw => 1, vmdk => 1},
+	snapshot => { current => { qcow2 => 1}, snap => { qcow2 => 1} },
+	clone => { base => {qcow2 => 1, raw => 1, vmdk => 1} },
+	template => { current => {qcow2 => 1, raw => 1, vmdk => 1} },
+	copy => { base => {qcow2 => 1, raw => 1, vmdk => 1},
 		  current => {qcow2 => 1, raw => 1, vmdk => 1},
 		  snap => {qcow2 => 1} },
     };
