@@ -23,10 +23,21 @@ my $rbd_cmd = sub {
     my $monhost = $scfg->{monhost};
     $monhost =~ s/;/,/g;
 
-    my $cmd = ['/usr/bin/rbd', '-p', $scfg->{pool}, '-m', $monhost, '-n', 
-	       "client.$scfg->{username}", 
-	       '--keyring', "/etc/pve/priv/ceph/${storeid}.keyring", 
-	       '--auth_supported', $scfg->{authsupported}, $op];
+    my $keyring = "/etc/pve/priv/ceph/${storeid}.keyring";
+    my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
+    my $username =  $scfg->{username} ? $scfg->{username} : 'admin';
+
+    my $cmd = ['/usr/bin/rbd', '-p', $pool, '-m', $monhost]; 
+
+    if(-e $keyring){
+	push @$cmd, '-n', "client.$username";
+	push @$cmd, '--keyring', $keyring;
+	push @$cmd, '--auth_supported', 'cephx';
+    }else{
+	push @$cmd, '--auth_supported', 'none';
+    }
+
+    push @$cmd, $op;
 
     push @$cmd, @options if scalar(@options);
 
@@ -39,10 +50,21 @@ my $rados_cmd = sub {
     my $monhost = $scfg->{monhost};
     $monhost =~ s/;/,/g;
 
-    my $cmd = ['/usr/bin/rados', '-p', $scfg->{pool}, '-m', $monhost, '-n', 
-	       "client.$scfg->{username}", 
-	       '--keyring', "/etc/pve/priv/ceph/${storeid}.keyring", 
-	       '--auth_supported', $scfg->{authsupported}, $op];
+    my $keyring = "/etc/pve/priv/ceph/${storeid}.keyring";
+    my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
+    my $username =  $scfg->{username} ? $scfg->{username} : 'admin';
+
+    my $cmd = ['/usr/bin/rados', '-p', $pool, '-m', $monhost];
+
+    if(-e $keyring){
+	push @$cmd, '-n', "client.$username";
+	push @$cmd, '--keyring', $keyring;
+	push @$cmd, '--auth_supported', 'cephx';
+    }else{
+	push @$cmd, '--auth_supported', 'none';
+    }
+
+    push @$cmd, $op;
 
     push @$cmd, @options if scalar(@options);
 
@@ -53,6 +75,7 @@ sub rbd_ls {
     my ($scfg, $storeid) = @_;
 
     my $cmd = &$rbd_cmd($scfg, $storeid, 'ls', '-l');
+    my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
 
     my $list = {};
 
@@ -62,7 +85,7 @@ sub rbd_ls {
 	if ($line =~  m/^((vm|base)-(\d+)-disk-\d+)\s+(\d+)(M|G|T)\s((\S+)\/((vm|base)-\d+-\S+@\S+))?/) {
 	    my ($image, $owner, $size, $unit, $parent) = ($1, $3, $4, $5, $8);
 
-	    $list->{$scfg->{pool}}->{$image} = {
+	    $list->{$pool}->{$image} = {
 		name => $image,
 		size => $size*rbd_unittobytes()->{$unit},
 		parent => $parent,
@@ -174,9 +197,8 @@ sub options {
 	nodes => { optional => 1 },
 	disable => { optional => 1 },
 	monhost => { fixed => 1 },
-	pool => { fixed => 1 },
-	username => { fixed => 1 },
-	authsupported => { fixed => 1 },
+	pool => { optional => 1 },
+	username => { optional => 1 },
 	content => { optional => 1 },
     };
 }
@@ -199,11 +221,17 @@ sub path {
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
 
     my $monhost = addslashes($scfg->{monhost});
-    my $pool = $scfg->{pool};
-    my $username = $scfg->{username};
-    my $authsupported = addslashes($scfg->{authsupported});
-    
-    my $path = "rbd:$pool/$name:id=$username:auth_supported=$authsupported:keyring=/etc/pve/priv/ceph/$storeid.keyring:mon_host=$monhost";
+    my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
+    my $username =  $scfg->{username} ? $scfg->{username} : 'admin';
+
+    my $path = "rbd:$pool/$name:mon_host=$monhost";
+    my $keyring = "/etc/pve/priv/ceph/${storeid}.keyring";
+
+    if(-e $keyring ){
+        $path .= ":id=$username:auth_supported=cephx:keyring=$keyring";
+    }else{
+	$path .= ":auth_supported=none";
+    }
 
     return ($path, $vmid, $vtype);
 }
@@ -212,8 +240,9 @@ my $find_free_diskname = sub {
     my ($storeid, $scfg, $vmid) = @_;
 
     my $rbd = rbd_ls($scfg, $storeid);
+    my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
     my $disk_ids = {};
-    my $dat = $rbd->{$scfg->{pool}};
+    my $dat = $rbd->{$pool};
 
     foreach my $image (keys %$dat) {
 	my $volname = $dat->{$image}->{name};
@@ -337,10 +366,11 @@ sub list_images {
     my ($class, $storeid, $scfg, $vmid, $vollist, $cache) = @_;
 
     $cache->{rbd} = rbd_ls($scfg, $storeid) if !$cache->{rbd};
+    my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
 
     my $res = [];
 
-    if (my $dat = $cache->{rbd}->{$scfg->{pool}}) {
+    if (my $dat = $cache->{rbd}->{$pool}) {
         foreach my $image (keys %$dat) {
 
             my $volname = $dat->{$image}->{name};
