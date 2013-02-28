@@ -2,6 +2,8 @@ libpve-storage-perl (2.3-4) unstable; urgency=low
 
   * rbd: rework pool - username - auth_supported options
   
+  * API: fix access rights: use $rpcenv->check_volume_access()
+  
  -- Proxmox Support Team <support@proxmox.com>  Thu, 28 Feb 2013 06:41:58 +0100
 
 libpve-storage-perl (2.3-3) unstable; urgency=low

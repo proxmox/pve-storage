@@ -58,13 +58,17 @@ __PACKAGE__->register_method ({
     code => sub {
 	my ($param) = @_;
 
+	my $rpcenv = PVE::RPCEnvironment::get();
+
+	my $authuser = $rpcenv->get_user();
+
 	my $cts = $param->{content} ? [ $param->{content} ] : [ @ctypes ];
 
 	my $storeid = $param->{storage};
 
 	my $cfg = cfs_read_file("storage.cfg");
 
-	my $scfg = PVE::Storage::storage_config ($cfg, $storeid);
+	my $scfg = PVE::Storage::storage_config($cfg, $storeid);
 
 	my $res = [];
 	foreach my $ct (@$cts) {
@@ -82,6 +86,8 @@ __PACKAGE__->register_method ({
 	    next if !$data || !$data->{$storeid};
 
 	    foreach my $item (@{$data->{$storeid}}) {
+		eval { $rpcenv->check_volume_access($authuser, $cfg, undef, $item->{volid}); };
+		next if $@;
 		$item->{content} = $ct;
 		push @$res, $item;
 	    }
@@ -197,7 +203,7 @@ __PACKAGE__->register_method ({
     method => 'GET',
     description => "Get volume attributes",
     permissions => { 
-	description => "You need 'Datastore.Audit' or 'Datastore.AllocateSpace' privilege on the storage.",
+	description => "You need read access for the volume.",
 	user => 'all',
     },
     protected => 1,
@@ -222,9 +228,9 @@ __PACKAGE__->register_method ({
 
 	my ($volid, $storeid) = &$real_volume_id($param->{storage}, $param->{volume});
 
-	$rpcenv->check_any($authuser, "/storage/$storeid", ['Datastore.Audit', 'Datastore.AllocateSpace']);
-
 	my $cfg = cfs_read_file('storage.cfg');
+
+	$rpcenv->check_volume_access($authuser, $cfg, undef, $volid);
 
 	my $path = PVE::Storage::path($cfg, $volid);
 	my ($size, $format, $used) = PVE::Storage::file_size_info ($path);
