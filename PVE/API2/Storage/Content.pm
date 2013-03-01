@@ -249,7 +249,7 @@ __PACKAGE__->register_method ({
     method => 'DELETE',
     description => "Delete volume",
     permissions => { 
-	description => "You need 'Datastore.Allocate' privilege on the storage ('Datastore.AllocateSpace' is not enough).",
+	description => "You need 'Datastore.Allocate' privilege on the storage (or 'Datastore.AllocateSpace' for backup volumes if you have VM.Backup privilege on the VM).",
 	user => 'all',
     },
     protected => 1,
@@ -272,11 +272,17 @@ __PACKAGE__->register_method ({
 	my $rpcenv = PVE::RPCEnvironment::get();
 	my $authuser = $rpcenv->get_user();
 
-	my ($volid, $storeid) = &$real_volume_id($param->{storage}, $param->{volume});
-	
-	$rpcenv->check($authuser, "/storage/$storeid", ['Datastore.Allocate']);
-
 	my $cfg = cfs_read_file('storage.cfg');
+
+	my ($volid, $storeid) = &$real_volume_id($param->{storage}, $param->{volume});
+
+	my ($path, $ownervm, $vtype) = PVE::Storage::path($cfg, $volid);
+	if ($vtype eq 'backup' && $ownervm) {
+	    $rpcenv->check($authuser, "/storage/$storeid", ['Datastore.AllocateSpace']);
+	    $rpcenv->check($authuser, "/vms/$ownervm", ['VM.Backup']);
+	} else {
+	    $rpcenv->check($authuser, "/storage/$storeid", ['Datastore.Allocate']);
+	}
 
 	PVE::Storage::vdisk_free ($cfg, $volid);
 

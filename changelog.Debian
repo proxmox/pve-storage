@@ -1,3 +1,11 @@
+libpve-storage-perl (2.3-5) unstable; urgency=low
+
+  * Allow removal of backup volumes if the user has
+    Datastore.AllocateSpace privilege on the storage and VM.Backup
+    privilege on the VM
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 01 Mar 2013 06:03:24 +0100
+
 libpve-storage-perl (2.3-4) unstable; urgency=low
 
   * rbd: rework pool - username - auth_supported options
