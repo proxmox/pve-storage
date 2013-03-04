@@ -378,7 +378,14 @@ __PACKAGE__->register_method ({
 	    print "finished file import successfully\n";
 	};
 
-	return $rpcenv->fork_worker('imgcopy', undef, $user, $worker);
+	my $upid = $rpcenv->fork_worker('imgcopy', undef, $user, $worker);
+
+	# apache removes the temporary file on return, so we need
+	# to wait here to make sure the worker process starts and
+	# opens the file before it gets removed.
+	sleep(1);
+
+	return $upid;
    }});
     
 1;
