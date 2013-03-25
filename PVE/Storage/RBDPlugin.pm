@@ -332,7 +332,7 @@ sub alloc_image {
 
     $name = &$find_free_diskname($storeid, $scfg, $vmid);
 
-    my $cmd = &$rbd_cmd($scfg, $storeid, 'create', '--format' , 2, '--size', ($size/1024), $name);
+    my $cmd = &$rbd_cmd($scfg, $storeid, 'create', '--format' , 2, '--size', int(($size+1023)/1024), $name);
     run_command($cmd, errmsg => "rbd create $name' error", errfunc => sub {});
 
     return $name;
