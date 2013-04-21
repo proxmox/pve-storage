@@ -17,6 +17,14 @@ sub rbd_unittobytes {
   }
 }
 
+my $add_pool_to_disk = sub {
+    my ($scfg, $disk) = @_;
+
+    my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
+
+    return "$pool/$disk";
+};
+
 my $rbd_cmd = sub {
     my ($scfg, $storeid, $op, @options) = @_;
 
@@ -283,7 +291,7 @@ sub create_base {
 
     my $newvolname = $basename ? "$basename/$newname" : "$newname";
 
-    my $cmd = &$rbd_cmd($scfg, $storeid, 'rename', $name, $newname);
+    my $cmd = &$rbd_cmd($scfg, $storeid, 'rename', &$add_pool_to_disk($scfg, $name), &$add_pool_to_disk($scfg, $newname));
     run_command($cmd, errmsg => "rbd rename $name' error", errfunc => sub {});
 
     my $running  = undef; #fixme : is create_base always offline ?
