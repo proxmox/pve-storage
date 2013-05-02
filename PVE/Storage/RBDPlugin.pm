@@ -224,9 +224,10 @@ sub parse_volname {
 }
 
 sub path {
-    my ($class, $scfg, $volname, $storeid) = @_;
+    my ($class, $scfg, $volname, $storeid, $snapname) = @_;
 
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
+    $name .= '@'.$snapname if $snapname;
 
     my $monhost = addslashes($scfg->{monhost});
     my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
