@@ -131,13 +131,14 @@ sub parse_volname {
 }
 
 sub path {
-    my ($class, $scfg, $volname, $storeid) = @_;
+    my ($class, $scfg, $volname, $storeid, $snapname) = @_;
 
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
 
     my $portal = $scfg->{portal};
     my ($server, $port) = split(':', $portal);
     $port = 7000 if !$port;
+    $name .= ':'.$snapname if $snapname;
 
     my $path = "sheepdog:$server:$port:$name";
 
