@@ -348,14 +348,14 @@ sub path_to_volume_id {
 }
 
 sub path {
-    my ($cfg, $volid) = @_;
+    my ($cfg, $volid, $snapname) = @_;
 
     my ($storeid, $volname) = parse_volume_id($volid);
 
     my $scfg = storage_config($cfg, $storeid);
 
     my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
-    my ($path, $owner, $vtype) = $plugin->path($scfg, $volname, $storeid);
+    my ($path, $owner, $vtype) = $plugin->path($scfg, $volname, $storeid, $snapname);
     return wantarray ? ($path, $owner, $vtype) : $path;
 }
 
