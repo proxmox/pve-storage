@@ -1,3 +1,10 @@
+libpve-storage-perl (3.0-3) unstable; urgency=low
+
+  * add snapsname parameter to path (required for qemu-img convert, for
+    rbd & sheepdog currently)
+
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 02 May 2013 06:36:33 +0200
+
 libpve-storage-perl (3.0-2) unstable; urgency=low
 
   * rdb related fixes
