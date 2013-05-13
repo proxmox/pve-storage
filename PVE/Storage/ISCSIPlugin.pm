@@ -41,16 +41,20 @@ sub iscsi_session_list {
 
     my $res = {};
 
-    run_command($cmd, outfunc => sub {
-	my $line = shift;
-
-	if ($line =~ m/^tcp:\s+\[(\S+)\]\s+\S+\s+(\S+)\s*$/) {
-	    my ($session, $target) = ($1, $2);
-	    # there can be several sessions per target (multipath)
-	    push @{$res->{$target}}, $session;
-
-	}
-    });
+    eval {
+	run_command($cmd, errmsg => 'iscsi session scan failed', outfunc => sub {
+	    my $line = shift;
+	    
+	    if ($line =~ m/^tcp:\s+\[(\S+)\]\s+\S+\s+(\S+)\s*$/) {
+		my ($session, $target) = ($1, $2);
+		# there can be several sessions per target (multipath)
+		push @{$res->{$target}}, $session;   
+	    }
+	});
+    };
+    if (my $err = $@) {
+	die $err if $err !~ m/: No active sessions.$/i;
+    }
 
     return $res;
 }
