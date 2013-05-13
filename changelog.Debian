@@ -1,3 +1,9 @@
+libpve-storage-perl (3.0-4) unstable; urgency=low
+
+  * fix iscsi session scan
+
+ -- Proxmox Support Team <support@proxmox.com>  Mon, 13 May 2013 08:04:33 +0200
+
 libpve-storage-perl (3.0-3) unstable; urgency=low
 
   * add snapsname parameter to path (required for qemu-img convert, for
