@@ -1,3 +1,11 @@
+libpve-storage-perl (3.0-5) unstable; urgency=low
+
+  * extend storage list API with useful parameters for clone
+  
+  * rbd : clone volume to same pool that base volume
+
+ -- Proxmox Support Team <support@proxmox.com>  Tue, 14 May 2013 09:58:29 +0200
+
 libpve-storage-perl (3.0-4) unstable; urgency=low
 
   * fix iscsi session scan
