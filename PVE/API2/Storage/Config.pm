@@ -54,7 +54,6 @@ __PACKAGE__->register_method ({
 		enum => $storage_type_enum,
 		optional => 1,
 	    },
-
 	},
     },
     returns => {

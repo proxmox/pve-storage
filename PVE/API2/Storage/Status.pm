@@ -50,6 +50,16 @@ __PACKAGE__->register_method ({
 		type => 'string', format => 'pve-storage-content',
 		optional => 1,
 	    },
+	    enabled => {
+		description => "Only list stores which are enabled (not disabled in config).",
+		type => 'boolean',
+		optional => 0,
+	    },
+	    target => get_standard_option('pve-node', {
+		description => "If target is different to 'node', we only lists shared storages which " .
+		    "content is accessible on this 'node' and the specified 'target' node.",
+		optional => 1,
+	    }),
 	},
     },
     returns => {
@@ -66,6 +76,12 @@ __PACKAGE__->register_method ({
 	my $rpcenv = PVE::RPCEnvironment::get();
 	my $authuser = $rpcenv->get_user();
 
+	my $localnode = PVE::INotify::nodename();
+
+	my $target = $param->{target};
+
+	undef $target if $target && ($target eq $localnode || $target eq 'localhost');
+	
 	my $cfg = cfs_read_file("storage.cfg");
 
 	my $info = PVE::Storage::storage_info($cfg, $param->{content});
@@ -80,6 +96,20 @@ __PACKAGE__->register_method ({
 	    my $privs = [ 'Datastore.Audit', 'Datastore.AllocateSpace' ];
 	    next if !$rpcenv->check_any($authuser, "/storage/$storeid", $privs, 1);
 	    next if $param->{storage} && $param->{storage} ne $storeid;
+
+	    my $scfg = PVE::Storage::storage_config($cfg, $storeid);
+
+	    next if $param->{enabled} && $scfg->{disable};
+ 
+	    if ($target) {
+		# check if storage content is accessible on local node and specified target node
+		# we use this on the Clone GUI
+
+		next if !$scfg->{shared};
+		next if !PVE::Storage::storage_check_node($cfg, $storeid, undef, 1);
+		next if !PVE::Storage::storage_check_node($cfg, $storeid, $target, 1);
+	    }
+
 	    $res->{$storeid} = $info->{$storeid};
 	}
 
