@@ -53,7 +53,8 @@ __PACKAGE__->register_method ({
 	    enabled => {
 		description => "Only list stores which are enabled (not disabled in config).",
 		type => 'boolean',
-		optional => 0,
+		optional => 1,
+		default => 0,
 	    },
 	    target => get_standard_option('pve-node', {
 		description => "If target is different to 'node', we only lists shared storages which " .

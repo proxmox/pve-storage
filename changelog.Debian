@@ -1,3 +1,9 @@
+libpve-storage-perl (3.0-6) unstable; urgency=low
+
+  * fix bug from previous commit (parameter 'enabled' is optional) 
+
+ -- Proxmox Support Team <support@proxmox.com>  Tue, 14 May 2013 11:24:38 +0200
+
 libpve-storage-perl (3.0-5) unstable; urgency=low
 
   * extend storage list API with useful parameters for clone
