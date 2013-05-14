@@ -326,7 +326,7 @@ sub clone_image {
 
     my $newvol = "$basename/$name";
 
-    my $cmd = &$rbd_cmd($scfg, $storeid, 'clone', $basename, '--snap', $snap, $name);
+    my $cmd = &$rbd_cmd($scfg, $storeid, 'clone', &$add_pool_to_disk($scfg, $basename), '--snap', $snap, &$add_pool_to_disk($scfg, $name));
     run_command($cmd, errmsg => "rbd clone $basename' error", errfunc => sub {});
 
     return $newvol;
