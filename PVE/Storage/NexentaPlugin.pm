@@ -28,7 +28,7 @@ sub nexenta_request {
     my $token = encode_base64("$scfg->{login}:$scfg->{password}");
     $req->header(Authorization => "Basic $token");
 
-    my $ua = LWP::UserAgent->new; # You might want some options here
+    my $ua = LWP::UserAgent->new(ssl_opts => { verify_hostname => 0 });
     my $res = $ua->request($req);
     die $res->content if !$res->is_success;
 
