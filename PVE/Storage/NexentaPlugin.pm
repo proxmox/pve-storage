@@ -112,6 +112,8 @@ sub nexenta_list_zvol {
 
 	if ($image =~ m/^((vm|base)-(\d+)-\S+)$/) {
 	    $owner = $3;
+	} else {
+	    next;
 	}
 
 	my $props = nexenta_get_zvol_props($scfg, $zvol);
