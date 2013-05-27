@@ -42,7 +42,10 @@ sub nexenta_request {
 sub nexenta_get_zvol_size {
     my ($scfg, $zvol) = @_;
 
-    return nexenta_request($scfg, 'get_child_prop', 'zvol', $zvol, 'size_bytes');
+    my $ret = nexenta_request($scfg, 'get_child_prop', 'zvol', $zvol, 'size_bytes');
+    $ret =~ m/^(\d+)$/ or die "size is not valid";
+    my $size = $1;
+    return $size;
 }
 
 sub nexenta_get_zvol_props {
