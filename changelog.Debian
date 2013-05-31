@@ -1,3 +1,11 @@
+libpve-storage-perl (3.0-7) unstable; urgency=low
+
+  * be more verebose on rbd commands to get progress
+
+  * various fixes for nexenta plugin
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 31 May 2013 11:51:43 +0200
+
 libpve-storage-perl (3.0-6) unstable; urgency=low
 
   * fix bug from previous commit (parameter 'enabled' is optional) 
