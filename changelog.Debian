@@ -1,3 +1,9 @@
+libpve-storage-perl (3.0-8) unstable; urgency=low
+
+  * rdb: --format is deprecated, use --image-format instead
+
+ -- Proxmox Support Team <support@proxmox.com>  Tue, 04 Jun 2013 13:09:49 +0200
+
 libpve-storage-perl (3.0-7) unstable; urgency=low
 
   * be more verebose on rbd commands to get progress
