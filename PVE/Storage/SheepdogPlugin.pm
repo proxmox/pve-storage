@@ -127,7 +127,7 @@ sub parse_volname {
 	return ('images', $4, $7, $2, $3, $5);
     }
 
-    die "unable to parse rbd volume name '$volname'\n";
+    die "unable to parse sheepdog volume name '$volname'\n";
 }
 
 sub path {
@@ -179,8 +179,8 @@ sub create_base {
     die "create_base not possible with base image\n" if $isBase;
 
     my $sheepdog = sheepdog_ls($scfg, $storeid);
-    die "sheepdog volume info on '$name' failed\n" if !($sheepdog->{sheepdog}->{$name});
-    my $parent = $sheepdog->{sheepdog}->{$name}->{parent};
+    die "sheepdog volume info on '$name' failed\n" if !($sheepdog->{$storeid}->{$name});
+    my $parent = $sheepdog->{$storeid}->{$name}->{parent};
 
     die "volname '$volname' contains wrong information about parent $parent $basename\n"
         if $basename && (!$parent || $parent ne $basename);
