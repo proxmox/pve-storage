@@ -62,7 +62,7 @@ sub sheepdog_ls {
 	if ($line =~ /(=|c) ((vm|base)-(\d+)-\S+)\s+(\d+)\s+(\d+)\s(\d+)\s(\d+)\s(\d+)\s(\S+)\s(\d+)/) {
 	    my $image = $2;
 	    my $owner = $4;
-	    my $size = $5;
+	    my $size = $6;
 	    my $idvdi = $10;
 	    my $parentid = $relationship->{$idvdi}->{parent} if $relationship->{$idvdi}->{parent};
 	    my $parent = $relationship->{$parentid}->{name} if $parentid;
@@ -149,7 +149,7 @@ my $find_free_diskname = sub {
     my ($storeid, $scfg, $vmid) = @_;
 
     my $sheepdog = sheepdog_ls($scfg, $storeid);
-    my $dat = $sheepdog->{sheepdog};
+    my $dat = $sheepdog->{$storeid};
     my $disk_ids = {};
 
     foreach my $image (keys %$dat) {
