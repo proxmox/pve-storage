@@ -25,6 +25,7 @@ use PVE::Storage::RBDPlugin;
 use PVE::Storage::SheepdogPlugin;
 use PVE::Storage::ISCSIDirectPlugin;
 use PVE::Storage::NexentaPlugin;
+use PVE::Storage::GlusterfsPlugin;
 
 # load and initialize all plugins
 PVE::Storage::DirPlugin->register();
@@ -35,6 +36,7 @@ PVE::Storage::RBDPlugin->register();
 PVE::Storage::SheepdogPlugin->register();
 PVE::Storage::ISCSIDirectPlugin->register();
 PVE::Storage::NexentaPlugin->register();
+PVE::Storage::GlusterfsPlugin->register();
 PVE::Storage::Plugin->init();
 
 my $UDEVADM = '/sbin/udevadm';
