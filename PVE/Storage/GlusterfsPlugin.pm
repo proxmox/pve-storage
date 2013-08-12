@@ -14,9 +14,9 @@ use base qw(PVE::Storage::Plugin);
 # Glusterfs helper functions
 
 sub read_proc_mounts {
-    
+
     local $/; # enable slurp mode
-    
+
     my $data = "";
     if (my $fd = IO::File->new("/proc/mounts", "r")) {
 	$data = <$fd>;
@@ -35,7 +35,7 @@ sub glusterfs_is_mounted {
 
     if ($mountdata =~ m|^$source/?\s$mountpoint\sfuse.glusterfs|m) {
 	return $mountpoint;
-    } 
+    }
 
     return undef;
 }
@@ -62,7 +62,7 @@ sub plugindata {
 		     { images => 1 }],
 	format => [ { raw => 1, qcow2 => 1, vmdk => 1 } , 'raw' ],
     };
-}   
+}
 
 sub properties {
     return {
@@ -127,7 +127,7 @@ sub status {
 
     my $volume = $scfg->{volume};
 
-    return undef if !glusterfs_is_mounted($server, $volume, $path, $cache->{mountdata}); 
+    return undef if !glusterfs_is_mounted($server, $volume, $path, $cache->{mountdata});
 
     return $class->SUPER::status($storeid, $scfg, $cache);
 }
@@ -141,8 +141,8 @@ sub activate_storage {
     my $server = $scfg->{server} ? $scfg->{server} : 'localhost';
     my $volume = $scfg->{volume};
 
-    if (!glusterfs_is_mounted($server, $volume, $path, $cache->{mountdata})) {    
-		    
+    if (!glusterfs_is_mounted($server, $volume, $path, $cache->{mountdata})) {
+
 	mkpath $path;
 
 	die "unable to activate storage '$storeid' - " .
@@ -163,9 +163,9 @@ sub deactivate_storage {
     my $server = $scfg->{server} ? $scfg->{server} : 'localhost';
     my $volume = $scfg->{volume};
 
-    if (glusterfs_is_mounted($server, $volume, $path, $cache->{mountdata})) {    
+    if (glusterfs_is_mounted($server, $volume, $path, $cache->{mountdata})) {
 	my $cmd = ['/bin/umount', $path];
-	run_command($cmd, errmsg => 'umount error'); 
+	run_command($cmd, errmsg => 'umount error');
     }
 }
 

@@ -421,7 +421,7 @@ sub create_base {
     # this only works for file based storage types
     die "storage definintion has no path\n" if !$scfg->{path};
 
-    my ($vtype, $name, $vmid, $basename, $basevmid, $isBase) = 
+    my ($vtype, $name, $vmid, $basename, $basevmid, $isBase) =
 	$class->parse_volname($volname);
 
     die "create_base on wrong vtype '$vtype'\n" if $vtype ne 'images';
@@ -446,7 +446,7 @@ sub create_base {
 
     die "file '$newpath' already exists\n" if -f $newpath;
 
-    rename($path, $newpath) || 
+    rename($path, $newpath) ||
 	die "rename '$path' to '$newpath' failed - $!\n";
 
     # We try to protect base volume
@@ -456,7 +456,7 @@ sub create_base {
     # also try to set immutable flag
     eval { run_command(['/usr/bin/chattr', '+i', $newpath]); };
     warn $@ if $@;
-    
+
     return $newvolname;
 }
 
@@ -464,10 +464,10 @@ my $find_free_diskname = sub {
     my ($imgdir, $vmid, $fmt) = @_;
 
     my $disk_ids = {};
-    PVE::Tools::dir_glob_foreach($imgdir, 
+    PVE::Tools::dir_glob_foreach($imgdir,
 				 qr!(vm|base)-$vmid-disk-(\d+)\..*!,
 				 sub {
-				     my ($fn, $type, $disk) = @_; 
+				     my ($fn, $type, $disk) = @_;
 				     $disk_ids->{$disk} = 1;
 				 });
 
@@ -486,7 +486,7 @@ sub clone_image {
     # this only works for file based storage types
     die "storage definintion has no path\n" if !$scfg->{path};
 
-    my ($vtype, $basename, $basevmid, undef, undef, $isBase) = 
+    my ($vtype, $basename, $basevmid, undef, undef, $isBase) =
 	$class->parse_volname($volname);
 
     die "clone_image on wrong vtype '$vtype'\n" if $vtype ne 'images';
@@ -506,13 +506,13 @@ sub clone_image {
 
     my $path = $class->path($scfg, $newvol);
 
-    # Note: we use relative paths, so we need to call chdir before qemu-img  
+    # Note: we use relative paths, so we need to call chdir before qemu-img
     eval {
 	local $CWD = $imagedir;
 
-	my $cmd = ['/usr/bin/qemu-img', 'create', '-b', "../$basevmid/$basename", 
+	my $cmd = ['/usr/bin/qemu-img', 'create', '-b', "../$basevmid/$basename",
 		   '-f', 'qcow2', $path];
-   
+
 	run_command($cmd);
     };
     my $err = $@;
@@ -531,7 +531,7 @@ sub alloc_image {
     mkpath $imagedir;
 
     $name = &$find_free_diskname($imagedir, $vmid, $fmt) if !$name;
- 
+
     my (undef, $tmpfmt) = parse_name_dir($name);
 
     die "illegal name '$name' - wrong extension for format ('$tmpfmt != '$fmt')\n"
@@ -745,7 +745,7 @@ sub list_images {
 
 	push @$res, {
 	    volid => $volid, format => $format,
-	    size => $size, vmid => $owner, used => $used, parent => $parent 
+	    size => $size, vmid => $owner, used => $used, parent => $parent
 	};
     }
 

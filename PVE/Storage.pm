@@ -61,7 +61,7 @@ sub storage_config {
     my ($cfg, $storeid, $noerr) = @_;
 
     die "no storage id specified\n" if !$storeid;
- 
+
     my $scfg = $cfg->{ids}->{$storeid};
 
     die "storage '$storeid' does not exists\n" if (!$noerr && !$scfg);
@@ -273,7 +273,7 @@ sub volume_is_base {
 
     if (my $scfg = $cfg->{ids}->{$sid}) {
 	my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
-	my ($vtype, $name, $vmid, $basename, $basevmid, $isBase) = 
+	my ($vtype, $name, $vmid, $basename, $basevmid, $isBase) =
 	    $plugin->parse_volname($volname);
 	return $isBase ? 1 : 0;
     } else {
@@ -304,7 +304,7 @@ sub path_to_volume_id {
 	return ('');
     }
 
-    # Note: abs_path() return undef if $path doesn not exist 
+    # Note: abs_path() return undef if $path doesn not exist
     # for example when nfs storage is not mounted
     $path = abs_path($path) || $path;
 
@@ -332,7 +332,7 @@ sub path_to_volume_id {
 	    }
 	} elsif ($path =~ m!^$isodir/([^/]+\.[Ii][Ss][Oo])$!) {
 	    my $name = $1;
-	    return ('iso', "$sid:iso/$name");	
+	    return ('iso', "$sid:iso/$name");
 	} elsif ($path =~ m!^$tmpldir/([^/]+\.tar\.gz)$!) {
 	    my $name = $1;
 	    return ('vztmpl', "$sid:vztmpl/$name");
@@ -341,7 +341,7 @@ sub path_to_volume_id {
 	    return ('rootdir', "$sid:rootdir/$vmid");
 	} elsif ($path =~ m!^$backupdir/([^/]+\.(tar|tar\.gz|tar\.lzo|tgz|vma|vma\.gz|vma\.lzo))$!) {
 	    my $name = $1;
-	    return ('iso', "$sid:backup/$name");	
+	    return ('iso', "$sid:backup/$name");
 	}
     }
 
@@ -395,14 +395,14 @@ sub storage_migrate {
 	    my $dirname = dirname($dst);
 
 	    if ($tcfg->{shared}) { # we can do a local copy
-		
+
 		run_command(['/bin/mkdir', '-p', $dirname]);
 
 		run_command(['/bin/cp', $src, $dst]);
 
 	    } else {
 
-		run_command(['/usr/bin/ssh', "root\@${target_host}", 
+		run_command(['/usr/bin/ssh', "root\@${target_host}",
 			     '/bin/mkdir', '-p', $dirname]);
 
 		# we use rsync with --sparse, so we can't use --inplace,
@@ -410,12 +410,12 @@ sub storage_migrate {
 		# save space
 		my ($size, $format) = PVE::Storage::Plugin::file_size_info($src);
 		if ($format && ($format eq 'raw') && $size) {
-		    run_command(['/usr/bin/ssh', "root\@${target_host}", 
+		    run_command(['/usr/bin/ssh', "root\@${target_host}",
 				 'rm', '-f', $dst],
 				outfunc => sub {});
 		}
 
-		my $cmd = ['/usr/bin/rsync', '--progress', '--sparse', '--whole-file', 
+		my $cmd = ['/usr/bin/rsync', '--progress', '--sparse', '--whole-file',
 			   $src, "root\@${target_host}:$dst"];
 
 		my $percent = -1;
@@ -445,13 +445,13 @@ sub storage_migrate {
 
 sub vdisk_clone {
     my ($cfg, $volid, $vmid) = @_;
-    
+
     my ($storeid, $volname) = parse_volume_id($volid);
 
     my $scfg = storage_config($cfg, $storeid);
 
     my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
-    
+
     activate_storage($cfg, $storeid);
 
     # lock shared storage
@@ -469,7 +469,7 @@ sub vdisk_create_base {
     my $scfg = storage_config($cfg, $storeid);
 
     my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
-    
+
     activate_storage($cfg, $storeid);
 
     # lock shared storage
@@ -515,7 +515,7 @@ sub vdisk_free {
     my $scfg = storage_config($cfg, $storeid);
 
     my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
-    
+
     activate_storage($cfg, $storeid);
 
     my $cleanup_worker;
@@ -523,7 +523,7 @@ sub vdisk_free {
     # lock shared storage
     $plugin->cluster_lock_storage($storeid, $scfg->{shared}, undef, sub {
 
-	my ($vtype, $name, $vmid, undef, undef, $isBase) = 
+	my ($vtype, $name, $vmid, undef, undef, $isBase) =
 	    $plugin->parse_volname($volname);
 	if ($isBase) {
 	    my $vollist = $plugin->list_images($storeid, $scfg);
@@ -533,7 +533,7 @@ sub vdisk_free {
 		my $basevmid = undef;
 
 		eval{
-		    (undef, undef, undef, $basename, $basevmid) = 
+		    (undef, undef, undef, $basename, $basevmid) =
 			$plugin->parse_volname($tmpvolname);
 		};
 
@@ -558,8 +558,8 @@ sub vdisk_free {
 sub template_list {
     my ($cfg, $storeid, $tt) = @_;
 
-    die "unknown template type '$tt'\n" 
-	if !($tt eq 'iso' || $tt eq 'vztmpl' || $tt eq 'backup'); 
+    die "unknown template type '$tt'\n"
+	if !($tt eq 'iso' || $tt eq 'vztmpl' || $tt eq 'backup');
 
     my $ids = $cfg->{ids};
 
@@ -604,7 +604,7 @@ sub template_list {
 
 		} elsif ($tt eq 'backup') {
 		    next if $fn !~ m!/([^/]+\.(tar|tar\.gz|tar\.lzo|tgz|vma|vma\.gz|vma\.lzo))$!;
-		    
+
 		    $info = { volid => "$sid:backup/$1", format => $2 };
 		}
 
@@ -773,7 +773,7 @@ sub deactivate_volumes {
 
 	my $scfg = storage_config($cfg, $storeid);
 	my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
-	
+
 	eval {
 	    $plugin->deactivate_volume($storeid, $scfg, $volname, $cache);
 	};
@@ -787,7 +787,7 @@ sub deactivate_volumes {
 	if scalar(@errlist);
 }
 
-sub storage_info { 
+sub storage_info {
     my ($cfg, $content) = @_;
 
     my $ids = $cfg->{ids};
@@ -803,11 +803,11 @@ sub storage_info {
 
 	my $type = $ids->{$storeid}->{type};
 
-	$info->{$storeid} = { 
+	$info->{$storeid} = {
 	    type => $type,
-	    total => 0, 
-	    avail => 0, 
-	    used => 0, 
+	    total => 0,
+	    avail => 0,
+	    used => 0,
 	    shared => $ids->{$storeid}->{shared} ? 1 : 0,
 	    content => PVE::Storage::Plugin::content_hash_to_string($ids->{$storeid}->{content}),
 	    active => 0,
@@ -833,9 +833,9 @@ sub storage_info {
 	eval { ($total, $avail, $used, $active) = $plugin->status($storeid, $scfg, $cache); };
 	warn $@ if $@;
 	next if !$active;
-	$info->{$storeid}->{total} = $total; 
-	$info->{$storeid}->{avail} = $avail; 
-	$info->{$storeid}->{used} = $used; 
+	$info->{$storeid}->{total} = $total;
+	$info->{$storeid}->{avail} = $avail;
+	$info->{$storeid}->{used} = $used;
 	$info->{$storeid}->{active} = $active;
     }
 
@@ -844,7 +844,7 @@ sub storage_info {
 
 sub resolv_server {
     my ($server) = @_;
-    
+
     my $packed_ip = gethostbyname($server);
     if (defined $packed_ip) {
 	return inet_ntoa($packed_ip);
@@ -922,7 +922,7 @@ sub __scan_usb_device {
 
     my $product = file_read_firstline("$devpath/product");
     $d->{product} = $product if $product;
-    
+
     my $manu = file_read_firstline("$devpath/manufacturer");
     $d->{manufacturer} = $manu if $manu;
 
