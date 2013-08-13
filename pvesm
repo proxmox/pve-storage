@@ -143,6 +143,14 @@ my $cmddef = {
 			 printf "%-${maxlen}s %s\n", $rec->{path}, $rec->{options};
 		     }
 		 }],
+    glusterfsscan => [ "PVE::API2::Storage::Scan", 'glusterfsscan', ['server'],
+		 { node => $nodename }, sub  {
+		     my $res = shift;
+
+		     foreach my $rec (@$res) {
+			 printf "%s\n", $rec->{volname};
+		     }
+		 }],
     iscsiscan => [ "PVE::API2::Storage::Scan", 'iscsiscan', ['server'],
 		   { node => $nodename }, sub  {
 		       my $res = shift;
