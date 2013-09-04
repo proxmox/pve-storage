@@ -180,12 +180,12 @@ my $real_volume_id = sub {
     if ($volume =~ m/:/) {
 	eval {
 	    my ($sid, $volname) = PVE::Storage::parse_volume_id ($volume);
-	    raise_param_exc({ storage => "storage ID missmatch" }) 
+	    die "storage ID missmatch ($sid != $storeid)\n"
 		if $storeid && $sid ne $storeid;
 	    $volid = $volume;
 	    $storeid = $sid;
 	};
-	raise_param_exc({ volume => $@}) if $@; 
+	raise_param_exc({ volume => $@ }) if $@; 
 	   
     } else {
 	raise_param_exc({ volume => "no storage speficied - incomplete volume ID" }) 
