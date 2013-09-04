@@ -233,13 +233,15 @@ __PACKAGE__->register_method ({
 	$rpcenv->check_volume_access($authuser, $cfg, undef, $volid);
 
 	my $path = PVE::Storage::path($cfg, $volid);
-	my ($size, $format, $used) = PVE::Storage::file_size_info ($path);
+	my ($size, $format, $used, $parent) =  PVE::Storage::file_size_info($path);
+	die "file_size_info on '$volid' failed\n" if !($format && $size);
 
 	# fixme: return more attributes?
 	return {
 	    path => $path,
 	    size => $size,
             used => $used,
+	    format => $format,
 	};
     }});
 
