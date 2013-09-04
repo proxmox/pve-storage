@@ -152,7 +152,7 @@ __PACKAGE__->register_method ({
 	}
 
 	# extract FORMAT from name
-	if ($name =~ m/\.(raw|qcow2)$/) {
+	if ($name =~ m/\.(raw|qcow2|vmdk)$/) {
 	    my $fmt = $1;
 
 	    raise_param_exc({ format => "different storage formats ($param->{format} != $fmt)" }) 
