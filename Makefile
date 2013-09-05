@@ -16,6 +16,8 @@ export PERLDIR=${PREFIX}/share/perl5
 
 #ARCH:=$(shell dpkg-architecture -qDEB_BUILD_ARCH)
 ARCH=all
+GITVERSION:=$(shell cat .git/refs/heads/master)
+
 DEB=${PACKAGE}_${VERSION}-${PKGREL}_${ARCH}.deb
 
 
@@ -53,6 +55,7 @@ deb ${DEB}:
 	install -D -m 0644 copyright debian/${DOCDIR}/copyright
 	install -m 0644 changelog.Debian debian/${DOCDIR}/
 	gzip -9 debian/${DOCDIR}/changelog.Debian
+	echo "git clone git://git.proxmox.com/git/pve-storage.git\\ngit checkout ${GITVERSION}" > debian/${DOCDIR}/SOURCE
 	dpkg-deb --build debian	
 	mv debian.deb ${DEB}
 	rm -rf debian
