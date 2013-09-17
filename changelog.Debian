@@ -1,3 +1,9 @@
+libpve-storage-perl (3.0-12) unstable; urgency=low
+
+  * glusterfs: relly delete volumes when requested
+
+ -- Proxmox Support Team <support@proxmox.com>  Tue, 17 Sep 2013 09:09:27 +0200
+
 libpve-storage-perl (3.0-11) unstable; urgency=low
 
   * API fix: auto-detect format for files with vmdk extension
