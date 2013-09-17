@@ -401,7 +401,7 @@ sub get_subdir {
     return "$path/$subdir";
 }
 
-sub path {
+sub filesystem_path {
     my ($class, $scfg, $volname, $storeid) = @_;
 
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
@@ -413,6 +413,12 @@ sub path {
     my $path = "$dir/$name";
 
     return wantarray ? ($path, $vmid, $vtype) : $path;
+}
+
+sub path {
+    my ($class, $scfg, $volname, $storeid) = @_;
+
+    return $class->filesystem_path($scfg, $volname, $storeid);
 }
 
 sub create_base {
@@ -428,7 +434,7 @@ sub create_base {
 
     die "create_base not possible with base image\n" if $isBase;
 
-    my $path = $class->path($scfg, $volname);
+    my $path = $class->filesystem_path($scfg, $volname);
 
     my ($size, $format, $used, $parent) = file_size_info($path);
     die "file_size_info on '$volname' failed\n" if !($format && $size);
@@ -442,7 +448,7 @@ sub create_base {
     my $newvolname = $basename ? "$basevmid/$basename/$vmid/$newname" :
 	"$vmid/$newname";
 
-    my $newpath = $class->path($scfg, $newvolname);
+    my $newpath = $class->filesystem_path($scfg, $newvolname);
 
     die "file '$newpath' already exists\n" if -f $newpath;
 
@@ -504,7 +510,7 @@ sub clone_image {
 
     my $newvol = "$basevmid/$basename/$vmid/$name";
 
-    my $path = $class->path($scfg, $newvol);
+    my $path = $class->filesystem_path($scfg, $newvol);
 
     # Note: we use relative paths, so we need to call chdir before qemu-img
     eval {
@@ -555,7 +561,7 @@ sub alloc_image {
 sub free_image {
     my ($class, $storeid, $scfg, $volname, $isBase) = @_;
 
-    my $path = $class->path($scfg, $volname);
+    my $path = $class->filesystem_path($scfg, $volname);
 
     if (! -f $path) {
 	warn "disk image '$path' does not exists\n";
@@ -611,7 +617,7 @@ sub file_size_info {
 
 sub volume_size_info {
     my ($class, $scfg, $storeid, $volname, $timeout) = @_;
-    my $path = $class->path($scfg, $volname);
+    my $path = $class->filesystem_path($scfg, $volname);
     return file_size_info($path, $timeout);
 
 }
@@ -623,7 +629,7 @@ sub volume_resize {
 
     return 1 if $running;
 
-    my $path = $class->path($scfg, $volname);
+    my $path = $class->filesystem_path($scfg, $volname);
 
     my $cmd = ['/usr/bin/qemu-img', 'resize', $path , $size];
 
@@ -639,7 +645,7 @@ sub volume_snapshot {
 
     return 1 if $running;
 
-    my $path = $class->path($scfg, $volname);
+    my $path = $class->filesystem_path($scfg, $volname);
 
     my $cmd = ['/usr/bin/qemu-img', 'snapshot','-c', $snap, $path];
 
@@ -653,7 +659,7 @@ sub volume_snapshot_rollback {
 
     die "can't rollback snapshot this image format" if $volname !~ m/\.(qcow2|qed)$/;
 
-    my $path = $class->path($scfg, $volname);
+    my $path = $class->filesystem_path($scfg, $volname);
 
     my $cmd = ['/usr/bin/qemu-img', 'snapshot','-a', $snap, $path];
 
@@ -669,7 +675,7 @@ sub volume_snapshot_delete {
 
     return 1 if $running;
 
-    my $path = $class->path($scfg, $volname);
+    my $path = $class->filesystem_path($scfg, $volname);
 
     my $cmd = ['/usr/bin/qemu-img', 'snapshot','-d', $snap, $path];
 
@@ -798,7 +804,7 @@ sub deactivate_storage {
 sub activate_volume {
     my ($class, $storeid, $scfg, $volname, $exclusive, $cache) = @_;
 
-    my $path = $class->path($scfg, $volname);
+    my $path = $class->filesystem_path($scfg, $volname);
 
     # check is volume exists
     if ($scfg->{path}) {
