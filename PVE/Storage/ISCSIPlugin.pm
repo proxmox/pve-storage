@@ -277,7 +277,7 @@ sub parse_volname {
     die "unable to parse iscsi volume name '$volname'\n";
 }
 
-sub path {
+sub filesystem_path {
     my ($class, $scfg, $volname) = @_;
 
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
