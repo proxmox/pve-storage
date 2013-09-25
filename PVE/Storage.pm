@@ -259,6 +259,17 @@ sub parse_vmid {
     return int($vmid);
 }
 
+sub parse_volname {
+    my ($cfg, $volid) = @_;
+
+    my ($storeid, $volname) = parse_volume_id($volid);
+
+    my $scfg = storage_config($cfg, $storeid);
+
+    my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
+    return $plugin->parse_volname($volname);
+}
+
 sub parse_volume_id {
     my ($volid, $noerr) = @_;
 
