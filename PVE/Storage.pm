@@ -372,6 +372,27 @@ sub path {
     return wantarray ? ($path, $owner, $vtype) : $path;
 }
 
+sub abs_filesystem_path {
+    my ($cfg, $volid) = @_;
+
+    my $path;
+    if (PVE::Storage::parse_volume_id ($volid, 1)) {
+	PVE::Storage::activate_volumes($cfg, [ $volid ]);
+	$path = PVE::Storage::path($cfg, $volid);
+    } else {
+	if (-f $volid) {
+	    my $abspath = abs_path($volid);
+	    if ($abspath && $abspath =~ m|^(/.+)$|) {
+		$path = $1; # untaint any path
+	    }
+	}
+    }
+
+    die "can't find file '$volid'\n" if !($path && -f $path);
+
+    return $path;
+}
+
 sub storage_migrate {
     my ($cfg, $volid, $target_host, $target_storeid, $target_volname) = @_;
 
