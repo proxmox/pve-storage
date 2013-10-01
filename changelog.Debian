@@ -3,6 +3,8 @@ libpve-storage-perl (3.0-14) unstable; urgency=low
   * storage library: add new helper parse_volname()
 
   * storage library:  add new helper abs_filesystem_path()
+  
+  * use warnings instead of global -w flag
 
  -- Proxmox Support Team <support@proxmox.com>  Tue, 01 Oct 2013 11:28:40 +0200
 

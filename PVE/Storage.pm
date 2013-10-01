@@ -1,6 +1,8 @@
 package PVE::Storage;
 
 use strict;
+use warnings;
+
 use POSIX;
 use IO::Select;
 use IO::File;
