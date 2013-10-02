@@ -47,12 +47,7 @@ sub zfs_request {
 	$zfscmd = 'zfs';
     }
 
-    if ($scfg->{sudo}) {
-	$zfscmd = 'sudo ' . $zfscmd;
-	$target = $scfg->{portal};
-    } else {
-	$target = 'root@' . $scfg->{portal};
-    }
+    $target = 'root@' . $scfg->{portal};
 
     my $cmd = [@ssh_cmd, $target, $zfscmd, $method, @params];
 
@@ -306,21 +301,9 @@ sub plugindata {
 
 sub properties {
     return {
-	chap => {
-	    description => "chap",
-	    type => 'string',
-	},
-	pwd => {
-	    description => "password",
-	    type => 'string',
-	},
 	iscsiprovider => {
 	    description => "iscsi provider",
 	    type => 'string',
-	},
-	sudo => {
-	    description => "use sudo",
-	    type => 'boolean',
 	},
     };
 }
@@ -332,11 +315,8 @@ sub options {
         portal => { fixed => 1 },
 	target => { fixed => 1 },
         pool => { fixed => 1 },
-	chap => { optional => 1 },
-	pwd => { optional => 1 },
 	blocksize => { fixed => 1 },
 	iscsiprovider => { fixed => 1 },
-	sudo => { optional => 1 },
 	content => { optional => 1 },
     };
 }
