@@ -4,9 +4,8 @@ use strict;
 use warnings;
 use IO::File;
 use POSIX;
-use PVE::Tools qw(run_command file_read_firstline trim dir_glob_regex dir_glob_foreach);
+use PVE::Tools qw(run_command);
 use PVE::Storage::Plugin;
-use PVE::JSONSchema qw(get_standard_option);
 use Digest::MD5 qw(md5_hex);
 
 use base qw(PVE::Storage::Plugin);
@@ -17,16 +16,11 @@ my @ssh_cmd = ('/usr/bin/ssh', @ssh_opts);
 sub zfs_request {
     my ($scfg, $timeout, $method, @params) = @_;
 
-    my $cmdmap = ();
-    my $msg = '';
+    my $cmdmap;
     my $zfscmd;
     my $target;
-    $timeout = 5 if !$timeout;
 
-    my $output = sub {
-    my $line = shift;
-	$msg .= "$line\n";
-    };
+    $timeout = 5 if !$timeout;
 
     if ($scfg->{iscsiprovider} eq 'comstar') {
 	my $stmfadmcmd = "/usr/sbin/stmfadm";
@@ -53,7 +47,6 @@ sub zfs_request {
 	$zfscmd = 'zfs';
     }
 
-
     if ($scfg->{sudo}) {
 	$zfscmd = 'sudo ' . $zfscmd;
 	$target = $scfg->{portal};
@@ -62,6 +55,13 @@ sub zfs_request {
     }
 
     my $cmd = [@ssh_cmd, $target, $zfscmd, $method, @params];
+
+    my $msg = '';
+
+    my $output = sub {
+	my $line = shift;
+	$msg .= "$line\n";
+    };
 
     run_command($cmd, outfunc => $output, timeout => $timeout);
 
@@ -96,25 +96,25 @@ sub zfs_parse_size {
 }
 
 sub zfs_get_pool_stats {
-	my ($scfg) = @_;
+    my ($scfg) = @_;
 
-	my $size = 0;
-	my $used = 0;
+    my $size = 0;
+    my $used = 0;
 
-	my $text = zfs_request($scfg, undef, 'get', '-o', 'value', '-Hp',
-	                       'available,used', $scfg->{pool});
+    my $text = zfs_request($scfg, undef, 'get', '-o', 'value', '-Hp',
+			   'available,used', $scfg->{pool});
 
-	my @lines = split /\n/, $text;
+    my @lines = split /\n/, $text;
 
-	if($lines[0] =~ /^(\d+)$/) {
-	    $size = $1;
-	}
+    if($lines[0] =~ /^(\d+)$/) {
+	$size = $1;
+    }
 
-	if($lines[1] =~ /^(\d+)$/) {
-	    $used = $1;
-	}
+    if($lines[1] =~ /^(\d+)$/) {
+	$used = $1;
+    }
 
-	return ($size, $used);
+    return ($size, $used);
 }
 
 sub zfs_parse_zvol_list {
@@ -137,8 +137,7 @@ sub zfs_parse_zvol_list {
 		$disk = $zvols[1];
 		next unless $disk =~ m!^(\w+)-(\d+)-(\w+)-(\d+)$!;
 		$name = $pool . '/' . $disk;
-	    }
-	    else {
+	    } else {
 		next;
 	    }
 
@@ -160,8 +159,7 @@ sub zfs_get_lu_name {
 
     if ($zvol =~ /^.+\/.+/) {
         $object = "/dev/zvol/rdsk/$zvol";
-    }
-    else {
+    } else {
         $object = "/dev/zvol/rdsk/$scfg->{pool}/$zvol";
     }
 
@@ -273,13 +271,9 @@ sub zfs_list_zvol {
 
 	my $pool = $values[0];
 	my $image = $values[1];
-	my $owner;
-	if ($image =~ m/^((vm|base)-(\d+)-\S+)$/) {
-	    $owner = $3;
-	}
-	else {
-	    next;
-	}
+
+	next if $image !~ m/^((vm|base)-(\d+)-\S+)$/;
+	my $owner = $3;
 
 	my $parent = $zvol->{origin};
 	if($zvol->{origin} && $zvol->{origin} =~ m/^$scfg->{pool}\/(\S+)$/){
@@ -616,11 +610,13 @@ sub volume_has_feature {
 	$class->parse_volname($volname);
 
     my $key = undef;
-    if($snapname){
+
+    if ($snapname) {
 	$key = 'snap';
     } else {
 	$key = $isBase ? 'base' : 'current';
     }
+
     return 1 if $features->{$feature}->{$key};
 
     return undef;
