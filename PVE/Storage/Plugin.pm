@@ -312,7 +312,7 @@ sub parse_config {
 	    $d->{content} = $def->{content}->[1] if !$d->{content};
 	}
 
-	if ($type eq 'iscsi' || $type eq 'nfs' || $type eq 'rbd' || $type eq 'sheepdog' || $type eq 'iscsidirect' || $type eq 'nexenta' || $type eq 'glusterfs' || $type eq 'zfs') {
+	if ($type eq 'iscsi' || $type eq 'nfs' || $type eq 'rbd' || $type eq 'sheepdog' || $type eq 'iscsidirect' || $type eq 'glusterfs' || $type eq 'zfs') {
 	    $d->{shared} = 1;
 	}
     }

@@ -305,6 +305,10 @@ sub properties {
 	    description => "iscsi provider",
 	    type => 'string',
 	},
+        blocksize => {
+            description => "block size",
+            type => 'string',
+        }
     };
 }
 
