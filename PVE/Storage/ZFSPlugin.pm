@@ -93,7 +93,7 @@ sub zfs_parse_size {
 sub zfs_get_pool_stats {
     my ($scfg) = @_;
 
-    my $size = 0;
+    my $available = 0;
     my $used = 0;
 
     my $text = zfs_request($scfg, undef, 'get', '-o', 'value', '-Hp',
@@ -102,14 +102,14 @@ sub zfs_get_pool_stats {
     my @lines = split /\n/, $text;
 
     if($lines[0] =~ /^(\d+)$/) {
-	$size = $1;
+	$available = $1;
     }
 
     if($lines[1] =~ /^(\d+)$/) {
 	$used = $1;
     }
 
-    return ($size, $used);
+    return ($available, $used);
 }
 
 sub zfs_parse_zvol_list {
@@ -512,9 +512,9 @@ sub status {
     my $active = 0;
 
     eval {
-	($total, $used) = zfs_get_pool_stats($scfg);
+	($free, $used) = zfs_get_pool_stats($scfg);
 	$active = 1;
-	$free = $total - $used;
+	$total = $free + $used;
     };
     warn $@ if $@;
 
