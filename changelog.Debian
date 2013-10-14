@@ -1,3 +1,11 @@
+libpve-storage-perl (3.0-17) unstable; urgency=low
+
+  * ZFS plugin: Fixes bug in calculating pool size
+  
+  * remove nexenta plugin (use ZFS plugin istead)
+  
+ -- Proxmox Support Team <support@proxmox.com>  Mon, 14 Oct 2013 07:39:33 +0200
+
 libpve-storage-perl (3.0-16) unstable; urgency=low
 
   * cleanup ZFS Storage Plugin
