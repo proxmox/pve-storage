@@ -6,12 +6,41 @@ use IO::File;
 use POSIX;
 use PVE::Tools qw(run_command);
 use PVE::Storage::Plugin;
-use Digest::MD5 qw(md5_hex);
 
 use base qw(PVE::Storage::Plugin);
+use PVE::Storage::LunCmd::Comstar;
+use PVE::Storage::LunCmd::Istgt;
 
 my @ssh_opts = ('-o', 'BatchMode=yes');
 my @ssh_cmd = ('/usr/bin/ssh', @ssh_opts);
+
+my $lun_cmds = {
+	create_lu	=> 1,
+	delete_lu	=> 1,
+	import_lu	=> 1,
+	modify_lu	=> 1,
+	add_view	=> 1,
+	list_view	=> 1,
+	list_lu		=> 1,
+};
+
+my $zfs_unknown_scsi_provider = sub {
+	my ($provider) = @_;
+
+	die "$provider: unknown iscsi provider. Available [comstar, istgt]";
+};
+
+my $zfs_get_base = sub {
+	my ($scfg) = @_;
+
+	if ($scfg->{iscsiprovider} eq 'comstar') {
+		return PVE::Storage::LunCmd::Comstar::get_base;
+	} elsif ($scfg->{iscsiprovider} eq 'istgt') {
+		return PVE::Storage::LunCmd::Istgt::get_base;
+	} else {
+		$zfs_unknown_scsi_provider->($scfg->{iscsiprovider});
+	}
+};
 
 sub zfs_request {
     my ($scfg, $timeout, $method, @params) = @_;
@@ -19,46 +48,39 @@ sub zfs_request {
     my $cmdmap;
     my $zfscmd;
     my $target;
+	my $msg;
 
     $timeout = 5 if !$timeout;
 
-    if ($scfg->{iscsiprovider} eq 'comstar') {
-	my $stmfadmcmd = "/usr/sbin/stmfadm";
-	my $sbdadmcmd = "/usr/sbin/sbdadm";
+	if ($lun_cmds->{$method}) {
+    	if ($scfg->{iscsiprovider} eq 'comstar') {
+			$msg = PVE::Storage::LunCmd::Comstar::run_lun_command($scfg, $timeout, $method, @params);
+		} elsif ($scfg->{iscsiprovider} eq 'istgt') {
+			$msg = PVE::Storage::LunCmd::Istgt::run_lun_command($scfg, $timeout, $method, @params);
+		} else {
+			$zfs_unknown_scsi_provider->($scfg->{iscsiprovider});
+		}
+	} else {
+		if ($method eq 'zpool_list') {
+			$zfscmd = 'zpool';
+			$method = 'list',
+		} else {
+			$zfscmd = 'zfs';
+    	}
 
-	$cmdmap = {
-	    create_lu	=> { cmd => $stmfadmcmd, method => 'create-lu' },
-	    delete_lu	=> { cmd => $stmfadmcmd, method => 'delete-lu' },
-	    import_lu	=> { cmd => $stmfadmcmd, method => 'import-lu' },
-	    modify_lu	=> { cmd => $stmfadmcmd, method => 'modify-lu' },
-	    add_view	=> { cmd => $stmfadmcmd, method => 'add-view' },
-	    list_view	=> { cmd => $stmfadmcmd, method => 'list-view' },
-	    list_lu	=> { cmd => $sbdadmcmd, method => 'list-lu' },
-	    zpool_list	=> { cmd => 'zpool', method => 'list' },
-	};
-    } else {
-	die 'unknown iscsi provider. Available [comstar]';
-    }
+		$target = 'root@' . $scfg->{portal};
 
-    if ($cmdmap->{$method}) {
-	$zfscmd = $cmdmap->{$method}->{cmd};
-	$method = $cmdmap->{$method}->{method};
-    } else {
-	$zfscmd = 'zfs';
-    }
+		my $cmd = [@ssh_cmd, $target, $zfscmd, $method, @params];
 
-    $target = 'root@' . $scfg->{portal};
+		$msg = '';
 
-    my $cmd = [@ssh_cmd, $target, $zfscmd, $method, @params];
+		my $output = sub {
+		my $line = shift;
+		$msg .= "$line\n";
+		};
 
-    my $msg = '';
-
-    my $output = sub {
-	my $line = shift;
-	$msg .= "$line\n";
-    };
-
-    run_command($cmd, outfunc => $output, timeout => $timeout);
+		run_command($cmd, outfunc => $output, timeout => $timeout);
+	}
 
     return $msg;
 }
@@ -152,17 +174,17 @@ sub zfs_get_lu_name {
     my ($scfg, $zvol) = @_;
     my $object;
 
+	my $base = $zfs_get_base->($scfg);
     if ($zvol =~ /^.+\/.+/) {
-        $object = "/dev/zvol/rdsk/$zvol";
+        $object = "$base/$zvol";
     } else {
-        $object = "/dev/zvol/rdsk/$scfg->{pool}/$zvol";
+        $object = "$base/$scfg->{pool}/$zvol";
     }
 
-    my $text = zfs_request($scfg, undef, 'list_lu');
-    my @lines = split /\n/, $text;
-    foreach my $line (@lines) {
-	return $1 if ($line =~ /(\w+)\s+\d+\s+$object$/);
-    }
+    my $lu_name = zfs_request($scfg, undef, 'list_lu', $object);
+
+	return $lu_name if $lu_name;
+	
     die "Could not find lu_name for zvol $zvol";
 }
 
@@ -184,7 +206,7 @@ sub zfs_add_lun_mapping_entry {
     if (! defined($guid)) {
 	$guid = zfs_get_lu_name($scfg, $zvol);
     }
-
+	
     zfs_request($scfg, undef, 'add_view', $guid);
 }
 
@@ -199,12 +221,8 @@ sub zfs_delete_lu {
 sub zfs_create_lu {
     my ($scfg, $zvol) = @_;
 
-    my $prefix = '600144f';
-    my $digest = md5_hex($zvol);
-    $digest =~ /(\w{7}(.*))/;
-    my $guid = "$prefix$2";
-
-    zfs_request($scfg, undef, 'create_lu', '-p', 'wcd=false', '-p', "guid=$guid", "/dev/zvol/rdsk/$scfg->{pool}/$zvol");
+	my $base = $zfs_get_base->($scfg);
+    my $guid = zfs_request($scfg, undef, 'create_lu', "$base/$scfg->{pool}/$zvol");
 
     return $guid;
 }
@@ -212,7 +230,8 @@ sub zfs_create_lu {
 sub zfs_import_lu {
     my ($scfg, $zvol) = @_;
 
-    zfs_request($scfg, undef, 'import_lu', "/dev/zvol/rdsk/$scfg->{pool}/$zvol");
+	my $base = $zfs_get_base->($scfg);
+    zfs_request($scfg, undef, 'import_lu', "$base/$scfg->{pool}/$zvol");
 }
 
 sub zfs_resize_lu {
@@ -220,7 +239,7 @@ sub zfs_resize_lu {
 
     my $guid = zfs_get_lu_name($scfg, $zvol);
 
-    zfs_request($scfg, undef, 'modify_lu', '-s', "${size}K", $guid);
+    zfs_request($scfg, undef, 'modify_lu', "${size}K", $guid);
 }
 
 sub zfs_create_zvol {
@@ -237,20 +256,10 @@ sub zfs_delete_zvol {
 
 sub zfs_get_lun_number {
     my ($scfg, $guid) = @_;
-    my $lunnum = undef;
 
     die "could not find lun_number for guid $guid" if !$guid;
 
-    my $text = zfs_request($scfg, undef, 'list_view', '-l', $guid);
-    my @lines = split /\n/, $text;
-    foreach my $line (@lines) {
-	if ($line =~ /^\s*LUN\s*:\s*(\d+)$/) {
-	    $lunnum = $1;
-	    last;
-	}
-    }
-
-    return $lunnum;
+    return zfs_request($scfg, undef, 'list_view', $guid);
 }
 
 sub zfs_list_zvol {
@@ -314,11 +323,11 @@ sub properties {
 
 sub options {
     return {
-        nodes => { optional => 1 },
-        disable => { optional => 1 },
-        portal => { fixed => 1 },
+    nodes => { optional => 1 },
+    disable => { optional => 1 },
+    portal => { fixed => 1 },
 	target => { fixed => 1 },
-        pool => { fixed => 1 },
+    pool => { fixed => 1 },
 	blocksize => { fixed => 1 },
 	iscsiprovider => { fixed => 1 },
 	content => { optional => 1 },
@@ -347,9 +356,9 @@ sub path {
 
     my $guid = zfs_get_lu_name($scfg, $name);
     my $lun = zfs_get_lun_number($scfg, $guid);
-
+	
     my $path = "iscsi://$portal/$target/$lun";
-
+	
     return ($path, $vmid, $vtype);
 }
 
