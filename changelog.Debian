@@ -1,3 +1,9 @@
+libpve-storage-perl (3.0-18) unstable; urgency=low
+
+  * ZFS plugin: add support for istgt
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 18 Oct 2013 09:36:13 +0200
+
 libpve-storage-perl (3.0-17) unstable; urgency=low
 
   * ZFS plugin: Fixes bug in calculating pool size
