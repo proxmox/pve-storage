@@ -10,6 +10,7 @@ use PVE::Storage::Plugin;
 use base qw(PVE::Storage::Plugin);
 use PVE::Storage::LunCmd::Comstar;
 use PVE::Storage::LunCmd::Istgt;
+use PVE::Storage::LunCmd::Iet;
 
 my @ssh_opts = ('-o', 'BatchMode=yes');
 my @ssh_cmd = ('/usr/bin/ssh', @ssh_opts);
@@ -27,7 +28,7 @@ my $lun_cmds = {
 my $zfs_unknown_scsi_provider = sub {
 	my ($provider) = @_;
 
-	die "$provider: unknown iscsi provider. Available [comstar, istgt]";
+	die "$provider: unknown iscsi provider. Available [comstar, istgt, iet]";
 };
 
 my $zfs_get_base = sub {
@@ -37,6 +38,8 @@ my $zfs_get_base = sub {
 		return PVE::Storage::LunCmd::Comstar::get_base;
 	} elsif ($scfg->{iscsiprovider} eq 'istgt') {
 		return PVE::Storage::LunCmd::Istgt::get_base;
+	} elsif ($scfg->{iscsiprovider} eq 'iet') {
+		return PVE::Storage::LunCmd::Iet::get_base;
 	} else {
 		$zfs_unknown_scsi_provider->($scfg->{iscsiprovider});
 	}
@@ -57,6 +60,8 @@ sub zfs_request {
 			$msg = PVE::Storage::LunCmd::Comstar::run_lun_command($scfg, $timeout, $method, @params);
 		} elsif ($scfg->{iscsiprovider} eq 'istgt') {
 			$msg = PVE::Storage::LunCmd::Istgt::run_lun_command($scfg, $timeout, $method, @params);
+		} elsif ($scfg->{iscsiprovider} eq 'iet') {
+			$msg = PVE::Storage::LunCmd::Iet::run_lun_command($scfg, $timeout, $method, @params);
 		} else {
 			$zfs_unknown_scsi_provider->($scfg->{iscsiprovider});
 		}
