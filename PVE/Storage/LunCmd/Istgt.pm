@@ -221,7 +221,6 @@ my $init_lu_name = sub {
 
 my $free_lu_name = sub {
 	my ($target, $lu_name) = @_;
-	my $used = ();
 
 	$lu_name =~ /^LUN(\d+)$/;
 	$SETTINGS->{$target}->{used}->{$1} = 0;
@@ -288,7 +287,7 @@ my $parser = sub {
 	die "$scfg->{target}: Target not found" unless $SETTINGS->{targets};
 	my $max = $SETTINGS->{targets};
 	my $base = get_base;
-	my $n;
+
 	for (my $i = 1; $i <= $max; $i++) {
 		my $target = $SETTINGS->{nodebase}.':'.$SETTINGS->{"LogicalUnit$i"}->{TargetName};
 		if ($target eq $scfg->{target}) {
