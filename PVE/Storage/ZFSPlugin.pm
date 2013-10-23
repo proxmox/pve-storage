@@ -14,35 +14,36 @@ use PVE::Storage::LunCmd::Iet;
 
 my @ssh_opts = ('-o', 'BatchMode=yes');
 my @ssh_cmd = ('/usr/bin/ssh', @ssh_opts);
+my $id_rsa_path = '/etc/pve/priv/zfs';
 
 my $lun_cmds = {
-	create_lu	=> 1,
-	delete_lu	=> 1,
-	import_lu	=> 1,
-	modify_lu	=> 1,
-	add_view	=> 1,
-	list_view	=> 1,
-	list_lu		=> 1,
+    create_lu   => 1,
+    delete_lu   => 1,
+    import_lu   => 1,
+    modify_lu   => 1,
+    add_view    => 1,
+    list_view   => 1,
+    list_lu     => 1,
 };
 
 my $zfs_unknown_scsi_provider = sub {
-	my ($provider) = @_;
+    my ($provider) = @_;
 
-	die "$provider: unknown iscsi provider. Available [comstar, istgt, iet]";
+    die "$provider: unknown iscsi provider. Available [comstar, istgt, iet]";
 };
 
 my $zfs_get_base = sub {
-	my ($scfg) = @_;
+    my ($scfg) = @_;
 
-	if ($scfg->{iscsiprovider} eq 'comstar') {
-		return PVE::Storage::LunCmd::Comstar::get_base;
-	} elsif ($scfg->{iscsiprovider} eq 'istgt') {
-		return PVE::Storage::LunCmd::Istgt::get_base;
-	} elsif ($scfg->{iscsiprovider} eq 'iet') {
-		return PVE::Storage::LunCmd::Iet::get_base;
-	} else {
-		$zfs_unknown_scsi_provider->($scfg->{iscsiprovider});
-	}
+    if ($scfg->{iscsiprovider} eq 'comstar') {
+        return PVE::Storage::LunCmd::Comstar::get_base;
+    } elsif ($scfg->{iscsiprovider} eq 'istgt') {
+        return PVE::Storage::LunCmd::Istgt::get_base;
+    } elsif ($scfg->{iscsiprovider} eq 'iet') {
+        return PVE::Storage::LunCmd::Iet::get_base;
+    } else {
+        $zfs_unknown_scsi_provider->($scfg->{iscsiprovider});
+    }
 };
 
 sub zfs_request {
@@ -51,41 +52,41 @@ sub zfs_request {
     my $cmdmap;
     my $zfscmd;
     my $target;
-	my $msg;
+    my $msg;
 
     $timeout = 5 if !$timeout;
 
-	if ($lun_cmds->{$method}) {
-    	if ($scfg->{iscsiprovider} eq 'comstar') {
-			$msg = PVE::Storage::LunCmd::Comstar::run_lun_command($scfg, $timeout, $method, @params);
-		} elsif ($scfg->{iscsiprovider} eq 'istgt') {
-			$msg = PVE::Storage::LunCmd::Istgt::run_lun_command($scfg, $timeout, $method, @params);
-		} elsif ($scfg->{iscsiprovider} eq 'iet') {
-			$msg = PVE::Storage::LunCmd::Iet::run_lun_command($scfg, $timeout, $method, @params);
-		} else {
-			$zfs_unknown_scsi_provider->($scfg->{iscsiprovider});
-		}
-	} else {
-		if ($method eq 'zpool_list') {
-			$zfscmd = 'zpool';
-			$method = 'list',
-		} else {
-			$zfscmd = 'zfs';
-    	}
+    if ($lun_cmds->{$method}) {
+        if ($scfg->{iscsiprovider} eq 'comstar') {
+            $msg = PVE::Storage::LunCmd::Comstar::run_lun_command($scfg, $timeout, $method, @params);
+        } elsif ($scfg->{iscsiprovider} eq 'istgt') {
+            $msg = PVE::Storage::LunCmd::Istgt::run_lun_command($scfg, $timeout, $method, @params);
+        } elsif ($scfg->{iscsiprovider} eq 'iet') {
+            $msg = PVE::Storage::LunCmd::Iet::run_lun_command($scfg, $timeout, $method, @params);
+        } else {
+            $zfs_unknown_scsi_provider->($scfg->{iscsiprovider});
+        }
+    } else {
+        if ($method eq 'zpool_list') {
+            $zfscmd = 'zpool';
+            $method = 'list',
+        } else {
+            $zfscmd = 'zfs';
+        }
 
-		$target = 'root@' . $scfg->{portal};
+        $target = 'root@' . $scfg->{portal};
 
-		my $cmd = [@ssh_cmd, $target, $zfscmd, $method, @params];
+        my $cmd = [@ssh_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", $target, $zfscmd, $method, @params];
 
-		$msg = '';
+        $msg = '';
 
-		my $output = sub {
-		my $line = shift;
-		$msg .= "$line\n";
-		};
+        my $output = sub {
+        my $line = shift;
+        $msg .= "$line\n";
+        };
 
-		run_command($cmd, outfunc => $output, timeout => $timeout);
-	}
+        run_command($cmd, outfunc => $output, timeout => $timeout);
+    }
 
     return $msg;
 }
@@ -96,24 +97,24 @@ sub zfs_parse_size {
     return 0 if !$text;
 
     if ($text =~ m/^(\d+(\.\d+)?)([TGMK])?$/) {
-	my ($size, $reminder, $unit) = ($1, $2, $3);
-	return $size if !$unit;
-	if ($unit eq 'K') {
-	    $size *= 1024;
-	} elsif ($unit eq 'M') {
-	    $size *= 1024*1024;
-	} elsif ($unit eq 'G') {
-	    $size *= 1024*1024*1024;
-	} elsif ($unit eq 'T') {
-	    $size *= 1024*1024*1024*1024;
-	}
+    my ($size, $reminder, $unit) = ($1, $2, $3);
+    return $size if !$unit;
+    if ($unit eq 'K') {
+        $size *= 1024;
+    } elsif ($unit eq 'M') {
+        $size *= 1024*1024;
+    } elsif ($unit eq 'G') {
+        $size *= 1024*1024*1024;
+    } elsif ($unit eq 'T') {
+        $size *= 1024*1024*1024*1024;
+    }
 
-	if ($reminder) {
-	    $size = ceil($size);
-	}
-	return $size;
+    if ($reminder) {
+        $size = ceil($size);
+    }
+    return $size;
     } else {
-	return 0;
+    return 0;
     }
 }
 
@@ -124,16 +125,16 @@ sub zfs_get_pool_stats {
     my $used = 0;
 
     my $text = zfs_request($scfg, undef, 'get', '-o', 'value', '-Hp',
-			   'available,used', $scfg->{pool});
+               'available,used', $scfg->{pool});
 
     my @lines = split /\n/, $text;
 
     if($lines[0] =~ /^(\d+)$/) {
-	$available = $1;
+    $available = $1;
     }
 
     if($lines[1] =~ /^(\d+)$/) {
-	$used = $1;
+    $used = $1;
     }
 
     return ($available, $used);
@@ -148,28 +149,28 @@ sub zfs_parse_zvol_list {
 
     my @lines = split /\n/, $text;
     foreach my $line (@lines) {
-	if ($line =~ /^(.+)\s+([a-zA-Z0-9\.]+|\-)\s+(.+)$/) {
-	    my $zvol = {};
-	    my $name;
-	    my $disk;
-	    my @zvols = split /\//, $1;
-	    my $pool = $zvols[0];
+    if ($line =~ /^(.+)\s+([a-zA-Z0-9\.]+|\-)\s+(.+)$/) {
+        my $zvol = {};
+        my $name;
+        my $disk;
+        my @zvols = split /\//, $1;
+        my $pool = $zvols[0];
 
-	    if (scalar(@zvols) == 2 && $zvols[0] !~ /^rpool$/) {
-		$disk = $zvols[1];
-		next unless $disk =~ m!^(\w+)-(\d+)-(\w+)-(\d+)$!;
-		$name = $pool . '/' . $disk;
-	    } else {
-		next;
-	    }
+        if (scalar(@zvols) == 2 && $zvols[0] !~ /^rpool$/) {
+        $disk = $zvols[1];
+        next unless $disk =~ m!^(\w+)-(\d+)-(\w+)-(\d+)$!;
+        $name = $pool . '/' . $disk;
+        } else {
+        next;
+        }
 
-	    $zvol->{name} = $name;
-	    $zvol->{size} = zfs_parse_size($2);
-	    if ($3 !~ /^-$/) {
-		$zvol->{origin} = $3;
-	    }
-	    push @$list, $zvol;
-	}
+        $zvol->{name} = $name;
+        $zvol->{size} = zfs_parse_size($2);
+        if ($3 !~ /^-$/) {
+        $zvol->{origin} = $3;
+        }
+        push @$list, $zvol;
+    }
     }
 
     return $list;
@@ -179,7 +180,7 @@ sub zfs_get_lu_name {
     my ($scfg, $zvol) = @_;
     my $object;
 
-	my $base = $zfs_get_base->($scfg);
+    my $base = $zfs_get_base->($scfg);
     if ($zvol =~ /^.+\/.+/) {
         $object = "$base/$zvol";
     } else {
@@ -188,8 +189,8 @@ sub zfs_get_lu_name {
 
     my $lu_name = zfs_request($scfg, undef, 'list_lu', $object);
 
-	return $lu_name if $lu_name;
-	
+    return $lu_name if $lu_name;
+
     die "Could not find lu_name for zvol $zvol";
 }
 
@@ -199,7 +200,7 @@ sub zfs_get_zvol_size {
     my $text = zfs_request($scfg, undef, 'get', '-Hp', 'volsize', "$scfg->{pool}/$zvol");
 
     if($text =~ /volsize\s(\d+)/){
-	return $1;
+    return $1;
     }
 
     die "Could not get zvol size";
@@ -209,9 +210,9 @@ sub zfs_add_lun_mapping_entry {
     my ($scfg, $zvol, $guid) = @_;
 
     if (! defined($guid)) {
-	$guid = zfs_get_lu_name($scfg, $zvol);
+    $guid = zfs_get_lu_name($scfg, $zvol);
     }
-	
+
     zfs_request($scfg, undef, 'add_view', $guid);
 }
 
@@ -226,7 +227,7 @@ sub zfs_delete_lu {
 sub zfs_create_lu {
     my ($scfg, $zvol) = @_;
 
-	my $base = $zfs_get_base->($scfg);
+    my $base = $zfs_get_base->($scfg);
     my $guid = zfs_request($scfg, undef, 'create_lu', "$base/$scfg->{pool}/$zvol");
 
     return $guid;
@@ -235,7 +236,7 @@ sub zfs_create_lu {
 sub zfs_import_lu {
     my ($scfg, $zvol) = @_;
 
-	my $base = $zfs_get_base->($scfg);
+    my $base = $zfs_get_base->($scfg);
     zfs_request($scfg, undef, 'import_lu', "$base/$scfg->{pool}/$zvol");
 }
 
@@ -276,26 +277,26 @@ sub zfs_list_zvol {
 
     my $list = ();
     foreach my $zvol (@$zvols) {
-	my @values = split('/', $zvol->{name});
+    my @values = split('/', $zvol->{name});
 
-	my $pool = $values[0];
-	my $image = $values[1];
+    my $pool = $values[0];
+    my $image = $values[1];
 
-	next if $image !~ m/^((vm|base)-(\d+)-\S+)$/;
-	my $owner = $3;
+    next if $image !~ m/^((vm|base)-(\d+)-\S+)$/;
+    my $owner = $3;
 
-	my $parent = $zvol->{origin};
-	if($zvol->{origin} && $zvol->{origin} =~ m/^$scfg->{pool}\/(\S+)$/){
-	    $parent = $1;
-	}
+    my $parent = $zvol->{origin};
+    if($zvol->{origin} && $zvol->{origin} =~ m/^$scfg->{pool}\/(\S+)$/){
+        $parent = $1;
+    }
 
-	$list->{$pool}->{$image} = {
-	    name => $image,
-	    size => $zvol->{size},
-	    parent => $parent,
-	    format => 'raw',
-	    vmid => $owner
-	};
+    $list->{$pool}->{$image} = {
+        name => $image,
+        size => $zvol->{size},
+        parent => $parent,
+        format => 'raw',
+        vmid => $owner
+    };
     }
 
     return $list;
@@ -309,16 +310,16 @@ sub type {
 
 sub plugindata {
     return {
-	content => [ {images => 1}, { images => 1 }],
+    content => [ {images => 1}, { images => 1 }],
     };
 }
 
 sub properties {
     return {
-	iscsiprovider => {
-	    description => "iscsi provider",
-	    type => 'string',
-	},
+    iscsiprovider => {
+        description => "iscsi provider",
+        type => 'string',
+    },
         blocksize => {
             description => "block size",
             type => 'string',
@@ -331,11 +332,11 @@ sub options {
     nodes => { optional => 1 },
     disable => { optional => 1 },
     portal => { fixed => 1 },
-	target => { fixed => 1 },
+    target => { fixed => 1 },
     pool => { fixed => 1 },
-	blocksize => { fixed => 1 },
-	iscsiprovider => { fixed => 1 },
-	content => { optional => 1 },
+    blocksize => { fixed => 1 },
+    iscsiprovider => { fixed => 1 },
+    content => { optional => 1 },
     };
 }
 
@@ -345,7 +346,7 @@ sub parse_volname {
     my ($class, $volname) = @_;
 
     if ($volname =~ m/^(((base|vm)-(\d+)-\S+)\/)?((base)?(vm)?-(\d+)-\S+)$/) {
-	return ('images', $5, $8, $2, $4, $6);
+    return ('images', $5, $8, $2, $4, $6);
     }
 
     die "unable to parse zfs volume name '$volname'\n";
@@ -361,9 +362,9 @@ sub path {
 
     my $guid = zfs_get_lu_name($scfg, $name);
     my $lun = zfs_get_lun_number($scfg, $guid);
-	
+
     my $path = "iscsi://$portal/$target/$lun";
-	
+
     return ($path, $vmid, $vtype);
 }
 
@@ -448,7 +449,7 @@ sub alloc_image {
     die "unsupported format '$fmt'" if $fmt ne 'raw';
 
     die "illegal name '$name' - sould be 'vm-$vmid-*'\n"
-	if $name && $name !~ m/^vm-$vmid-/;
+    if $name && $name !~ m/^vm-$vmid-/;
 
     $name = &$find_free_diskname($storeid, $scfg, $vmid);
 
@@ -487,31 +488,31 @@ sub list_images {
 
     if (my $dat = $cache->{zfs}->{$zfspool}) {
 
-	foreach my $image (keys %$dat) {
+    foreach my $image (keys %$dat) {
 
-	    my $volname = $dat->{$image}->{name};
-	    my $parent = $dat->{$image}->{parent};
+        my $volname = $dat->{$image}->{name};
+        my $parent = $dat->{$image}->{parent};
 
-	    my $volid = undef;
+        my $volid = undef;
             if ($parent && $parent =~ m/^(\S+)@(\S+)$/) {
-		my ($basename) = ($1);
-		$volid = "$storeid:$basename/$volname";
-	    } else {
-		$volid = "$storeid:$volname";
-	    }
+        my ($basename) = ($1);
+        $volid = "$storeid:$basename/$volname";
+        } else {
+        $volid = "$storeid:$volname";
+        }
 
-	    my $owner = $dat->{$volname}->{vmid};
-	    if ($vollist) {
-		my $found = grep { $_ eq $volid } @$vollist;
-		next if !$found;
-	    } else {
-		next if defined ($vmid) && ($owner ne $vmid);
-	    }
+        my $owner = $dat->{$volname}->{vmid};
+        if ($vollist) {
+        my $found = grep { $_ eq $volid } @$vollist;
+        next if !$found;
+        } else {
+        next if defined ($vmid) && ($owner ne $vmid);
+        }
 
-	    my $info = $dat->{$volname};
-	    $info->{volid} = $volid;
-	    push @$res, $info;
-	}
+        my $info = $dat->{$volname};
+        $info->{volid} = $volid;
+        push @$res, $info;
+    }
     }
 
     return $res;
@@ -526,9 +527,9 @@ sub status {
     my $active = 0;
 
     eval {
-	($free, $used) = zfs_get_pool_stats($scfg);
-	$active = 1;
-	$total = $free + $used;
+    ($free, $used) = zfs_get_pool_stats($scfg);
+    $active = 1;
+    $total = $free + $used;
     };
     warn $@ if $@;
 
@@ -598,21 +599,21 @@ sub volume_has_feature {
     my ($class, $scfg, $feature, $storeid, $volname, $snapname, $running) = @_;
 
     my $features = {
-	snapshot => { current => 1, snap => 1},
-	clone => { base => 1},
-	template => { current => 1},
-	copy => { base => 1, current => 1},
+    snapshot => { current => 1, snap => 1},
+    clone => { base => 1},
+    template => { current => 1},
+    copy => { base => 1, current => 1},
     };
 
     my ($vtype, $name, $vmid, $basename, $basevmid, $isBase) =
-	$class->parse_volname($volname);
+    $class->parse_volname($volname);
 
     my $key = undef;
 
     if ($snapname) {
-	$key = 'snap';
+    $key = 'snap';
     } else {
-	$key = $isBase ? 'base' : 'current';
+    $key = $isBase ? 'base' : 'current';
     }
 
     return 1 if $features->{$feature}->{$key};

@@ -8,94 +8,95 @@ use Data::Dumper;
 
 my @ssh_opts = ('-o', 'BatchMode=yes');
 my @ssh_cmd = ('/usr/bin/ssh', @ssh_opts);
+my $id_rsa_path = '/etc/pve/priv/zfs';
 
 my $get_lun_cmd_map = sub {
-	my ($method) = @_;
-	
-	my $stmfadmcmd = "/usr/sbin/stmfadm";
-	my $sbdadmcmd = "/usr/sbin/sbdadm";
+    my ($method) = @_;
 
-	my $cmdmap = {
-	    create_lu	=> { cmd => $stmfadmcmd, method => 'create-lu' },
-	    delete_lu	=> { cmd => $stmfadmcmd, method => 'delete-lu' },
-	    import_lu	=> { cmd => $stmfadmcmd, method => 'import-lu' },
-	    modify_lu	=> { cmd => $stmfadmcmd, method => 'modify-lu' },
-	    add_view	=> { cmd => $stmfadmcmd, method => 'add-view' },
-	    list_view	=> { cmd => $stmfadmcmd, method => 'list-view' },
-	    list_lu	=> { cmd => $sbdadmcmd, method => 'list-lu' },
-	};
-	
-	die "unknown command '$method'" unless exists $cmdmap->{$method};
-	
-	return $cmdmap->{$method};
+    my $stmfadmcmd = "/usr/sbin/stmfadm";
+    my $sbdadmcmd = "/usr/sbin/sbdadm";
+
+    my $cmdmap = {
+        create_lu   => { cmd => $stmfadmcmd, method => 'create-lu' },
+        delete_lu   => { cmd => $stmfadmcmd, method => 'delete-lu' },
+        import_lu   => { cmd => $stmfadmcmd, method => 'import-lu' },
+        modify_lu   => { cmd => $stmfadmcmd, method => 'modify-lu' },
+        add_view    => { cmd => $stmfadmcmd, method => 'add-view' },
+        list_view   => { cmd => $stmfadmcmd, method => 'list-view' },
+        list_lu => { cmd => $sbdadmcmd, method => 'list-lu' },
+    };
+
+    die "unknown command '$method'" unless exists $cmdmap->{$method};
+
+    return $cmdmap->{$method};
 };
 
 sub get_base {
-	return '/dev/zvol/rdsk';
+    return '/dev/zvol/rdsk';
 }
 
 sub run_lun_command {
-	my ($scfg, $timeout, $method, @params) = @_;
+    my ($scfg, $timeout, $method, @params) = @_;
 
     my $msg = '';
     my $luncmd;
     my $target;
     my $guid;
     $timeout = 10 if !$timeout;
-	
+
     my $output = sub {
     my $line = shift;
-	$msg .= "$line\n";
+    $msg .= "$line\n";
     };
 
-	if ($method eq 'create_lu') {
-    	my $prefix = '600144f';
-    	my $digest = md5_hex($params[0]);
-    	$digest =~ /(\w{7}(.*))/;
-    	$guid = "$prefix$2";
-    	@params = ('-p', 'wcd=false', '-p', "guid=$guid", @params);
-	} elsif ($method eq 'modify_lu') {
-		@params = ('-s', @params);
-	} elsif ($method eq 'list_view') {
-		@params = ('-l', @params);
-	} elsif ($method eq 'list_lu') {
-		$guid = $params[0];
-		@params = undef;
-	}
-
-	my $cmdmap = $get_lun_cmd_map->($method);
-	$luncmd = $cmdmap->{cmd};
-	my $lunmethod = $cmdmap->{method};
-
-	$target = 'root@' . $scfg->{portal};
-
-	my $cmd = [@ssh_cmd, $target, $luncmd, $lunmethod, @params];
-	
-	run_command($cmd, outfunc => $output, timeout => $timeout);
-
-	if ($method eq 'list_view') {
-    	my @lines = split /\n/, $msg;
-    	$msg = undef;
-    	foreach my $line (@lines) {
-			if ($line =~ /^\s*LUN\s*:\s*(\d+)$/) {
-	    		$msg = $1;
-	    		last;
-			}
-		}
+    if ($method eq 'create_lu') {
+        my $prefix = '600144f';
+        my $digest = md5_hex($params[0]);
+        $digest =~ /(\w{7}(.*))/;
+        $guid = "$prefix$2";
+        @params = ('-p', 'wcd=false', '-p', "guid=$guid", @params);
+    } elsif ($method eq 'modify_lu') {
+        @params = ('-s', @params);
+    } elsif ($method eq 'list_view') {
+        @params = ('-l', @params);
     } elsif ($method eq 'list_lu') {
-		my $object = $guid;
-    	my @lines = split /\n/, $msg;
-    	$msg = undef;
-    	foreach my $line (@lines) {
-			if ($line =~ /(\w+)\s+\d+\s+$object$/) {
-				$msg = $1;
-				last;
-			}
-		}
-	} elsif ($method eq 'create_lu') {
-		$msg = $guid;
-	}
-	
-	return $msg;
+        $guid = $params[0];
+        @params = undef;
+    }
+
+    my $cmdmap = $get_lun_cmd_map->($method);
+    $luncmd = $cmdmap->{cmd};
+    my $lunmethod = $cmdmap->{method};
+
+    $target = 'root@' . $scfg->{portal};
+
+    my $cmd = [@ssh_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", $target, $luncmd, $lunmethod, @params];
+
+    run_command($cmd, outfunc => $output, timeout => $timeout);
+
+    if ($method eq 'list_view') {
+        my @lines = split /\n/, $msg;
+        $msg = undef;
+        foreach my $line (@lines) {
+            if ($line =~ /^\s*LUN\s*:\s*(\d+)$/) {
+                $msg = $1;
+                last;
+            }
+        }
+    } elsif ($method eq 'list_lu') {
+        my $object = $guid;
+        my @lines = split /\n/, $msg;
+        $msg = undef;
+        foreach my $line (@lines) {
+            if ($line =~ /(\w+)\s+\d+\s+$object$/) {
+                $msg = $1;
+                last;
+            }
+        }
+    } elsif ($method eq 'create_lu') {
+        $msg = $guid;
+    }
+
+    return $msg;
 }
 

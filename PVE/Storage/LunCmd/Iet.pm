@@ -33,6 +33,7 @@ my $OLD_CONFIG = undef;
 my @ssh_opts = ('-o', 'BatchMode=yes');
 my @ssh_cmd = ('/usr/bin/ssh', @ssh_opts);
 my @scp_cmd = ('/usr/bin/scp', @ssh_opts);
+my $id_rsa_path = '/etc/pve/priv/zfs';
 my $ietadm = '/usr/sbin/ietadm';
 
 my $execute_command = sub {
@@ -59,9 +60,9 @@ my $execute_command = sub {
     $target = 'root@' . $scfg->{portal};
 
     if ($exec eq 'scp') {
-        $cmd = [@scp_cmd, $method, "$target:$params[0]"];
+        $cmd = [@scp_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", $method, "$target:$params[0]"];
     } else {
-        $cmd = [@ssh_cmd, $target, $method, @params];
+        $cmd = [@ssh_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", $target, $method, @params];
     }
 
     eval {
@@ -103,7 +104,7 @@ my $read_config = sub {
 
     $target = 'root@' . $scfg->{portal};
 
-    my $cmd = [@ssh_cmd, $target, $luncmd, $CONFIG_FILE];
+    my $cmd = [@ssh_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", $target, $luncmd, $CONFIG_FILE];
     eval {
         run_command($cmd, outfunc => $output, errfunc => $errfunc, timeout => $timeout);
     };
