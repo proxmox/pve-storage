@@ -97,6 +97,36 @@ sub check_config {
 
 # Storage implementation
 
+sub parse_name_dir {
+    my $name = shift;
+
+    if ($name =~ m!^((base-)?[^/\s]+\.(raw|qcow2|vmdk))$!) {
+        return ($1, $3, $2);
+    }
+
+    die "unable to parse volume filename '$name'\n";
+}
+
+my $find_free_diskname = sub {
+    my ($imgdir, $vmid, $fmt) = @_;
+
+    my $disk_ids = {};
+    PVE::Tools::dir_glob_foreach($imgdir,
+                                 qr!(vm|base)-$vmid-disk-(\d+)\..*!,
+                                 sub {
+                                     my ($fn, $type, $disk) = @_;
+                                     $disk_ids->{$disk} = 1;
+                                 });
+
+    for (my $i = 1; $i < 100; $i++) {
+        if (!$disk_ids->{$i}) {
+            return "vm-$vmid-disk-$i.$fmt";
+        }
+    }
+
+    die "unable to allocate a new image name for VM $vmid in '$imgdir'\n";
+};
+
 sub path {
     my ($class, $scfg, $volname, $storeid) = @_;
 
@@ -115,6 +145,40 @@ sub path {
 
 
     return wantarray ? ($path, $vmid, $vtype) : $path;
+}
+
+sub alloc_image {
+    my ($class, $storeid, $scfg, $vmid, $fmt, $name, $size) = @_;
+
+    my $imagedir = $class->get_subdir($scfg, 'images');
+    $imagedir .= "/$vmid";
+
+    mkpath $imagedir;
+
+    $name = &$find_free_diskname($imagedir, $vmid, $fmt) if !$name;
+
+    my (undef, $tmpfmt) = parse_name_dir($name);
+
+    die "illegal name '$name' - wrong extension for format ('$tmpfmt != '$fmt')\n"
+        if $tmpfmt ne $fmt;
+
+    my $path = "$imagedir/$name";
+
+    die "disk image '$path' already exists\n" if -e $path;
+
+    my $server = $scfg->{server} ? $scfg->{server} : 'localhost';
+    my $glustervolume = $scfg->{volume};
+    my $volumepath = "gluster://$server/$glustervolume/images/$vmid/$name";
+
+    my $cmd = ['/usr/bin/qemu-img', 'create'];
+
+    push @$cmd, '-o', 'preallocation=metadata' if $fmt eq 'qcow2';
+
+    push @$cmd, '-f', $fmt, $volumepath, "${size}K";
+
+    run_command($cmd, errmsg => "unable to create image");
+
+    return "$vmid/$name";
 }
 
 sub status {
