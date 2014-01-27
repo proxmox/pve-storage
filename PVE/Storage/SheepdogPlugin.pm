@@ -14,7 +14,7 @@ my $collie_cmd = sub {
 
     my $portal = $scfg->{portal};
     my ($server, $port) = split(':', $portal);
-    my $cmd = ['/usr/sbin/collie', $class, $op, '-a', $server];
+    my $cmd = ['/usr/sbin/dog', $class, $op, '-a', $server];
     push @$cmd, '-p', $port if $port;
 
     push @$cmd, @options if scalar(@options);
@@ -244,7 +244,7 @@ sub alloc_image {
 
     $name = &$find_free_diskname($storeid, $scfg, $vmid);
 
-    my $cmd = &$collie_cmd($scfg, 'vdi', 'create', $name , "${size}KB");
+    my $cmd = &$collie_cmd($scfg, 'vdi', 'create', $name , "${size}k");
 
     run_command($cmd, errmsg => "sheepdog create $name' error");
 
@@ -408,7 +408,7 @@ sub volume_snapshot_rollback {
     my ($vtype, $name, $vmid, $basename, $basevmid, $isBase) =
         $class->parse_volname($volname);
 
-    my $cmd = &$collie_cmd($scfg, 'vdi', 'rollback', '-s', $snap, $name);
+    my $cmd = &$collie_cmd($scfg, 'vdi', 'rollback', '-f', '-s', $snap, $name);
     run_command($cmd, errmsg => "sheepdog snapshot $name' error");
 
 }
