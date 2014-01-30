@@ -41,6 +41,8 @@ my $zfs_get_base = sub {
         return PVE::Storage::LunCmd::Istgt::get_base;
     } elsif ($scfg->{iscsiprovider} eq 'iet') {
         return PVE::Storage::LunCmd::Iet::get_base;
+    } elsif ($scfg->{iscsiprovider} eq 'none') {
+	    return "/dev/zvol"
     } else {
         $zfs_unknown_scsi_provider->($scfg->{iscsiprovider});
     }
@@ -73,10 +75,12 @@ sub zfs_request {
         } else {
             $zfscmd = 'zfs';
         }
-
-        $target = 'root@' . $scfg->{portal};
-
-        my $cmd = [@ssh_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", $target, $zfscmd, $method, @params];
+	if ($scfg->{iscsiprovider} eq 'none') {
+	    my $cmd = [ $zfscmd, $method, @params];
+	} else { 
+            $target = 'root@' . $scfg->{portal};
+            my $cmd = [@ssh_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", $target, $zfscmd, $method, @params];
+        }
 
         $msg = '';
 
@@ -356,14 +360,19 @@ sub path {
     my ($class, $scfg, $volname) = @_;
 
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
+    my $path;
 
-    my $target = $scfg->{target};
-    my $portal = $scfg->{portal};
+    if ($scfg->{iscsiprovider} eq 'none') {
+       $path = "/dev/zvol/$name";
+    } else { 
+       my $target = $scfg->{target};
+       my $portal = $scfg->{portal};
 
-    my $guid = zfs_get_lu_name($scfg, $name);
-    my $lun = zfs_get_lun_number($scfg, $guid);
+       my $guid = zfs_get_lu_name($scfg, $name);
+       my $lun = zfs_get_lun_number($scfg, $guid);
 
-    my $path = "iscsi://$portal/$target/$lun";
+       $path = "iscsi://$portal/$target/$lun";
+    }
 
     return ($path, $vmid, $vtype);
 }
@@ -407,12 +416,16 @@ sub create_base {
     $newname =~ s/^vm-/base-/;
 
     my $newvolname = $basename ? "$basename/$newname" : "$newname";
-
-    zfs_delete_lu($scfg, $name);
+    
+    if ($scfg->{iscsiprovider} ne 'none') {
+        zfs_delete_lu($scfg, $name);
+    }	
     zfs_request($scfg, undef, 'rename', "$scfg->{pool}/$name", "$scfg->{pool}/$newname");
 
-    my $guid = zfs_create_lu($scfg, $newname);
-    zfs_add_lun_mapping_entry($scfg, $newname, $guid);
+    if ($scfg->{iscsiprovider} ne 'none') {
+    	my $guid = zfs_create_lu($scfg, $newname);
+    	zfs_add_lun_mapping_entry($scfg, $newname, $guid);
+    }
 
     my $running  = undef; #fixme : is create_base always offline ?
 
@@ -436,9 +449,11 @@ sub clone_image {
     warn "clone $volname: $basename to $name\n";
 
     zfs_request($scfg, undef, 'clone', "$scfg->{pool}/$basename\@$snap", "$scfg->{pool}/$name");
-
-    my $guid = zfs_create_lu($scfg, $name);
-    zfs_add_lun_mapping_entry($scfg, $name, $guid);
+	
+    if ($scfg->{iscsiprovider} ne 'none') {
+    	my $guid = zfs_create_lu($scfg, $name);
+    	zfs_add_lun_mapping_entry($scfg, $name, $guid);
+	}
 
     return $name;
 }
@@ -454,8 +469,12 @@ sub alloc_image {
     $name = &$find_free_diskname($storeid, $scfg, $vmid);
 
     zfs_create_zvol($scfg, $name, $size);
-    my $guid = zfs_create_lu($scfg, $name);
-    zfs_add_lun_mapping_entry($scfg, $name, $guid);
+
+
+    if ($scfg->{iscsiprovider} ne 'none') {
+    	my $guid = zfs_create_lu($scfg, $name);
+    	zfs_add_lun_mapping_entry($scfg, $name, $guid);
+	}
 
     return $name;
 }
@@ -465,16 +484,21 @@ sub free_image {
 
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
 
-    zfs_delete_lu($scfg, $name);
+    if ($scfg->{iscsiprovider} ne 'none') {
+    	zfs_delete_lu($scfg, $name);
+	}
     eval {
         zfs_delete_zvol($scfg, $name);
     };
-    do {
-        my $err = $@;
-        my $guid = zfs_create_lu($scfg, $name);
-        zfs_add_lun_mapping_entry($scfg, $name, $guid);
-        die $err;
-    } if $@;
+
+    if ($scfg->{iscsiprovider} ne 'none') {
+    	do {
+        	my $err = $@;
+        	my $guid = zfs_create_lu($scfg, $name);
+        	zfs_add_lun_mapping_entry($scfg, $name, $guid);
+        	die $err;
+    	} if $@;
+	}
 
     return undef;
 }
@@ -568,7 +592,10 @@ sub volume_resize {
     my $new_size = ($size/1024);
 
     zfs_request($scfg, undef, 'set', 'volsize=' . $new_size . 'k', "$scfg->{pool}/$volname");
-    zfs_resize_lu($scfg, $volname, $new_size);
+
+    if ($scfg->{iscsiprovider} ne 'none') {
+    	zfs_resize_lu($scfg, $volname, $new_size);
+	}
 }
 
 sub volume_snapshot {
@@ -580,13 +607,17 @@ sub volume_snapshot {
 sub volume_snapshot_rollback {
     my ($class, $scfg, $storeid, $volname, $snap) = @_;
 
-    zfs_delete_lu($scfg, $volname);
+    if ($scfg->{iscsiprovider} ne 'none') {
+    	zfs_delete_lu($scfg, $volname);
+	}
 
     zfs_request($scfg, undef, 'rollback', "$scfg->{pool}/$volname\@$snap");
 
-    zfs_import_lu($scfg, $volname);
+    if ($scfg->{iscsiprovider} ne 'none') {
+    	zfs_import_lu($scfg, $volname);
 
-    zfs_add_lun_mapping_entry($scfg, $volname);
+    	zfs_add_lun_mapping_entry($scfg, $volname);
+	}
 }
 
 sub volume_snapshot_delete {
