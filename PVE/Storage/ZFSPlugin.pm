@@ -151,23 +151,22 @@ sub zfs_parse_zvol_list {
     foreach my $line (@lines) {
     if ($line =~ /^(.+)\s+([a-zA-Z0-9\.]+|\-)\s+(.+)$/) {
         my $zvol = {};
-        my $name;
-        my $disk;
-        my @zvols = split /\//, $1;
-        my $pool = $zvols[0];
+        my @parts = split /\//, $1;
+        my $name = pop @parts;
+        my $pool = join('/', @parts);
 
-        if (scalar(@zvols) == 2 && $zvols[0] !~ /^rpool$/) {
-        $disk = $zvols[1];
-        next unless $disk =~ m!^(\w+)-(\d+)-(\w+)-(\d+)$!;
-        $name = $pool . '/' . $disk;
+        if ($pool !~ /^rpool$/) {
+            next unless $name =~ m!^(\w+)-(\d+)-(\w+)-(\d+)$!;
+            $name = $pool . '/' . $name;
         } else {
-        next;
+            next;
         }
 
+        $zvol->{pool} = $pool;
         $zvol->{name} = $name;
         $zvol->{size} = zfs_parse_size($2);
         if ($3 !~ /^-$/) {
-        $zvol->{origin} = $3;
+            $zvol->{origin} = $3;
         }
         push @$list, $zvol;
     }
@@ -271,7 +270,7 @@ sub zfs_get_lun_number {
 sub zfs_list_zvol {
     my ($scfg) = @_;
 
-    my $text = zfs_request($scfg, 10, 'list', '-o', 'name,volsize,origin', '-Hr');
+    my $text = zfs_request($scfg, 10, 'list', '-o', 'name,volsize,origin', '-t', 'volume', '-Hr');
     my $zvols = zfs_parse_zvol_list($text);
     return undef if !$zvols;
 
@@ -279,8 +278,8 @@ sub zfs_list_zvol {
     foreach my $zvol (@$zvols) {
     my @values = split('/', $zvol->{name});
 
-    my $pool = $values[0];
-    my $image = $values[1];
+    my $image = pop @values;
+    my $pool = join('/', @values);
 
     next if $image !~ m/^((vm|base)-(\d+)-\S+)$/;
     my $owner = $3;
