@@ -249,8 +249,13 @@ sub zfs_resize_lu {
 
 sub zfs_create_zvol {
     my ($scfg, $zvol, $size) = @_;
+    
+    my $sparse = '';
+    if ($scfg->{sparse}) {
+        $sparse = '-s';
+    }
 
-    zfs_request($scfg, undef, 'create', '-b', $scfg->{blocksize}, '-V', "${size}k", "$scfg->{pool}/$zvol");
+    zfs_request($scfg, undef, 'create', $sparse, '-b', $scfg->{blocksize}, '-V', "${size}k", "$scfg->{pool}/$zvol");
 }
 
 sub zfs_delete_zvol {
@@ -319,10 +324,15 @@ sub properties {
         description => "iscsi provider",
         type => 'string',
     },
-        blocksize => {
-            description => "block size",
-            type => 'string',
-        }
+    blocksize => {
+        description => "block size",
+        type => 'string',
+    },
+    sparse => {
+        description => "use sparse volumes",
+        type => 'boolean',
+	optional => 1,
+    }
     };
 }
 
@@ -335,6 +345,7 @@ sub options {
     pool => { fixed => 1 },
     blocksize => { fixed => 1 },
     iscsiprovider => { fixed => 1 },
+    sparse => { optional => 1 },
     content => { optional => 1 },
     };
 }
