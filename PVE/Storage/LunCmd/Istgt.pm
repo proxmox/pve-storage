@@ -430,14 +430,14 @@ my $add_view = sub {
     my $cmdmap;
 
     if (@params && $params[0] eq 'restart') {
-        @params = ('restart', '1>&2', '>', '/dev/null');
+        @params = ('onerestart', '>&', '/dev/null');
         $cmdmap = {
             cmd => 'ssh',
             method => $DAEMON,
             params => \@params,
         };
     } else {
-        @params = ('-HUP', '$(cat '. "$SETTINGS->{pidfile})");
+        @params = ('-HUP', '`cat '. "$SETTINGS->{pidfile}`");
         $cmdmap = {
             cmd => 'ssh',
             method => 'kill',
