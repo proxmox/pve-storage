@@ -173,6 +173,11 @@ my $lun_dumper = sub {
     foreach my $conf (@{$SETTINGS->{$lun}->{luns}}) {
         $config .=  "$conf->{lun} Storage " . $conf->{Storage};
         $config .= ' ' . $size_with_unit->($conf->{Size}) . "\n";
+        foreach ($conf->{options}) {
+            if ($_) {
+                $config .=  "$conf->{lun} Option " . $_ . "\n";
+            }
+        }
     }
     $config .= "\n";
 
@@ -228,16 +233,21 @@ my $free_lu_name = sub {
 };
 
 my $make_lun = sub {
-    my ($path) = @_;
+    my ($scfg, $path) = @_;
 
     my $target = $SETTINGS->{current};
     die 'Maximum number of LUNs per target is 63' if scalar @{$SETTINGS->{$target}->{luns}} >= $MAX_LUNS;
 
+    my @options = ();
     my $lun = $get_lu_name->($target);
+    if ($scfg->{nowritecache}) {
+        push @options, "WriteCache Disable";     
+    }
     my $conf = {
         lun => $lun,
         Storage => $path,
         Size => 'AUTO',
+        options => @options,
     };
     push @{$SETTINGS->{$target}->{luns}}, $conf;
 
@@ -274,7 +284,7 @@ my $parser = sub {
         } elsif ($lun) {
             next if (($_ =~ /^\s*#/) || ($_ =~ /^\s*$/));
             if ($_ =~ /^\s*(\w+)\s+(.+)\s*/) {
-                #next if $2 =~ /^Option.*/;
+                next if $2 =~ /^Option.*/;
                 $SETTINGS->{$lun}->{$1} = $2;
                 $SETTINGS->{$lun}->{$1} =~ s/^\s+|\s+$|"\s*//g;
             } else {
@@ -349,7 +359,7 @@ my $create_lun = sub {
         die "$params[0]: LUN exists";
     }
     my $lun = $params[0];
-    $lun = $make_lun->($lun);
+    $lun = $make_lun->($scfg, $lun);
     my $config = $lun_dumper->($SETTINGS->{current});
     open(my $fh, '>', $file) or die "Could not open file '$file' $!";
 

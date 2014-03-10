@@ -328,10 +328,16 @@ sub properties {
         description => "block size",
         type => 'string',
     },
+    # this will disable write caching on comstar and istgt.
+    # it is not implemented for iet. iet blockio always operates with 
+    # writethrough caching when not in readonly mode
+    nowritecache => {
+        description => "disable write caching on the target",
+        type => 'boolean',
+    },
     sparse => {
         description => "use sparse volumes",
         type => 'boolean',
-	optional => 1,
     }
     };
 }
@@ -345,6 +351,7 @@ sub options {
     pool => { fixed => 1 },
     blocksize => { fixed => 1 },
     iscsiprovider => { fixed => 1 },
+    nowritecache => { optional => 1 },
     sparse => { optional => 1 },
     content => { optional => 1 },
     };

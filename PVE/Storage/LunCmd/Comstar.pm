@@ -50,11 +50,15 @@ sub run_lun_command {
     };
 
     if ($method eq 'create_lu') {
+        my $wcd = 'false'; 
+        if ($scfg->{nowritecache}) {
+          $wcd = 'true';
+	}
         my $prefix = '600144f';
         my $digest = md5_hex($params[0]);
         $digest =~ /(\w{7}(.*))/;
         $guid = "$prefix$2";
-        @params = ('-p', 'wcd=false', '-p', "guid=$guid", @params);
+        @params = ('-p', "wcd=$wcd", '-p', "guid=$guid", @params);
     } elsif ($method eq 'modify_lu') {
         @params = ('-s', @params);
     } elsif ($method eq 'list_view') {
