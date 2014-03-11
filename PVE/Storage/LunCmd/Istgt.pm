@@ -284,9 +284,15 @@ my $parser = sub {
         } elsif ($lun) {
             next if (($_ =~ /^\s*#/) || ($_ =~ /^\s*$/));
             if ($_ =~ /^\s*(\w+)\s+(.+)\s*/) {
-                next if $2 =~ /^Option.*/;
-                $SETTINGS->{$lun}->{$1} = $2;
-                $SETTINGS->{$lun}->{$1} =~ s/^\s+|\s+$|"\s*//g;
+                my $arg1 = $1;
+                $2 =~ s/^\s+|\s+$|"\s*//g;
+                if ($2 =~ /^Storage\s*(.+)/i) {
+                    $SETTINGS->{$lun}->{$arg1}->{storage} = $1;
+                } elsif ($2 =~ /^Option\s*(.+)/i) {
+                    push @{$SETTINGS->{$lun}->{$arg1}->{options}}, $1;
+                } else {
+                    $SETTINGS->{$lun}->{$arg1} = $2;
+                }
             } else {
                 die "$line: parse error [$_]";
             }
@@ -305,19 +311,23 @@ my $parser = sub {
             my $lu = ();
             while ((my $key, my $val) = each(%{$SETTINGS->{"LogicalUnit$i"}})) {
                 if ($key =~ /^LUN\d+/) {
-                    if ($val =~ /^Storage\s+([\w\/\-]+)\s+(\w+)/) {
-                        my $storage = $1;
-                        my $size = $parse_size->($2);
-                        my $conf = undef;
-                        if ($storage =~ /^$base\/$scfg->{pool}\/([\w\-]+)$/) {
-                            $conf = {
-                                lun => $key,
-                                Storage => $storage,
-                                Size => $size,
-                            };
-                        }
-                        push @$lu, $conf if $conf;
+                    $val->{storage} =~ /^([\w\/\-]+)\s+(\w+)/;
+                    my $storage = $1;
+                    my $size = $parse_size->($2);
+                    my $conf = undef;
+                    my @options = ();
+                    if ($val->{options}) {
+                        @options = @{$val->{options}};
                     }
+                    if ($storage =~ /^$base\/$scfg->{pool}\/([\w\-]+)$/) {
+                        $conf = {
+                            lun => $key,
+                            Storage => $storage,
+                            Size => $size,
+                            options => @options,
+                        }
+                    }
+                    push @$lu, $conf if $conf;
                     delete $SETTINGS->{"LogicalUnit$i"}->{$key};
                 }
             }
