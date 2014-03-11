@@ -338,7 +338,15 @@ sub properties {
     sparse => {
         description => "use sparse volumes",
         type => 'boolean',
-    }
+    },
+    comstar_tg => {
+        description => "target group for comstar views",
+        type => 'string',
+    },
+    comstar_hg => {
+        description => "host group for comstar views",
+        type => 'string',
+    },
     };
 }
 
@@ -353,6 +361,8 @@ sub options {
     iscsiprovider => { fixed => 1 },
     nowritecache => { optional => 1 },
     sparse => { optional => 1 },
+    comstar_hg => { optional => 1 },
+    comstar_tg => { optional => 1 },
     content => { optional => 1 },
     };
 }

@@ -66,6 +66,15 @@ sub run_lun_command {
     } elsif ($method eq 'list_lu') {
         $guid = $params[0];
         @params = undef;
+    } elsif ($method eq 'add_view') {
+        if ($scfg->{comstar_tg}) {
+          unshift @params, $scfg->{comstar_tg};
+          unshift @params, '--target-group';
+	}
+        if ($scfg->{comstar_hg}) {
+          unshift @params, $scfg->{comstar_hg};
+          unshift @params, '--host-group';
+	}
     }
 
     my $cmdmap = $get_lun_cmd_map->($method);
