@@ -1,3 +1,9 @@
+libpve-storage-perl (3.0-20) unstable; urgency=low
+
+  * ZFS plugin improvements (added 'nowritecache' and 'sparse' options)
+  
+ -- Proxmox Support Team <support@proxmox.com>  Wed, 25 Jun 2014 09:16:57 +0200
+
 libpve-storage-perl (3.0-19) unstable; urgency=low
 
   * glusterfs : create volume through gluster block driver
