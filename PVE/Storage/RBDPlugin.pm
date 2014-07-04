@@ -3,6 +3,7 @@ package PVE::Storage::RBDPlugin;
 use strict;
 use warnings;
 use IO::File;
+use IO::Handle qw( );
 use PVE::Tools qw(run_command trim);
 use PVE::Storage::Plugin;
 use PVE::JSONSchema qw(get_standard_option);
@@ -79,6 +80,37 @@ my $rados_cmd = sub {
     return $cmd;
 };
 
+sub run_rbd_command {
+    my ($cmd, %args) = @_;
+
+    my $lasterr;
+    my $errmsg = $args{errmsg} . ": " || "";
+    if (!exists $args{errfunc}) {
+	# ' error: 2014-02-06 11:51:59.839135 7f09f94d0760 -1 librbd: snap_unprotect: can't unprotect;
+	# at least 1 child(ren) in pool cephstor1
+	$args{errfunc} = sub {
+			    my $line = shift;
+			    if ($line =~ m/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ [0-9a-f]+ [\-\d]+ librbd: (.*)$/) {
+				$lasterr = $1 . "\n";
+			    } else {
+				$lasterr = $line;
+			    }
+			    print STDERR $lasterr;
+			    STDERR->flush();
+			 };
+    }
+
+    my $r;
+    eval {
+	$r = run_command($cmd, %args);
+    };
+
+    die $errmsg . $lasterr if $@ && length $lasterr;
+    die $@ if $@;
+
+    return $r;
+}
+
 sub rbd_ls {
     my ($scfg, $storeid) = @_;
 
@@ -103,7 +135,7 @@ sub rbd_ls {
     };
 
     eval {
-	run_command($cmd, errmsg => "rbd error", errfunc => sub {}, outfunc => $parser);
+	run_rbd_command($cmd, errmsg => "rbd error", errfunc => sub {}, outfunc => $parser);
     };
     my $err = $@;
 
@@ -143,7 +175,7 @@ sub rbd_volume_info {
 
     };
 
-    run_command($cmd, errmsg => "rbd error", errfunc => sub {}, outfunc => $parser);
+    run_rbd_command($cmd, errmsg => "rbd error", errfunc => sub {}, outfunc => $parser);
 
     return ($size, $parent, $format, $protected);
 }
@@ -293,7 +325,7 @@ sub create_base {
     my $newvolname = $basename ? "$basename/$newname" : "$newname";
 
     my $cmd = &$rbd_cmd($scfg, $storeid, 'rename', &$add_pool_to_disk($scfg, $name), &$add_pool_to_disk($scfg, $newname));
-    run_command($cmd, errmsg => "rbd rename '$name' error");
+    run_rbd_command($cmd, errmsg => "rbd rename '$name' error");
 
     my $running  = undef; #fixme : is create_base always offline ?
 
@@ -303,7 +335,7 @@ sub create_base {
 
     if (!$protected){
 	my $cmd = &$rbd_cmd($scfg, $storeid, 'snap', 'protect', $newname, '--snap', $snap);
-	run_command($cmd, errmsg => "rbd protect $newname snap $snap' error");
+	run_rbd_command($cmd, errmsg => "rbd protect $newname snap $snap' error");
     }
 
     return $newvolname;
@@ -327,7 +359,7 @@ sub clone_image {
     my $newvol = "$basename/$name";
 
     my $cmd = &$rbd_cmd($scfg, $storeid, 'clone', &$add_pool_to_disk($scfg, $basename), '--snap', $snap, &$add_pool_to_disk($scfg, $name));
-    run_command($cmd, errmsg => "rbd clone $basename' error");
+    run_rbd_command($cmd, errmsg => "rbd clone '$basename' error");
 
     return $newvol;
 }
@@ -342,7 +374,7 @@ sub alloc_image {
     $name = &$find_free_diskname($storeid, $scfg, $vmid);
 
     my $cmd = &$rbd_cmd($scfg, $storeid, 'create', '--image-format' , 2, '--size', int(($size+1023)/1024), $name);
-    run_command($cmd, errmsg => "rbd create $name' error");
+    run_rbd_command($cmd, errmsg => "rbd create $name' error");
 
     return $name;
 }
@@ -358,15 +390,15 @@ sub free_image {
 	my (undef, undef, undef, $protected) = rbd_volume_info($scfg, $storeid, $name, $snap);
 	if ($protected){
 	    my $cmd = &$rbd_cmd($scfg, $storeid, 'snap', 'unprotect', $name, '--snap', $snap);
-	    run_command($cmd, errmsg => "rbd unprotect $name snap $snap' error");
+	    run_rbd_command($cmd, errmsg => "rbd unprotect $name snap $snap' error");
 	}
     }
 
     my $cmd = &$rbd_cmd($scfg, $storeid, 'snap', 'purge',  $name);
-    run_command($cmd, errmsg => "rbd snap purge $volname' error");
+    run_rbd_command($cmd, errmsg => "rbd snap purge '$volname' error");
 
     $cmd = &$rbd_cmd($scfg, $storeid, 'rm', $name);
-    run_command($cmd, errmsg => "rbd rm $volname' error");
+    run_rbd_command($cmd, errmsg => "rbd rm '$volname' error");
 
     return undef;
 }
@@ -420,7 +452,7 @@ sub status {
     };
 
     eval {
-	run_command($cmd, errmsg => "rados error", errfunc => sub {}, outfunc => $parser);
+	run_rbd_command($cmd, errmsg => "rados error", errfunc => sub {}, outfunc => $parser);
     };
 
     my $total = $stats->{space} ? $stats->{space}*1024 : 0;
@@ -467,7 +499,7 @@ sub volume_resize {
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
 
     my $cmd = &$rbd_cmd($scfg, $storeid, 'resize', '--size', ($size/1024/1024), $name);
-    run_command($cmd, errmsg => "rbd resize $volname' error");
+    run_rbd_command($cmd, errmsg => "rbd resize '$volname' error");
     return undef;
 }
 
@@ -479,7 +511,7 @@ sub volume_snapshot {
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
 
     my $cmd = &$rbd_cmd($scfg, $storeid, 'snap', 'create', '--snap', $snap, $name);
-    run_command($cmd, errmsg => "rbd snapshot $volname' error");
+    run_rbd_command($cmd, errmsg => "rbd snapshot '$volname' error");
     return undef;
 }
 
@@ -489,7 +521,7 @@ sub volume_snapshot_rollback {
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
 
     my $cmd = &$rbd_cmd($scfg, $storeid, 'snap', 'rollback', '--snap', $snap, $name);
-    run_command($cmd, errmsg => "rbd snapshot $volname to $snap' error");
+    run_rbd_command($cmd, errmsg => "rbd snapshot $volname to $snap' error");
 }
 
 sub volume_snapshot_delete {
@@ -500,7 +532,9 @@ sub volume_snapshot_delete {
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
 
     my $cmd = &$rbd_cmd($scfg, $storeid, 'snap', 'rm', '--snap', $snap, $name);
-    run_command($cmd, errmsg => "rbd snapshot $volname' error");
+
+    run_rbd_command($cmd, errmsg => "rbd snapshot '$volname' error");
+
     return undef;
 }
 
