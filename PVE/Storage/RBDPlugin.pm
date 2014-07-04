@@ -332,7 +332,7 @@ sub create_base {
 
     if (!$protected){
 	my $cmd = &$rbd_cmd($scfg, $storeid, 'snap', 'protect', $newname, '--snap', $snap);
-	run_rbd_command($cmd, errmsg => "rbd protect $newname snap $snap' error");
+	run_rbd_command($cmd, errmsg => "rbd protect $newname snap '$snap' error");
     }
 
     return $newvolname;
@@ -387,7 +387,7 @@ sub free_image {
 	my (undef, undef, undef, $protected) = rbd_volume_info($scfg, $storeid, $name, $snap);
 	if ($protected){
 	    my $cmd = &$rbd_cmd($scfg, $storeid, 'snap', 'unprotect', $name, '--snap', $snap);
-	    run_rbd_command($cmd, errmsg => "rbd unprotect $name snap $snap' error");
+	    run_rbd_command($cmd, errmsg => "rbd unprotect $name snap '$snap' error");
 	}
     }
 
@@ -518,7 +518,7 @@ sub volume_snapshot_rollback {
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
 
     my $cmd = &$rbd_cmd($scfg, $storeid, 'snap', 'rollback', '--snap', $snap, $name);
-    run_rbd_command($cmd, errmsg => "rbd snapshot $volname to $snap' error");
+    run_rbd_command($cmd, errmsg => "rbd snapshot $volname to '$snap' error");
 }
 
 sub volume_snapshot_delete {
