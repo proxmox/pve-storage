@@ -542,6 +542,12 @@ sub volume_snapshot_delete {
 
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
 
+    my (undef, undef, undef, $protected) = rbd_volume_info($scfg, $storeid, $name, $snap);
+    if ($protected){
+	my $cmd = &$rbd_cmd($scfg, $storeid, 'snap', 'unprotect', $name, '--snap', $snap);
+	run_rbd_command($cmd, errmsg => "rbd unprotect $name snap '$snap' error");
+    }
+
     my $cmd = &$rbd_cmd($scfg, $storeid, 'snap', 'rm', '--snap', $snap, $name);
 
     run_rbd_command($cmd, errmsg => "rbd snapshot '$volname' error");
