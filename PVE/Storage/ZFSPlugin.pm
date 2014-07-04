@@ -449,9 +449,9 @@ sub create_base {
 }
 
 sub clone_image {
-    my ($class, $scfg, $storeid, $volname, $vmid) = @_;
+    my ($class, $scfg, $storeid, $volname, $vmid, $snap) = @_;
 
-    my $snap = '__base__';
+    $snap ||= '__base__';
 
     my ($vtype, $basename, $basevmid, undef, undef, $isBase) =
         $class->parse_volname($volname);

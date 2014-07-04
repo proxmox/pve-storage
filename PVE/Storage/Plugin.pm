@@ -487,7 +487,7 @@ my $find_free_diskname = sub {
 };
 
 sub clone_image {
-    my ($class, $scfg, $storeid, $volname, $vmid) = @_;
+    my ($class, $scfg, $storeid, $volname, $vmid, $snap) = @_;
 
     # this only works for file based storage types
     die "storage definintion has no path\n" if !$scfg->{path};
@@ -497,7 +497,9 @@ sub clone_image {
 
     die "clone_image on wrong vtype '$vtype'\n" if $vtype ne 'images';
 
-    die "clone_image onyl works on base images\n" if !$isBase;
+    die "this storage type does not support clone_image on snapshot\n" if $snap;
+
+    die "clone_image only works on base images\n" if !$isBase;
 
     my $imagedir = $class->get_subdir($scfg, 'images');
     $imagedir .= "/$vmid";

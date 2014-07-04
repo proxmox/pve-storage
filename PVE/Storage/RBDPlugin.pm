@@ -340,20 +340,31 @@ sub create_base {
 }
 
 sub clone_image {
-    my ($class, $scfg, $storeid, $volname, $vmid) = @_;
+    my ($class, $scfg, $storeid, $volname, $vmid, $snapname) = @_;
 
     my $snap = '__base__';
+    $snap = $snapname if length $snapname;
 
     my ($vtype, $basename, $basevmid, undef, undef, $isBase) =
         $class->parse_volname($volname);
 
-    die "clone_image onyl works on base images\n" if !$isBase;
+    die "$volname is not a base image and snapname is not provided\n" if !$isBase && !length $snapname;
 
     my $name = &$find_free_diskname($storeid, $scfg, $vmid);
 
-    warn "clone $volname: $basename to $name\n";
+    warn "clone $volname: $basename snapname $snap to $name\n";
+
+    if (length $snapname) {
+	my (undef, undef, undef, $protected) = rbd_volume_info($scfg, $storeid, $volname, $snapname);
+
+	if (!$protected){
+	    my $cmd = &$rbd_cmd($scfg, $storeid, 'snap', 'protect', $volname, '--snap', $snapname);
+	    run_rbd_command($cmd, errmsg => "rbd protect $volname snap $snapname error");
+	}
+    }
 
     my $newvol = "$basename/$name";
+    $newvol = $name if length $snapname;
 
     my $cmd = &$rbd_cmd($scfg, $storeid, 'clone', &$add_pool_to_disk($scfg, $basename), '--snap', $snap, &$add_pool_to_disk($scfg, $name));
     run_rbd_command($cmd, errmsg => "rbd clone '$basename' error");

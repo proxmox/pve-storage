@@ -241,7 +241,7 @@ sub create_base {
 }
 
 sub clone_image {
-    my ($class, $scfg, $storeid, $volname, $vmid) = @_;
+    my ($class, $scfg, $storeid, $volname, $vmid, $snap) = @_;
 
     die "can't clone images in lvm storage\n";
 }
