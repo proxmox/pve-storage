@@ -478,7 +478,7 @@ sub storage_migrate {
 }
 
 sub vdisk_clone {
-    my ($cfg, $volid, $vmid) = @_;
+    my ($cfg, $volid, $vmid, $snap) = @_;
 
     my ($storeid, $volname) = parse_volume_id($volid);
 
@@ -490,7 +490,7 @@ sub vdisk_clone {
 
     # lock shared storage
     return $plugin->cluster_lock_storage($storeid, $scfg->{shared}, undef, sub {
-	my $volname = $plugin->clone_image($scfg, $storeid, $volname, $vmid);
+	my $volname = $plugin->clone_image($scfg, $storeid, $volname, $vmid, $snap);
 	return "$storeid:$volname";
     });
 }
