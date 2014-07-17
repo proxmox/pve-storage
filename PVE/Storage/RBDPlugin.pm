@@ -3,7 +3,6 @@ package PVE::Storage::RBDPlugin;
 use strict;
 use warnings;
 use IO::File;
-use IO::Handle qw( );
 use PVE::Tools qw(run_command trim);
 use PVE::Storage::Plugin;
 use PVE::JSONSchema qw(get_standard_option);
@@ -85,30 +84,28 @@ sub run_rbd_command {
 
     my $lasterr;
     my $errmsg = $args{errmsg} . ": " || "";
-    if (!exists $args{errfunc}) {
+    if (!exists($args{errfunc})) {
 	# ' error: 2014-02-06 11:51:59.839135 7f09f94d0760 -1 librbd: snap_unprotect: can't unprotect;
 	# at least 1 child(ren) in pool cephstor1
 	$args{errfunc} = sub {
-			    my $line = shift;
-			    if ($line =~ m/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ [0-9a-f]+ [\-\d]+ librbd: (.*)$/) {
-				$lasterr = $1 . "\n";
-			    } else {
-				$lasterr = $line;
-			    }
-			    print STDERR $lasterr;
-			    STDERR->flush();
-			 };
+	    my $line = shift;
+	    if ($line =~ m/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ [0-9a-f]+ [\-\d]+ librbd: (.*)$/) {
+		$lasterr = "$1\n";
+	    } else {
+		$lasterr = $line;
+	    }
+	    print STDERR $lasterr;
+	    *STDERR->flush();
+	};
+    }
+    
+    eval { run_command($cmd, %args); };
+    if (my $err = $@) {
+	die $errmsg . $lasterr if length($lasterr);
+	die $err;
     }
 
-    my $r;
-    eval {
-	$r = run_command($cmd, %args);
-    };
-
-    die $errmsg . $lasterr if $@ && length $lasterr;
-    die $@ if $@;
-
-    return $r;
+    return undef;
 }
 
 sub rbd_ls {
