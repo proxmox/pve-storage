@@ -13,6 +13,59 @@ use base qw(PVE::Storage::Plugin);
 
 # Glusterfs helper functions
 
+my $server_test_results = {};
+
+my $get_active_server = sub {
+    my ($scfg, $return_default_if_offline) = @_;
+
+    my $defaultserver = $scfg->{server} ? $scfg->{server} : 'localhost';
+
+    if ($return_default_if_offline && !defined($scfg->{server2})) {
+	# avoid delays (there is no backup server anyways)
+	return $defaultserver;
+    }
+
+    my $serverlist = [ $defaultserver ];
+    push @$serverlist, $scfg->{server2} if $scfg->{server2};
+
+    my $ctime = time();
+    foreach my $server (@$serverlist) {
+	my $stat = $server_test_results->{$server};
+	return $server if $stat && $stat->{active} && (($ctime - $stat->{time}) <= 2); 
+    }
+
+    foreach my $server (@$serverlist) {
+	my $status = 0;
+
+	if ($server && $server ne 'localhost' && $server ne '127.0.0.1') {
+
+	    my $p = Net::Ping->new("tcp", 2);
+	    $status = $p->ping($server);
+
+	} else {
+
+	    my $parser = sub {
+		my $line = shift;
+
+		if ($line =~ m/Status: Started$/) {
+		    $status = 1;
+		}
+	    };
+
+	    my $cmd = ['/usr/sbin/gluster', 'volume', 'info', $scfg->{volume}];
+
+	    run_command($cmd, errmsg => "glusterfs error", errfunc => sub {}, outfunc => $parser);
+	}
+
+	$server_test_results->{$server} = { time => time(), active => $status };
+	return $server if $status;
+    }
+
+    return $defaultserver if $return_default_if_offline;
+
+    return undef;
+};
+
 sub read_proc_mounts {
 
     local $/; # enable slurp mode
@@ -27,13 +80,11 @@ sub read_proc_mounts {
 }
 
 sub glusterfs_is_mounted {
-    my ($server, $volume, $mountpoint, $mountdata) = @_;
-
-    my $source = "$server:$volume";
+    my ($volume, $mountpoint, $mountdata) = @_;
 
     $mountdata = read_proc_mounts() if !$mountdata;
 
-    if ($mountdata =~ m|^$source/?\s$mountpoint\sfuse.glusterfs|m) {
+    if ($mountdata =~ m|^\S+:$volume/?\s$mountpoint\sfuse.glusterfs|m) {
 	return $mountpoint;
     }
 
@@ -70,6 +121,11 @@ sub properties {
 	    description => "Glusterfs Volume.",
 	    type => 'string',
 	},
+	server2 => {
+	    description => "Backup volfile server IP or DNS name.",
+	    type => 'string', format => 'pve-storage-server',
+	    requires => 'server',
+	},
     };
 }
 
@@ -77,6 +133,7 @@ sub options {
     return {
 	path => { fixed => 1 },
 	server => { optional => 1 },
+	server2 => { optional => 1 },
 	volume => { fixed => 1 },
         nodes => { optional => 1 },
 	disable => { optional => 1 },
@@ -132,17 +189,18 @@ sub path {
 
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
 
-    my $server = $scfg->{server} ? $scfg->{server} : 'localhost';
-    my $glustervolume = $scfg->{volume};
-
     my $path = undef;
-    if($vtype eq 'images'){
+    if ($vtype eq 'images') {
+
+	my $server = &$get_active_server($scfg, 1);
+	my $glustervolume = $scfg->{volume};
+
 	$path = "gluster://$server/$glustervolume/images/$vmid/$name";
-    }else{
+
+    } else {
 	my $dir = $class->get_subdir($scfg, $vtype);
 	$path = "$dir/$name";
     }
-
 
     return wantarray ? ($path, $vmid, $vtype) : $path;
 }
@@ -166,7 +224,7 @@ sub alloc_image {
 
     die "disk image '$path' already exists\n" if -e $path;
 
-    my $server = $scfg->{server} ? $scfg->{server} : 'localhost';
+    my $server = &$get_active_server($scfg, 1);
     my $glustervolume = $scfg->{volume};
     my $volumepath = "gluster://$server/$glustervolume/images/$vmid/$name";
 
@@ -187,11 +245,10 @@ sub status {
     $cache->{mountdata} = read_proc_mounts() if !$cache->{mountdata};
 
     my $path = $scfg->{path};
-    my $server = $scfg->{server} ? $scfg->{server} : 'localhost';
 
     my $volume = $scfg->{volume};
 
-    return undef if !glusterfs_is_mounted($server, $volume, $path, $cache->{mountdata});
+    return undef if !glusterfs_is_mounted($volume, $path, $cache->{mountdata});
 
     return $class->SUPER::status($storeid, $scfg, $cache);
 }
@@ -202,17 +259,18 @@ sub activate_storage {
     $cache->{mountdata} = read_proc_mounts() if !$cache->{mountdata};
 
     my $path = $scfg->{path};
-    my $server = $scfg->{server} ? $scfg->{server} : 'localhost';
     my $volume = $scfg->{volume};
 
-    if (!glusterfs_is_mounted($server, $volume, $path, $cache->{mountdata})) {
-
+    if (!glusterfs_is_mounted($volume, $path, $cache->{mountdata})) {
+	
 	mkpath $path;
 
 	die "unable to activate storage '$storeid' - " .
 	    "directory '$path' does not exist\n" if ! -d $path;
 
-	glusterfs_mount($server, $volume, $path, $scfg->{options});
+	my $server = &$get_active_server($scfg, 1);
+
+	glusterfs_mount($server, $volume, $path);
     }
 
     $class->SUPER::activate_storage($storeid, $scfg, $cache);
@@ -224,10 +282,9 @@ sub deactivate_storage {
     $cache->{mountdata} = read_proc_mounts() if !$cache->{mountdata};
 
     my $path = $scfg->{path};
-    my $server = $scfg->{server} ? $scfg->{server} : 'localhost';
     my $volume = $scfg->{volume};
 
-    if (glusterfs_is_mounted($server, $volume, $path, $cache->{mountdata})) {
+    if (glusterfs_is_mounted($volume, $path, $cache->{mountdata})) {
 	my $cmd = ['/bin/umount', $path];
 	run_command($cmd, errmsg => 'umount error');
     }
@@ -246,33 +303,11 @@ sub deactivate_volume {
 }
 
 sub check_connection {
-    my ($class, $storeid, $scfg) = @_;
+    my ($class, $storeid, $scfg, $cache) = @_;
 
-    my $server = $scfg->{server} ? $scfg->{server} : 'localhost';
-    my $volume = $scfg->{volume};
+    my $server = &$get_active_server($scfg);
 
-    my $status = 0;
-
-    if($server && $server ne 'localhost' && $server ne '127.0.0.1'){
-	my $p = Net::Ping->new("tcp", 2);
-	$status = $p->ping($server);
-
-    }else{
-
-	my $parser = sub {
-	    my $line = shift;
-
-	    if ($line =~ m/Status: Started$/) {
-		$status = 1;
-	    }
-	};
-
-	my $cmd = ['/usr/sbin/gluster', 'volume', 'info', $volume];
-
-	run_command($cmd, errmsg => "glusterfs error", errfunc => sub {}, outfunc => $parser);
-    }
-
-    return $status;
+    return defined($server) ? 1 : 0;
 }
 
 1;
