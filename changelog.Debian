@@ -1,3 +1,9 @@
+libpve-storage-perl (3.0-22) unstable; urgency=low
+
+  * glusterfs: new option server2 to specify backup volfile server
+
+ -- Proxmox Support Team <support@proxmox.com>  Wed, 27 Aug 2014 11:31:28 +0200
+
 libpve-storage-perl (3.0-21) unstable; urgency=low
 
   * enable linked clones from snapshots (ceph)
