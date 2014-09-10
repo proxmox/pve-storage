@@ -1,3 +1,9 @@
+libpve-storage-perl (3.0-23) unstable; urgency=low
+
+  * glusterfs: allow to upload iso images  
+
+ -- Proxmox Support Team <support@proxmox.com>  Wed, 10 Sep 2014 14:18:18 +0200
+
 libpve-storage-perl (3.0-22) unstable; urgency=low
 
   * glusterfs: new option server2 to specify backup volfile server
