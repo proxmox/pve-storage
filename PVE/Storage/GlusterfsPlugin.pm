@@ -126,6 +126,11 @@ sub properties {
 	    type => 'string', format => 'pve-storage-server',
 	    requires => 'server',
 	},
+	transport => {
+	    description => "Gluster transport: tcp or rdma",
+	    type => 'string',
+	    enum => ['tcp', 'rdma', 'unix'],
+    	},
     };
 }
 
@@ -135,6 +140,7 @@ sub options {
 	server => { optional => 1 },
 	server2 => { optional => 1 },
 	volume => { fixed => 1 },
+	transport => { optional => 1 },
         nodes => { optional => 1 },
 	disable => { optional => 1 },
         maxfiles => { optional => 1 },
@@ -194,8 +200,14 @@ sub path {
 
 	my $server = &$get_active_server($scfg, 1);
 	my $glustervolume = $scfg->{volume};
+	my $transport = $scfg->{transport};
+	my $protocol = "gluster";
 
-	$path = "gluster://$server/$glustervolume/images/$vmid/$name";
+	if ($transport) {
+	    $protocol = "gluster+$transport";
+	}
+
+	$path = "$protocol://$server/$glustervolume/images/$vmid/$name";
 
     } else {
 	my $dir = $class->get_subdir($scfg, $vtype);
