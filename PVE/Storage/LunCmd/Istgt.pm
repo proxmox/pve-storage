@@ -241,7 +241,7 @@ my $make_lun = sub {
     my @options = ();
     my $lun = $get_lu_name->($target);
     if ($scfg->{nowritecache}) {
-        push @options, "WriteCache Disable";     
+        push @options, "WriteCache Disable";
     }
     my $conf = {
         lun => $lun,
@@ -285,13 +285,14 @@ my $parser = sub {
             next if (($_ =~ /^\s*#/) || ($_ =~ /^\s*$/));
             if ($_ =~ /^\s*(\w+)\s+(.+)\s*/) {
                 my $arg1 = $1;
-                $2 =~ s/^\s+|\s+$|"\s*//g;
-                if ($2 =~ /^Storage\s*(.+)/i) {
+                my $arg2 = $2;
+                $arg2 =~ s/^\s+|\s+$|"\s*//g;
+                if ($arg2 =~ /^Storage\s*(.+)/i) {
                     $SETTINGS->{$lun}->{$arg1}->{storage} = $1;
-                } elsif ($2 =~ /^Option\s*(.+)/i) {
+                } elsif ($arg2 =~ /^Option\s*(.+)/i) {
                     push @{$SETTINGS->{$lun}->{$arg1}->{options}}, $1;
                 } else {
-                    $SETTINGS->{$lun}->{$arg1} = $2;
+                    $SETTINGS->{$lun}->{$arg1} = $arg2;
                 }
             } else {
                 die "$line: parse error [$_]";
