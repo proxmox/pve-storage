@@ -242,7 +242,7 @@ sub alloc_image {
     die "illegal name '$name' - sould be 'vm-$vmid-*'\n"
 	if  $name && $name !~ m/^vm-$vmid-/;
 
-    $name = &$find_free_diskname($storeid, $scfg, $vmid);
+    $name = &$find_free_diskname($storeid, $scfg, $vmid) if !$name;
 
     my $cmd = &$collie_cmd($scfg, 'vdi', 'create', $name , "${size}k");
 

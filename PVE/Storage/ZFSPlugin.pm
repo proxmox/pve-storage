@@ -478,7 +478,7 @@ sub alloc_image {
     die "illegal name '$name' - sould be 'vm-$vmid-*'\n"
     if $name && $name !~ m/^vm-$vmid-/;
 
-    $name = &$find_free_diskname($storeid, $scfg, $vmid);
+    $name = &$find_free_diskname($storeid, $scfg, $vmid) if !$name;
 
     zfs_create_zvol($scfg, $name, $size);
     my $guid = zfs_create_lu($scfg, $name);
