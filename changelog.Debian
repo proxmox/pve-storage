@@ -1,3 +1,9 @@
+libpve-storage-perl (3.0-26) unstable; urgency=low
+
+  * rbd, zfs, sheepdog: bugfix : fix alloc_image if name is specified
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 21 Nov 2014 08:03:43 +0100
+
 libpve-storage-perl (3.0-25) unstable; urgency=low
 
   * ZFS plugin: fix modification of read only value
