@@ -10,33 +10,6 @@ use PVE::Storage::Plugin;
 
 use base qw(PVE::Storage::Plugin);
 
-sub zfs_parse_size {
-    my ($text) = @_;
-
-    return 0 if !$text;
-
-    if ($text =~ m/^(\d+(\.\d+)?)([TGMK])?$/) {
-    my ($size, $reminder, $unit) = ($1, $2, $3);
-    return $size if !$unit;
-    if ($unit eq 'K') {
-        $size *= 1024;
-    } elsif ($unit eq 'M') {
-        $size *= 1024*1024;
-    } elsif ($unit eq 'G') {
-        $size *= 1024*1024*1024;
-    } elsif ($unit eq 'T') {
-        $size *= 1024*1024*1024*1024;
-    }
-
-    if ($reminder) {
-        $size = ceil($size);
-    }
-    return $size;
-    } else {
-    return 0;
-    }
-}
-
 sub type {
     return 'zfsdir';
 }
@@ -56,6 +29,42 @@ sub options {
         maxfiles => { optional => 1 },
 	content => { optional => 1 },
     };
+}
+
+sub zfs_parse_size {
+    my ($text) = @_;
+
+    return 0 if !$text;
+    
+    if ($text =~ m/^(\d+(\.\d+)?)([TGMK])?$/) {
+
+	my ($size, $reminder, $unit) = ($1, $2, $3);
+	
+	if ($unit) {
+	    if ($unit eq 'K') {
+		$size *= 1024;
+	    } elsif ($unit eq 'M') {
+		$size *= 1024*1024;
+	    } elsif ($unit eq 'G') {
+		$size *= 1024*1024*1024;
+	    } elsif ($unit eq 'T') {
+		$size *= 1024*1024*1024*1024;
+	    } else {
+		die "got unknown zfs size unit '$unit'\n";
+	    }
+	}
+
+	if ($reminder) {
+	    $size = ceil($size);
+	}
+	
+	return $size;
+    
+    }
+
+    warn "unable to parse zfs size '$text'\n";
+
+    return 0;
 }
 
 # fixme: implement me
