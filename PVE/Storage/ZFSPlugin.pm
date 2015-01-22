@@ -47,7 +47,7 @@ my $zfs_get_base = sub {
 };
 
 sub zfs_request {
-    my ($scfg, $timeout, $method, @params) = @_;
+    my ($class, $scfg, $timeout, $method, @params) = @_;
 
     my $cmdmap;
     my $zfscmd;
@@ -91,65 +91,8 @@ sub zfs_request {
     return $msg;
 }
 
-sub zfs_get_pool_stats {
-    my ($scfg) = @_;
-
-    my $available = 0;
-    my $used = 0;
-
-    my $text = zfs_request($scfg, undef, 'get', '-o', 'value', '-Hp',
-               'available,used', $scfg->{pool});
-
-    my @lines = split /\n/, $text;
-
-    if($lines[0] =~ /^(\d+)$/) {
-    $available = $1;
-    }
-
-    if($lines[1] =~ /^(\d+)$/) {
-    $used = $1;
-    }
-
-    return ($available, $used);
-}
-
-sub zfs_parse_zvol_list {
-    my ($text) = @_;
-
-    my $list = ();
-
-    return $list if !$text;
-
-    my @lines = split /\n/, $text;
-    foreach my $line (@lines) {
-    if ($line =~ /^(.+)\s+([a-zA-Z0-9\.]+|\-)\s+(.+)$/) {
-        my $zvol = {};
-        my @parts = split /\//, $1;
-        my $name = pop @parts;
-        my $pool = join('/', @parts);
-
-        if ($pool !~ /^rpool$/) {
-            next unless $name =~ m!^(\w+)-(\d+)-(\w+)-(\d+)$!;
-            $name = $pool . '/' . $name;
-        } else {
-            next;
-        }
-
-        $zvol->{pool} = $pool;
-        $zvol->{name} = $name;
-        $zvol->{size} = zfs_parse_size($2);
-        if ($3 !~ /^-$/) {
-            $zvol->{origin} = $3;
-        }
-        push @$list, $zvol;
-    }
-    }
-
-    return $list;
-}
-
 sub zfs_get_lu_name {
-    my ($scfg, $zvol) = @_;
+    my ($class, $scfg, $zvol) = @_;
     my $object;
 
     my $base = $zfs_get_base->($scfg);
@@ -159,124 +102,61 @@ sub zfs_get_lu_name {
         $object = "$base/$scfg->{pool}/$zvol";
     }
 
-    my $lu_name = zfs_request($scfg, undef, 'list_lu', $object);
+    my $lu_name = $class->zfs_request($scfg, undef, 'list_lu', $object);
 
     return $lu_name if $lu_name;
 
     die "Could not find lu_name for zvol $zvol";
 }
 
-sub zfs_get_zvol_size {
-    my ($scfg, $zvol) = @_;
-
-    my $text = zfs_request($scfg, undef, 'get', '-Hp', 'volsize', "$scfg->{pool}/$zvol");
-
-    if($text =~ /volsize\s(\d+)/){
-    return $1;
-    }
-
-    die "Could not get zvol size";
-}
-
 sub zfs_add_lun_mapping_entry {
-    my ($scfg, $zvol, $guid) = @_;
+    my ($class, $scfg, $zvol, $guid) = @_;
 
     if (! defined($guid)) {
-    $guid = zfs_get_lu_name($scfg, $zvol);
+    $guid = $class->zfs_get_lu_name($scfg, $zvol);
     }
 
-    zfs_request($scfg, undef, 'add_view', $guid);
+    $class->zfs_request($scfg, undef, 'add_view', $guid);
 }
 
 sub zfs_delete_lu {
-    my ($scfg, $zvol) = @_;
+    my ($class, $scfg, $zvol) = @_;
 
-    my $guid = zfs_get_lu_name($scfg, $zvol);
+    my $guid = $class->zfs_get_lu_name($scfg, $zvol);
 
-    zfs_request($scfg, undef, 'delete_lu', $guid);
+    $class->zfs_request($scfg, undef, 'delete_lu', $guid);
 }
 
 sub zfs_create_lu {
-    my ($scfg, $zvol) = @_;
+    my ($class, $scfg, $zvol) = @_;
 
     my $base = $zfs_get_base->($scfg);
-    my $guid = zfs_request($scfg, undef, 'create_lu', "$base/$scfg->{pool}/$zvol");
+    my $guid = $class->zfs_request($scfg, undef, 'create_lu', "$base/$scfg->{pool}/$zvol");
 
     return $guid;
 }
 
 sub zfs_import_lu {
-    my ($scfg, $zvol) = @_;
+    my ($class, $scfg, $zvol) = @_;
 
     my $base = $zfs_get_base->($scfg);
-    zfs_request($scfg, undef, 'import_lu', "$base/$scfg->{pool}/$zvol");
+    $class->zfs_request($scfg, undef, 'import_lu', "$base/$scfg->{pool}/$zvol");
 }
 
 sub zfs_resize_lu {
-    my ($scfg, $zvol, $size) = @_;
+    my ($class, $scfg, $zvol, $size) = @_;
 
-    my $guid = zfs_get_lu_name($scfg, $zvol);
+    my $guid = $class->zfs_get_lu_name($scfg, $zvol);
 
-    zfs_request($scfg, undef, 'modify_lu', "${size}K", $guid);
-}
-
-sub zfs_create_zvol {
-    my ($scfg, $zvol, $size) = @_;
-    
-    my $sparse = '';
-    if ($scfg->{sparse}) {
-        $sparse = '-s';
-    }
-
-    zfs_request($scfg, undef, 'create', $sparse, '-b', $scfg->{blocksize}, '-V', "${size}k", "$scfg->{pool}/$zvol");
-}
-
-sub zfs_delete_zvol {
-    my ($scfg, $zvol) = @_;
-
-    zfs_request($scfg, undef, 'destroy', '-r', "$scfg->{pool}/$zvol");
+    $class->zfs_request($scfg, undef, 'modify_lu', "${size}K", $guid);
 }
 
 sub zfs_get_lun_number {
-    my ($scfg, $guid) = @_;
+    my ($class, $scfg, $guid) = @_;
 
     die "could not find lun_number for guid $guid" if !$guid;
 
-    return zfs_request($scfg, undef, 'list_view', $guid);
-}
-
-sub zfs_list_zvol {
-    my ($scfg) = @_;
-
-    my $text = zfs_request($scfg, 10, 'list', '-o', 'name,volsize,origin', '-t', 'volume', '-Hr');
-    my $zvols = zfs_parse_zvol_list($text);
-    return undef if !$zvols;
-
-    my $list = ();
-    foreach my $zvol (@$zvols) {
-    my @values = split('/', $zvol->{name});
-
-    my $image = pop @values;
-    my $pool = join('/', @values);
-
-    next if $image !~ m/^((vm|base)-(\d+)-\S+)$/;
-    my $owner = $3;
-
-    my $parent = $zvol->{origin};
-    if($zvol->{origin} && $zvol->{origin} =~ m/^$scfg->{pool}\/(\S+)$/){
-        $parent = $1;
-    }
-
-    $list->{$pool}->{$image} = {
-        name => $image,
-        size => $zvol->{size},
-        parent => $parent,
-        format => 'raw',
-        vmid => $owner
-    };
-    }
-
-    return $list;
+    return $class->zfs_request($scfg, undef, 'list_view', $guid);
 }
 
 # Configuration
@@ -297,19 +177,11 @@ sub properties {
         description => "iscsi provider",
         type => 'string',
     },
-    blocksize => {
-        description => "block size",
-        type => 'string',
-    },
     # this will disable write caching on comstar and istgt.
     # it is not implemented for iet. iet blockio always operates with 
     # writethrough caching when not in readonly mode
     nowritecache => {
         description => "disable write caching on the target",
-        type => 'boolean',
-    },
-    sparse => {
-        description => "use sparse volumes",
         type => 'boolean',
     },
     comstar_tg => {
@@ -360,38 +232,13 @@ sub path {
     my $target = $scfg->{target};
     my $portal = $scfg->{portal};
 
-    my $guid = zfs_get_lu_name($scfg, $name);
-    my $lun = zfs_get_lun_number($scfg, $guid);
+    my $guid = $class->zfs_get_lu_name($scfg, $name);
+    my $lun = $class->zfs_get_lun_number($scfg, $guid);
 
     my $path = "iscsi://$portal/$target/$lun";
 
     return ($path, $vmid, $vtype);
 }
-
-my $find_free_diskname = sub {
-    my ($storeid, $scfg, $vmid) = @_;
-
-    my $name = undef;
-    my $volumes = zfs_list_zvol($scfg);
-
-    my $disk_ids = {};
-    my $dat = $volumes->{$scfg->{pool}};
-
-    foreach my $image (keys %$dat) {
-        my $volname = $dat->{$image}->{name};
-        if ($volname =~ m/(vm|base)-$vmid-disk-(\d+)/){
-            $disk_ids->{$2} = 1;
-        }
-    }
-
-    for (my $i = 1; $i < 100; $i++) {
-        if (!$disk_ids->{$i}) {
-            return "vm-$vmid-disk-$i";
-        }
-    }
-
-    die "unable to allocate an image name for VM $vmid in storage '$storeid'\n";
-};
 
 sub create_base {
     my ($class, $storeid, $scfg, $volname) = @_;
@@ -408,11 +255,11 @@ sub create_base {
 
     my $newvolname = $basename ? "$basename/$newname" : "$newname";
 
-    zfs_delete_lu($scfg, $name);
-    zfs_request($scfg, undef, 'rename', "$scfg->{pool}/$name", "$scfg->{pool}/$newname");
+    $class->zfs_delete_lu($scfg, $name);
+    $class->zfs_request($scfg, undef, 'rename', "$scfg->{pool}/$name", "$scfg->{pool}/$newname");
 
-    my $guid = zfs_create_lu($scfg, $newname);
-    zfs_add_lun_mapping_entry($scfg, $newname, $guid);
+    my $guid = $class->zfs_create_lu($scfg, $newname);
+    $class->zfs_add_lun_mapping_entry($scfg, $newname, $guid);
 
     my $running  = undef; #fixme : is create_base always offline ?
 
@@ -431,14 +278,14 @@ sub clone_image {
 
     die "clone_image only works on base images\n" if !$isBase;
 
-    my $name = &$find_free_diskname($storeid, $scfg, $vmid);
+    my $name = $class->zfs_find_free_diskname($storeid, $scfg, $vmid);
 
     warn "clone $volname: $basename to $name\n";
 
-    zfs_request($scfg, undef, 'clone', "$scfg->{pool}/$basename\@$snap", "$scfg->{pool}/$name");
+    $class->zfs_request($scfg, undef, 'clone', "$scfg->{pool}/$basename\@$snap", "$scfg->{pool}/$name");
 
-    my $guid = zfs_create_lu($scfg, $name);
-    zfs_add_lun_mapping_entry($scfg, $name, $guid);
+    my $guid = $class->zfs_create_lu($scfg, $name);
+    $class->zfs_add_lun_mapping_entry($scfg, $name, $guid);
 
     return $name;
 }
@@ -451,11 +298,11 @@ sub alloc_image {
     die "illegal name '$name' - sould be 'vm-$vmid-*'\n"
     if $name && $name !~ m/^vm-$vmid-/;
 
-    $name = &$find_free_diskname($storeid, $scfg, $vmid) if !$name;
+    $name = $class->zfs_find_free_diskname($storeid, $scfg, $vmid) if !$name;
 
-    zfs_create_zvol($scfg, $name, $size);
-    my $guid = zfs_create_lu($scfg, $name);
-    zfs_add_lun_mapping_entry($scfg, $name, $guid);
+    $class->zfs_create_zvol($scfg, $name, $size);
+    my $guid = $class->zfs_create_lu($scfg, $name);
+    $class->zfs_add_lun_mapping_entry($scfg, $name, $guid);
 
     return $name;
 }
@@ -465,14 +312,14 @@ sub free_image {
 
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
 
-    zfs_delete_lu($scfg, $name);
+    $class->zfs_delete_lu($scfg, $name);
     eval {
-        zfs_delete_zvol($scfg, $name);
+        $class->zfs_delete_zvol($scfg, $name);
     };
     do {
         my $err = $@;
-        my $guid = zfs_create_lu($scfg, $name);
-        zfs_add_lun_mapping_entry($scfg, $name, $guid);
+        my $guid = $class->zfs_create_lu($scfg, $name);
+        $class->zfs_add_lun_mapping_entry($scfg, $name, $guid);
         die $err;
     } if $@;
 
@@ -482,7 +329,7 @@ sub free_image {
 sub list_images {
     my ($class, $storeid, $scfg, $vmid, $vollist, $cache) = @_;
 
-    $cache->{zfs} = zfs_list_zvol($scfg) if !$cache->{zfs};
+    $cache->{zfs} = $class->zfs_list_zvol($scfg) if !$cache->{zfs};
     my $zfspool = $scfg->{pool};
     my $res = [];
 
@@ -527,7 +374,7 @@ sub status {
     my $active = 0;
 
     eval {
-    ($free, $used) = zfs_get_pool_stats($scfg);
+    ($free, $used) = $class->zfs_get_pool_stats($scfg);
     $active = 1;
     $total = $free + $used;
     };
@@ -559,7 +406,7 @@ sub deactivate_volume {
 sub volume_size_info {
     my ($class, $scfg, $storeid, $volname, $timeout) = @_;
 
-    return zfs_get_zvol_size($scfg, $volname);
+    return $class->zfs_get_zvol_size($scfg, $volname);
 }
 
 sub volume_resize {
@@ -567,14 +414,14 @@ sub volume_resize {
 
     my $new_size = ($size/1024);
 
-    zfs_request($scfg, undef, 'set', 'volsize=' . $new_size . 'k', "$scfg->{pool}/$volname");
-    zfs_resize_lu($scfg, $volname, $new_size);
+    $class->zfs_request($scfg, undef, 'set', 'volsize=' . $new_size . 'k', "$scfg->{pool}/$volname");
+    $class->zfs_resize_lu($scfg, $volname, $new_size);
 }
 
 sub volume_snapshot {
     my ($class, $scfg, $storeid, $volname, $snap, $running) = @_;
 
-    zfs_request($scfg, undef, 'snapshot', "$scfg->{pool}/$volname\@$snap");
+    $class->zfs_request($scfg, undef, 'snapshot', "$scfg->{pool}/$volname\@$snap");
 }
 
 sub volume_snapshot_rollback {
@@ -582,7 +429,7 @@ sub volume_snapshot_rollback {
 
     # abort rollback if snapshot is not the latest
     my @params = ('-t', 'snapshot', '-o', 'name', '-s', 'creation');
-    my $text = zfs_request($scfg, undef, 'list', @params);
+    my $text = $class->zfs_request($scfg, undef, 'list', @params);
     my @snapshots = split(/\n/, $text);
     my $recentsnap = undef;
     foreach (@snapshots) {
@@ -595,19 +442,19 @@ sub volume_snapshot_rollback {
         die "cannot rollback, more recent snapshots exist\n";
     }
 
-    zfs_delete_lu($scfg, $volname);
+    $class->zfs_delete_lu($scfg, $volname);
 
-    zfs_request($scfg, undef, 'rollback', "$scfg->{pool}/$volname\@$snap");
+    $class->zfs_request($scfg, undef, 'rollback', "$scfg->{pool}/$volname\@$snap");
 
-    zfs_import_lu($scfg, $volname);
+    $class->zfs_import_lu($scfg, $volname);
 
-    zfs_add_lun_mapping_entry($scfg, $volname);
+    $class->zfs_add_lun_mapping_entry($scfg, $volname);
 }
 
 sub volume_snapshot_delete {
     my ($class, $scfg, $storeid, $volname, $snap, $running) = @_;
 
-    zfs_request($scfg, undef, 'destroy', "$scfg->{pool}/$volname\@$snap");
+    $class->zfs_request($scfg, undef, 'destroy', "$scfg->{pool}/$volname\@$snap");
 }
 
 sub volume_has_feature {
