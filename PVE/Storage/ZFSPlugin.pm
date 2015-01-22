@@ -106,8 +106,8 @@ sub zfs_get_lu_name {
 sub zfs_add_lun_mapping_entry {
     my ($class, $scfg, $zvol, $guid) = @_;
 
-    if (! defined($guid)) {
-    $guid = $class->zfs_get_lu_name($scfg, $zvol);
+    if (!defined($guid)) {
+	$guid = $class->zfs_get_lu_name($scfg, $zvol);
     }
 
     $class->zfs_request($scfg, undef, 'add_view', $guid);
@@ -161,48 +161,48 @@ sub type {
 
 sub plugindata {
     return {
-    content => [ {images => 1}, { images => 1 }],
+	content => [ {images => 1}, { images => 1 }],
     };
 }
 
 sub properties {
     return {
-    iscsiprovider => {
-        description => "iscsi provider",
-        type => 'string',
-    },
-    # this will disable write caching on comstar and istgt.
-    # it is not implemented for iet. iet blockio always operates with 
-    # writethrough caching when not in readonly mode
-    nowritecache => {
-        description => "disable write caching on the target",
-        type => 'boolean',
-    },
-    comstar_tg => {
-        description => "target group for comstar views",
-        type => 'string',
-    },
-    comstar_hg => {
-        description => "host group for comstar views",
-        type => 'string',
-    },
+	iscsiprovider => {
+	    description => "iscsi provider",
+	    type => 'string',
+	},
+	# this will disable write caching on comstar and istgt.
+	# it is not implemented for iet. iet blockio always operates with
+	# writethrough caching when not in readonly mode
+	nowritecache => {
+	    description => "disable write caching on the target",
+	    type => 'boolean',
+	},
+	comstar_tg => {
+	    description => "target group for comstar views",
+	    type => 'string',
+	},
+	comstar_hg => {
+	    description => "host group for comstar views",
+	    type => 'string',
+	},
     };
 }
 
 sub options {
     return {
-    nodes => { optional => 1 },
-    disable => { optional => 1 },
-    portal => { fixed => 1 },
-    target => { fixed => 1 },
-    pool => { fixed => 1 },
-    blocksize => { fixed => 1 },
-    iscsiprovider => { fixed => 1 },
-    nowritecache => { optional => 1 },
-    sparse => { optional => 1 },
-    comstar_hg => { optional => 1 },
-    comstar_tg => { optional => 1 },
-    content => { optional => 1 },
+	nodes => { optional => 1 },
+	disable => { optional => 1 },
+	portal => { fixed => 1 },
+	target => { fixed => 1 },
+	pool => { fixed => 1 },
+	blocksize => { fixed => 1 },
+	iscsiprovider => { fixed => 1 },
+	nowritecache => { optional => 1 },
+	sparse => { optional => 1 },
+	comstar_hg => { optional => 1 },
+	comstar_tg => { optional => 1 },
+	content => { optional => 1 },
     };
 }
 
@@ -212,7 +212,7 @@ sub parse_volname {
     my ($class, $volname) = @_;
 
     if ($volname =~ m/^(((base|vm)-(\d+)-\S+)\/)?((base)?(vm)?-(\d+)-\S+)$/) {
-    return ('images', $5, $8, $2, $4, $6);
+	return ('images', $5, $8, $2, $4, $6);
     }
 
     die "unable to parse zfs volume name '$volname'\n";
@@ -307,15 +307,13 @@ sub free_image {
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
 
     $class->zfs_delete_lu($scfg, $name);
-    eval {
-        $class->zfs_delete_zvol($scfg, $name);
-    };
-    do {
-        my $err = $@;
+
+    eval { $class->zfs_delete_zvol($scfg, $name); };
+    if (my $err = $@) {
         my $guid = $class->zfs_create_lu($scfg, $name);
         $class->zfs_add_lun_mapping_entry($scfg, $name, $guid);
         die $err;
-    } if $@;
+    }
 
     return undef;
 }
@@ -329,31 +327,31 @@ sub list_images {
 
     if (my $dat = $cache->{zfs}->{$zfspool}) {
 
-    foreach my $image (keys %$dat) {
+	foreach my $image (keys %$dat) {
 
-        my $volname = $dat->{$image}->{name};
-        my $parent = $dat->{$image}->{parent};
+	    my $volname = $dat->{$image}->{name};
+	    my $parent = $dat->{$image}->{parent};
 
-        my $volid = undef;
+	    my $volid = undef;
             if ($parent && $parent =~ m/^(\S+)@(\S+)$/) {
-        my ($basename) = ($1);
-        $volid = "$storeid:$basename/$volname";
-        } else {
-        $volid = "$storeid:$volname";
-        }
+		my ($basename) = ($1);
+		$volid = "$storeid:$basename/$volname";
+	    } else {
+		$volid = "$storeid:$volname";
+	    }
 
-        my $owner = $dat->{$volname}->{vmid};
-        if ($vollist) {
-        my $found = grep { $_ eq $volid } @$vollist;
-        next if !$found;
-        } else {
-        next if defined ($vmid) && ($owner ne $vmid);
-        }
+	    my $owner = $dat->{$volname}->{vmid};
+	    if ($vollist) {
+		my $found = grep { $_ eq $volid } @$vollist;
+		next if !$found;
+	    } else {
+		next if defined ($vmid) && ($owner ne $vmid);
+	    }
 
-        my $info = $dat->{$volname};
-        $info->{volid} = $volid;
-        push @$res, $info;
-    }
+	    my $info = $dat->{$volname};
+	    $info->{volid} = $volid;
+	    push @$res, $info;
+	}
     }
 
     return $res;
@@ -368,9 +366,9 @@ sub status {
     my $active = 0;
 
     eval {
-    ($free, $used) = $class->zfs_get_pool_stats($scfg);
-    $active = 1;
-    $total = $free + $used;
+	($free, $used) = $class->zfs_get_pool_stats($scfg);
+	$active = 1;
+	$total = $free + $used;
     };
     warn $@ if $@;
 
@@ -430,7 +428,7 @@ sub volume_snapshot_rollback {
         if (/$scfg->{pool}\/$volname/) {
             s/^.*@//;
             $recentsnap = $_;
-        } 
+        }
     }
     if ($snap ne $recentsnap) {
         die "cannot rollback, more recent snapshots exist\n";
@@ -455,21 +453,21 @@ sub volume_has_feature {
     my ($class, $scfg, $feature, $storeid, $volname, $snapname, $running) = @_;
 
     my $features = {
-    snapshot => { current => 1, snap => 1},
-    clone => { base => 1},
-    template => { current => 1},
-    copy => { base => 1, current => 1},
+	snapshot => { current => 1, snap => 1},
+	clone => { base => 1},
+	template => { current => 1},
+	copy => { base => 1, current => 1},
     };
 
     my ($vtype, $name, $vmid, $basename, $basevmid, $isBase) =
-    $class->parse_volname($volname);
+	$class->parse_volname($volname);
 
     my $key = undef;
 
     if ($snapname) {
-    $key = 'snap';
+	$key = 'snap';
     } else {
-    $key = $isBase ? 'base' : 'current';
+	$key = $isBase ? 'base' : 'current';
     }
 
     return 1 if $features->{$feature}->{$key};
