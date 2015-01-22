@@ -262,6 +262,41 @@ sub zfs_find_free_diskname {
     die "unable to allocate an image name for VM $vmid in storage '$storeid'\n";
 }
 
-# fixme: implement me
+sub status {
+    my ($class, $storeid, $scfg, $cache) = @_;
+
+    my $total = 0;
+    my $free = 0;
+    my $used = 0;
+    my $active = 0;
+
+    eval {
+	($free, $used) = $class->zfs_get_pool_stats($scfg);
+	$active = 1;
+	$total = $free + $used;
+    };
+    warn $@ if $@;
+
+    return ($total, $free, $used, $active);
+}
+
+sub volume_size_info {
+    my ($class, $scfg, $storeid, $volname, $timeout) = @_;
+
+    return $class->zfs_get_zvol_size($scfg, $volname);
+}
+
+sub volume_snapshot {
+    my ($class, $scfg, $storeid, $volname, $snap, $running) = @_;
+
+    $class->zfs_request($scfg, undef, 'snapshot', "$scfg->{pool}/$volname\@$snap");
+}
+
+sub volume_snapshot_delete {
+    my ($class, $scfg, $storeid, $volname, $snap, $running) = @_;
+
+    $class->zfs_request($scfg, undef, 'destroy', "$scfg->{pool}/$volname\@$snap");
+}
+
 
 1;

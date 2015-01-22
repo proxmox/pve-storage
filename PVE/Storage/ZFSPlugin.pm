@@ -357,24 +357,6 @@ sub list_images {
     return $res;
 }
 
-sub status {
-    my ($class, $storeid, $scfg, $cache) = @_;
-
-    my $total = 0;
-    my $free = 0;
-    my $used = 0;
-    my $active = 0;
-
-    eval {
-	($free, $used) = $class->zfs_get_pool_stats($scfg);
-	$active = 1;
-	$total = $free + $used;
-    };
-    warn $@ if $@;
-
-    return ($total, $free, $used, $active);
-}
-
 sub activate_storage {
     my ($class, $storeid, $scfg, $cache) = @_;
     return 1;
@@ -395,12 +377,6 @@ sub deactivate_volume {
     return 1;
 }
 
-sub volume_size_info {
-    my ($class, $scfg, $storeid, $volname, $timeout) = @_;
-
-    return $class->zfs_get_zvol_size($scfg, $volname);
-}
-
 sub volume_resize {
     my ($class, $scfg, $storeid, $volname, $size, $running) = @_;
 
@@ -408,12 +384,6 @@ sub volume_resize {
 
     $class->zfs_request($scfg, undef, 'set', 'volsize=' . $new_size . 'k', "$scfg->{pool}/$volname");
     $class->zfs_resize_lu($scfg, $volname, $new_size);
-}
-
-sub volume_snapshot {
-    my ($class, $scfg, $storeid, $volname, $snap, $running) = @_;
-
-    $class->zfs_request($scfg, undef, 'snapshot', "$scfg->{pool}/$volname\@$snap");
 }
 
 sub volume_snapshot_rollback {
@@ -441,12 +411,6 @@ sub volume_snapshot_rollback {
     $class->zfs_import_lu($scfg, $volname);
 
     $class->zfs_add_lun_mapping_entry($scfg, $volname);
-}
-
-sub volume_snapshot_delete {
-    my ($class, $scfg, $storeid, $volname, $snap, $running) = @_;
-
-    $class->zfs_request($scfg, undef, 'destroy', "$scfg->{pool}/$volname\@$snap");
 }
 
 sub volume_has_feature {
