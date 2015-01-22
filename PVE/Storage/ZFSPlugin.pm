@@ -90,7 +90,6 @@ sub zfs_request {
 
 sub zfs_get_lu_name {
     my ($class, $scfg, $zvol) = @_;
-    my $object;
 
     my $base = $zfs_get_base->($scfg);
 
