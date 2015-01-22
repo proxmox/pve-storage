@@ -49,12 +49,9 @@ my $zfs_get_base = sub {
 sub zfs_request {
     my ($class, $scfg, $timeout, $method, @params) = @_;
 
-    my $cmdmap;
-    my $zfscmd;
-    my $target;
-    my $msg;
-
     $timeout = 5 if !$timeout;
+
+    my $msg = '';
 
     if ($lun_cmds->{$method}) {
         if ($scfg->{iscsiprovider} eq 'comstar') {
@@ -67,22 +64,22 @@ sub zfs_request {
             $zfs_unknown_scsi_provider->($scfg->{iscsiprovider});
         }
     } else {
+
+	my $target = 'root@' . $scfg->{portal};
+
+	my $cmd = [@ssh_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", $target];
+
         if ($method eq 'zpool_list') {
-            $zfscmd = 'zpool';
-            $method = 'list',
-        } else {
-            $zfscmd = 'zfs';
+	    push @$cmd, 'zpool', 'list';
+	} else {
+	    push @$cmd, 'zfs', $method;
         }
 
-        $target = 'root@' . $scfg->{portal};
+	push @$cmd, @params;
 
-        my $cmd = [@ssh_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", $target, $zfscmd, $method, @params];
-
-        $msg = '';
-
-        my $output = sub {
-        my $line = shift;
-        $msg .= "$line\n";
+	my $output = sub {
+	    my $line = shift;
+	    $msg .= "$line\n";
         };
 
         run_command($cmd, outfunc => $output, timeout => $timeout);
