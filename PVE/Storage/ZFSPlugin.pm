@@ -93,11 +93,8 @@ sub zfs_get_lu_name {
     my $object;
 
     my $base = $zfs_get_base->($scfg);
-    if ($zvol =~ /^.+\/.+/) {
-        $object = "$base/$zvol";
-    } else {
-        $object = "$base/$scfg->{pool}/$zvol";
-    }
+
+    my $object = ($zvol =~ /^.+\/.+/) ? "$base/$zvol" : "$base/$scfg->{pool}/$zvol";
 
     my $lu_name = $class->zfs_request($scfg, undef, 'list_lu', $object);
 
