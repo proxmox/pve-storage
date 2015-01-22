@@ -27,6 +27,7 @@ use PVE::Storage::RBDPlugin;
 use PVE::Storage::SheepdogPlugin;
 use PVE::Storage::ISCSIDirectPlugin;
 use PVE::Storage::GlusterfsPlugin;
+use PVE::Storage::ZFSDirPlugin;
 use PVE::Storage::ZFSPlugin;
 
 # load and initialize all plugins
@@ -38,6 +39,7 @@ PVE::Storage::RBDPlugin->register();
 PVE::Storage::SheepdogPlugin->register();
 PVE::Storage::ISCSIDirectPlugin->register();
 PVE::Storage::GlusterfsPlugin->register();
+PVE::Storage::ZFSDirPlugin->register();
 PVE::Storage::ZFSPlugin->register();
 PVE::Storage::Plugin->init();
 

@@ -5,9 +5,9 @@ use warnings;
 use IO::File;
 use POSIX;
 use PVE::Tools qw(run_command);
-use PVE::Storage::Plugin;
+use PVE::Storage::ZFSDirPlugin;
 
-use base qw(PVE::Storage::Plugin);
+use base qw(PVE::Storage::ZFSDirPlugin);
 use PVE::Storage::LunCmd::Comstar;
 use PVE::Storage::LunCmd::Istgt;
 use PVE::Storage::LunCmd::Iet;
@@ -89,33 +89,6 @@ sub zfs_request {
     }
 
     return $msg;
-}
-
-sub zfs_parse_size {
-    my ($text) = @_;
-
-    return 0 if !$text;
-
-    if ($text =~ m/^(\d+(\.\d+)?)([TGMK])?$/) {
-    my ($size, $reminder, $unit) = ($1, $2, $3);
-    return $size if !$unit;
-    if ($unit eq 'K') {
-        $size *= 1024;
-    } elsif ($unit eq 'M') {
-        $size *= 1024*1024;
-    } elsif ($unit eq 'G') {
-        $size *= 1024*1024*1024;
-    } elsif ($unit eq 'T') {
-        $size *= 1024*1024*1024*1024;
-    }
-
-    if ($reminder) {
-        $size = ceil($size);
-    }
-    return $size;
-    } else {
-    return 0;
-    }
 }
 
 sub zfs_get_pool_stats {
