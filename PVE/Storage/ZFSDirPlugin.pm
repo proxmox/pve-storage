@@ -388,5 +388,14 @@ sub volume_snapshot_delete {
     $class->zfs_request($scfg, undef, 'destroy', "$scfg->{pool}/$volname\@$snap");
 }
 
+sub activate_volume {
+    my ($class, $storeid, $scfg, $volname, $exclusive, $cache) = @_;
+    return 1;
+}
+
+sub deactivate_volume {
+    my ($class, $storeid, $scfg, $volname, $exclusive, $cache) = @_;
+    return 1;
+}
 
 1;

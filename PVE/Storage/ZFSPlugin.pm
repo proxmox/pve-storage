@@ -311,16 +311,6 @@ sub deactivate_storage {
     return 1;
 }
 
-sub activate_volume {
-    my ($class, $storeid, $scfg, $volname, $exclusive, $cache) = @_;
-    return 1;
-}
-
-sub deactivate_volume {
-    my ($class, $storeid, $scfg, $volname, $exclusive, $cache) = @_;
-    return 1;
-}
-
 sub volume_resize {
     my ($class, $scfg, $storeid, $volname, $size, $running) = @_;
 
