@@ -174,6 +174,16 @@ sub alloc_image {
     return $name;
 }
 
+sub free_image {
+    my ($class, $storeid, $scfg, $volname, $isBase) = @_;
+
+    my (undef, $name, undef) = $class->parse_volname($volname);
+
+    $class->zfs_delete_zvol($scfg, $name);
+
+    return undef;
+}
+
 sub zfs_get_pool_stats {
     my ($class, $scfg) = @_;
 
