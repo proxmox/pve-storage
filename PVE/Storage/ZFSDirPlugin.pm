@@ -388,6 +388,28 @@ sub volume_snapshot_delete {
     $class->zfs_request($scfg, undef, 'destroy', "$scfg->{pool}/$volname\@$snap");
 }
 
+sub volume_snapshot_rollback {
+    my ($class, $scfg, $storeid, $volname, $snap) = @_;
+
+    # abort rollback if snapshot is not the latest
+    my @params = ('-t', 'snapshot', '-o', 'name', '-s', 'creation');
+    my $text = zfs_request($class, $scfg, undef,'list', @params);
+    my @snapshots = split(/\n/, $text);
+    my $recentsnap = undef;
+    foreach (@snapshots) {
+        if (/$scfg->{pool}\/$volname/) {
+            s/^.*@//;
+            $recentsnap = $_;
+        }
+    }
+    if ($snap ne $recentsnap) {
+        die "cannot rollback, more recent snapshots exist\n";
+    }
+
+    zfs_request($class, $scfg, undef, 'rollback', "$scfg->{pool}/$volname\@$snap");
+ 
+}
+
 sub activate_volume {
     my ($class, $storeid, $scfg, $volname, $exclusive, $cache) = @_;
     return 1;
@@ -396,6 +418,32 @@ sub activate_volume {
 sub deactivate_volume {
     my ($class, $storeid, $scfg, $volname, $exclusive, $cache) = @_;
     return 1;
+}
+
+sub volume_has_feature {
+    my ($class, $scfg, $feature, $storeid, $volname, $snapname, $running) = @_;
+
+    my $features = {
+	snapshot => { current => 1, snap => 1},
+	clone => { base => 1},
+	template => { current => 1},
+	copy => { base => 1, current => 1},
+    };
+
+    my ($vtype, $name, $vmid, $basename, $basevmid, $isBase) =
+	$class->parse_volname($volname);
+
+    my $key = undef;
+
+    if ($snapname) {
+	$key = 'snap';
+    } else {
+	$key = $isBase ? 'base' : 'current';
+    }
+
+    return 1 if $features->{$feature}->{$key};
+
+    return undef;
 }
 
 1;

@@ -325,7 +325,7 @@ sub volume_snapshot_rollback {
 
     # abort rollback if snapshot is not the latest
     my @params = ('-t', 'snapshot', '-o', 'name', '-s', 'creation');
-    my $text = $class->zfs_request($scfg, undef, 'list', @params);
+    my $text = $class->zfs_request($class, $scfg, undef, 'list', @params);
     my @snapshots = split(/\n/, $text);
     my $recentsnap = undef;
     foreach (@snapshots) {
@@ -340,7 +340,7 @@ sub volume_snapshot_rollback {
 
     $class->zfs_delete_lu($scfg, $volname);
 
-    $class->zfs_request($scfg, undef, 'rollback', "$scfg->{pool}/$volname\@$snap");
+    $class->zfs_request($class, $scfg, undef, 'rollback', "$scfg->{pool}/$volname\@$snap");
 
     $class->zfs_import_lu($scfg, $volname);
 
