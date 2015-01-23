@@ -1,3 +1,9 @@
+libpve-storage-perl (3.0-27) unstable; urgency=low
+
+  * new ZFSDirPlugin to access local zfs storage
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 23 Jan 2015 13:01:51 +0100
+
 libpve-storage-perl (3.0-26) unstable; urgency=low
 
   * rbd, zfs, sheepdog: bugfix : fix alloc_image if name is specified
