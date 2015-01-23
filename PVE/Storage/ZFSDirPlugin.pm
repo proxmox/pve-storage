@@ -132,6 +132,22 @@ sub parse_volname {
 
 # virtual zfs methods (subclass can overwrite them)
 
+sub path {
+    my ($class, $scfg, $volname) = @_;
+
+    my ($vtype, $name, $vmid) = $class->parse_volname($volname);
+
+    my $path = '';
+
+    if($vtype eq "images"){
+	$path = "/dev/zvol/$scfg->{pool}/$volname";
+    } else {
+	die "$vtype is not allowed in ZFSDir!";
+    }
+
+    return ($path, $vmid, $vtype);
+}
+
 sub zfs_request {
     my ($class, $scfg, $timeout, $method, @params) = @_;
 
