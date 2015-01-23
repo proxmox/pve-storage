@@ -207,16 +207,6 @@ sub options {
 
 # Storage implementation
 
-sub parse_volname {
-    my ($class, $volname) = @_;
-
-    if ($volname =~ m/^(((base|vm)-(\d+)-\S+)\/)?((base)?(vm)?-(\d+)-\S+)$/) {
-	return ('images', $5, $8, $2, $4, $6);
-    }
-
-    die "unable to parse zfs volume name '$volname'\n";
-}
-
 sub path {
     my ($class, $scfg, $volname) = @_;
 
