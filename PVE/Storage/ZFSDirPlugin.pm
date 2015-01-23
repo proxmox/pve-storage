@@ -441,8 +441,6 @@ sub clone_image {
 
     my $name = $class->zfs_find_free_diskname($storeid, $scfg, $vmid);
 
-    warn "clone $volname: $basename to $name\n";
-
     $class->zfs_request($scfg, undef, 'clone', "$scfg->{pool}/$basename\@$snap", "$scfg->{pool}/$name");
 
     return $name;
