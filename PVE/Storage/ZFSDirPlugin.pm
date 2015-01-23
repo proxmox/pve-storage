@@ -149,6 +149,21 @@ sub zfs_request {
     return $msg;
 }
 
+sub alloc_image {
+    my ($class, $storeid, $scfg, $vmid, $fmt, $name, $size) = @_;
+
+    die "unsupported format '$fmt'" if $fmt ne 'raw';
+
+    die "illegal name '$name' - sould be 'vm-$vmid-*'\n"
+    if $name && $name !~ m/^vm-$vmid-/;
+
+    $name = $class->zfs_find_free_diskname($storeid, $scfg, $vmid) if !$name;
+    
+    $class->zfs_create_zvol($scfg, $name, $size);
+
+    return $name;
+}
+
 sub zfs_get_pool_stats {
     my ($class, $scfg) = @_;
 
