@@ -429,6 +429,49 @@ sub deactivate_volume {
     return 1;
 }
 
+sub clone_image {
+    my ($class, $scfg, $storeid, $volname, $vmid, $snap) = @_;
+
+    $snap ||= '__base__';
+
+    my ($vtype, $basename, $basevmid, undef, undef, $isBase) =
+        $class->parse_volname($volname);
+
+    die "clone_image only works on base images\n" if !$isBase;
+
+    my $name = $class->zfs_find_free_diskname($storeid, $scfg, $vmid);
+
+    warn "clone $volname: $basename to $name\n";
+
+    $class->zfs_request($scfg, undef, 'clone', "$scfg->{pool}/$basename\@$snap", "$scfg->{pool}/$name");
+
+    return $name;
+}
+
+sub create_base {
+    my ($class, $storeid, $scfg, $volname) = @_;
+
+    my $snap = '__base__';
+
+    my ($vtype, $name, $vmid, $basename, $basevmid, $isBase) =
+        $class->parse_volname($volname);
+
+    die "create_base not possible with base image\n" if $isBase;
+
+    my $newname = $name;
+    $newname =~ s/^vm-/base-/;
+
+    my $newvolname = $basename ? "$basename/$newname" : "$newname";
+
+    $class->zfs_request($scfg, undef, 'rename', "$scfg->{pool}/$name", "$scfg->{pool}/$newname");
+
+    my $running  = undef; #fixme : is create_base always offline ?
+
+    $class->volume_snapshot($scfg, $storeid, $newname, $snap, $running);
+
+    return $newvolname;
+}
+
 sub volume_has_feature {
     my ($class, $scfg, $feature, $storeid, $volname, $snapname, $running) = @_;
 

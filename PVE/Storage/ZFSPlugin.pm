@@ -254,18 +254,7 @@ sub create_base {
 sub clone_image {
     my ($class, $scfg, $storeid, $volname, $vmid, $snap) = @_;
 
-    $snap ||= '__base__';
-
-    my ($vtype, $basename, $basevmid, undef, undef, $isBase) =
-        $class->parse_volname($volname);
-
-    die "clone_image only works on base images\n" if !$isBase;
-
-    my $name = $class->zfs_find_free_diskname($storeid, $scfg, $vmid);
-
-    warn "clone $volname: $basename to $name\n";
-
-    $class->zfs_request($scfg, undef, 'clone', "$scfg->{pool}/$basename\@$snap", "$scfg->{pool}/$name");
+    my $name  = $class->SUPER::clone_image($scfg, $storeid, $volname, $vmid, $snap);
 
     my $guid = $class->zfs_create_lu($scfg, $name);
     $class->zfs_add_lun_mapping_entry($scfg, $name, $guid);
