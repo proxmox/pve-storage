@@ -301,45 +301,6 @@ sub free_image {
     return undef;
 }
 
-sub list_images {
-    my ($class, $storeid, $scfg, $vmid, $vollist, $cache) = @_;
-
-    $cache->{zfs} = $class->zfs_list_zvol($scfg) if !$cache->{zfs};
-    my $zfspool = $scfg->{pool};
-    my $res = [];
-
-    if (my $dat = $cache->{zfs}->{$zfspool}) {
-
-	foreach my $image (keys %$dat) {
-
-	    my $volname = $dat->{$image}->{name};
-	    my $parent = $dat->{$image}->{parent};
-
-	    my $volid = undef;
-            if ($parent && $parent =~ m/^(\S+)@(\S+)$/) {
-		my ($basename) = ($1);
-		$volid = "$storeid:$basename/$volname";
-	    } else {
-		$volid = "$storeid:$volname";
-	    }
-
-	    my $owner = $dat->{$volname}->{vmid};
-	    if ($vollist) {
-		my $found = grep { $_ eq $volid } @$vollist;
-		next if !$found;
-	    } else {
-		next if defined ($vmid) && ($owner ne $vmid);
-	    }
-
-	    my $info = $dat->{$volname};
-	    $info->{volid} = $volid;
-	    push @$res, $info;
-	}
-    }
-
-    return $res;
-}
-
 sub activate_storage {
     my ($class, $storeid, $scfg, $cache) = @_;
     return 1;
