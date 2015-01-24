@@ -417,6 +417,16 @@ sub volume_snapshot_rollback {
     zfs_request($class, $scfg, undef, 'rollback', "$scfg->{pool}/$volname\@$snap");
 }
 
+sub activate_storage {
+    my ($class, $storeid, $scfg, $cache) = @_;
+    return 1;
+}
+
+sub deactivate_storage {
+    my ($class, $storeid, $scfg, $cache) = @_;
+    return 1;
+}
+
 sub activate_volume {
     my ($class, $storeid, $scfg, $volname, $exclusive, $cache) = @_;
     return 1;

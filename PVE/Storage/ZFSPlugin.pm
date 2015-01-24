@@ -290,16 +290,6 @@ sub free_image {
     return undef;
 }
 
-sub activate_storage {
-    my ($class, $storeid, $scfg, $cache) = @_;
-    return 1;
-}
-
-sub deactivate_storage {
-    my ($class, $storeid, $scfg, $cache) = @_;
-    return 1;
-}
-
 sub volume_resize {
     my ($class, $scfg, $storeid, $volname, $size, $running) = @_;
 
