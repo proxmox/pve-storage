@@ -5,9 +5,9 @@ use warnings;
 use IO::File;
 use POSIX;
 use PVE::Tools qw(run_command);
-use PVE::Storage::ZFSDirPlugin;
+use PVE::Storage::ZFSPoolPlugin;
 
-use base qw(PVE::Storage::ZFSDirPlugin);
+use base qw(PVE::Storage::ZFSPoolPlugin);
 use PVE::Storage::LunCmd::Comstar;
 use PVE::Storage::LunCmd::Istgt;
 use PVE::Storage::LunCmd::Iet;

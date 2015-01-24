@@ -1,4 +1,4 @@
-package PVE::Storage::ZFSDirPlugin;
+package PVE::Storage::ZFSPoolPlugin;
 
 use strict;
 use warnings;
@@ -11,15 +11,14 @@ use PVE::Storage::Plugin;
 use base qw(PVE::Storage::Plugin);
 
 sub type {
-    return 'zfsdir';
+    return 'zfspool';
 }
 
 sub plugindata {
     return {
-	content => [ { images => 1, rootdir => 1, vztmpl => 1, iso => 1, backup => 1},
-		     { images => 1 }],
+	content => [ {images => 1}, { images => 1 }],
     };
-}   
+}
 
 sub properties {
     return {
@@ -36,7 +35,6 @@ sub properties {
 
 sub options {
     return {
-	path => { fixed => 1 },
 	pool => { fixed => 1 },
 	blocksize => { optional => 1 },
 	sparse => { optional => 1 },
@@ -142,7 +140,7 @@ sub path {
     if($vtype eq "images"){
 	$path = "/dev/zvol/$scfg->{pool}/$volname";
     } else {
-	die "$vtype is not allowed in ZFSDir!";
+	die "$vtype is not allowed in ZFSPool!";
     }
 
     return ($path, $vmid, $vtype);

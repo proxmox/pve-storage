@@ -1,4 +1,4 @@
-SOURCES=Plugin.pm DirPlugin.pm LVMPlugin.pm NFSPlugin.pm ISCSIPlugin.pm RBDPlugin.pm SheepdogPlugin.pm ISCSIDirectPlugin.pm GlusterfsPlugin.pm ZFSDirPlugin.pm ZFSPlugin.pm
+SOURCES=Plugin.pm DirPlugin.pm LVMPlugin.pm NFSPlugin.pm ISCSIPlugin.pm RBDPlugin.pm SheepdogPlugin.pm ISCSIDirectPlugin.pm GlusterfsPlugin.pm ZFSPoolPlugin.pm ZFSPlugin.pm
 
 .PHONY: install
 install:
