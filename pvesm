@@ -172,6 +172,14 @@ my $cmddef = {
 			 printf "$rec->{vg}\n";
 		     }
 		 }],
+    zfsscan => [ "PVE::API2::Storage::Scan", 'zfsscan', [],
+		 { node => $nodename }, sub  {
+		     my $res = shift;
+
+		     foreach my $rec (@$res) {
+			 printf "$rec->{pool}\n";
+		     }
+		 }],
     path => [ __PACKAGE__, 'path', ['volume']],
 };
 

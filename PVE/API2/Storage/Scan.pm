@@ -44,9 +44,41 @@ __PACKAGE__->register_method ({
 	    { method => 'nfs' },
 	    { method => 'glusterfs' },
 	    { method => 'usb' },
+	    { method => 'zfs' },
 	    ];
 
 	return $res;
+    }});
+
+__PACKAGE__->register_method ({
+    name => 'zfsscan', 
+    path => 'zfs', 
+    method => 'GET',
+    description => "Scan zfs pool list on local node.",
+    protected => 1,
+    proxyto => "node",
+    permissions => { 
+	check => ['perm', '/storage', ['Datastore.Allocate']],
+    },
+    parameters => {
+    	additionalProperties => 0,
+	properties => {
+	    node => get_standard_option('pve-node'),
+	},
+    },
+    returns => {
+	type => 'array',
+	items => {
+	    type => "object",
+	    properties => { 
+		pool => { type => 'string'},
+	    },
+	},
+    },
+    code => sub {
+	my ($param) = @_;
+
+	return PVE::Storage::scan_zfs();
     }});
 
 __PACKAGE__->register_method ({

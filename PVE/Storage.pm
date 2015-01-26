@@ -911,6 +911,25 @@ sub scan_nfs {
     return $res;
 }
 
+sub scan_zfs {
+
+    my $cmd = ['zpool',  'list', '-H', '-o', 'name,size,free'];
+
+    my $res = [];
+    run_command($cmd, outfunc => sub {
+	my $line = shift;
+
+	if ($line =~m/^(\S+)\s+(\S+)\s+(\S+)$/) {
+	    my ($pool, $size_str, $free_str) = ($1, $2, $3);
+	    my $size = PVE::Storage::ZFSPoolPlugin::zfs_parse_size($size_str);
+	    my $free = PVE::Storage::ZFSPoolPlugin::zfs_parse_size($free_str);
+	    push @$res, { pool => $pool, size => $size, free => $free };
+	}
+    });
+
+    return $res;
+}
+
 sub resolv_portal {
     my ($portal, $noerr) = @_;
 
