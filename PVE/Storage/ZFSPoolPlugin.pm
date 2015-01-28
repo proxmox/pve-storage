@@ -184,6 +184,13 @@ sub alloc_image {
     $name = $class->zfs_find_free_diskname($storeid, $scfg, $vmid) if !$name;
     
     $class->zfs_create_zvol($scfg, $name, $size);
+    run_command ("udevadm trigger --subsystem-match block");
+    run_command ("udevadm settle --timeout 5");
+    
+    for (1..10) {
+       last if -e "/dev/zvol/$scfg->{pool}/$name" ;
+       Time::HiRes::usleep(100);
+    }
 
     return $name;
 }

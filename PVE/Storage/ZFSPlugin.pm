@@ -265,7 +265,14 @@ sub clone_image {
 sub alloc_image {
     my ($class, $storeid, $scfg, $vmid, $fmt, $name, $size) = @_;
     
-    my $volname = $class->SUPER::alloc_image($storeid, $scfg, $vmid, $fmt, $name, $size);
+    die "unsupported format '$fmt'" if $fmt ne 'raw';
+
+    die "illegal name '$name' - sould be 'vm-$vmid-*'\n"
+    if $name && $name !~ m/^vm-$vmid-/;
+
+    my $volname = $class->zfs_find_free_diskname($storeid, $scfg, $vmid) if !$name;
+    
+    $class->zfs_create_zvol($scfg, $name, $size);
  
     my $guid = $class->zfs_create_lu($scfg, $volname);
     $class->zfs_add_lun_mapping_entry($scfg, $volname, $guid);
