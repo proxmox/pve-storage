@@ -1,6 +1,12 @@
+libpve-storage-perl (3.0-28) unstable; urgency=low
+
+  * ZFSPoolPlugin: use 'udevadm settle' to wait until devices are created. 
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 30 Jan 2015 06:27:06 +0100
+
 libpve-storage-perl (3.0-27) unstable; urgency=low
 
-  * new ZFSDirPlugin to access local zfs storage
+  * new ZFSPoolPlugin to access local zfs storage
 
  -- Proxmox Support Team <support@proxmox.com>  Fri, 23 Jan 2015 13:01:51 +0100
 
