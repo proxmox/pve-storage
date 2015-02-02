@@ -98,12 +98,8 @@ sub zfs_parse_zvol_list {
 	    my $name = pop @parts;
 	    my $pool = join('/', @parts);
 
-	    if ($pool !~ /^rpool$/) {
-		next unless $name =~ m!^(\w+)-(\d+)-(\w+)-(\d+)$!;
-		$name = $pool . '/' . $name;
-	    } else {
-		next;
-	    }
+	    next unless $name =~ m!^(\w+)-(\d+)-(\w+)-(\d+)$!;
+	    $name = $pool . '/' . $name;
 
 	    $zvol->{pool} = $pool;
 	    $zvol->{name} = $name;
