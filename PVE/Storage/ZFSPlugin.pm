@@ -350,4 +350,9 @@ sub volume_has_feature {
     return undef;
 }
 
+sub activate_storage {
+    my ($class, $storeid, $scfg, $cache) = @_;
+    return 1;
+}
+
 1;

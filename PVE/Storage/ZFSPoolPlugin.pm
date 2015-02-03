@@ -150,7 +150,7 @@ sub zfs_request {
     my $cmd = [];
 
     if ($method eq 'zpool_list') {
-	push @$cmd = 'zpool', 'list';
+	push @$cmd, 'zpool', 'list';
     } else {
 	push @$cmd, 'zfs', $method;
     }
@@ -422,6 +422,14 @@ sub volume_snapshot_rollback {
 
 sub activate_storage {
     my ($class, $storeid, $scfg, $cache) = @_;
+
+    my @param = ('-o', 'name', '-H');
+
+    my $text = zfs_request($class, $scfg, undef, 'zpool_list', @param);
+ 
+    if ($text !~ $scfg->{pool}) {
+	run_command("zpool import -d /dev/disk/by-id/ -a");
+    }
     return 1;
 }
 
