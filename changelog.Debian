@@ -1,3 +1,11 @@
+libpve-storage-perl (3.0-29) unstable; urgency=low
+
+  * ZfsPoolPlugin: auto import after reboot
+  
+  * ZfsPoolPlugin: fix add disks
+
+ -- Proxmox Support Team <support@proxmox.com>  Mon, 09 Feb 2015 12:27:40 +0100
+
 libpve-storage-perl (3.0-28) unstable; urgency=low
 
   * ZFSPoolPlugin: use 'udevadm settle' to wait until devices are created. 
