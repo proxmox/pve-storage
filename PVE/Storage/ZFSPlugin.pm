@@ -299,11 +299,12 @@ sub free_image {
 
 sub volume_resize {
     my ($class, $scfg, $storeid, $volname, $size, $running) = @_;
+    
+    my $new_size = $class->SUPER::volume_resize($scfg, $storeid, $volname, $size, $running);
 
-    my $new_size = ($size/1024);
-
-    $class->zfs_request($scfg, undef, 'set', 'volsize=' . $new_size . 'k', "$scfg->{pool}/$volname");
     $class->zfs_resize_lu($scfg, $volname, $new_size);
+
+    return $new_size;
 }
 
 sub volume_snapshot_rollback {
