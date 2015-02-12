@@ -412,12 +412,20 @@ sub volume_snapshot_rollback {
     my ($class, $scfg, $storeid, $volname, $snap) = @_;
 
     # abort rollback if snapshot is not the latest
-    my $recentsnap = $class->zfs_get_latest_snapshot($scfg, $volname);
-    if ($snap ne $recentsnap) {
-        die "cannot rollback, more recent snapshots exist\n";
-    }
+    $class->volume_rollback_is_possible($scfg, $storeid, $volname, $snap);
 
     zfs_request($class, $scfg, undef, 'rollback', "$scfg->{pool}/$volname\@$snap");
+}
+
+sub volume_rollback_is_possible {
+    my ($class, $scfg, $storeid, $volname, $snap) = @_; 
+    
+    my $recentsnap = $class->zfs_get_latest_snapshot($scfg, $volname);
+    if ($snap ne $recentsnap) {
+	die "can't rollback, more recent snapshots exist\n";
+    }
+
+    return 1; 
 }
 
 sub activate_storage {

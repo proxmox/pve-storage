@@ -144,6 +144,21 @@ sub volume_resize {
     }
 }
 
+sub volume_rollback_is_possible {
+    my ($cfg, $volid, $snap) = @_;
+    
+    my ($storeid, $volname) = parse_volume_id($volid, 1);
+    if ($storeid) {
+        my $scfg = storage_config($cfg, $storeid);
+        my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
+        return $plugin->volume_rollback_is_possible($scfg, $storeid, $volname, $snap);
+    } elsif ($volid =~ m|^(/.+)$| && -e $volid) {
+        die "snapshot rollback device $volid is not possible";
+    } else {
+        die "can't parse volume id";
+    }
+}
+
 sub volume_snapshot {
     my ($cfg, $volid, $snap, $running) = @_;
 

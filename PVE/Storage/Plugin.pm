@@ -656,6 +656,12 @@ sub volume_snapshot {
     return undef;
 }
 
+sub volume_rollback_is_possible {
+    my ($class, $scfg, $storeid, $volname, $snap) = @_; 
+
+    return 1; 
+}
+
 sub volume_snapshot_rollback {
     my ($class, $scfg, $storeid, $volname, $snap) = @_;
 
