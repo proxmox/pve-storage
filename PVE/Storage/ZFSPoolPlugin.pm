@@ -411,9 +411,6 @@ sub volume_snapshot_delete {
 sub volume_snapshot_rollback {
     my ($class, $scfg, $storeid, $volname, $snap) = @_;
 
-    # abort rollback if snapshot is not the latest
-    $class->volume_rollback_is_possible($scfg, $storeid, $volname, $snap);
-
     zfs_request($class, $scfg, undef, 'rollback', "$scfg->{pool}/$volname\@$snap");
 }
 

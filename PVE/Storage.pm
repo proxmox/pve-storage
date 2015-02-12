@@ -181,6 +181,7 @@ sub volume_snapshot_rollback {
     if ($storeid) {
         my $scfg = storage_config($cfg, $storeid);
         my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
+	$plugin->volume_rollback_is_possible($scfg, $storeid, $volname, $snap);
         return $plugin->volume_snapshot_rollback($scfg, $storeid, $volname, $snap);
     } elsif ($volid =~ m|^(/.+)$| && -e $volid) {
         die "snapshot rollback device is not possible";
