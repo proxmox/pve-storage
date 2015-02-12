@@ -1,3 +1,11 @@
+libpve-storage-perl (3.0-30) unstable; urgency=low
+
+  * add new method volume_rollback_is_possible
+  
+  * cleanup error messages
+
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 12 Feb 2015 09:42:14 +0100
+
 libpve-storage-perl (3.0-29) unstable; urgency=low
 
   * ZfsPoolPlugin: auto import after reboot
