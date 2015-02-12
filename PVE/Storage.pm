@@ -138,9 +138,9 @@ sub volume_resize {
         my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
         return $plugin->volume_resize($scfg, $storeid, $volname, $size, $running);
     } elsif ($volid =~ m|^(/.+)$| && -e $volid) {
-        die "resize device is not possible";
+        die "resize file/device '$volid' is not possible\n";
     } else {
-        die "can't resize";
+	die "unable to parse volume ID '$volid'\n";
     }
 }
 
@@ -153,9 +153,9 @@ sub volume_rollback_is_possible {
         my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
         return $plugin->volume_rollback_is_possible($scfg, $storeid, $volname, $snap);
     } elsif ($volid =~ m|^(/.+)$| && -e $volid) {
-        die "snapshot rollback device $volid is not possible";
+        die "snapshot rollback file/device '$volid' is not possible\n";
     } else {
-        die "can't parse volume id";
+	die "unable to parse volume ID '$volid'\n";
     }
 }
 
@@ -168,9 +168,9 @@ sub volume_snapshot {
         my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
         return $plugin->volume_snapshot($scfg, $storeid, $volname, $snap, $running);
     } elsif ($volid =~ m|^(/.+)$| && -e $volid) {
-        die "snapshot device is not possible";
+        die "snapshot file/device '$volid' is not possible\n";
     } else {
-        die "can't snapshot";
+	die "unable to parse volume ID '$volid'\n";
     }
 }
 
@@ -184,9 +184,9 @@ sub volume_snapshot_rollback {
 	$plugin->volume_rollback_is_possible($scfg, $storeid, $volname, $snap);
         return $plugin->volume_snapshot_rollback($scfg, $storeid, $volname, $snap);
     } elsif ($volid =~ m|^(/.+)$| && -e $volid) {
-        die "snapshot rollback device is not possible";
+        die "snapshot rollback file/device '$volid' is not possible\n";
     } else {
-        die "can't snapshot";
+	die "unable to parse volume ID '$volid'\n";
     }
 }
 
@@ -199,9 +199,9 @@ sub volume_snapshot_delete {
         my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
         return $plugin->volume_snapshot_delete($scfg, $storeid, $volname, $snap, $running);
     } elsif ($volid =~ m|^(/.+)$| && -e $volid) {
-        die "snapshot delete device is not possible";
+        die "snapshot delete file/device '$volid' is not possible\n";
     } else {
-        die "can't delete snapshot";
+	die "unable to parse volume ID '$volid'\n";
     }
 }
 
