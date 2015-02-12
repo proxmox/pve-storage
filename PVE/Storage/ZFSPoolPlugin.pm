@@ -94,6 +94,8 @@ sub zfs_parse_zvol_list {
     foreach my $line (@lines) {
 	if ($line =~ /^(.+)\s+([a-zA-Z0-9\.]+|\-)\s+(.+)$/) {
 	    my $zvol = {};
+	    my $size = $2;
+	    my $origin = $3;
 	    my @parts = split /\//, $1;
 	    my $name = pop @parts;
 	    my $pool = join('/', @parts);
@@ -103,9 +105,9 @@ sub zfs_parse_zvol_list {
 
 	    $zvol->{pool} = $pool;
 	    $zvol->{name} = $name;
-	    $zvol->{size} = zfs_parse_size($2);
+	    $zvol->{size} = zfs_parse_size($size);
 	    if ($3 !~ /^-$/) {
-		$zvol->{origin} = $3;
+		$zvol->{origin} = $origin;
 	    }
 	    push @$list, $zvol;
 	}
