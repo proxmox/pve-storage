@@ -179,16 +179,18 @@ sub alloc_image {
     die "illegal name '$name' - sould be 'vm-$vmid-*'\n"
     if $name && $name !~ m/^vm-$vmid-/;
 
-    $name = $class->zfs_find_free_diskname($storeid, $scfg, $vmid) if !$name;
-    
-    $class->zfs_create_zvol($scfg, $name, $size);
+    my $volname = $name;
+ 
+    $volname = $class->zfs_find_free_diskname($storeid, $scfg, $vmid) if !$volname;
 
-    my $devname = "/dev/zvol/$scfg->{pool}/$name";
+    $class->zfs_create_zvol($scfg, $volname, $size);
+
+    my $devname = "/dev/zvol/$scfg->{pool}/$volname";
 
     run_command("udevadm trigger --subsystem-match block");
     system("udevadm settle --timeout 10 --exit-if-exists=${devname}");
 
-    return $name;
+    return $volname;
 }
 
 sub free_image {
