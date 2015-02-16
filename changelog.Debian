@@ -1,3 +1,9 @@
+libpve-storage-perl (3.0-31) unstable; urgency=low
+
+  * zfs: fix image allocation
+
+ -- Proxmox Support Team <support@proxmox.com>  Mon, 16 Feb 2015 11:36:14 +0100
+
 libpve-storage-perl (3.0-30) unstable; urgency=low
 
   * add new method volume_rollback_is_possible
