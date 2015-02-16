@@ -270,9 +270,11 @@ sub alloc_image {
     die "illegal name '$name' - sould be 'vm-$vmid-*'\n"
     if $name && $name !~ m/^vm-$vmid-/;
 
-    my $volname = $class->zfs_find_free_diskname($storeid, $scfg, $vmid) if !$name;
+    my $volname = $name;
+
+    $volname = $class->zfs_find_free_diskname($storeid, $scfg, $vmid) if !$volname;
     
-    $class->zfs_create_zvol($scfg, $name, $size);
+    $class->zfs_create_zvol($scfg, $volname, $size);
  
     my $guid = $class->zfs_create_lu($scfg, $volname);
     $class->zfs_add_lun_mapping_entry($scfg, $volname, $guid);
