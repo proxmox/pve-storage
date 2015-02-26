@@ -1,3 +1,11 @@
+libpve-storage-perl (4.0-1) unstable; urgency=medium
+
+  * update version for Debian Jessie
+  
+  * remove clvm dependency
+
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 26 Feb 2015 13:37:04 +0100
+
 libpve-storage-perl (3.0-31) unstable; urgency=low
 
   * zfs: fix image allocation
