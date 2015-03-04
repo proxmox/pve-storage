@@ -595,7 +595,7 @@ sub vdisk_free {
 		}
 	    }
 	}
-	my $cleanup_worker = $plugin->free_image($storeid, $scfg, $volname, $isBase);
+	$cleanup_worker = $plugin->free_image($storeid, $scfg, $volname, $isBase);
     });
 
     return if !$cleanup_worker;
