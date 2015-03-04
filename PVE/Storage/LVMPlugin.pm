@@ -193,6 +193,10 @@ sub properties {
 	    description => "Zero-out data when removing LVs.",
 	    type => 'boolean',
 	},
+	saferemove_throughput => {
+	    description => "Wipe throughput (cstream -t parameter value).",
+	    type => 'string',
+	},
     };
 }
 
@@ -203,6 +207,7 @@ sub options {
 	shared => { optional => 1 },
 	disable => { optional => 1 },
         saferemove => { optional => 1 },
+        saferemove_throughput => { optional => 1 },
 	content => { optional => 1 },
         base => { fixed => 1, optional => 1 },
     };
@@ -290,31 +295,49 @@ sub free_image {
     my ($class, $storeid, $scfg, $volname, $isBase) = @_;
 
     my $vg = $scfg->{vgname};
-    
+
     # we need to zero out LVM data for security reasons
     # and to allow thin provisioning
 
     my $zero_out_worker = sub {
-	print "zero-out data on image $volname\n";
-	my $cmd = ['dd', "if=/dev/zero", "of=/dev/$vg/del-$volname", "bs=1M"];
-	eval { run_command($cmd, errmsg => "zero out failed"); };
+	print "zero-out data on image $volname (/dev/$vg/del-$volname)\n";
+
+	# wipe throughput up to 10MB/s by default; may be overwritten with saferemove_throughput
+	my $throughput = '-10485760';
+	if ($scfg->{saferemove_throughput}) {
+		$throughput = $scfg->{saferemove_throughput};
+	}
+
+	my $cmd = [
+		'/usr/bin/cstream',
+		'-i', '/dev/zero',
+		'-o', "/dev/$vg/del-$volname",
+		'-T', '10',
+		'-v', '1',
+		'-b', '1048576',
+		'-t', "$throughput"
+	];
+	eval { run_command($cmd, errmsg => "zero out finished (note: 'No space left on device' is ok here)"); };
 	warn $@ if $@;
 
 	$class->cluster_lock_storage($storeid, $scfg->{shared}, undef, sub {
 	    my $cmd = ['/sbin/lvremove', '-f', "$vg/del-$volname"];
 	    run_command($cmd, errmsg => "lvremove '$vg/del-$volname' error");
 	});
-	print "successfully removed volume $volname\n";
+	print "successfully removed volume $volname ($vg/del-$volname)\n";
     };
+
+    my $cmd = ['/sbin/lvchange', '-aly', "$vg/$volname"];
+    run_command($cmd, errmsg => "can't activate LV '$vg/$volname' to zero-out its data");
 
     if ($scfg->{saferemove}) {
 	# avoid long running task, so we only rename here
-	my $cmd = ['/sbin/lvrename', $vg, $volname, "del-$volname"];
+	$cmd = ['/sbin/lvrename', $vg, $volname, "del-$volname"];
 	run_command($cmd, errmsg => "lvrename '$vg/$volname' error");
 	return $zero_out_worker;
     } else {
 	my $tmpvg = $scfg->{vgname};
-	my $cmd = ['/sbin/lvremove', '-f', "$tmpvg/$volname"];
+	$cmd = ['/sbin/lvremove', '-f', "$tmpvg/$volname"];
 	run_command($cmd, errmsg => "lvremove '$tmpvg/$volname' error");
     }
 
