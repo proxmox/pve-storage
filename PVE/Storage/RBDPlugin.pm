@@ -177,13 +177,6 @@ sub rbd_volume_info {
     return ($size, $parent, $format, $protected);
 }
 
-sub addslashes {
-    my $text = shift;
-    $text =~ s/;/\\;/g;
-    $text =~ s/:/\\:/g;
-    return $text;
-}
-
 # Configuration
 
 PVE::JSONSchema::register_format('pve-storage-monhost', \&parse_monhost);
@@ -258,7 +251,9 @@ sub path {
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
     $name .= '@'.$snapname if $snapname;
 
-    my $monhost = addslashes($scfg->{monhost});
+    my $monhost = $scfg->{monhost};
+    $monhost =~ s/:/\\:/g;
+
     my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
     my $username =  $scfg->{username} ? $scfg->{username} : 'admin';
 
