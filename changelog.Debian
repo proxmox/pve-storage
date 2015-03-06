@@ -1,3 +1,15 @@
+libpve-storage-perl (3.0-32) unstable; urgency=low
+  
+  * fix bug #602: now zfs will wait 5 sec if error msg is "dataset is busy"
+  
+  * Fixed LV cleaning function. saferemove_throughput parameter added.
+  
+  * depend on cstream
+  
+  * rbd: monhost string : escape only ":" character
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 06 Mar 2015 09:49:16 +0100
+
 libpve-storage-perl (3.0-31) unstable; urgency=low
 
   * zfs: fix image allocation
