@@ -166,7 +166,7 @@ sub zfs_request {
         $msg .= "$line\n";
     };
 
-    run_command($cmd, outfunc => $output, timeout => $timeout);
+    run_command($cmd, errmsg => "zfs error", outfunc => $output, timeout => $timeout);
 
     return $msg;
 }
@@ -293,7 +293,23 @@ sub zfs_create_zvol {
 sub zfs_delete_zvol {
     my ($class, $scfg, $zvol) = @_;
 
-    $class->zfs_request($scfg, undef, 'destroy', '-r', "$scfg->{pool}/$zvol");
+    my $err;
+
+    for (my $i = 0; $i < 6; $i++) {
+
+	eval { $class->zfs_request($scfg, undef, 'destroy', '-r', "$scfg->{pool}/$zvol"); };
+	if ($err = $@) {
+	    if ($err =~ m/^zfs error:(.*): dataset is busy.*/) {
+		sleep(1);
+	    } else {
+		die $err;
+	    }
+	} else {
+	    last;
+	}
+    }
+
+    die $err if $err;
 }
 
 sub zfs_list_zvol {
