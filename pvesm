@@ -117,7 +117,7 @@ my $print_status = sub {
 my $nodename = PVE::INotify::nodename();
 
 my $cmddef = {
-    add => [ "PVE::API2::Storage::Config", 'create', ['storage'] ],
+    add => [ "PVE::API2::Storage::Config", 'create', ['type', 'storage'] ],
     set => [ "PVE::API2::Storage::Config", 'update', ['storage'] ],
     remove => [ "PVE::API2::Storage::Config", 'delete', ['storage'] ],
     status => [ "PVE::API2::Storage::Status", 'index', [],
@@ -238,11 +238,11 @@ To get the filesystem path for a <VOLUME_ID> use:
  pvesm scan nfs <HOST>
 
  # add storage pools
- pvesm add <STORAGE_ID> <TYPE> <OPTIONS>
- pvesm add <STORAGE_ID> dir --path <PATH>
- pvesm add <STORAGE_ID> nfs --path <PATH> --server <SERVER> --export <EXPORT>
- pvesm add <STORAGE_ID> lvm --vgname <VGNAME>
- pvesm add <STORAGE_ID> iscsi --portal <HOST[:PORT]> --target <TARGET>
+ pvesm add <TYPE> <STORAGE_ID> <OPTIONS>
+ pvesm add dir <STORAGE_ID> --path <PATH>
+ pvesm add nfs <STORAGE_ID> --path <PATH> --server <SERVER> --export <EXPORT>
+ pvesm add lvm <STORAGE_ID> --vgname <VGNAME>
+ pvesm add iscsi <STORAGE_ID> --portal <HOST[:PORT]> --target <TARGET>
 
  # disable storage pools
  pvesm set <STORAGE_ID> --disable 1
