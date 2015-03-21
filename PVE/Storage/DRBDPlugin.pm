@@ -226,22 +226,26 @@ sub list_images {
 sub status {
     my ($class, $storeid, $scfg, $cache) = @_;
 
+    my ($total, $avail, $used);
+    
     eval {
 	my $hdl = connect_drbdmanage_service();
 	my ($rc, $res) = $hdl->cluster_free_query($scfg->{redundancy});
 	check_drbd_rc($rc->[0]);
 
-	my $avail = $res;
-	my $used = 0; # fixme
-	my $total = $used + $avail;
+	$avail = $res;
+	$used = 0; # fixme
+	$total = $used + $avail;
 
-	return ($total, $avail, $used, 1);
     };
-
-    # ignore error,
-    # assume storage if offline
+    if (my $err = $@) {
+	# ignore error,
+	# assume storage if offline
     
-    return undef;
+	return undef;
+    }
+
+    return ($total, $avail, $used, 1);
 }
 
 sub activate_storage {
