@@ -1,3 +1,13 @@
+libpve-storage-perl (4.0-3) unstable; urgency=medium
+
+  * add new storage plugin for DRBD9
+  
+  * depend on libnet-dbus-perl
+
+  * pvesm add: pass storage type as first argument
+
+ -- Proxmox Support Team <support@proxmox.com>  Sat, 21 Mar 2015 07:01:18 +0100
+
 libpve-storage-perl (4.0-2) unstable; urgency=medium
 
   * fix bug #602: now zfs will wait 5 sec if error msg is "dataset is busy"
