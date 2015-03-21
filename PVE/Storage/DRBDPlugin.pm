@@ -3,6 +3,9 @@ package PVE::Storage::DRBDPlugin;
 use strict;
 use warnings;
 use IO::File;
+use Net::DBus;
+use Data::Dumper;
+
 use PVE::Tools qw(run_command trim);
 use PVE::Storage::Plugin;
 use PVE::JSONSchema qw(get_standard_option);
@@ -41,6 +44,69 @@ sub options {
     };
 }
 
+# helper
+
+sub connect_drbdmanage_service {
+
+    my $bus = Net::DBus->system;
+
+    my $service = $bus->get_service("org.drbd.drbdmanaged");
+
+    my $hdl = $service->get_object("/interface", "org.drbd.drbdmanaged");
+
+    return $hdl;
+}
+
+sub check_drbd_rc {
+    my ($rc) = @_;
+    
+    die "got undefined drbd rc\n" if !$rc;
+
+    my ($code, $msg, $details) = @$rc;
+
+    return undef if $code == 0;
+
+    $msg = "drbd error: got error code $code" if !$msg;
+    chomp $msg;
+    
+    # fixme: add error details?
+    #print Dumper($details);
+    
+    die "drbd error: $msg\n";
+}
+
+sub drbd_list_volumes {
+    my ($hdl) = @_;
+    
+    $hdl = connect_drbdmanage_service() if !$hdl;
+    
+    my ($rc, $res) = $hdl->list_volumes([], 0, {}, []);
+    check_drbd_rc($rc->[0]);
+
+    my $volumes = {};
+    
+    foreach my $entry (@$res) {
+	my ($volname, $properties, $vol_list) = @$entry;
+
+	next if $volname !~ m/^vm-(\d+)-/;
+	my $vmid = $1;
+
+	# fixme: we always use volid 0 ?
+	my $size = 0;
+	foreach my $volentry (@$vol_list) {
+	    my ($vol_id, $vol_properties) = @$volentry;
+	    next if $vol_id != 0;
+	    my $vol_size = $vol_properties->{vol_size} * 1024;
+	    $size = $vol_size if $vol_size > $size;
+	}
+
+	$volumes->{$volname} = { format => 'raw', size => $size, 
+				 vmid => $vmid };
+    }
+    
+    return $volumes; 
+}
+    
 # Storage implementation
 
 sub parse_volname {
@@ -58,11 +124,8 @@ sub filesystem_path {
 
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
 
-    die "fixme";
-    
-    my $vg = $scfg->{vgname};
-    
-    my $path = "/dev/$vg/$name";
+    # fixme: always use volid 0?
+    my $path = "/dev/drbd/by-res/$volname/0";
 
     return wantarray ? ($path, $vmid, $vtype) : $path;
 }
@@ -87,15 +150,15 @@ sub alloc_image {
     die "illegal name '$name' - sould be 'vm-$vmid-*'\n" 
 	if  $name && $name !~ m/^vm-$vmid-/;
 
+    my $hdl = connect_drbdmanage_service();
+    my $volumes = drbd_list_volumes($hdl);
 
-    if (!$name) {
-	die "fixme";
-	
-	my $lvs = {};
-
+    die "volume '$name' already exists\n" if $volumes->{$name};
+    
+    if (!$name) {	
 	for (my $i = 1; $i < 100; $i++) {
 	    my $tn = "vm-$vmid-disk-$i";
-	    if (!defined ($lvs->{fixme})) {
+	    if (!defined ($volumes->{$tn})) {
 		$name = $tn;
 		last;
 	    }
@@ -104,12 +167,15 @@ sub alloc_image {
 
     die "unable to allocate an image name for VM $vmid in storage '$storeid'\n"
 	if !$name;
-
-    my $cmd = ['drbdmanage', 'new-volume', $name];
-
-    # fixme: deploy
     
-    run_command($cmd, errmsg => "drbdmanage new-volume error");
+    my ($rc, $res) = $hdl->create_resource($name, {});
+    check_drbd_rc($rc->[0]);
+
+    ($rc, $res) = $hdl->create_volume($name, $size, {});
+    check_drbd_rc($rc->[0]);
+
+    ($rc, $res) = $hdl->auto_deploy($name, $scfg->{redundancy}, 0, 0);
+    check_drbd_rc($rc->[0]);
 
     return $name;
 }
@@ -117,11 +183,9 @@ sub alloc_image {
 sub free_image {
     my ($class, $storeid, $scfg, $volname, $isBase) = @_;
  
-    my $cmd = ['drbdmanage', 'remove-volume', $volname];
-
-    # fixme: undeploy
-    
-    run_command($cmd, errmsg => "drbdmanage remove-volume error");
+    my $hdl = connect_drbdmanage_service();
+    my ($rc, $res) = $hdl->remove_resource($volname, 0);
+    check_drbd_rc($rc->[0]);
 
     return undef;
 }
@@ -131,19 +195,51 @@ sub list_images {
 
     my $vgname = $scfg->{vgname};
 
-    #$cache->{lvs} = lvm_lvs() if !$cache->{lvs};
-
+    $cache->{drbd_volumes} = drbd_list_volumes() if !$cache->{drbd_volumes};
+	
     my $res = [];
 
-    die "fixme";
-	
+    my $dat =  $cache->{drbd_volumes};
+    
+    foreach my $volname (keys %$dat) {
+
+	my $owner = $dat->{$volname}->{vmid};
+
+	my $volid = "$storeid:$volname";
+
+	if ($vollist) {
+	    my $found = grep { $_ eq $volid } @$vollist;
+	    next if !$found;
+	} else {
+	    next if defined ($vmid) && ($owner ne $vmid);
+	}
+
+	my $info = $dat->{$volname};
+	$info->{volid} = $volid;
+
+	push @$res, $info;
+    }
+
     return $res;
 }
 
 sub status {
     my ($class, $storeid, $scfg, $cache) = @_;
 
-    die "fixme";
+    eval {
+	my $hdl = connect_drbdmanage_service();
+	my ($rc, $res) = $hdl->cluster_free_query($scfg->{redundancy});
+	check_drbd_rc($rc->[0]);
+
+	my $avail = $res;
+	my $used = 0; # fixme
+	my $total = $used + $avail;
+
+	return ($total, $avail, $used, 1);
+    };
+
+    # ignore error,
+    # assume storage if offline
     
     return undef;
 }
@@ -179,7 +275,8 @@ sub volume_resize {
 
     my $path = $class->path($scfg, $volname);
 
-    die "fixme";
+    # fixme: howto implement this
+    die "drbd volume_resize is not implemented";
     
     #my $cmd = ['/sbin/lvextend', '-L', $size, $path];
     #run_command($cmd, errmsg => "error resizing volume '$path'");
