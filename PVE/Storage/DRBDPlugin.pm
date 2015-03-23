@@ -7,6 +7,7 @@ use Net::DBus;
 use Data::Dumper;
 
 use PVE::Tools qw(run_command trim);
+use PVE::INotify;
 use PVE::Storage::Plugin;
 use PVE::JSONSchema qw(get_standard_option);
 
@@ -274,12 +275,32 @@ sub deactivate_storage {
 sub activate_volume {
     my ($class, $storeid, $scfg, $volname, $exclusive, $cache) = @_;
 
+    my $path = $class->path($scfg, $volname);
+    
+    my $hdl = connect_drbdmanage_service();
+    my $nodename = PVE::INotify::nodename();
+    my ($rc, $res) = $hdl->list_assignments([$nodename], [], 0, {}, []);
+    check_drbd_rc($rc->[0]);
+
+    foreach my $entry (@$res) {
+	my ($node, $res_name, $props, $voldata) = @$entry;
+	if (($node eq $nodename) && ($res_name eq $volname)) {
+	    return undef; # assignment already exists
+	}
+    }
+
+    # create diskless assignment
+    ($rc, $res) = $hdl->assign($nodename, $volname, { diskless => 'true' });
+    check_drbd_rc($rc->[0]);
+				  
     return undef;    
 }
 
 sub deactivate_volume {
     my ($class, $storeid, $scfg, $volname, $cache) = @_;
 
+    # fixme: remove diskless assdignments
+    
     return undef;    
 }
 
