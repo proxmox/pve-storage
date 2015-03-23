@@ -14,6 +14,8 @@ use base qw(PVE::Storage::Plugin);
 
 # Configuration 
 
+my $default_redundancy = 2;
+
 sub type {
     return 'drbd';
 }
@@ -31,7 +33,7 @@ sub properties {
 	    type => 'integer',
 	    minimum => 1,
 	    maximum => 16,
-	    default => 2,
+	    default => $default_redundancy,
 	},
     };
 }
@@ -45,6 +47,12 @@ sub options {
 }
 
 # helper
+
+sub get_redundancy {
+    my ($scfg) = @_;
+
+    return $scfg->{redundancy} || $default_redundancy;
+}
 
 sub connect_drbdmanage_service {
 
@@ -174,7 +182,9 @@ sub alloc_image {
     ($rc, $res) = $hdl->create_volume($name, $size, {});
     check_drbd_rc($rc->[0]);
 
-    ($rc, $res) = $hdl->auto_deploy($name, $scfg->{redundancy}, 0, 0);
+    my $redundancy = get_redundancy($scfg);;
+    
+    ($rc, $res) = $hdl->auto_deploy($name, $redundancy, 0, 0);
     check_drbd_rc($rc->[0]);
 
     return $name;
@@ -230,7 +240,8 @@ sub status {
     
     eval {
 	my $hdl = connect_drbdmanage_service();
-	my ($rc, $res) = $hdl->cluster_free_query($scfg->{redundancy});
+	my $redundancy = get_redundancy($scfg);;
+	my ($rc, $res) = $hdl->cluster_free_query($redundancy);
 	check_drbd_rc($rc->[0]);
 
 	$avail = $res;
