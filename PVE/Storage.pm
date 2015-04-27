@@ -148,7 +148,7 @@ sub volume_resize {
 
 sub volume_rollback_is_possible {
     my ($cfg, $volid, $snap) = @_;
-    
+
     my ($storeid, $volname) = parse_volume_id($volid, 1);
     if ($storeid) {
         my $scfg = storage_config($cfg, $storeid);
@@ -492,31 +492,33 @@ sub storage_migrate {
 	} else {
 	    die "$errstr - target type '$tcfg->{type}' not implemented\n";
 	}
+
     } elsif ($scfg->{type} eq 'zfspool') {
 
- 	if($tcfg->{type} eq 'zfspool'){
+	if ($tcfg->{type} eq 'zfspool') {
 
- 	    die "$errstr - pool on target has not same name as source!"if $tcfg->{pool} ne $scfg->{pool};
+	    die "$errstr - pool on target has not same name as source!"
+		if $tcfg->{pool} ne $scfg->{pool};
 
-	    my ( undef, $volname) = parse_volname($cfg, $volid);
+	    my (undef, $volname) = parse_volname($cfg, $volid);
 
 	    my $zfspath = "$scfg->{pool}\/$volname";
 
- 	    my $snap = "zfs snapshot $zfspath\@__migration__";
+	    my $snap = "zfs snapshot $zfspath\@__migration__";
 
- 	    my $send = "zfs send -v $zfspath\@__migration__ \| ssh root\@$target_host zfs recv $zfspath";
+	    my $send = "zfs send -v $zfspath\@__migration__ \| ssh root\@$target_host zfs recv $zfspath";
 
- 	    my $destroy_target = "ssh root\@$target_host zfs destroy $zfspath\@__migration__";
+	    my $destroy_target = "ssh root\@$target_host zfs destroy $zfspath\@__migration__";
  	    run_command($snap);
- 	    eval{
+	    eval{
 		run_command($send);
 	    };
 	    my $err;
 	    if ($err = $@){
 		run_command("zfs destroy $zfspath\@__migration__");
 		die $err;
-	    } 
- 	    run_command($destroy_target);
+	    }
+	    run_command($destroy_target);
 
  	} else {
  	    die "$errstr - target type $tcfg->{type} is not valid\n";
