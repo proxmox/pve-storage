@@ -1,3 +1,9 @@
+libpve-storage-perl (3.0-33) unstable; urgency=low
+
+  * implement offline migration on zfs
+
+ -- Proxmox Support Team <support@proxmox.com>  Mon, 27 Apr 2015 10:15:39 +0200
+
 libpve-storage-perl (3.0-32) unstable; urgency=low
   
   * fix bug #602: now zfs will wait 5 sec if error msg is "dataset is busy"
