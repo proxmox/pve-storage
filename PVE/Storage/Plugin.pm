@@ -627,7 +627,7 @@ sub volume_size_info {
 sub volume_resize {
     my ($class, $scfg, $storeid, $volname, $size, $running) = @_;
 
-    die "can't resize this image format" if $volname !~ m/\.(raw|qcow2)$/;
+    die "can't resize this image format\n" if $volname !~ m/\.(raw|qcow2)$/;
 
     return 1 if $running;
 
@@ -643,7 +643,7 @@ sub volume_resize {
 sub volume_snapshot {
     my ($class, $scfg, $storeid, $volname, $snap, $running) = @_;
 
-    die "can't snapshot this image format" if $volname !~ m/\.(qcow2|qed)$/;
+    die "can't snapshot this image format\n" if $volname !~ m/\.(qcow2|qed)$/;
 
     return 1 if $running;
 
@@ -665,7 +665,7 @@ sub volume_rollback_is_possible {
 sub volume_snapshot_rollback {
     my ($class, $scfg, $storeid, $volname, $snap) = @_;
 
-    die "can't rollback snapshot this image format" if $volname !~ m/\.(qcow2|qed)$/;
+    die "can't rollback snapshot this image format\n" if $volname !~ m/\.(qcow2|qed)$/;
 
     my $path = $class->filesystem_path($scfg, $volname);
 
@@ -679,7 +679,7 @@ sub volume_snapshot_rollback {
 sub volume_snapshot_delete {
     my ($class, $scfg, $storeid, $volname, $snap, $running) = @_;
 
-    die "can't delete snapshot for this image format" if $volname !~ m/\.(qcow2|qed)$/;
+    die "can't delete snapshot for this image format\n" if $volname !~ m/\.(qcow2|qed)$/;
 
     return 1 if $running;
 
