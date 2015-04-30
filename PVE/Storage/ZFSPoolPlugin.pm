@@ -449,8 +449,12 @@ sub activate_storage {
     my @param = ('-o', 'name', '-H');
 
     my $text = zfs_request($class, $scfg, undef, 'zpool_list', @param);
- 
-    if ($text !~ $scfg->{pool}) {
+
+    # Note: $scfg->{pool} can include dataset <pool>/<dataset>
+    my $pool = $scfg->{pool};
+    $pool =~ s!/.*$!!;
+
+    if ($text !~ $pool) {
 	run_command("zpool import -d /dev/disk/by-id/ -a");
     }
     return 1;
