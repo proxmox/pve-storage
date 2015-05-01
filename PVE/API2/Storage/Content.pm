@@ -2,6 +2,7 @@ package PVE::API2::Storage::Content;
 
 use strict;
 use warnings;
+use Data::Dumper;
 
 use PVE::SafeSyslog;
 use PVE::Cluster qw(cfs_read_file);
@@ -123,7 +124,7 @@ __PACKAGE__->register_method ({
 	    },
 	    'format' => {
 		type => 'string',
-		enum => ['raw', 'qcow2'],
+		enum => ['raw', 'qcow2', 'subvol'],
 		requires => 'size',
 		optional => 1,
 	    },

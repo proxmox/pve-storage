@@ -16,7 +16,8 @@ sub type {
 
 sub plugindata {
     return {
-	content => [ {images => 1}, { images => 1 }],
+	content => [ {images => 1, rootdir => 1}, {images => 1 , rootdir => 1}],
+	format => [ { raw => 1, subvol => 1 } , 'raw' ],
     };
 }
 
@@ -92,25 +93,36 @@ sub zfs_parse_zvol_list {
 
     my @lines = split /\n/, $text;
     foreach my $line (@lines) {
-	if ($line =~ /^(.+)\s+([a-zA-Z0-9\.]+|\-)\s+(.+)$/) {
-	    my $zvol = {};
-	    my $size = $2;
-	    my $origin = $3;
-	    my @parts = split /\//, $1;
-	    my $name = pop @parts;
-	    my $pool = join('/', @parts);
+	my ($dataset, $size, $origin, $type, $refquota) = split(/\s+/, $line);
+	next if !($type eq 'volume' || $type eq 'filesystem');
 
-	    next unless $name =~ m!^(\w+)-(\d+)-(\w+)-(\d+)$!;
-	    $name = $pool . '/' . $name;
+	my $zvol = {};
+	my @parts = split /\//, $dataset;
+	my $name = pop @parts;
+	my $pool = join('/', @parts);
 
-	    $zvol->{pool} = $pool;
-	    $zvol->{name} = $name;
-	    $zvol->{size} = zfs_parse_size($size);
-	    if ($3 !~ /^-$/) {
-		$zvol->{origin} = $origin;
+	next unless $name =~ m!^(vm|base|subvol)-(\d+)-(\S+)$!;
+	$zvol->{owner} = $2;
+
+	$name = $pool . '/' . $name;
+
+	$zvol->{pool} = $pool;
+	$zvol->{name} = $name;
+	if ($type eq 'filesystem') {
+	    if ($refquota eq 'none') {
+		$zvol->{size} = 0;
+	    } else {
+		$zvol->{size} = zfs_parse_size($refquota);
 	    }
-	    push @$list, $zvol;
+	    $zvol->{format} = 'subvol';
+	} else {
+	    $zvol->{size} = zfs_parse_size($size);
+	    $zvol->{format} = 'raw';
 	}
+	if ($origin !~ /^-$/) {
+	    $zvol->{origin} = $origin;
+	}
+	push @$list, $zvol;
     }
 
     return $list;
@@ -119,7 +131,7 @@ sub zfs_parse_zvol_list {
 sub parse_volname {
     my ($class, $volname) = @_;
 
-    if ($volname =~ m/^(((base|vm)-(\d+)-\S+)\/)?((base)?(vm)?-(\d+)-\S+)$/) {
+    if ($volname =~ m/^(((base|vm)-(\d+)-\S+)\/)?((base)?(vm|subvol)?-(\d+)-\S+)$/) {
 	return ('images', $5, $8, $2, $4, $6);
     }
 
@@ -135,8 +147,13 @@ sub path {
 
     my $path = '';
 
-    if($vtype eq "images"){
-	$path = "/dev/zvol/$scfg->{pool}/$volname";
+    if ($vtype eq "images") {
+	if ($volname =~ m/^subvol-/) {
+	    # fixme: we currently assume standard mount point?!
+	    $path = "$scfg->{pool}/$volname";
+	} else {
+	    $path = "/dev/zvol/$scfg->{pool}/$volname";
+	}
     } else {
 	die "$vtype is not allowed in ZFSPool!";
     }
@@ -174,21 +191,32 @@ sub zfs_request {
 sub alloc_image {
     my ($class, $storeid, $scfg, $vmid, $fmt, $name, $size) = @_;
 
-    die "unsupported format '$fmt'" if $fmt ne 'raw';
-
-    die "illegal name '$name' - sould be 'vm-$vmid-*'\n"
-    if $name && $name !~ m/^vm-$vmid-/;
-
     my $volname = $name;
- 
-    $volname = $class->zfs_find_free_diskname($storeid, $scfg, $vmid) if !$volname;
+    
+    if ($fmt eq 'raw') {
 
-    $class->zfs_create_zvol($scfg, $volname, $size);
+	die "illegal name '$volname' - sould be 'vm-$vmid-*'\n"
+	    if $volname && $volname !~ m/^vm-$vmid-/;
+	$volname = $class->zfs_find_free_diskname($storeid, $scfg, $vmid) 
+	    if !$volname;
 
-    my $devname = "/dev/zvol/$scfg->{pool}/$volname";
+	$class->zfs_create_zvol($scfg, $volname, $size);
+	my $devname = "/dev/zvol/$scfg->{pool}/$volname";
 
-    run_command("udevadm trigger --subsystem-match block");
-    system("udevadm settle --timeout 10 --exit-if-exists=${devname}");
+	run_command("udevadm trigger --subsystem-match block");
+	system("udevadm settle --timeout 10 --exit-if-exists=${devname}");
+
+    } elsif ( $fmt eq 'subvol') {
+	
+	die "subvolume allocation without name\n" if !$volname;
+	die "illegal name '$volname' - sould be 'subvol-$vmid-*'\n"
+	    if $volname !~ m/^subvol-$vmid-/;
+
+	$class->zfs_create_subvol($scfg, $volname, $size);	
+	
+    } else {
+	die "unsupported format '$fmt'";
+    }
 
     return $volname;
 }
@@ -238,7 +266,6 @@ sub list_images {
 	    push @$res, $info;
 	}
     }
-
     return $res;
 }
 
@@ -290,6 +317,16 @@ sub zfs_create_zvol {
     $class->zfs_request($scfg, undef, @$cmd);
 }
 
+sub zfs_create_subvol {
+    my ($class, $scfg, $volname, $size) = @_;
+
+    my $dataset = "$scfg->{pool}/$volname";
+    
+    my $cmd = ['create', '-o', "refquota=${size}k", $dataset];
+
+    $class->zfs_request($scfg, undef, @$cmd);
+}
+
 sub zfs_delete_zvol {
     my ($class, $scfg, $zvol) = @_;
 
@@ -315,31 +352,25 @@ sub zfs_delete_zvol {
 sub zfs_list_zvol {
     my ($class, $scfg) = @_;
 
-    my $text = $class->zfs_request($scfg, 10, 'list', '-o', 'name,volsize,origin', '-t', 'volume', '-Hr');
+    my $text = $class->zfs_request($scfg, 10, 'list', '-o', 'name,volsize,origin,type,refquota', '-t', 'volume,filesystem', '-Hr');
     my $zvols = zfs_parse_zvol_list($text);
     return undef if !$zvols;
 
     my $list = ();
     foreach my $zvol (@$zvols) {
-	my @values = split('/', $zvol->{name});
-
-	my $image = pop @values;
-	my $pool = join('/', @values);
-
-	next if $image !~ m/^((vm|base)-(\d+)-\S+)$/;
-	my $owner = $3;
-
+	my $pool = $zvol->{pool};
+	my $name = $zvol->{name};
 	my $parent = $zvol->{origin};
 	if($zvol->{origin} && $zvol->{origin} =~ m/^$scfg->{pool}\/(\S+)$/){
 	    $parent = $1;
 	}
 
-	$list->{$pool}->{$image} = {
-	    name => $image,
+	$list->{$pool}->{$name} = {
+	    name => $name,
 	    size => $zvol->{size},
 	    parent => $parent,
-	    format => 'raw',
-            vmid => $owner
+	    format => $zvol->{format},
+            vmid => $zvol->{owner},
         };
     }
 
