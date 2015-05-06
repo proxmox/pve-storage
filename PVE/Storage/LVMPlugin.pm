@@ -456,7 +456,7 @@ sub volume_resize {
 }
 
 sub volume_snapshot {
-    my ($class, $scfg, $storeid, $volname, $snap, $running) = @_;
+    my ($class, $scfg, $storeid, $volname, $snap) = @_;
 
     die "lvm snapshot is not implemented";
 }

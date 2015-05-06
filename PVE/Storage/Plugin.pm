@@ -641,11 +641,9 @@ sub volume_resize {
 }
 
 sub volume_snapshot {
-    my ($class, $scfg, $storeid, $volname, $snap, $running) = @_;
+    my ($class, $scfg, $storeid, $volname, $snap) = @_;
 
     die "can't snapshot this image format\n" if $volname !~ m/\.(qcow2|qed)$/;
-
-    return 1 if $running;
 
     my $path = $class->filesystem_path($scfg, $volname);
 

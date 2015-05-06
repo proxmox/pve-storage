@@ -446,7 +446,7 @@ sub volume_size_info {
 }
 
 sub volume_snapshot {
-    my ($class, $scfg, $storeid, $volname, $snap, $running) = @_;
+    my ($class, $scfg, $storeid, $volname, $snap) = @_;
 
     $class->zfs_request($scfg, undef, 'snapshot', "$scfg->{pool}/$volname\@$snap");
 }
