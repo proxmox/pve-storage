@@ -930,9 +930,14 @@ sub storage_info {
 sub resolv_server {
     my ($server) = @_;
 
-    my $packed_ip = gethostbyname($server);
+    my ($packed_ip, $family);
+    eval {
+	my @res = PVE::Tools::getaddrinfo_all($server);
+	$family = $res[0]->{family};
+	$packed_ip = (PVE::Tools::unpack_sockaddr_in46($res[0]->{addr}))[2];
+    };
     if (defined $packed_ip) {
-	return inet_ntoa($packed_ip);
+	return inet_ntop($family, $packed_ip);
     }
     return undef;
 }
