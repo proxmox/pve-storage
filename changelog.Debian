@@ -1,3 +1,9 @@
+libpve-storage-perl (4.0-5) unstable; urgency=medium
+
+  * ipv6 support for Storage::resolv_server
+
+ -- Proxmox Support Team <support@proxmox.com>  Tue, 12 May 2015 10:39:55 +0200
+
 libpve-storage-perl (4.0-4) unstable; urgency=medium
 
   * drbd: automatically create diskless assignments
