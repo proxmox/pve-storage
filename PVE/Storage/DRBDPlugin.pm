@@ -156,7 +156,7 @@ sub alloc_image {
 
     die "unsupported format '$fmt'" if $fmt ne 'raw';
 
-    die "illegal name '$name' - sould be 'vm-$vmid-*'\n" 
+    die "illegal name '$name' - should be 'vm-$vmid-*'\n" 
 	if  $name && $name !~ m/^vm-$vmid-/;
 
     my $hdl = connect_drbdmanage_service();
