@@ -3,6 +3,7 @@ package PVE::Storage::NFSPlugin;
 use strict;
 use warnings;
 use IO::File;
+use Net::IP;
 use File::Path;
 use PVE::Tools qw(run_command);
 use PVE::Storage::Plugin;
@@ -28,11 +29,12 @@ sub read_proc_mounts {
 sub nfs_is_mounted {
     my ($server, $export, $mountpoint, $mountdata) = @_;
 
+    $server = "[$server]" if Net::IP::ip_is_ipv6($server);
     my $source = "$server:$export";
 
     $mountdata = read_proc_mounts() if !$mountdata;
 
-    if ($mountdata =~ m|^$source/?\s$mountpoint\snfs|m) {
+    if ($mountdata =~ m|^\Q$source\E/?\s\Q$mountpoint\E\snfs|m) {
 	return $mountpoint;
     } 
 
@@ -42,6 +44,7 @@ sub nfs_is_mounted {
 sub nfs_mount {
     my ($server, $export, $mountpoint, $options) = @_;
 
+    $server = "[$server]" if Net::IP::ip_is_ipv6($server);
     my $source = "$server:$export";
 
     my $cmd = ['/bin/mount', '-t', 'nfs', $source, $mountpoint];
