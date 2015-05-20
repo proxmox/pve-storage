@@ -105,9 +105,9 @@ PVE::JSONSchema::register_format('pve-storage-server', \&verify_server);
 sub verify_server {
     my ($server, $noerr) = @_;
 
-    # fixme: use better regex ?
-    # IP or DNS name
-    if ($server !~ m/^[[:alnum:]\-\.]+$/) {
+    if (!(PVE::JSONSchema::pve_verify_ip($server, 1) ||
+          PVE::JSONSchema::pve_verify_dns_name($server, 1)))
+    {
 	return undef if $noerr;
 	die "value does not look like a valid server name or IP address\n";
     }
