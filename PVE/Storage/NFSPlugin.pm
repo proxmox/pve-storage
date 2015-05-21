@@ -170,8 +170,7 @@ sub check_connection {
 
     my $server = $scfg->{server};
 
-    # test connection to portmapper
-    my $cmd = ['/usr/sbin/rpcinfo', '-p', $server];
+    my $cmd = ['/sbin/showmount', '--no-headers', '--exports', $server];
 
     eval {
 	run_command($cmd, timeout => 2, outfunc => sub {}, errfunc => sub {});
