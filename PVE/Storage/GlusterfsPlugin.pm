@@ -37,7 +37,7 @@ my $get_active_server = sub {
     foreach my $server (@$serverlist) {
 	my $status = 0;
 
-	if ($server && $server ne 'localhost' && $server ne '127.0.0.1') {
+	if ($server && $server ne 'localhost' && $server ne '127.0.0.1' && $server ne '::1') {
 
 	    my $p = Net::Ping->new("tcp", 2);
 	    $status = $p->ping($server);
