@@ -937,7 +937,7 @@ sub resolv_server {
 	$packed_ip = (PVE::Tools::unpack_sockaddr_in46($res[0]->{addr}))[2];
     };
     if (defined $packed_ip) {
-	return inet_ntop($family, $packed_ip);
+	return Socket::inet_ntop($family, $packed_ip);
     }
     return undef;
 }
