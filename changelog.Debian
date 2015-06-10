@@ -1,3 +1,13 @@
+libpve-storage-perl (4.0-6) unstable; urgency=medium
+
+  * allow ipv6 addresses in Storage::verify_server
+
+  * NFSPlugin: deal with ipv6 addresses and fix regexps
+
+  * NFS: replace rpcinfo with showmounts
+
+ -- Proxmox Support Team <support@proxmox.com>  Wed, 10 Jun 2015 10:56:34 +0200
+
 libpve-storage-perl (4.0-5) unstable; urgency=medium
 
   * ipv6 support for Storage::resolv_server
