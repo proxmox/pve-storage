@@ -180,15 +180,6 @@ sub alloc_image {
     my ($rc, $res) = $hdl->create_resource($name, {});
     check_drbd_rc($rc->[0]);
 
-    ($rc, $res) = $hdl->set_drbdsetup_props(
-	{ 
-	    target => "resource",
-	    resource => $name,
-	    type => 'neto',
-	    'allow-two-primaries' => 'yes',
-	});
-    check_drbd_rc($rc->[0]);
-   
     ($rc, $res) = $hdl->create_volume($name, $size, {});
     check_drbd_rc($rc->[0]);
 
@@ -197,6 +188,17 @@ sub alloc_image {
     ($rc, $res) = $hdl->auto_deploy($name, $redundancy, 0, 0);
     check_drbd_rc($rc->[0]);
 
+    sleep(5); # else we get split brain?!
+    
+    ($rc, $res) = $hdl->set_drbdsetup_props(
+	{ 
+	    target => "resource",
+	    resource => $name,
+	    type => 'neto',
+	    'allow-two-primaries' => 'yes',
+	});
+    check_drbd_rc($rc->[0]);
+ 
     return $name;
 }
 
