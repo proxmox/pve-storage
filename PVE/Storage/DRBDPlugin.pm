@@ -315,18 +315,20 @@ sub activate_volume {
     ($rc, $res) = $hdl->assign($nodename, $volname, { diskless => 'true' });
     check_drbd_rc($rc->[0]);
 
-    # fixme: wait until device is acessible - looks strange to me ?
-
+    # wait until device is acessitble
     my $print_warning = 1;
     my $max_wait_time = 20;
     for (my $i = 0;; $i++) {
-	last if system("dd if=$path of=/dev/null bs=512 count=1 >/dev/null 2>&1") == 0;
+	($rc, $res) = $hdl->list_assignments([$nodename], [$volname], 0, { "cstate:deploy" => "true" }, []);
+	check_drbd_rc($rc->[0]);
+	my $len = scalar(@$res);
+	last if $len > 0;
 	die "aborting wait - device '$path' still not readable\n" if $i > $max_wait_time;
 	print "waiting for device '$path' to become ready...\n" if $print_warning;
 	$print_warning = 0;
 	sleep(1);
     }
-         
+
     return undef;    
 }
 
