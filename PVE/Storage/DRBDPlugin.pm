@@ -66,22 +66,26 @@ sub connect_drbdmanage_service {
     return $hdl;
 }
 
-sub check_drbd_rc {
+sub check_drbd_res {
     my ($rc) = @_;
     
-    die "got undefined drbd rc\n" if !$rc;
+    die "got undefined drbd result\n" if !$rc;
 
-    my ($code, $msg, $details) = @$rc;
+    foreach my $res (@$rc) {
+	my ($code, $msg, $details) = @$res;
 
-    return undef if $code == 0;
+	return undef if $code == 0;
 
-    $msg = "drbd error: got error code $code" if !$msg;
-    chomp $msg;
+	$msg = "drbd error: got error code $code" if !$msg;
+	chomp $msg;
     
-    # fixme: add error details?
-    #print Dumper($details);
+	# fixme: add error details?
+	#print Dumper($details);
     
-    die "drbd error: $msg\n";
+	die "drbd error: $msg\n";
+    }
+
+    return undef;
 }
 
 sub drbd_list_volumes {
@@ -90,7 +94,7 @@ sub drbd_list_volumes {
     $hdl = connect_drbdmanage_service() if !$hdl;
     
     my ($rc, $res) = $hdl->list_volumes([], 0, {}, []);
-    check_drbd_rc($rc->[0]);
+    check_drbd_res($rc);
 
     my $volumes = {};
     
@@ -178,15 +182,15 @@ sub alloc_image {
 	if !defined($name);
     
     my ($rc, $res) = $hdl->create_resource($name, {});
-    check_drbd_rc($rc->[0]);
+    check_drbd_res($rc);
 
     ($rc, $res) = $hdl->create_volume($name, $size, {});
-    check_drbd_rc($rc->[0]);
+    check_drbd_res($rc);
 
     my $redundancy = get_redundancy($scfg);;
     
     ($rc, $res) = $hdl->auto_deploy($name, $redundancy, 0, 0);
-    check_drbd_rc($rc->[0]);
+    check_drbd_res($rc);
 
     # hack: this is required to avoid bugs with set_drbdsetup_props(),
     # which can result in a split brain if we do not wait.
@@ -194,7 +198,7 @@ sub alloc_image {
     my $max_wait = 15;
     for (my $i = 0; $i < $max_wait; $i++) {
 	($rc, $res) = $hdl->list_assignments([], [$name], 0, { "cstate:deploy" => "true" }, []);
-	check_drbd_rc($rc->[0]);
+	check_drbd_res($rc);
 	my $len = scalar(@$res);
 	last if $len == $redundancy;
 	sleep(1);
@@ -208,7 +212,7 @@ sub alloc_image {
 	    type => 'neto',
 	    'allow-two-primaries' => 'yes',
 	});
-    check_drbd_rc($rc->[0]);
+    check_drbd_res($rc);
  
     return $name;
 }
@@ -218,7 +222,7 @@ sub free_image {
  
     my $hdl = connect_drbdmanage_service();
     my ($rc, $res) = $hdl->remove_resource($volname, 0);
-    check_drbd_rc($rc->[0]);
+    check_drbd_res($rc);
 
     return undef;
 }
@@ -265,7 +269,7 @@ sub status {
 	my $hdl = connect_drbdmanage_service();
 	my $redundancy = get_redundancy($scfg);;
 	my ($rc, $res) = $hdl->cluster_free_query($redundancy);
-	check_drbd_rc($rc->[0]);
+	check_drbd_res($rc);
 
 	$avail = $res;
 	$used = 0; # fixme
@@ -302,7 +306,7 @@ sub activate_volume {
     my $hdl = connect_drbdmanage_service();
     my $nodename = PVE::INotify::nodename();
     my ($rc, $res) = $hdl->list_assignments([$nodename], [], 0, {}, []);
-    check_drbd_rc($rc->[0]);
+    check_drbd_res($rc);
 
     foreach my $entry (@$res) {
 	my ($node, $res_name, $props, $voldata) = @$entry;
@@ -313,14 +317,14 @@ sub activate_volume {
 
     # create diskless assignment
     ($rc, $res) = $hdl->assign($nodename, $volname, { diskless => 'true' });
-    check_drbd_rc($rc->[0]);
+    check_drbd_res($rc);
 
     # wait until device is acessitble
     my $print_warning = 1;
     my $max_wait_time = 20;
     for (my $i = 0;; $i++) {
 	($rc, $res) = $hdl->list_assignments([$nodename], [$volname], 0, { "cstate:deploy" => "true" }, []);
-	check_drbd_rc($rc->[0]);
+	check_drbd_res($rc);
 	my $len = scalar(@$res);
 	last if $len > 0;
 	die "aborting wait - device '$path' still not readable\n" if $i > $max_wait_time;
