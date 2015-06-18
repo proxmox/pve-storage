@@ -187,24 +187,6 @@ sub alloc_image {
     ($rc, $res) = $hdl->create_volume($name, $size, {});
     check_drbd_res($rc);
 
-    my $redundancy = get_redundancy($scfg);;
-    
-    ($rc, $res) = $hdl->auto_deploy($name, $redundancy, 0, 0);
-    check_drbd_res($rc);
-
-    # hack: this is required to avoid bugs with set_drbdsetup_props(),
-    # which can result in a split brain if we do not wait.
-    # Note: wait until all volumes have cstate:deploy
-    my $max_wait = 15;
-    for (my $i = 0; $i < $max_wait; $i++) {
-	($rc, $res) = $hdl->list_assignments([], [$name], 0, { "cstate:deploy" => "true" }, []);
-	check_drbd_res($rc);
-	my $len = scalar(@$res);
-	last if $len == $redundancy;
-	sleep(1);
-    }
-    sleep(1); # another sleep - it does not work without -no idea why?
-    
     ($rc, $res) = $hdl->set_drbdsetup_props(
 	{ 
 	    target => "resource",
@@ -214,6 +196,11 @@ sub alloc_image {
 	});
     check_drbd_res($rc);
  
+    my $redundancy = get_redundancy($scfg);;
+    
+    ($rc, $res) = $hdl->auto_deploy($name, $redundancy, 0, 0);
+    check_drbd_res($rc);
+   
     return $name;
 }
 
