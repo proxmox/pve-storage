@@ -332,8 +332,19 @@ sub activate_volume {
 sub deactivate_volume {
     my ($class, $storeid, $scfg, $volname, $cache) = @_;
 
-    # fixme: remove diskless assdignments
-    
+    return undef; # fixme: should we unassign ?
+
+    # remove above return to enable this code
+    my $hdl = connect_drbdmanage_service();
+    my $nodename = PVE::INotify::nodename();
+    my ($rc, $res) = $hdl->list_assignments([$nodename], [$volname], 0, 
+					    { "cstate:diskless" => "true" }, []);
+    check_drbd_res($rc);
+    if (scalar(@$res)) {
+	my ($rc, $res) = $hdl->unassign($nodename, $volname,0);
+	check_drbd_res($rc);
+    }
+	
     return undef;    
 }
 
