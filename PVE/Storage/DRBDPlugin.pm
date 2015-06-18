@@ -310,10 +310,16 @@ sub activate_volume {
     my $print_warning = 1;
     my $max_wait_time = 20;
     for (my $i = 0;; $i++) {
-	($rc, $res) = $hdl->list_assignments([$nodename], [$volname], 0, { "cstate:deploy" => "true" }, []);
-	check_drbd_res($rc);
-	my $len = scalar(@$res);
-	last if $len > 0;
+	if (1) {
+	    # clumsy, but works
+	    last if system("dd if=$path of=/dev/null bs=512 count=1 >/dev/null 2>&1") == 0;
+	} else {
+	    # correct, but does not work?
+	    ($rc, $res) = $hdl->list_assignments([$nodename], [$volname], 0, { "cstate:deploy" => "true" }, []);
+	    check_drbd_res($rc);
+	    my $len = scalar(@$res);
+	    last if $len > 0;
+	}
 	die "aborting wait - device '$path' still not readable\n" if $i > $max_wait_time;
 	print "waiting for device '$path' to become ready...\n" if $print_warning;
 	$print_warning = 0;
