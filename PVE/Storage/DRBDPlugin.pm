@@ -72,16 +72,23 @@ sub check_drbd_res {
     die "got undefined drbd result\n" if !$rc;
 
     foreach my $res (@$rc) {
-	my ($code, $msg, $details) = @$res;
+	my ($code, $format, $details) = @$res;
 
-	return undef if $code == 0;
+	next if $code == 0;
 
-	$msg = "drbd error: got error code $code" if !$msg;
+	my $msg;
+	if (defined($format)) {
+	    my @args = ();
+	    push @args, $details->{$1} // "" 
+		while $format =~ s,\%\((\w+)\),%,;
+
+	    $msg = sprintf($format, @args);
+
+	} else {    
+	    $msg = "drbd error: got error code $code";
+	}
+	
 	chomp $msg;
-    
-	# fixme: add error details?
-	#print Dumper($details);
-    
 	die "drbd error: $msg\n";
     }
 
