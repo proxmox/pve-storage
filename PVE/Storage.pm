@@ -683,9 +683,9 @@ sub template_list {
 		    $info = { volid => "$sid:iso/$1", format => 'iso' };
 
 		} elsif ($tt eq 'vztmpl') {
-		    next if $fn !~ m!/([^/]+\.tar\.gz)$!;
+		    next if $fn !~ m!/([^/]+\.tar\.([gx]z))$!;
 
-		    $info = { volid => "$sid:vztmpl/$1", format => 'tgz' };
+		    $info = { volid => "$sid:vztmpl/$1", format => "t$2" };
 
 		} elsif ($tt eq 'backup') {
 		    next if $fn !~ m!/([^/]+\.(tar|tar\.gz|tar\.lzo|tgz|vma|vma\.gz|vma\.lzo))$!;

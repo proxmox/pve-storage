@@ -364,7 +364,7 @@ sub parse_volname {
 	return ('images', $name, $vmid, undef, undef, $isBase);
     } elsif ($volname =~ m!^iso/([^/]+\.[Ii][Ss][Oo])$!) {
 	return ('iso', $1);
-    } elsif ($volname =~ m!^vztmpl/([^/]+\.tar\.gz)$!) {
+    } elsif ($volname =~ m!^vztmpl/([^/]+\.tar\.[gx]z)$!) {
 	return ('vztmpl', $1);
     } elsif ($volname =~ m!^rootdir/(\d+)$!) {
 	return ('rootdir', $1, $1);
