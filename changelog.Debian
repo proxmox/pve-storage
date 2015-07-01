@@ -1,3 +1,11 @@
+libpve-storage-perl (4.0-12) unstable; urgency=medium
+
+  * allow templates using .xz compression
+
+  * Fix ZFSPoolPlugin path for subvol
+  
+ -- Proxmox Support Team <support@proxmox.com>  Wed, 01 Jul 2015 10:08:05 +0200
+
 libpve-storage-perl (4.0-11) unstable; urgency=medium
 
   * drbd: improve error messages
