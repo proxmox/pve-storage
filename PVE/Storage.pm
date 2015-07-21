@@ -587,7 +587,11 @@ sub vdisk_alloc {
 
     # lock shared storage
     return $plugin->cluster_lock_storage($storeid, $scfg->{shared}, undef, sub {
-	my $volname = $plugin->alloc_image($storeid, $scfg, $vmid, $fmt, $name, $size);
+	my $old_umask = umask(umask|0037);
+	my $volname = eval { $plugin->alloc_image($storeid, $scfg, $vmid, $fmt, $name, $size) };
+	my $err = $@;
+	umask $old_umask;
+	die $err if $err;
 	return "$storeid:$volname";
     });
 }
