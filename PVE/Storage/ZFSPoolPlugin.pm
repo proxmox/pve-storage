@@ -338,6 +338,9 @@ sub zfs_delete_zvol {
 	if ($err = $@) {
 	    if ($err =~ m/^zfs error:(.*): dataset is busy.*/) {
 		sleep(1);
+	    } elsif ($err =~ m/^zfs error:.*: dataset does not exist.*$/) {
+		$err = undef;
+		last;
 	    } else {
 		die $err;
 	    }
