@@ -219,6 +219,10 @@ sub properties {
 	    description => "Authsupported.",
 	    type => 'string',
 	},
+	krbd => {
+	    description => "Access rbd through krbd kernel module.",
+	    type => 'boolean',
+	},
     };
 }
 
@@ -230,6 +234,7 @@ sub options {
 	pool => { optional => 1 },
 	username => { optional => 1 },
 	content => { optional => 1 },
+	krbd => { optional => 1 },
     };
 }
 
@@ -265,6 +270,8 @@ sub path {
     }else{
 	$path .= ":auth_supported=none";
     }
+
+    $path = "/dev/rbd/$pool/$name" if $scfg->{krbd};
 
     return ($path, $vmid, $vtype);
 }
@@ -481,11 +488,29 @@ sub deactivate_storage {
 
 sub activate_volume {
     my ($class, $storeid, $scfg, $volname, $exclusive, $cache) = @_;
+
+    return 1 if !$scfg->{krbd};
+
+    my ($vtype, $name, $vmid) = $class->parse_volname($volname);
+
+    my $cmd = &$rbd_cmd($scfg, $storeid, 'map', $name);
+    run_rbd_command($cmd, errmsg => "can't mount rbd volume $name");
+
     return 1;
 }
 
 sub deactivate_volume {
     my ($class, $storeid, $scfg, $volname, $exclusive, $cache) = @_;
+
+    return 1 if !$scfg->{krbd};
+
+    my ($vtype, $name, $vmid) = $class->parse_volname($volname);
+    my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
+
+    my $path = "/dev/rbd/$pool/$name";
+    my $cmd = &$rbd_cmd($scfg, $storeid, 'unmap', $path);
+    run_rbd_command($cmd, errmsg => "can't unmount rbd volume $name");
+
     return 1;
 }
 
