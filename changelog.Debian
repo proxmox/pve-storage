@@ -1,3 +1,9 @@
+libpve-storage-perl (4.0-13) unstable; urgency=medium
+
+  * mask world r and group wx permissions in vdisk_alloc
+
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 30 Jul 2015 08:50:33 +0200
+
 libpve-storage-perl (4.0-12) unstable; urgency=medium
 
   * allow templates using .xz compression
