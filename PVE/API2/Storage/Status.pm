@@ -47,7 +47,7 @@ __PACKAGE__->register_method ({
 		 }),
 	    content => { 
 		description => "Only list stores which support this content type.",
-		type => 'string', format => 'pve-storage-content',
+		type => 'string', format => 'pve-storage-content-list',
 		optional => 1,
 	    },
 	    enabled => {

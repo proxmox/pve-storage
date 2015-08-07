@@ -882,13 +882,22 @@ sub storage_info {
     my $ids = $cfg->{ids};
 
     my $info = {};
-
+    
+    my @ctypes = PVE::Tools::split_list($content);
+    
     my $slist = [];
     foreach my $storeid (keys %$ids) {
 
-	next if $content && !$ids->{$storeid}->{content}->{$content};
-
 	next if !storage_check_enabled($cfg, $storeid, undef, 1);
+
+	my $want_ctype = 0;
+	foreach my $ctype (@ctypes) {
+	    if ($ids->{$storeid}->{content}->{$ctype}) {
+		$want_ctype = 1;
+		last;
+	    }
+	}
+	next if !$want_ctype;
 
 	my $type = $ids->{$storeid}->{type};
 
