@@ -1,3 +1,9 @@
+libpve-storage-perl (4.0-14) unstable; urgency=medium
+
+  * storage status API: allow to filter multiple content types
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 07 Aug 2015 09:45:18 +0200
+
 libpve-storage-perl (4.0-13) unstable; urgency=medium
 
   * mask world r and group wx permissions in vdisk_alloc
