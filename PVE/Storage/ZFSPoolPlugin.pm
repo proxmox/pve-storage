@@ -98,13 +98,12 @@ sub zfs_parse_zvol_list {
 
 	my $zvol = {};
 	my @parts = split /\//, $dataset;
+	next if scalar(@parts) < 2; # we need pool/name
 	my $name = pop @parts;
 	my $pool = join('/', @parts);
 
 	next unless $name =~ m!^(vm|base|subvol)-(\d+)-(\S+)$!;
 	$zvol->{owner} = $2;
-
-	$name = $pool . '/' . $name;
 
 	$zvol->{pool} = $pool;
 	$zvol->{name} = $name;

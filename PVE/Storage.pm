@@ -2,6 +2,7 @@ package PVE::Storage;
 
 use strict;
 use warnings;
+use Data::Dumper;
 
 use POSIX;
 use IO::Select;
