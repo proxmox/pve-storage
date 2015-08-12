@@ -124,7 +124,7 @@ sub parse_volname {
     my ($class, $volname) = @_;
 
     if ($volname =~ m/^((base-(\d+)-\S+)\/)?((base)?(vm)?-(\d+)-\S+)$/) {
-	return ('images', $4, $7, $2, $3, $5);
+	return ('images', $4, $7, $2, $3, $5, 'raw');
     }
 
     die "unable to parse sheepdog volume name '$volname'\n";

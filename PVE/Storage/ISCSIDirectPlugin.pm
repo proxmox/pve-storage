@@ -77,7 +77,7 @@ sub parse_volname {
 
 
     if ($volname =~ m/^lun(\d+)$/) {
-	return ('images', $1, undef);
+	return ('images', $1, undef, undef, undef, undef, 'raw');
     }
 
     die "unable to parse iscsi volume name '$volname'\n";

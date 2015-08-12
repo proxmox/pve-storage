@@ -271,7 +271,7 @@ sub parse_volname {
     my ($class, $volname) = @_;
 
     if ($volname =~ m!^\d+\.\d+\.\d+\.(\S+)$!) {
-	return ('images', $1, undef);
+	return ('images', $1, undef, undef, undef, undef, 'raw');
     }
 
     die "unable to parse iscsi volume name '$volname'\n";

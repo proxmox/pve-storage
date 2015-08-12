@@ -133,7 +133,7 @@ sub parse_volname {
     my ($class, $volname) = @_;
 
     if ($volname =~ m/^(vm-(\d+)-[a-z][a-z0-9\-\_\.]*[a-z0-9]+)$/) {
-	return ('images', $1, $2);
+	return ('images', $1, $2, undef, undef, undef, 'raw');
     }
 
     die "unable to parse lvm volume name '$volname'\n";

@@ -221,7 +221,7 @@ sub parse_volname {
     parse_lvm_name($volname);
 
     if ($volname =~ m/^(vm-(\d+)-\S+)$/) {
-	return ('images', $1, $2);
+	return ('images', $1, $2, undef, undef, undef, 'raw');
     }
 
     die "unable to parse lvm volume name '$volname'\n";
