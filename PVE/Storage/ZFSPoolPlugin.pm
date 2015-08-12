@@ -131,7 +131,8 @@ sub parse_volname {
     my ($class, $volname) = @_;
 
     if ($volname =~ m/^(((base|vm)-(\d+)-\S+)\/)?((base)?(vm|subvol)?-(\d+)-\S+)$/) {
-	return ('images', $5, $8, $2, $4, $6);
+	my $format = $7 && $7 eq 'subvol' ? 'subvol' : 'raw';
+	return ('images', $5, $8, $2, $4, $6, $format);
     }
 
     die "unable to parse zfs volume name '$volname'\n";
@@ -196,7 +197,7 @@ sub alloc_image {
 
 	die "illegal name '$volname' - sould be 'vm-$vmid-*'\n"
 	    if $volname && $volname !~ m/^vm-$vmid-/;
-	$volname = $class->zfs_find_free_diskname($storeid, $scfg, $vmid) 
+	$volname = $class->zfs_find_free_diskname($storeid, $scfg, $vmid, $fmt) 
 	    if !$volname;
 
 	$class->zfs_create_zvol($scfg, $volname, $size);
@@ -206,8 +207,12 @@ sub alloc_image {
 	system("udevadm settle --timeout 10 --exit-if-exists=${devname}");
 
     } elsif ( $fmt eq 'subvol') {
-	
-	die "subvolume allocation without name\n" if !$volname;
+
+	die "illegal name '$volname' - sould be 'subvol-$vmid-*'\n"
+	    if $volname && $volname !~ m/^subvol-$vmid-/;
+	$volname = $class->zfs_find_free_diskname($storeid, $scfg, $vmid, $fmt) 
+	    if !$volname;
+
 	die "illegal name '$volname' - sould be 'subvol-$vmid-*'\n"
 	    if $volname !~ m/^subvol-$vmid-/;
 
@@ -380,7 +385,7 @@ sub zfs_list_zvol {
 }
 
 sub zfs_find_free_diskname {
-    my ($class, $storeid, $scfg, $vmid) = @_;
+    my ($class, $storeid, $scfg, $vmid, $format) = @_;
 
     my $name = undef;
     my $volumes = $class->zfs_list_zvol($scfg);
@@ -390,14 +395,14 @@ sub zfs_find_free_diskname {
 
     foreach my $image (keys %$dat) {
         my $volname = $dat->{$image}->{name};
-        if ($volname =~ m/(vm|base)-$vmid-disk-(\d+)/){
+        if ($volname =~ m/(vm|base|subvol)-$vmid-disk-(\d+)/){
             $disk_ids->{$2} = 1;
         }
     }
 
     for (my $i = 1; $i < 100; $i++) {
         if (!$disk_ids->{$i}) {
-            return "vm-$vmid-disk-$i";
+            return $format eq 'subvol' ? "subvol-$vmid-disk-$i" : "vm-$vmid-disk-$i";
         }
     }
 
@@ -513,12 +518,12 @@ sub clone_image {
 
     $snap ||= '__base__';
 
-    my ($vtype, $basename, $basevmid, undef, undef, $isBase) =
+    my ($vtype, $basename, $basevmid, undef, undef, $isBase, $format) =
         $class->parse_volname($volname);
 
     die "clone_image only works on base images\n" if !$isBase;
 
-    my $name = $class->zfs_find_free_diskname($storeid, $scfg, $vmid);
+    my $name = $class->zfs_find_free_diskname($storeid, $scfg, $vmid, $format);
 
     $class->zfs_request($scfg, undef, 'clone', "$scfg->{pool}/$basename\@$snap", "$scfg->{pool}/$name");
 
