@@ -613,7 +613,7 @@ sub vdisk_free {
     # lock shared storage
     $plugin->cluster_lock_storage($storeid, $scfg->{shared}, undef, sub {
 
-	my ($vtype, $name, $vmid, undef, undef, $isBase) =
+	my ($vtype, $name, $vmid, undef, undef, $isBase, $format) =
 	    $plugin->parse_volname($volname);
 	if ($isBase) {
 	    my $vollist = $plugin->list_images($storeid, $scfg);
@@ -633,7 +633,7 @@ sub vdisk_free {
 		}
 	    }
 	}
-	$cleanup_worker = $plugin->free_image($storeid, $scfg, $volname, $isBase);
+	$cleanup_worker = $plugin->free_image($storeid, $scfg, $volname, $isBase, $format);
     });
 
     return if !$cleanup_worker;
