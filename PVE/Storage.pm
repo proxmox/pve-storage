@@ -290,6 +290,9 @@ sub parse_volname {
     my $scfg = storage_config($cfg, $storeid);
 
     my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
+
+    # returns ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $format)
+
     return $plugin->parse_volname($volname);
 }
 
