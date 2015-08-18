@@ -1,3 +1,13 @@
+libpve-storage-perl (4.0-15) unstable; urgency=medium
+
+  * upload API: safer filename handling
+
+  * add subvol support for directory storage
+
+  * zfs_parse_zvol_list: do not add pool to volname
+
+ -- Proxmox Support Team <support@proxmox.com>  Tue, 18 Aug 2015 16:27:52 +0200
+
 libpve-storage-perl (4.0-14) unstable; urgency=medium
 
   * storage status API: allow to filter multiple content types
