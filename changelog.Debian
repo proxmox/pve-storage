@@ -1,3 +1,11 @@
+libpve-storage-perl (4.0-16) unstable; urgency=medium
+
+  * remove storage access permissions after delete
+
+  * added remove storage (exist) check
+
+ -- Proxmox Support Team <support@proxmox.com>  Wed, 19 Aug 2015 15:40:59 +0200
+
 libpve-storage-perl (4.0-15) unstable; urgency=medium
 
   * upload API: safer filename handling
