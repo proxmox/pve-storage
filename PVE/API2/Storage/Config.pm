@@ -243,6 +243,9 @@ __PACKAGE__->register_method ({
 
 		my $cfg = cfs_read_file('storage.cfg');
 
+		die "storage '$storeid' does not exist\n"
+		    if !($cfg->{ids}->{$storeid});
+
 		die "can't remove storage - storage is used as base of another storage\n"
 		    if PVE::Storage::storage_is_used($cfg, $storeid);
 
