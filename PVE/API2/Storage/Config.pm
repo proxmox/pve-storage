@@ -254,7 +254,9 @@ __PACKAGE__->register_method ({
 		cfs_write_file('storage.cfg', $cfg);
 
 	    }, "delete storage failed");
-  
+
+	PVE::AccessControl::remove_storage_access($storeid);
+
 	return undef;
     }});
 
