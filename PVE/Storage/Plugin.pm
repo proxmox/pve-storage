@@ -16,7 +16,6 @@ cfs_register_file ('storage.cfg',
 		   sub { __PACKAGE__->parse_config(@_); },
 		   sub { __PACKAGE__->write_config(@_); });
 
-# fixme: remove rootdir code (we now use subvols)
 
 my $defaultData = {
     propertyList => {
@@ -24,7 +23,7 @@ my $defaultData = {
 	storage => get_standard_option('pve-storage-id'),
 	nodes => get_standard_option('pve-node-list', { optional => 1 }),
 	content => {
-	    description => "Allowed content types.",
+	    description => "Allowed content types. Note: value 'rootdir' is used for Containers, and value 'images' for KVM-Qemu VM's.\n",
 	    type => 'string', format => 'pve-storage-content-list',
 	    optional => 1,
 	},
