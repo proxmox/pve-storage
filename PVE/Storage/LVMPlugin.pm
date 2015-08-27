@@ -228,7 +228,9 @@ sub parse_volname {
 }
 
 sub filesystem_path {
-    my ($class, $scfg, $volname) = @_;
+    my ($class, $scfg, $volname, $snapname) = @_;
+
+    die "lvm snapshot is not implemented"if defined($snapname);
 
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
 

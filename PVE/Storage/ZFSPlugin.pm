@@ -208,7 +208,10 @@ sub options {
 # Storage implementation
 
 sub path {
-    my ($class, $scfg, $volname) = @_;
+    my ($class, $scfg, $volname, $storeid, $snapname) = @_;
+
+    die "direct access to snapshots not implemented"
+	if defined($snapname);
 
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
 

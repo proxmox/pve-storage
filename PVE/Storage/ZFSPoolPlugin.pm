@@ -141,7 +141,7 @@ sub parse_volname {
 # virtual zfs methods (subclass can overwrite them)
 
 sub path {
-    my ($class, $scfg, $volname) = @_;
+    my ($class, $scfg, $volname, $storeid, $snapname) = @_;
 
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
 
@@ -154,6 +154,7 @@ sub path {
 	} else {
 	    $path = "/dev/zvol/$scfg->{pool}/$volname";
 	}
+	$path .= "\@$snapname" if defined($snapname);
     } else {
 	die "$vtype is not allowed in ZFSPool!";
     }

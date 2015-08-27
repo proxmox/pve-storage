@@ -85,7 +85,10 @@ sub parse_volname {
 }
 
 sub path {
-    my ($class, $scfg, $volname) = @_;
+    my ($class, $scfg, $volname, $storeid, $snapname) = @_;
+
+    die "volume snapshot is not possible on iscsi device"
+	if defined($snapname);
 
     my ($vtype, $lun, $vmid) = $class->parse_volname($volname);
 

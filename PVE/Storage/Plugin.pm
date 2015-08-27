@@ -403,9 +403,15 @@ sub get_subdir {
 }
 
 sub filesystem_path {
-    my ($class, $scfg, $volname, $storeid) = @_;
+    my ($class, $scfg, $volname, $snapname) = @_;
 
-    my ($vtype, $name, $vmid) = $class->parse_volname($volname);
+    my ($vtype, $name, $vmid, undef, undef, $isBase, $format) =
+	$class->parse_volname($volname);
+
+    # Note: qcow2/qed has internal snapshot, so path is always
+    # the same (with or without snapshot => same file).
+    die "can't snapshot this image format\n"
+	if defined($snapname) && $format !~ m/^(qcow2|qed)$/;
 
     my $dir = $class->get_subdir($scfg, $vtype);
 
@@ -417,9 +423,9 @@ sub filesystem_path {
 }
 
 sub path {
-    my ($class, $scfg, $volname, $storeid) = @_;
+    my ($class, $scfg, $volname, $storeid, $snapname) = @_;
 
-    return $class->filesystem_path($scfg, $volname, $storeid);
+    return $class->filesystem_path($scfg, $volname, $snapname);
 }
 
 sub create_base {

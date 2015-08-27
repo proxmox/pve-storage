@@ -140,7 +140,9 @@ sub parse_volname {
 }
 
 sub filesystem_path {
-    my ($class, $scfg, $volname) = @_;
+    my ($class, $scfg, $volname, $snapname) = @_;
+
+    die "drbd snapshot is not implemented\n" if defined($snapname);
 
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
 
