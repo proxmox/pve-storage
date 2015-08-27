@@ -986,17 +986,17 @@ sub scan_nfs {
 
 sub scan_zfs {
 
-    my $cmd = ['zpool',  'list', '-H', '-o', 'name,size,free'];
+    my $cmd = ['zfs',  'list', '-t', 'filesystem', '-H', '-o', 'name,avail,used'];
 
     my $res = [];
     run_command($cmd, outfunc => sub {
 	my $line = shift;
 
 	if ($line =~m/^(\S+)\s+(\S+)\s+(\S+)$/) {
-	    my ($pool, $size_str, $free_str) = ($1, $2, $3);
+	    my ($pool, $size_str, $used_str) = ($1, $2, $3);
 	    my $size = PVE::Storage::ZFSPoolPlugin::zfs_parse_size($size_str);
-	    my $free = PVE::Storage::ZFSPoolPlugin::zfs_parse_size($free_str);
-	    push @$res, { pool => $pool, size => $size, free => $free };
+	    my $used = PVE::Storage::ZFSPoolPlugin::zfs_parse_size($used_str);
+	    push @$res, { pool => $pool, size => $size, free => $size-$used };
 	}
     });
 
