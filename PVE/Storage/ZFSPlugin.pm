@@ -275,7 +275,7 @@ sub alloc_image {
 
     my $volname = $name;
 
-    $volname = $class->zfs_find_free_diskname($storeid, $scfg, $vmid) if !$volname;
+    $volname = $class->zfs_find_free_diskname($storeid, $scfg, $vmid, $fmt) if !$volname;
     
     $class->zfs_create_zvol($scfg, $volname, $size);
  
