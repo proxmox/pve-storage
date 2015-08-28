@@ -1,3 +1,12 @@
+libpve-storage-perl (4.0-17) unstable; urgency=medium
+
+  * zfsscan: allow subvolume selection in ZPool storage
+
+  * Add content type rootfs to RBD and extend manual (allow to
+  store LXC containers)
+  
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 28 Aug 2015 11:42:17 +0200
+
 libpve-storage-perl (4.0-16) unstable; urgency=medium
 
   * remove storage access permissions after delete
