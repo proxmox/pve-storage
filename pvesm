@@ -232,10 +232,10 @@ To get the filesystem path for a <VOLUME_ID> use:
 =head1 EXAMPLES
 
  # scan iscsi host for available targets
- pvesm scan iscsi <HOST[:PORT]>
+ pvesm iscsiscan -portal <HOST[:PORT]>
 
  # scan nfs server for available exports
- pvesm scan nfs <HOST>
+ pvesm nfsscan <HOST>
 
  # add storage pools
  pvesm add <TYPE> <STORAGE_ID> <OPTIONS>
