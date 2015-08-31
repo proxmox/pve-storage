@@ -5,9 +5,9 @@ use warnings;
 use IO::File;
 use File::Path;
 use PVE::Tools qw(run_command);
+use PVE::Network;
 use PVE::Storage::Plugin;
 use PVE::JSONSchema qw(get_standard_option);
-use Net::Ping;
 
 use base qw(PVE::Storage::Plugin);
 
@@ -39,8 +39,8 @@ my $get_active_server = sub {
 
 	if ($server && $server ne 'localhost' && $server ne '127.0.0.1' && $server ne '::1') {
 
-	    my $p = Net::Ping->new("tcp", 2);
-	    $status = $p->ping($server);
+	    # ping the echo port (7) without service check
+	    $status = PVE::Network::tcp_ping($server, undef, 2);
 
 	} else {
 
