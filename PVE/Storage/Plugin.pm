@@ -133,7 +133,7 @@ sub verify_portal_dns {
     my ($portal, $noerr) = @_;
 
     # IP or DNS name with optional port
-    if ($portal !~ m/^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|[[:alnum:]\-\.]+)(:\d+)?$/) {
+    if (!PVE::Tools::parse_host_and_port($portal)) {
 	return undef if $noerr;
 	die "value does not look like a valid portal address\n";
     }

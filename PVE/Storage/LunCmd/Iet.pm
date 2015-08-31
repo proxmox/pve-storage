@@ -57,12 +57,12 @@ my $execute_command = sub {
     $err .= "$line";
     };
 
-    $target = 'root@' . $scfg->{portal};
-
     if ($exec eq 'scp') {
-        $cmd = [@scp_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", $method, "$target:$params[0]"];
+        $target = 'root@[' . $scfg->{portal} . ']';
+        $cmd = [@scp_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", '--', $method, "$target:$params[0]"];
     } else {
-        $cmd = [@ssh_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", $target, $method, @params];
+        $target = 'root@' . $scfg->{portal};
+        $cmd = [@ssh_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", $target, '--', $method, @params];
     }
 
     eval {

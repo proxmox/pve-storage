@@ -5,10 +5,9 @@ use warnings;
 use File::stat;
 use IO::Dir;
 use IO::File;
-use PVE::Tools qw(run_command file_read_firstline trim dir_glob_regex dir_glob_foreach);
+use PVE::Tools qw(run_command file_read_firstline trim dir_glob_regex dir_glob_foreach $IPV4RE $IPV6RE);
 use PVE::Storage::Plugin;
 use PVE::JSONSchema qw(get_standard_option);
-use Net::Ping;
 
 use base qw(PVE::Storage::Plugin);
 
@@ -62,10 +61,9 @@ sub iscsi_session_list {
 sub iscsi_test_portal {
     my ($portal) = @_;
 
-    my ($server, $port) = split(':', $portal);
-    my $p = Net::Ping->new("tcp", 2);
-    $p->port_number($port || 3260);
-    return $p->ping($server);
+    my ($server, $port) = PVE::Tools::parse_host_and_port($portal);
+    return 0 if !$server;
+    return PVE::Network::tcp_ping($server, $port || 3260, 2);
 }
 
 sub iscsi_discovery {
@@ -83,7 +81,7 @@ sub iscsi_discovery {
     run_command($cmd, outfunc => sub {
 	my $line = shift;
 
-	if ($line =~ m/^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}:\d+)\,\S+\s+(\S+)\s*$/) {
+	if ($line =~ m/^((?:$IPV4RE|\[$IPV6RE\]):\d+)\,\S+\s+(\S+)\s*$/) {
 	    my $portal = $1;
 	    my $target = $2;
 	    # one target can have more than one portal (multipath).

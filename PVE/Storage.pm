@@ -12,7 +12,7 @@ use File::Path;
 use Cwd 'abs_path';
 use Socket;
 
-use PVE::Tools qw(run_command file_read_firstline);
+use PVE::Tools qw(run_command file_read_firstline $IPV6RE);
 use PVE::Cluster qw(cfs_read_file cfs_lock_file);
 use PVE::Exception qw(raise_param_exc);
 use PVE::JSONSchema;
@@ -1008,12 +1008,11 @@ sub scan_zfs {
 sub resolv_portal {
     my ($portal, $noerr) = @_;
 
-    if ($portal =~ m/^([^:]+)(:(\d+))?$/) {
-	my $server = $1;
-	my $port = $3;
-
+    my ($server, $port) = PVE::Tools::parse_host_and_port($portal);
+    if ($server) {
 	if (my $ip = resolv_server($server)) {
 	    $server = $ip;
+	    $server = "[$server]" if $server =~ /^$IPV6RE$/;
 	    return $port ? "$server:$port" : $server;
 	}
     }
