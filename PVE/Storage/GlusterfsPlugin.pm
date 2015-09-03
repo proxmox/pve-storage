@@ -5,6 +5,7 @@ use warnings;
 use IO::File;
 use File::Path;
 use PVE::Tools qw(run_command);
+use PVE::ProcFSTools;
 use PVE::Network;
 use PVE::Storage::Plugin;
 use PVE::JSONSchema qw(get_standard_option);
@@ -66,23 +67,10 @@ my $get_active_server = sub {
     return undef;
 };
 
-sub read_proc_mounts {
-
-    local $/; # enable slurp mode
-
-    my $data = "";
-    if (my $fd = IO::File->new("/proc/mounts", "r")) {
-	$data = <$fd>;
-	close ($fd);
-    }
-
-    return $data;
-}
-
 sub glusterfs_is_mounted {
     my ($volume, $mountpoint, $mountdata) = @_;
 
-    $mountdata = read_proc_mounts() if !$mountdata;
+    $mountdata = PVE::ProcFSTools::read_proc_mounts() if !$mountdata;
 
     if ($mountdata =~ m|^\S+:$volume/?\s$mountpoint\sfuse.glusterfs|m) {
 	return $mountpoint;
@@ -260,7 +248,8 @@ sub alloc_image {
 sub status {
     my ($class, $storeid, $scfg, $cache) = @_;
 
-    $cache->{mountdata} = read_proc_mounts() if !$cache->{mountdata};
+    $cache->{mountdata} = PVE::ProcFSTools::read_proc_mounts()
+	if !$cache->{mountdata};
 
     my $path = $scfg->{path};
 
@@ -274,7 +263,8 @@ sub status {
 sub activate_storage {
     my ($class, $storeid, $scfg, $cache) = @_;
 
-    $cache->{mountdata} = read_proc_mounts() if !$cache->{mountdata};
+    $cache->{mountdata} = PVE::ProcFSTools::read_proc_mounts()
+	if !$cache->{mountdata};
 
     my $path = $scfg->{path};
     my $volume = $scfg->{volume};
@@ -297,7 +287,8 @@ sub activate_storage {
 sub deactivate_storage {
     my ($class, $storeid, $scfg, $cache) = @_;
 
-    $cache->{mountdata} = read_proc_mounts() if !$cache->{mountdata};
+    $cache->{mountdata} = PVE::ProcFSTools::read_proc_mounts()
+	if !$cache->{mountdata};
 
     my $path = $scfg->{path};
     my $volume = $scfg->{volume};
