@@ -6,6 +6,7 @@ use IO::File;
 use Net::IP;
 use File::Path;
 use PVE::Tools qw(run_command);
+use PVE::ProcFSTools;
 use PVE::Storage::Plugin;
 use PVE::JSONSchema qw(get_standard_option);
 
@@ -13,26 +14,13 @@ use base qw(PVE::Storage::Plugin);
 
 # NFS helper functions
 
-sub read_proc_mounts {
-    
-    local $/; # enable slurp mode
-    
-    my $data = "";
-    if (my $fd = IO::File->new("/proc/mounts", "r")) {
-	$data = <$fd>;
-	close ($fd);
-    }
-
-    return $data;
-}
-
 sub nfs_is_mounted {
     my ($server, $export, $mountpoint, $mountdata) = @_;
 
     $server = "[$server]" if Net::IP::ip_is_ipv6($server);
     my $source = "$server:$export";
 
-    $mountdata = read_proc_mounts() if !$mountdata;
+    $mountdata = PVE::ProcFSTools::read_proc_mounts() if !$mountdata;
 
     if ($mountdata =~ m|^\Q$source\E/?\s\Q$mountpoint\E\snfs|m) {
 	return $mountpoint;
@@ -114,7 +102,8 @@ sub check_config {
 sub status {
     my ($class, $storeid, $scfg, $cache) = @_;
 
-    $cache->{mountdata} = read_proc_mounts() if !$cache->{mountdata};
+    $cache->{mountdata} = PVE::ProcFSTools::read_proc_mounts()
+	if !$cache->{mountdata};
 
     my $path = $scfg->{path};
     my $server = $scfg->{server};
@@ -128,7 +117,8 @@ sub status {
 sub activate_storage {
     my ($class, $storeid, $scfg, $cache) = @_;
 
-    $cache->{mountdata} = read_proc_mounts() if !$cache->{mountdata};
+    $cache->{mountdata} = PVE::ProcFSTools::read_proc_mounts()
+	if !$cache->{mountdata};
 
     my $path = $scfg->{path};
     my $server = $scfg->{server};
@@ -153,7 +143,8 @@ sub activate_storage {
 sub deactivate_storage {
     my ($class, $storeid, $scfg, $cache) = @_;
 
-    $cache->{mountdata} = read_proc_mounts() if !$cache->{mountdata};
+    $cache->{mountdata} = PVE::ProcFSTools::read_proc_mounts()
+	if !$cache->{mountdata};
 
     my $path = $scfg->{path};
     my $server = $scfg->{server};
