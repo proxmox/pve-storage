@@ -1,3 +1,11 @@
+libpve-storage-perl (4.0-19) unstable; urgency=medium
+
+  * use read_proc_mounts from PVE::ProcFSTools
+
+  * Correct manpage examples to newer syntax
+
+ -- Proxmox Support Team <support@proxmox.com>  Tue, 08 Sep 2015 10:48:24 +0200
+
 libpve-storage-perl (4.0-18) unstable; urgency=medium
 
   * GlusterfsPlugin: replace Net::Ping with tcp_ping
