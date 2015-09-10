@@ -494,6 +494,10 @@ sub activate_volume {
     return 1 if !$scfg->{krbd};
 
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
+    my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
+
+    my $path = "/dev/rbd/$pool/$name";
+    return if -b $path;
 
     my $cmd = &$rbd_cmd($scfg, $storeid, 'map', $name);
     run_rbd_command($cmd, errmsg => "can't mount rbd volume $name");
