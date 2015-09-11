@@ -387,12 +387,8 @@ sub status {
 
     my $vgname = $scfg->{vgname};
 
-    my $total = 0;
-    my $free = 0;
-    my $used = 0;
-
-    if (my $info = $cache->{vgs}->{$vgname}) {
-	return ($info->{size}, $info->{free}, $total - $free, 1);
+     if (my $info = $cache->{vgs}->{$vgname}) {
+	return ($info->{size}, $info->{free}, $info->{size} - $info->{free}, 1);
     }
 
     return undef;
