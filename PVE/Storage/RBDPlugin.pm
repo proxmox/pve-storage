@@ -489,7 +489,7 @@ sub deactivate_storage {
 }
 
 sub activate_volume {
-    my ($class, $storeid, $scfg, $volname, $exclusive, $cache) = @_;
+    my ($class, $storeid, $scfg, $volname, $cache) = @_;
 
     return 1 if !$scfg->{krbd};
 
@@ -506,7 +506,7 @@ sub activate_volume {
 }
 
 sub deactivate_volume {
-    my ($class, $storeid, $scfg, $volname, $exclusive, $cache) = @_;
+    my ($class, $storeid, $scfg, $volname, $cache) = @_;
 
     return 1 if !$scfg->{krbd};
 

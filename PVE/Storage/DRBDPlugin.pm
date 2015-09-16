@@ -296,7 +296,7 @@ sub deactivate_storage {
 }
 
 sub activate_volume {
-    my ($class, $storeid, $scfg, $volname, $exclusive, $cache) = @_;
+    my ($class, $storeid, $scfg, $volname, $cache) = @_;
 
     my $path = $class->path($scfg, $volname);
     

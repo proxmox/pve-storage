@@ -421,11 +421,11 @@ sub deactivate_storage {
 }
 
 sub activate_volume {
-    my ($class, $storeid, $scfg, $volname, $exclusive, $cache) = @_;
-
+    my ($class, $storeid, $scfg, $volname, $cache) = @_;
+    #fix me lvmchange is not provided on
     my $path = $class->path($scfg, $volname);
 
-    my $lvm_activate_mode = $exclusive ? 'ey' : 'ly';
+    my $lvm_activate_mode = 'ey';
 
     my $cmd = ['/sbin/lvchange', "-a$lvm_activate_mode", $path];
     run_command($cmd, errmsg => "can't activate LV '$path'");
