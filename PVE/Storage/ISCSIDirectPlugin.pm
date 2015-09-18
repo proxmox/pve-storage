@@ -184,12 +184,18 @@ sub deactivate_storage {
 }
 
 sub activate_volume {
-    my ($class, $storeid, $scfg, $volname, $cache) = @_;
+    my ($class, $storeid, $scfg, $volname, $snapname, $cache) = @_;
+
+    die "volume snapshot is not possible on iscsi device" if $snapname;
+
     return 1;
 }
 
 sub deactivate_volume {
-    my ($class, $storeid, $scfg, $volname, $cache) = @_;
+    my ($class, $storeid, $scfg, $volname, $snapname, $cache) = @_;
+
+    die "volume snapshot is not possible on iscsi device" if $snapname;
+
     return 1;
 }
 

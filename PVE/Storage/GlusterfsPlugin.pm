@@ -300,13 +300,13 @@ sub deactivate_storage {
 }
 
 sub activate_volume {
-    my ($class, $storeid, $scfg, $volname, $cache) = @_;
+    my ($class, $storeid, $scfg, $volname, $snapname, $cache) = @_;
 
     # do nothing by default
 }
 
 sub deactivate_volume {
-    my ($class, $storeid, $scfg, $volname, $cache) = @_;
+    my ($class, $storeid, $scfg, $volname, $snapname, $cache) = @_;
 
     # do nothing by default
 }

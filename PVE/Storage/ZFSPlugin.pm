@@ -352,6 +352,29 @@ sub volume_has_feature {
 
 sub activate_storage {
     my ($class, $storeid, $scfg, $cache) = @_;
+
+    return 1;
+}
+
+sub deactivate_storage {
+    my ($class, $storeid, $scfg, $cache) = @_;
+
+    return 1;
+}
+
+sub activate_volume {
+    my ($class, $storeid, $scfg, $volname, $snapname, $cache) = @_;
+
+    die "unable to activate snapshot from remote zfs storage" if $snapname;
+
+    return 1;
+}
+
+sub deactivate_volume {
+    my ($class, $storeid, $scfg, $volname, $snapname, $cache) = @_;
+
+    die "unable to deactivate snapshot from remote zfs storage" if $snapname;
+
     return 1;
 }
 

@@ -831,7 +831,7 @@ sub deactivate_storage {
 }
 
 sub activate_volumes {
-    my ($cfg, $vollist) = @_;
+    my ($cfg, $vollist, $snapname) = @_;
 
     return if !($vollist && scalar(@$vollist));
 
@@ -849,12 +849,12 @@ sub activate_volumes {
 	my ($storeid, $volname) = parse_volume_id($volid);
 	my $scfg = storage_config($cfg, $storeid);
 	my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
-	$plugin->activate_volume($storeid, $scfg, $volname, $cache);
+	$plugin->activate_volume($storeid, $scfg, $volname, $snapname, $cache);
     }
 }
 
 sub deactivate_volumes {
-    my ($cfg, $vollist) = @_;
+    my ($cfg, $vollist, $snapname) = @_;
 
     return if !($vollist && scalar(@$vollist));
 
@@ -868,7 +868,7 @@ sub deactivate_volumes {
 	my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
 
 	eval {
-	    $plugin->deactivate_volume($storeid, $scfg, $volname, $cache);
+	    $plugin->deactivate_volume($storeid, $scfg, $volname, $snapname, $cache);
 	};
 	if (my $err = $@) {
 	    warn $err;

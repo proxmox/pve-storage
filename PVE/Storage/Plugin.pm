@@ -832,9 +832,9 @@ sub deactivate_storage {
 }
 
 sub activate_volume {
-    my ($class, $storeid, $scfg, $volname, $cache) = @_;
+    my ($class, $storeid, $scfg, $volname, $snapname, $cache) = @_;
 
-    my $path = $class->filesystem_path($scfg, $volname);
+    my $path = $class->filesystem_path($scfg, $volname, $snapname);
 
     # check is volume exists
     if ($scfg->{path}) {
@@ -845,7 +845,7 @@ sub activate_volume {
 }
 
 sub deactivate_volume {
-    my ($class, $storeid, $scfg, $volname, $cache) = @_;
+    my ($class, $storeid, $scfg, $volname, $snapname, $cache) = @_;
 
     # do nothing by default
 }

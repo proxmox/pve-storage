@@ -296,7 +296,9 @@ sub deactivate_storage {
 }
 
 sub activate_volume {
-    my ($class, $storeid, $scfg, $volname, $cache) = @_;
+    my ($class, $storeid, $scfg, $volname, $snapname, $cache) = @_;
+
+    die "Snapshot not implemented on DRBD\n" if $snapname;
 
     my $path = $class->path($scfg, $volname);
     
@@ -340,7 +342,9 @@ sub activate_volume {
 }
 
 sub deactivate_volume {
-    my ($class, $storeid, $scfg, $volname, $cache) = @_;
+    my ($class, $storeid, $scfg, $volname, $snapname, $cache) = @_;
+
+    die "Snapshot not implemented on DRBD\n" if $snapname;
 
     return undef; # fixme: should we unassign ?
 

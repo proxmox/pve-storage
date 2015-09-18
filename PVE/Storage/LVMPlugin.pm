@@ -421,9 +421,9 @@ sub deactivate_storage {
 }
 
 sub activate_volume {
-    my ($class, $storeid, $scfg, $volname, $cache) = @_;
+    my ($class, $storeid, $scfg, $volname, $snapname, $cache) = @_;
     #fix me lvmchange is not provided on
-    my $path = $class->path($scfg, $volname);
+    my $path = $class->path($scfg, $volname, $snapname);
 
     my $lvm_activate_mode = 'ey';
 
@@ -432,9 +432,9 @@ sub activate_volume {
 }
 
 sub deactivate_volume {
-    my ($class, $storeid, $scfg, $volname, $cache) = @_;
+    my ($class, $storeid, $scfg, $volname, $snapname, $cache) = @_;
 
-    my $path = $class->path($scfg, $volname);
+    my $path = $class->path($scfg, $volname, $snapname);
     return if ! -b $path;
 
     my $cmd = ['/sbin/lvchange', '-aln', $path];

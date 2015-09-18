@@ -489,7 +489,7 @@ sub deactivate_storage {
 }
 
 sub activate_volume {
-    my ($class, $storeid, $scfg, $volname, $cache) = @_;
+    my ($class, $storeid, $scfg, $volname, $snapname, $cache) = @_;
 
     return 1 if !$scfg->{krbd};
 
@@ -497,8 +497,10 @@ sub activate_volume {
     my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
 
     my $path = "/dev/rbd/$pool/$name";
+    $path .= '@'.$snapname if $snapname;
     return if -b $path;
 
+    $name .= '@'.$snapname if $snapname;
     my $cmd = &$rbd_cmd($scfg, $storeid, 'map', $name);
     run_rbd_command($cmd, errmsg => "can't mount rbd volume $name");
 
@@ -506,7 +508,7 @@ sub activate_volume {
 }
 
 sub deactivate_volume {
-    my ($class, $storeid, $scfg, $volname, $cache) = @_;
+    my ($class, $storeid, $scfg, $volname, $snapname, $cache) = @_;
 
     return 1 if !$scfg->{krbd};
 
@@ -514,6 +516,7 @@ sub deactivate_volume {
     my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
 
     my $path = "/dev/rbd/$pool/$name";
+    $path .= '@'.$snapname if $snapname;
     return if ! -b $path;
 
     my $cmd = &$rbd_cmd($scfg, $storeid, 'unmap', $path);
