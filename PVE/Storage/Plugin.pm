@@ -20,7 +20,8 @@ cfs_register_file ('storage.cfg',
 my $defaultData = {
     propertyList => {
 	type => { description => "Storage type." },
-	storage => get_standard_option('pve-storage-id'),
+	storage => get_standard_option('pve-storage-id',
+	    { completion => \&PVE::Storage::complete_storage }),
 	nodes => get_standard_option('pve-node-list', { optional => 1 }),
 	content => {
 	    description => "Allowed content types. Note: value 'rootdir' is used for Containers, and value 'images' for KVM-Qemu VM's.\n",

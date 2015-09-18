@@ -1167,4 +1167,25 @@ sub foreach_volid {
     }
 }
 
+# bash completion helper
+
+sub complete_storage {
+   my ($cmdname, $pname, $cvalue) = @_;
+
+   return  $cmdname eq 'add' ? [] : [ PVE::Storage::storage_ids() ];
+}
+
+sub complete_storage_enabled {
+   my ($cmdname, $pname, $cvalue) = @_;
+
+   my $res = [];
+
+   my $cfg = PVE::Storage::config();
+   foreach my $sid (keys %{$cfg->{ids}}) {
+       next if !storage_check_enabled($cfg, $sid, undef, 1);
+       push @$res, $sid;
+   }
+   return $res;
+}
+
 1;

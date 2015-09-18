@@ -111,12 +111,17 @@ __PACKAGE__->register_method ({
     	additionalProperties => 0,
 	properties => { 
 	    node => get_standard_option('pve-node'),
-	    storage => get_standard_option('pve-storage-id'),
+	    storage => get_standard_option('pve-storage-id', {
+		completion => \&PVE::Storage::complete_storage_enabled,
+	    }),
 	    filename => { 
 		description => "The name of the file to create.",
 		type => 'string',
 	    },
-	    vmid => get_standard_option('pve-vmid', { description => "Specify owner VM" } ),
+	    vmid => get_standard_option('pve-vmid', {
+		description => "Specify owner VM",
+		completion => \&PVE::Cluster::complete_vmid,
+	    }),
 	    size => {
 		description => "Size in kilobyte (1024 bytes). Optional suffixes 'M' (megabyte, 1024K) and 'G' (gigabyte, 1024M)",
 		type => 'string',
