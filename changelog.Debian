@@ -1,3 +1,15 @@
+libpve-storage-perl (4.0-22) unstable; urgency=medium
+
+  * implement bash completions for pvesm
+
+  * remove unused parameter 'exclusive'
+
+  * fix lvm storage status
+
+  * rbd: make activate_volume idempotent
+
+ -- Proxmox Support Team <support@proxmox.com>  Mon, 21 Sep 2015 12:25:38 +0200
+
 libpve-storage-perl (4.0-21) unstable; urgency=medium
 
   * rbd: skip unmap if device is not mapped
