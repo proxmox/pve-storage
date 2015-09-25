@@ -265,12 +265,12 @@ sub status {
     eval {
 	my $hdl = connect_drbdmanage_service();
 	my $redundancy = get_redundancy($scfg);;
-	my ($rc, $res) = $hdl->cluster_free_query($redundancy);
+	my ($rc, $free_space, $total_space) = $hdl->cluster_free_query($redundancy);
 	check_drbd_res($rc);
 
-	$avail = $res;
-	$used = 0; # fixme
-	$total = $used + $avail;
+	$avail = $free_space;
+	$total = $total_space;
+	$used = $total_space - $free_space;
 
     };
     if (my $err = $@) {
