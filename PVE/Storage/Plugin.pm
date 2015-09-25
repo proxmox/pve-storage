@@ -709,6 +709,8 @@ sub volume_snapshot_delete {
 
     my $path = $class->filesystem_path($scfg, $volname);
 
+    $class->deactivate_volume($storeid, $scfg, $volname, $snap, {});
+
     my $cmd = ['/usr/bin/qemu-img', 'snapshot','-d', $snap, $path];
 
     run_command($cmd);

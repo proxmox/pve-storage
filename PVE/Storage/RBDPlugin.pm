@@ -569,6 +569,8 @@ sub volume_snapshot_delete {
 
     return 1 if $running;
 
+    $class->deactivate_volume($storeid, $scfg, $volname, $snap, {});
+
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
 
     my (undef, undef, undef, $protected) = rbd_volume_info($scfg, $storeid, $name, $snap);

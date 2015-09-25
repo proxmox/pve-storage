@@ -416,6 +416,8 @@ sub volume_snapshot_delete {
 
     return 1 if $running;
 
+    $class->deactivate_volume($storeid, $scfg, $volname, $snap, {});
+
     my ($vtype, $name, $vmid, $basename, $basevmid, $isBase) =
 	$class->parse_volname($volname);
 

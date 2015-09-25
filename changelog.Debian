@@ -2,6 +2,8 @@ libpve-storage-perl (4.0-24) unstable; urgency=medium
 
   * drbd: return correct used/avail/total sizes
 
+  * volume_snapshot_delete: deactivate before deleting
+
  -- Proxmox Support Team <support@proxmox.com>  Fri, 25 Sep 2015 13:36:22 +0200
 
 libpve-storage-perl (4.0-23) unstable; urgency=medium
