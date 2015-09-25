@@ -268,9 +268,9 @@ sub status {
 	my ($rc, $free_space, $total_space) = $hdl->cluster_free_query($redundancy);
 	check_drbd_res($rc);
 
-	$avail = $free_space;
-	$total = $total_space;
-	$used = $total_space - $free_space;
+	$avail = $free_space*1024;
+	$total = $total_space*1024;
+	$used = $total - $avail;
 
     };
     if (my $err = $@) {
