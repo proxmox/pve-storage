@@ -67,6 +67,8 @@ __PACKAGE__->register_method ({
 
 	my $storeid = $param->{storage};
 
+	my $vmid = $param->{vmid};
+
 	my $cfg = cfs_read_file("storage.cfg");
 
 	my $scfg = PVE::Storage::storage_config($cfg, $storeid);
@@ -74,14 +76,19 @@ __PACKAGE__->register_method ({
 	my $res = [];
 	foreach my $ct (@$cts) {
 	    my $data;
-	    if ($ct eq 'images' || defined($param->{vmid})) {
+	    if ($ct eq 'images') {
 		$data = PVE::Storage::vdisk_list ($cfg, $storeid, $param->{vmid});
-	    } elsif ($ct eq 'iso') {
+	    } elsif ($ct eq 'iso' && !defined($param->{vmid})) {
 		$data = PVE::Storage::template_list ($cfg, $storeid, 'iso');
-	    } elsif ($ct eq 'vztmpl') {
+	    } elsif ($ct eq 'vztmpl'&& !defined($param->{vmid})) {
 		$data = PVE::Storage::template_list ($cfg, $storeid, 'vztmpl');
 	    } elsif ($ct eq 'backup') {
 		$data = PVE::Storage::template_list ($cfg, $storeid, 'backup');
+		foreach my $item (@{$data->{$storeid}}) {
+		    if (defined($vmid)) {
+			@{$data->{$storeid}} = grep { $_->{volid} =~ m/\S+-$vmid-\S+/ } @{$data->{$storeid}};
+		    }
+		}
 	    }
 
 	    next if !$data || !$data->{$storeid};
