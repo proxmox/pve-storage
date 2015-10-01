@@ -1170,24 +1170,24 @@ sub foreach_volid {
 # bash completion helper
 
 sub complete_storage {
-   my ($cmdname, $pname, $cvalue) = @_;
+    my ($cmdname, $pname, $cvalue) = @_;
 
-   my $cfg = PVE::Storage::config();
+    my $cfg = PVE::Storage::config();
 
-   return  $cmdname eq 'add' ? [] : [ PVE::Storage::storage_ids($cfg) ];
+    return  $cmdname eq 'add' ? [] : [ PVE::Storage::storage_ids($cfg) ];
 }
 
 sub complete_storage_enabled {
-   my ($cmdname, $pname, $cvalue) = @_;
+    my ($cmdname, $pname, $cvalue) = @_;
 
-   my $res = [];
+    my $res = [];
 
-   my $cfg = PVE::Storage::config();
-   foreach my $sid (keys %{$cfg->{ids}}) {
-       next if !storage_check_enabled($cfg, $sid, undef, 1);
-       push @$res, $sid;
-   }
-   return $res;
+    my $cfg = PVE::Storage::config();
+    foreach my $sid (keys %{$cfg->{ids}}) {
+	next if !storage_check_enabled($cfg, $sid, undef, 1);
+	push @$res, $sid;
+    }
+    return $res;
 }
 
 1;
