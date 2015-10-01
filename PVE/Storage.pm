@@ -1172,7 +1172,9 @@ sub foreach_volid {
 sub complete_storage {
    my ($cmdname, $pname, $cvalue) = @_;
 
-   return  $cmdname eq 'add' ? [] : [ PVE::Storage::storage_ids() ];
+   my $cfg = PVE::Storage::config();
+
+   return  $cmdname eq 'add' ? [] : [ PVE::Storage::storage_ids($cfg) ];
 }
 
 sub complete_storage_enabled {
