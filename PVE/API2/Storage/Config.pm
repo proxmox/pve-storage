@@ -229,7 +229,9 @@ __PACKAGE__->register_method ({
     parameters => {
     	additionalProperties => 0,
 	properties => { 
-	    storage => get_standard_option('pve-storage-id'),
+	    storage => get_standard_option('pve-storage-id', {
+                completion => \&PVE::Storage::complete_storage,
+            }),
 	},
     },
     returns => { type => 'null' },

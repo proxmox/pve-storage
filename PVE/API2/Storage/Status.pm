@@ -40,11 +40,11 @@ __PACKAGE__->register_method ({
     	additionalProperties => 0,
 	properties => {
 	    node => get_standard_option('pve-node'),
-	    storage => get_standard_option
-		('pve-storage-id', {
-		    description => "Only list status for  specified storage",
-		    optional => 1,
-		 }),
+	    storage => get_standard_option('pve-storage-id', {
+		description => "Only list status for  specified storage",
+		optional => 1,
+		completion => \&PVE::Storage::complete_storage_enabled,
+	    }),
 	    content => { 
 		description => "Only list stores which support this content type.",
 		type => 'string', format => 'pve-storage-content-list',
@@ -61,6 +61,7 @@ __PACKAGE__->register_method ({
 		description => "If target is different to 'node', we only lists shared storages which " .
 		    "content is accessible on this 'node' and the specified 'target' node.",
 		optional => 1,
+		completion => \&PVE::Cluster::get_nodelist,
 	    }),
 	},
     },

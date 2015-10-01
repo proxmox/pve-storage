@@ -29,18 +29,20 @@ __PACKAGE__->register_method ({
     	additionalProperties => 0,
 	properties => { 
 	    node => get_standard_option('pve-node'),
-	    storage => get_standard_option('pve-storage-id'),
+	    storage => get_standard_option('pve-storage-id', {
+		completion => \&PVE::Storage::complete_storage_enabled,
+            }),
 	    content => { 
 		description => "Only list content of this type.",
 		type => 'string', format => 'pve-storage-content',
 		optional => 1,
 		completion => \&PVE::Storage::complete_content_type,
 	    },
-	    vmid => get_standard_option
-		('pve-vmid', { 
-		    description => "Only list images for this VM",
-		    optional => 1,		
-		 }),
+	    vmid => get_standard_option('pve-vmid', {
+		description => "Only list images for this VM",
+		optional => 1,
+		completion => \&PVE::Cluster::complete_vmid,
+	    }),
 	},
     },
     returns => {
@@ -247,10 +249,14 @@ __PACKAGE__->register_method ({
     	additionalProperties => 0,
 	properties => { 
 	    node => get_standard_option('pve-node'),
-	    storage => get_standard_option('pve-storage-id', { optional => 1}),
+	    storage => get_standard_option('pve-storage-id', {
+                optional => 1,
+                completion => \&PVE::Storage::complete_storage,
+            }),
 	    volume => {
 		description => "Volume identifier",
-		type => 'string', 
+		type => 'string',
+		completion => \&PVE::Storage::complete_volume,
 	    },
 	},
     },

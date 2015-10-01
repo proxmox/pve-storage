@@ -34,6 +34,7 @@ __PACKAGE__->register_method ({
 	    volume => {
 		description => "Volume identifier",
 		type => 'string', format => 'pve-volume-id',
+		completion => \&PVE::Storage::complete_volume,
 	    },
 	},
     },
