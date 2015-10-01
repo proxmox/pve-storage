@@ -27,6 +27,7 @@ my $defaultData = {
 	    description => "Allowed content types. Note: value 'rootdir' is used for Containers, and value 'images' for KVM-Qemu VM's.\n",
 	    type => 'string', format => 'pve-storage-content-list',
 	    optional => 1,
+	    completion => \&PVE::Storage::complete_content_type,
 	},
 	disable => {
 	    description => "Flag to disable the storage.",

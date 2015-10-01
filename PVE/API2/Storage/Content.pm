@@ -34,6 +34,7 @@ __PACKAGE__->register_method ({
 		description => "Only list content of this type.",
 		type => 'string', format => 'pve-storage-content',
 		optional => 1,
+		completion => \&PVE::Storage::complete_content_type,
 	    },
 	    vmid => get_standard_option
 		('pve-vmid', { 

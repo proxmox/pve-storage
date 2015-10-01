@@ -49,6 +49,7 @@ __PACKAGE__->register_method ({
 		description => "Only list stores which support this content type.",
 		type => 'string', format => 'pve-storage-content-list',
 		optional => 1,
+		completion => \&PVE::Storage::complete_content_type,
 	    },
 	    enabled => {
 		description => "Only list stores which are enabled (not disabled in config).",

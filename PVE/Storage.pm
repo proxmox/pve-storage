@@ -1228,4 +1228,10 @@ sub complete_storage_enabled {
     return $res;
 }
 
+sub complete_content_type {
+    my ($cmdname, $pname, $cvalue) = @_;
+
+    return [qw(rootdir images vztmpl iso backup)];
+}
+
 1;
