@@ -1241,6 +1241,21 @@ sub complete_volume {
 
     my $storage_list = complete_storage_enabled();
 
+    if ($cvalue =~ m/^([^:]+):/) {
+	$storage_list = [ $1 ];
+    } else {
+	if (scalar(@$storage_list) > 1) {
+	    # only list storage IDs to avoid large listings
+	    my $res = [];
+	    foreach my $storeid (@$storage_list) {
+		# Hack: simply return 2 artificial values, so that
+		# completions does not finish
+		push @$res, "$storeid:volname", "$storeid:...";
+	    }
+	    return $res;
+	}
+    }
+
     my $res = [];
     foreach my $storeid (@$storage_list) {
 	my $vollist = PVE::Storage::volume_list($cfg, $storeid);
