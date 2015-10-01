@@ -1234,4 +1234,23 @@ sub complete_content_type {
     return [qw(rootdir images vztmpl iso backup)];
 }
 
+sub complete_volume {
+    my ($cmdname, $pname, $cvalue) = @_;
+
+    my $cfg = config();
+
+    my $storage_list = complete_storage_enabled();
+
+    my $res = [];
+    foreach my $storeid (@$storage_list) {
+	my $vollist = PVE::Storage::volume_list($cfg, $storeid);
+
+	foreach my $item (@$vollist) {
+	    push @$res, $item->{volid};
+	}
+    }
+
+    return $res;
+}
+
 1;
