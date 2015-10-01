@@ -759,6 +759,44 @@ sub vdisk_list {
     return $res;
 }
 
+sub volume_list {
+    my ($cfg, $storeid, $vmid, $content) = @_;
+
+    my @ctypes = qw(images vztmpl iso backup);
+
+    my $cts = $content ? [ $content ] : [ @ctypes ];
+
+    my $scfg = PVE::Storage::storage_config($cfg, $storeid);
+
+    my $res = [];
+    foreach my $ct (@$cts) {
+	my $data;
+	if ($ct eq 'images') {
+	    $data = vdisk_list($cfg, $storeid, $vmid);
+	} elsif ($ct eq 'iso' && !defined($vmid)) {
+	    $data = template_list($cfg, $storeid, 'iso');
+	} elsif ($ct eq 'vztmpl'&& !defined($vmid)) {
+	    $data = template_list ($cfg, $storeid, 'vztmpl');
+	} elsif ($ct eq 'backup') {
+	    $data = template_list ($cfg, $storeid, 'backup');
+	    foreach my $item (@{$data->{$storeid}}) {
+		if (defined($vmid)) {
+		    @{$data->{$storeid}} = grep { $_->{volid} =~ m/\S+-$vmid-\S+/ } @{$data->{$storeid}};
+		}
+	    }
+	}
+
+	next if !$data || !$data->{$storeid};
+
+	foreach my $item (@{$data->{$storeid}}) {
+	    $item->{content} = $ct;
+	    push @$res, $item;
+	}
+    }
+
+    return $res;
+}
+
 sub uevent_seqnum {
 
     my $filename = "/sys/kernel/uevent_seqnum";

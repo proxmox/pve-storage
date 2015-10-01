@@ -15,8 +15,6 @@ use PVE::JSONSchema qw(get_standard_option);
 
 use base qw(PVE::RESTHandler);
 
-my @ctypes = qw(images vztmpl iso backup);
-
 __PACKAGE__->register_method ({
     name => 'index', 
     path => '',
@@ -63,42 +61,17 @@ __PACKAGE__->register_method ({
 
 	my $authuser = $rpcenv->get_user();
 
-	my $cts = $param->{content} ? [ $param->{content} ] : [ @ctypes ];
-
 	my $storeid = $param->{storage};
-
-	my $vmid = $param->{vmid};
 
 	my $cfg = cfs_read_file("storage.cfg");
 
-	my $scfg = PVE::Storage::storage_config($cfg, $storeid);
+	my $vollist = PVE::Storage::volume_list($cfg, $storeid, $param->{vmid}, $param->{content});
 
 	my $res = [];
-	foreach my $ct (@$cts) {
-	    my $data;
-	    if ($ct eq 'images') {
-		$data = PVE::Storage::vdisk_list ($cfg, $storeid, $param->{vmid});
-	    } elsif ($ct eq 'iso' && !defined($param->{vmid})) {
-		$data = PVE::Storage::template_list ($cfg, $storeid, 'iso');
-	    } elsif ($ct eq 'vztmpl'&& !defined($param->{vmid})) {
-		$data = PVE::Storage::template_list ($cfg, $storeid, 'vztmpl');
-	    } elsif ($ct eq 'backup') {
-		$data = PVE::Storage::template_list ($cfg, $storeid, 'backup');
-		foreach my $item (@{$data->{$storeid}}) {
-		    if (defined($vmid)) {
-			@{$data->{$storeid}} = grep { $_->{volid} =~ m/\S+-$vmid-\S+/ } @{$data->{$storeid}};
-		    }
-		}
-	    }
-
-	    next if !$data || !$data->{$storeid};
-
-	    foreach my $item (@{$data->{$storeid}}) {
-		eval { $rpcenv->check_volume_access($authuser, $cfg, undef, $item->{volid}); };
-		next if $@;
-		$item->{content} = $ct;
-		push @$res, $item;
-	    }
+	foreach my $item (@$vollist) {
+	    eval { $rpcenv->check_volume_access($authuser, $cfg, undef, $item->{volid}); };
+	    next if $@;
+	    push @$res, $item;
 	}
 
 	return $res;    
