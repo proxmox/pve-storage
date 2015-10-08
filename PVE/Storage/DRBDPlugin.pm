@@ -314,7 +314,7 @@ sub activate_volume {
     ($rc, $res) = $hdl->assign($nodename, $volname, { diskless => 'true' });
     check_drbd_res($rc);
 
-    # wait until device is acessitble
+    # wait until device is accessible
     my $print_warning = 1;
     my $max_wait_time = 20;
     for (my $i = 0;; $i++) {
