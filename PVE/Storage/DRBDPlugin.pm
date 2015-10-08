@@ -304,15 +304,11 @@ sub activate_volume {
     
     my $hdl = connect_drbdmanage_service();
     my $nodename = PVE::INotify::nodename();
-    my ($rc, $res) = $hdl->list_assignments([$nodename], [], 0, {}, []);
+    my ($rc, $res) = $hdl->list_assignments([$nodename], [$volname], 0, {}, []);
     check_drbd_res($rc);
 
-    foreach my $entry (@$res) {
-	my ($node, $res_name, $props, $voldata) = @$entry;
-	if (($node eq $nodename) && ($res_name eq $volname)) {
-	    return undef; # assignment already exists
-	}
-    }
+# assignment already exists?
+    return undef if @$res;
 
     # create diskless assignment
     ($rc, $res) = $hdl->assign($nodename, $volname, { diskless => 'true' });
