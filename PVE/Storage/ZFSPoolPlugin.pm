@@ -296,18 +296,6 @@ sub zfs_get_pool_stats {
     return ($available, $used);
 }
 
-sub zfs_get_zvol_size {
-    my ($class, $scfg, $zvol) = @_;
-
-    my $text = $class->zfs_request($scfg, undef, 'get', '-Hp', 'volsize', "$scfg->{pool}/$zvol");
-
-    if ($text =~ /volsize\s(\d+)/) {
-	return $1;
-    }
-
-    die "Could not get zvol size";
-}
-
 sub zfs_create_zvol {
     my ($class, $scfg, $zvol, $size) = @_;
     
@@ -450,7 +438,17 @@ sub status {
 sub volume_size_info {
     my ($class, $scfg, $storeid, $volname, $timeout) = @_;
 
-    return $class->zfs_get_zvol_size($scfg, $volname);
+    my (undef, undef, undef, undef, undef, undef, $format) =
+        $class->parse_volname($volname);
+
+    my $attr = $format eq 'subvol' ? 'refquota' : 'volsize';
+    my $text = $class->zfs_request($scfg, undef, 'get', '-Hp', $attr, "$scfg->{pool}/$volname");
+
+    if ($text =~ /\s$attr\s(\d+)\s/) {
+	return $1;
+    }
+
+    die "Could not get zfs volume size\n";
 }
 
 sub volume_snapshot {
@@ -559,9 +557,14 @@ sub create_base {
 sub volume_resize {
     my ($class, $scfg, $storeid, $volname, $size, $running) = @_;
 
-    my $new_size = ($size/1024);
+    my $new_size = int($size/1024);
 
-    $class->zfs_request($scfg, undef, 'set', 'volsize=' . $new_size . 'k', "$scfg->{pool}/$volname");
+    my (undef, undef, undef, undef, undef, undef, $format) =
+        $class->parse_volname($volname);
+
+    my $attr = $format eq 'subvol' ? 'refquota' : 'volsize';
+
+    $class->zfs_request($scfg, undef, 'set', "$attr=${new_size}k", "$scfg->{pool}/$volname");
 
     return $new_size;
 }
