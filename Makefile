@@ -2,7 +2,7 @@ RELEASE=4.0
 
 VERSION=4.0
 PACKAGE=libpve-storage-perl
-PKGREL=26
+PKGREL=27
 
 DESTDIR=
 PREFIX=/usr
