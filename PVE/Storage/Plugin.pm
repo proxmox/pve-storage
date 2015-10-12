@@ -282,7 +282,7 @@ sub parse_config {
     my $ids = $cfg->{ids};
 
     # make sure we have a reasonable 'local:' storage
-    # openvz expects things to be there
+    # we want 'local' to be always the same 'type' (on all cluster nodes)
     if (!$ids->{local} || $ids->{local}->{type} ne 'dir' ||
 	($ids->{local}->{path} && $ids->{local}->{path} ne '/var/lib/vz')) {
 	$ids->{local} = {
@@ -293,11 +293,6 @@ sub parse_config {
 	    content => { images => 1, rootdir => 1, vztmpl => 1, iso => 1},
 	};
     }
-
-    # we always need this for OpenVZ
-    $ids->{local}->{content}->{rootdir} = 1;
-    $ids->{local}->{content}->{vztmpl} = 1;
-    delete ($ids->{local}->{disable});
 
     # make sure we have a path
     $ids->{local}->{path} = '/var/lib/vz' if !$ids->{local}->{path};
