@@ -510,7 +510,7 @@ sub storage_migrate {
 
 	    my $snap = "zfs snapshot $zfspath\@__migration__";
 
-	    my $send = "zfs send -v $zfspath\@__migration__ \| ssh root\@$target_host zfs recv $zfspath";
+	    my $send = "zfs send -pv $zfspath\@__migration__ \| ssh root\@$target_host zfs recv $zfspath";
 
 	    my $destroy_target = "ssh root\@$target_host zfs destroy $zfspath\@__migration__";
  	    run_command($snap);

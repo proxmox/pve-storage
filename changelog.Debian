@@ -2,6 +2,8 @@ libpve-storage-perl (4.0-27) unstable; urgency=medium
 
   * allow to choose content type for local storage
 
+  * fix bug #769: migrate: use -p on 'zfs send' to include properties
+
  -- Proxmox Support Team <support@proxmox.com>  Mon, 12 Oct 2015 06:54:09 +0200
 
 libpve-storage-perl (4.0-26) unstable; urgency=medium
