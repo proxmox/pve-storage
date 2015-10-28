@@ -655,7 +655,9 @@ sub volume_resize {
 
     my $path = $class->filesystem_path($scfg, $volname);
 
-    my $cmd = ['/usr/bin/qemu-img', 'resize', $path , $size];
+    my $format = ($class->parse_volname($volname))[6];
+
+    my $cmd = ['/usr/bin/qemu-img', 'resize', '-f', $format, $path , $size];
 
     run_command($cmd, timeout => 10);
 
