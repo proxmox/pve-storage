@@ -44,7 +44,7 @@ sub iscsi_session_list {
 	run_command($cmd, errmsg => 'iscsi session scan failed', outfunc => sub {
 	    my $line = shift;
 	    
-	    if ($line =~ m/^tcp:\s+\[(\S+)\]\s+\S+\s+(\S+)\s*$/) {
+	    if ($line =~ m/^tcp:\s+\[(\S+)\]\s+\S+\s+(\S+)(\s+\S+)?\s*$/) {
 		my ($session, $target) = ($1, $2);
 		# there can be several sessions per target (multipath)
 		push @{$res->{$target}}, $session;   
