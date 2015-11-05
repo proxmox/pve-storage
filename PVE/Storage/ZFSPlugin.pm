@@ -312,6 +312,12 @@ sub volume_resize {
     return $new_size;
 }
 
+sub volume_snapshot_delete {
+    my ($class, $scfg, $storeid, $volname, $snap, $running) = @_;
+
+    $class->zfs_request($scfg, undef, 'destroy', "$scfg->{pool}/$volname\@$snap");
+}
+
 sub volume_snapshot_rollback {
     my ($class, $scfg, $storeid, $volname, $snap) = @_;
 
