@@ -315,7 +315,8 @@ sub zfs_create_subvol {
 
     my $dataset = "$scfg->{pool}/$volname";
     
-    my $cmd = ['create', '-o', "refquota=${size}k", $dataset];
+    my $cmd = ['create', '-o', 'acltype=posixacl', '-o', 'xattr=sa',
+	       '-o', "refquota=${size}k", $dataset];
 
     $class->zfs_request($scfg, undef, @$cmd);
 }
