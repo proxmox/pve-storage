@@ -157,18 +157,6 @@ sub lvm_lvs {
 
 # Configuration 
 
-PVE::JSONSchema::register_format('pve-storage-vgname', \&parse_lvm_name);
-sub parse_lvm_name {
-    my ($name, $noerr) = @_;
-
-    if ($name !~ m/^[a-z][a-z0-9\-\_\.]*[a-z0-9]$/i) {
-	return undef if $noerr;
-	die "lvm name '$name' contains illegal characters\n";
-    }
-
-    return $name;
-}
-
 sub type {
     return 'lvm';
 }
@@ -218,7 +206,7 @@ sub options {
 sub parse_volname {
     my ($class, $volname) = @_;
 
-    parse_lvm_name($volname);
+    PVE::Storage::Plugin::parse_lvm_name($volname);
 
     if ($volname =~ m/^(vm-(\d+)-\S+)$/) {
 	return ('images', $1, $2, undef, undef, undef, 'raw');
