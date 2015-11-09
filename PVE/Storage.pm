@@ -22,6 +22,7 @@ use PVE::RPCEnvironment;
 use PVE::Storage::Plugin;
 use PVE::Storage::DirPlugin;
 use PVE::Storage::LVMPlugin;
+use PVE::Storage::LvmThinPlugin;
 use PVE::Storage::NFSPlugin;
 use PVE::Storage::ISCSIPlugin;
 use PVE::Storage::RBDPlugin;
@@ -35,6 +36,7 @@ use PVE::Storage::DRBDPlugin;
 # load and initialize all plugins
 PVE::Storage::DirPlugin->register();
 PVE::Storage::LVMPlugin->register();
+PVE::Storage::LvmThinPlugin->register();
 PVE::Storage::NFSPlugin->register();
 PVE::Storage::ISCSIPlugin->register();
 PVE::Storage::RBDPlugin->register();
