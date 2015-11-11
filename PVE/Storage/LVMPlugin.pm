@@ -2,6 +2,7 @@ package PVE::Storage::LVMPlugin;
 
 use strict;
 use warnings;
+use Data::Dumper;
 use IO::File;
 use PVE::Tools qw(run_command trim);
 use PVE::Storage::Plugin;
@@ -113,12 +114,12 @@ sub lvm_vgs {
     return $vgs;
 }
 
-sub lvm_lvs {
+sub lvm_list_volumes {
     my ($vgname) = @_;
 
     my $cmd = ['/sbin/lvs', '--separator', ':', '--noheadings', '--units', 'b',
 	       '--unbuffered', '--nosuffix', '--options',
-	       'vg_name,lv_name,lv_size,uuid,tags'];
+	       'vg_name,lv_name,lv_size,lv_attr,pool_lv,data_percent,metadata_percent,snap_percent,uuid,tags'];
 
     push @$cmd, $vgname if $vgname;
 
@@ -128,28 +129,25 @@ sub lvm_lvs {
 
 	$line = trim($line);
 
-	my ($vg, $name, $size, $uuid, $tags) = split(':', $line);
+	my ($vg_name, $lv_name, $lv_size, $lv_attr, $pool_lv, $data_percent, $meta_percent, $snap_percent, $uuid, $tags) = split(':', $line);
+	return if !$vg_name;
+	return if !$lv_name;
 
-	return if $name !~ m/^vm-(\d+)-/;
-	my $nid = $1;
+	my $lv_type = substr($lv_attr, 0, 1);
 
-	my $owner;
-	foreach my $tag (split (/,/, $tags)) {
-	    if ($tag =~ m/^pve-vm-(\d+)$/) {
-		$owner = $1;
-		last;
-	    }
+	my $d = {
+	    lv_size => $lv_size,
+	    lv_type => $lv_type,
+	};
+	$d->{pool_lv} = $pool_lv if $pool_lv;
+
+	if ($lv_type eq 't') {
+	    $data_percent ||= 0;
+	    $meta_percent ||= 0;
+	    $snap_percent ||= 0;
+	    $d->{used} = int((($data_percent + $meta_percent + $snap_percent) * $lv_size)/100);
 	}
-	
-	if ($owner) {
-	    if ($owner ne $nid) {
-		warn "owner mismatch name = $name, owner = $owner\n";
-	    }
-   
-	    $lvs->{$vg}->{$name} = { format => 'raw', size => $size, 
-				     uuid => $uuid,  tags => $tags, 
-				     vmid => $owner };
-	}
+	$lvs->{$vg_name}->{$lv_name} = $d;
     });
 
     return $lvs;
@@ -260,7 +258,7 @@ sub alloc_image {
     die "not enough free space ($free < $size)\n" if $free < $size;
 
     if (!$name) {
-	my $lvs = lvm_lvs($vg);
+	my $lvs = lvm_list_volumes($vg);
 
 	for (my $i = 1; $i < 100; $i++) {
 	    my $tn = "vm-$vmid-disk-$i";
@@ -339,7 +337,7 @@ sub list_images {
 
     my $vgname = $scfg->{vgname};
 
-    $cache->{lvs} = lvm_lvs() if !$cache->{lvs};
+    $cache->{lvs} = lvm_list_volumes() if !$cache->{lvs};
 
     my $res = [];
     
@@ -347,7 +345,12 @@ sub list_images {
 
 	foreach my $volname (keys %$dat) {
 
-	    my $owner = $dat->{$volname}->{vmid};
+	    next if $volname !~ m/^vm-(\d+)-/;
+	    my $owner = $1;
+
+	    my $info = $dat->{$volname};
+
+	    next if $info->{lv_type} ne '-';
 
 	    my $volid = "$storeid:$volname";
 
@@ -355,13 +358,12 @@ sub list_images {
 		my $found = grep { $_ eq $volid } @$vollist;
 		next if !$found;
 	    } else {
-		next if defined ($vmid) && ($owner ne $vmid);
+		next if defined($vmid) && ($owner ne $vmid);
 	    }
 
-	    my $info = $dat->{$volname};
-	    $info->{volid} = $volid;
-
-	    push @$res, $info;
+	    push @$res, {
+		volid => $volid, format => 'raw', size => $info->{lv_size}, vmid => $owner,
+	    };
 	}
     }
 
