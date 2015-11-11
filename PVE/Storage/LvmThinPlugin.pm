@@ -2,12 +2,18 @@ package PVE::Storage::LvmThinPlugin;
 
 use strict;
 use warnings;
+use Data::Dumper;
 use IO::File;
 use PVE::Tools qw(run_command trim);
 use PVE::Storage::Plugin;
+use PVE::Storage::LVMPlugin;
 use PVE::JSONSchema qw(get_standard_option);
 
 # see: man lvmthin
+# lvcreate -n ThinDataLV -L LargeSize VG
+# lvconvert --type thin-pool VG/ThinDataLV
+# lvcreate -n pvepool -L 20G pve
+# lvconvert --type thin-pool pve/pvepool
 
 use base qw(PVE::Storage::LVMPlugin);
 
@@ -45,10 +51,29 @@ sub alloc_image {
 
     die "unsupported format '$fmt'" if $fmt ne 'raw';
 
-    die "illegal name '$name' - sould be 'vm-$vmid-*'\n" 
+    die "illegal name '$name' - sould be 'vm-$vmid-*'\n"
 	if  $name && $name !~ m/^vm-$vmid-/;
 
-    die "implement me";
+    my $vg = $scfg->{vgname};
+
+    if (!$name) {
+	my $lvs = PVE::Storage::LVMPlugin::lvm_list_volumes($scfg->{vgname});
+
+	for (my $i = 1; $i < 100; $i++) {
+	    my $tn = "vm-$vmid-disk-$i";
+	    if (!defined ($lvs->{$vg}->{$tn})) {
+		$name = $tn;
+		last;
+	    }
+	}
+    }
+
+    my $cmd = ['/sbin/lvcreate', '-aly', '-V', "${size}k", '--name', $name,
+	       '--thinpool', "$vg/$scfg->{thinpool}" ];
+
+    run_command($cmd, errmsg => "lvcreate '$vg/$name' error");
+
+    return $name;
 }
 
 sub free_image {
@@ -64,55 +89,81 @@ sub free_image {
 sub list_images {
     my ($class, $storeid, $scfg, $vmid, $vollist, $cache) = @_;
 
-    die "implement me";
+    my $vgname = $scfg->{vgname};
+
+    $cache->{lvs} = PVE::Storage::LVMPlugin::lvm_list_volumes() if !$cache->{lvs};
+
+    my $res = [];
+
+    if (my $dat = $cache->{lvs}->{$vgname}) {
+
+	foreach my $volname (keys %$dat) {
+
+	    next if $volname !~ m/^vm-(\d+)-/;
+	    my $owner = $1;
+
+	    my $info = $dat->{$volname};
+
+	    next if $info->{lv_type} ne 'V';
+
+	    next if $info->{pool_lv} ne $scfg->{thinpool};
+
+	    my $volid = "$storeid:$volname";
+
+	    if ($vollist) {
+		my $found = grep { $_ eq $volid } @$vollist;
+		next if !$found;
+	    } else {
+		next if defined($vmid) && ($owner ne $vmid);
+	    }
+
+	    push @$res, {
+		volid => $volid, format => 'raw', size => $info->{lv_size}, vmid => $owner,
+	    };
+	}
+    }
+
+    return $res;
 }
 
 sub status {
     my ($class, $storeid, $scfg, $cache) = @_;
 
     my $lvname = "$scfg->{vgname}/$scfg->{thinpool}";
-    
-    my $cmd = ['/sbin/lvs', '--separator', ':', '--noheadings', '--units', 'b',
-	       '--unbuffered', '--nosuffix', '--options',
-	       'vg_name,lv_name,lv_size,data_percent,metadata_percent,snap_percent', $lvname];
 
-    my $total = 0;
-    my $used = 0;
-    
-    run_command($cmd, outfunc => sub {
-	my $line = shift;
+    $cache->{lvs} = PVE::Storage::LVMPlugin::lvm_list_volumes() if !$cache->{lvs};
 
-	$line = trim($line);
+    my $lvs = $cache->{lvs};
 
-	my ($vg, $lv, $size, $data_percent, $meta_percent, $snap_percent) = split(':', $line);
+    return undef if !$lvs->{$scfg->{vgname}};
 
-	return if !$vg || $vg ne $scfg->{vgname};
-	return if !$lv || $lv ne $scfg->{thinpool};
-	
-	$data_percent ||= 0;
-	$meta_percent ||= 0;
-	$snap_percent ||= 0;
-		
-	$total = $size;
-	$used = int((($data_percent + $meta_percent + $snap_percent) * $size)/100)
-    });
-    
-    return ($total, $total - $used, $used, 1) if $total;
+    my $info = $lvs->{$scfg->{vgname}}->{$scfg->{thinpool}};
+
+    return undef if !$info;
+
+    return undef if $info->{lv_type} ne 't';
+
+    return ($info->{lv_size}, $info->{lv_size} - $info->{used}, $info->{used}, 1) if $info->{lv_size};
 
     return undef;
 }
 
 sub activate_volume {
     my ($class, $storeid, $scfg, $volname, $snapname, $cache) = @_;
+
+    # do nothing
 }
 
 sub deactivate_volume {
     my ($class, $storeid, $scfg, $volname, $snapname, $cache) = @_;
+
+    # do nothing
 }
 
 sub volume_resize {
     my ($class, $scfg, $storeid, $volname, $size, $running) = @_;
-    die "implement me";
+
+    die "volume_resize is not implemented for storage type 'lvmthin'\n";
 }
 
 sub volume_has_feature {
