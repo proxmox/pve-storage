@@ -39,7 +39,7 @@ sub lvm_pv_info {
 
 	my ($pvname, $size, $vgname, $uuid) = split(':', $line);
 
-	die "found multiple pvs entries for device '$device'\n" 
+	die "found multiple pvs entries for device '$device'\n"
 	    if $pvinfo;
 
 	$pvinfo = {
@@ -59,15 +59,15 @@ sub clear_first_sector {
     if (my $fh = IO::File->new($dev, "w")) {
 	my $buf = 0 x 512;
 	syswrite $fh, $buf;
-	$fh->close();	
+	$fh->close();
     }
 }
 
 sub lvm_create_volume_group {
     my ($device, $vgname, $shared) = @_;
-    
+
     my $res = lvm_pv_info($device);
-    
+
     if ($res->{vgname}) {
 	return if $res->{vgname} eq $vgname; # already created
 	die "device '$device' is already used by volume group '$res->{vgname}'\n";
@@ -153,7 +153,7 @@ sub lvm_list_volumes {
     return $lvs;
 }
 
-# Configuration 
+# Configuration
 
 sub type {
     return 'lvm';
@@ -221,7 +221,7 @@ sub filesystem_path {
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
 
     my $vg = $scfg->{vgname};
-    
+
     my $path = "/dev/$vg/$name";
 
     return wantarray ? ($path, $vmid, $vtype) : $path;
@@ -244,7 +244,7 @@ sub alloc_image {
 
     die "unsupported format '$fmt'" if $fmt ne 'raw';
 
-    die "illegal name '$name' - sould be 'vm-$vmid-*'\n" 
+    die "illegal name '$name' - sould be 'vm-$vmid-*'\n"
 	if  $name && $name !~ m/^vm-$vmid-/;
 
     my $vgs = lvm_vgs();
@@ -340,7 +340,7 @@ sub list_images {
     $cache->{lvs} = lvm_list_volumes() if !$cache->{lvs};
 
     my $res = [];
-    
+
     if (my $dat = $cache->{lvs}->{$vgname}) {
 
 	foreach my $volname (keys %$dat) {
@@ -391,7 +391,7 @@ sub activate_storage {
 
     # In LVM2, vgscans take place automatically;
     # this is just to be sure
-    if ($cache->{vgs} && !$cache->{vgscaned} && 
+    if ($cache->{vgs} && !$cache->{vgscaned} &&
 	!$cache->{vgs}->{$scfg->{vgname}}) {
 	$cache->{vgscaned} = 1;
 	my $cmd = ['/sbin/vgscan', '--ignorelockingfailure', '--mknodes'];
