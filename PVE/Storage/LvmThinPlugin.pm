@@ -160,11 +160,7 @@ sub deactivate_volume {
     # do nothing
 }
 
-sub volume_resize {
-    my ($class, $scfg, $storeid, $volname, $size, $running) = @_;
-
-    die "volume_resize is not implemented for storage type 'lvmthin'\n";
-}
+# sub volume_resize {} reuse code from parent class
 
 sub volume_has_feature {
     my ($class, $scfg, $feature, $storeid, $volname, $snapname, $running) = @_;
