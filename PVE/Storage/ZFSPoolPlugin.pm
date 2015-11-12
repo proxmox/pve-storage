@@ -404,7 +404,7 @@ sub zfs_get_latest_snapshot {
 
     # abort rollback if snapshot is not the latest
     my @params = ('-t', 'snapshot', '-o', 'name', '-s', 'creation');
-    my $text = zfs_request($class, $scfg, undef, 'list', @params);
+    my $text = $class->zfs_request($scfg, undef, 'list', @params);
     my @snapshots = split(/\n/, $text);
 
     my $recentsnap;
@@ -468,7 +468,7 @@ sub volume_snapshot_delete {
 sub volume_snapshot_rollback {
     my ($class, $scfg, $storeid, $volname, $snap) = @_;
 
-    zfs_request($class, $scfg, undef, 'rollback', "$scfg->{pool}/$volname\@$snap");
+    $class->zfs_request($scfg, undef, 'rollback', "$scfg->{pool}/$volname\@$snap");
 }
 
 sub volume_rollback_is_possible {
@@ -487,7 +487,7 @@ sub activate_storage {
 
     my @param = ('-o', 'name', '-H');
 
-    my $text = zfs_request($class, $scfg, undef, 'zpool_list', @param);
+    my $text = $class->zfs_request($scfg, undef, 'zpool_list', @param);
 
     # Note: $scfg->{pool} can include dataset <pool>/<dataset>
     my $pool = $scfg->{pool};
