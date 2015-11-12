@@ -80,8 +80,24 @@ sub free_image {
     my ($class, $storeid, $scfg, $volname, $isBase) = @_;
 
     my $vg = $scfg->{vgname};
-    my $cmd = ['/sbin/lvremove', '-f', "$vg/$volname"];
-    run_command($cmd, errmsg => "lvremove '$vg/$volname' error");
+
+    my $lvs = PVE::Storage::LVMPlugin::lvm_list_volumes($vg);
+
+    if (my $dat = $lvs->{$scfg->{vgname}}) {
+
+	# remove all volume snapshots first
+	foreach my $lv (keys %$dat) {
+	    next if $lv !~ m/^snap_${volname}_(\w+)$/;
+	    my $cmd = ['/sbin/lvremove', '-f', "$vg/$lv"];
+	    run_command($cmd, errmsg => "lvremove snapshot '$vg/$lv' error");
+	}
+
+	# finally remove original (if exists)
+	if ($dat->{$volname}) {
+	    my $cmd = ['/sbin/lvremove', '-f', "$vg/$volname"];
+	    run_command($cmd, errmsg => "lvremove '$vg/$volname' error");
+	}
+    }
 
     return undef;
 }
@@ -151,21 +167,74 @@ sub status {
 sub activate_volume {
     my ($class, $storeid, $scfg, $volname, $snapname, $cache) = @_;
 
-    # do nothing
+    my $vg = $scfg->{vgname};
+
+    # only snapshot volumes needs activation
+    if ($snapname) {
+	my $snapvol = "snap_${volname}_$snapname";
+	my $cmd = ['/sbin/lvchange', '-ay', '-K', "$vg/$snapvol"];
+	run_command($cmd, errmsg => "activate_volume '$vg/$snapvol' error");
+    } else {
+	# other volumes are active by default
+    }
 }
 
 sub deactivate_volume {
     my ($class, $storeid, $scfg, $volname, $snapname, $cache) = @_;
 
-    # do nothing
+    my $vg = $scfg->{vgname};
+
+    # we only deactivate snapshot volumes
+    if ($snapname) {
+	my $snapvol = "snap_${volname}_$snapname";
+	my $cmd = ['/sbin/lvchange', '-an', "$vg/$snapvol"];
+	run_command($cmd, errmsg => "deactivate_volume '$vg/$snapvol' error");
+    } else {
+	# other volumes are kept active
+    }
 }
 
 # sub volume_resize {} reuse code from parent class
+
+sub volume_snapshot {
+    my ($class, $scfg, $storeid, $volname, $snap) = @_;
+
+    my $vg = $scfg->{vgname};
+    my $snapvol = "snap_${volname}_$snap";
+
+    my $cmd = ['/sbin/lvcreate', '-n', $snapvol, '-pr', '-s', "$vg/$volname"];
+    run_command($cmd, errmsg => "lvcreate snapshot '$vg/$snapvol' error");
+
+}
+
+sub volume_snapshot_rollback {
+    my ($class, $scfg, $storeid, $volname, $snap) = @_;
+
+    my $vg = $scfg->{vgname};
+    my $snapvol = "snap_${volname}_$snap";
+
+    my $cmd = ['/sbin/lvremove', '-f', "$vg/$volname"];
+    run_command($cmd, errmsg => "lvremove '$vg/$volname' error");
+
+    $cmd = ['/sbin/lvcreate', '-kn', '-n', $volname, '-s', "$vg/$snapvol"];
+    run_command($cmd, errmsg => "lvm rollback '$vg/$snapvol' error");
+}
+
+sub volume_snapshot_delete {
+    my ($class, $scfg, $storeid, $volname, $snap) = @_;
+
+    my $vg = $scfg->{vgname};
+    my $snapvol = "snap_${volname}_$snap";
+
+    my $cmd = ['/sbin/lvremove', '-f', "$vg/$snapvol"];
+    run_command($cmd, errmsg => "lvremove snapshot '$vg/$snapvol' error");
+}
 
 sub volume_has_feature {
     my ($class, $scfg, $feature, $storeid, $volname, $snapname, $running) = @_;
 
     my $features = {
+	snapshot => { current => 1 },
 	copy => { base => 1, current => 1},
     };
 
