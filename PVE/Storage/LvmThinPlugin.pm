@@ -46,6 +46,18 @@ sub options {
     };
 }
 
+sub parse_volname {
+    my ($class, $volname) = @_;
+
+    PVE::Storage::Plugin::parse_lvm_name($volname);
+
+    if ($volname =~ m/^((vm|base)-(\d+)-\S+)$/) {
+	return ('images', $1, $3, undef, undef, $2 eq 'base', 'raw');
+    }
+
+    die "unable to parse lvm volume name '$volname'\n";
+}
+
 sub alloc_image {
     my ($class, $storeid, $scfg, $vmid, $fmt, $name, $size) = @_;
 
@@ -54,23 +66,16 @@ sub alloc_image {
     die "illegal name '$name' - sould be 'vm-$vmid-*'\n"
 	if  $name && $name !~ m/^vm-$vmid-/;
 
-    my $vgs = PVE::Storage::lvm_vgs();
+    my $vgs = PVE::Storage::LVMPlugin::lvm_vgs();
 
     my $vg = $scfg->{vgname};
 
     die "no such volume group '$vg'\n" if !defined ($vgs->{$vg});
 
-    if (!$name) {
-	my $lvs = PVE::Storage::LVMPlugin::lvm_list_volumes($scfg->{vgname});
+    my $lvs = PVE::Storage::LVMPlugin::lvm_list_volumes($vg);
 
-	for (my $i = 1; $i < 100; $i++) {
-	    my $tn = "vm-$vmid-disk-$i";
-	    if (!defined ($lvs->{$vg}->{$tn})) {
-		$name = $tn;
-		last;
-	    }
-	}
-    }
+    $name = PVE::Storage::LVMPlugin::lvm_find_free_diskname($lvs, $vg, $storeid, $vmid)
+	if !$name;
 
     my $cmd = ['/sbin/lvcreate', '-aly', '-V', "${size}k", '--name', $name,
 	       '--thinpool', "$vg/$scfg->{thinpool}" ];
@@ -119,8 +124,8 @@ sub list_images {
 
 	foreach my $volname (keys %$dat) {
 
-	    next if $volname !~ m/^vm-(\d+)-/;
-	    my $owner = $1;
+	    next if $volname !~ m/^(vm|base)-(\d+)-/;
+	    my $owner = $2;
 
 	    my $info = $dat->{$volname};
 
@@ -198,6 +203,62 @@ sub deactivate_volume {
     }
 }
 
+sub clone_image {
+    my ($class, $scfg, $storeid, $volname, $vmid, $snap) = @_;
+
+    die "clone_image from snapshots not implemented" if $snap;
+
+    my ($vtype, undef, undef, undef, undef, $isBase, $format) =
+        $class->parse_volname($volname);
+
+    die "clone_image only works on base images\n" if !$isBase;
+
+    my $vg = $scfg->{vgname};
+    my $lvs = PVE::Storage::LVMPlugin::lvm_list_volumes($vg);
+
+    my $name =  PVE::Storage::LVMPlugin::lvm_find_free_diskname($lvs, $vg, $storeid, $vmid);
+
+    my $cmd = ['/sbin/lvcreate', '-n', $name, '-prw', '-kn', '-s', "$vg/$volname"];
+    run_command($cmd, errmsg => "clone image '$vg/$volname' error");
+
+    return $name;
+}
+
+sub create_base {
+    my ($class, $storeid, $scfg, $volname) = @_;
+
+    my ($vtype, $name, $vmid, $basename, $basevmid, $isBase) =
+        $class->parse_volname($volname);
+
+    die "create_base not possible with base image\n" if $isBase;
+
+    my $vg = $scfg->{vgname};
+    my $lvs = PVE::Storage::LVMPlugin::lvm_list_volumes($vg);
+
+    if (my $dat = $lvs->{$vg}) {
+	# to avoid confusion, reject if we find volume snapshots
+	foreach my $lv (keys %$dat) {
+	    die "unable to create base volume - found snaphost '$lv'\n"
+		if $lv =~ m/^snap_${volname}_(\w+)$/;
+	}
+    }
+
+    my $newname = $name;
+    $newname =~ s/^vm-/base-/;
+
+    my $cmd = ['/sbin/lvrename', $vg, $volname, $newname];
+    run_command($cmd, errmsg => "lvrename '$vg/$volname' => '$vg/$newname' error");
+
+    # set inactive, read-only and activationskip flags
+    $cmd = ['/sbin/lvchange', '-an', '-pr', '-ky', "$vg/$newname"];
+    eval { run_command($cmd); };
+    warn $@ if $@;
+
+    my $newvolname = $newname;
+
+    return $newvolname;
+}
+
 # sub volume_resize {} reuse code from parent class
 
 sub volume_snapshot {
@@ -239,6 +300,8 @@ sub volume_has_feature {
 
     my $features = {
 	snapshot => { current => 1 },
+	clone => { base => 1},
+	template => { current => 1},
 	copy => { base => 1, current => 1},
     };
 
