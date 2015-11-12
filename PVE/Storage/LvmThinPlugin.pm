@@ -54,7 +54,11 @@ sub alloc_image {
     die "illegal name '$name' - sould be 'vm-$vmid-*'\n"
 	if  $name && $name !~ m/^vm-$vmid-/;
 
+    my $vgs = PVE::Storage::lvm_vgs();
+
     my $vg = $scfg->{vgname};
+
+    die "no such volume group '$vg'\n" if !defined ($vgs->{$vg});
 
     if (!$name) {
 	my $lvs = PVE::Storage::LVMPlugin::lvm_list_volumes($scfg->{vgname});
