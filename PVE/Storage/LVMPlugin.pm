@@ -239,6 +239,25 @@ sub clone_image {
     die "can't clone images in lvm storage\n";
 }
 
+sub lvm_find_free_diskname {
+    my ($lvs, $vg, $storeid, $vmid) = @_;
+
+    my $name;
+
+    for (my $i = 1; $i < 100; $i++) {
+	my $tn = "vm-$vmid-disk-$i";
+	if (!defined ($lvs->{$vg}->{$tn})) {
+	    $name = $tn;
+	    last;
+	}
+    }
+
+    die "unable to allocate an image name for ID $vmid in storage '$storeid'\n"
+	if !$name;
+
+    return $name;
+}
+
 sub alloc_image {
     my ($class, $storeid, $scfg, $vmid, $fmt, $name, $size) = @_;
 
@@ -257,19 +276,7 @@ sub alloc_image {
 
     die "not enough free space ($free < $size)\n" if $free < $size;
 
-    if (!$name) {
-	my $lvs = lvm_list_volumes($vg);
-
-	for (my $i = 1; $i < 100; $i++) {
-	    my $tn = "vm-$vmid-disk-$i";
-	    if (!defined ($lvs->{$vg}->{$tn})) {
-		$name = $tn;
-		last;
-	    }
-	}
-    }
-
-    die "unable to allocate an image name for VM $vmid in storage '$storeid'\n"
+    $name = lvm_find_free_diskname(lvm_list_volumes($vg), $vg, $storeid, $vmid)
 	if !$name;
 
     my $cmd = ['/sbin/lvcreate', '-aly', '--addtag', "pve-vm-$vmid", '--size', "${size}k", '--name', $name, $vg];
