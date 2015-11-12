@@ -314,7 +314,7 @@ sub volume_snapshot_rollback {
 
     $class->zfs_delete_lu($scfg, $volname);
 
-    $class->zfs_request($class, $scfg, undef, 'rollback', "$scfg->{pool}/$volname\@$snap");
+    $class->zfs_request($scfg, undef, 'rollback', "$scfg->{pool}/$volname\@$snap");
 
     $class->zfs_import_lu($scfg, $volname);
 
