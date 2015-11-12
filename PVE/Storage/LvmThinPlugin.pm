@@ -58,6 +58,18 @@ sub parse_volname {
     die "unable to parse lvm volume name '$volname'\n";
 }
 
+sub filesystem_path {
+    my ($class, $scfg, $volname, $snapname) = @_;
+
+    my ($vtype, $name, $vmid) = $class->parse_volname($volname);
+
+    my $vg = $scfg->{vgname};
+
+    my $path = defined($snapname) ? "/dev/$vg/snap_${name}_$snapname": "/dev/$vg/$name";
+
+    return wantarray ? ($path, $vmid, $vtype) : $path;
+}
+
 sub alloc_image {
     my ($class, $storeid, $scfg, $vmid, $fmt, $name, $size) = @_;
 
