@@ -145,7 +145,7 @@ sub lvm_list_volumes {
 	    $data_percent ||= 0;
 	    $meta_percent ||= 0;
 	    $snap_percent ||= 0;
-	    $d->{used} = int((($data_percent + $meta_percent + $snap_percent) * $lv_size)/100);
+	    $d->{used} = int(($data_percent * $lv_size)/100);
 	}
 	$lvs->{$vg_name}->{$lv_name} = $d;
     });
