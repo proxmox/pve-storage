@@ -70,12 +70,13 @@ my $get_active_server = sub {
 sub glusterfs_is_mounted {
     my ($volume, $mountpoint, $mountdata) = @_;
 
-    $mountdata = PVE::ProcFSTools::read_proc_mounts() if !$mountdata;
+    $mountdata = PVE::ProcFSTools::parse_proc_mounts() if !$mountdata;
 
-    if ($mountdata =~ m|^\S+:$volume/?\s$mountpoint\sfuse.glusterfs|m) {
-	return $mountpoint;
-    }
-
+    return $mountpoint if grep {
+	$_->[2] eq 'fuse.glusterfs' &&
+	$_->[0] eq $volume &&
+	$_->[1] eq $mountpoint
+    } @$mountdata;
     return undef;
 }
 
@@ -248,7 +249,7 @@ sub alloc_image {
 sub status {
     my ($class, $storeid, $scfg, $cache) = @_;
 
-    $cache->{mountdata} = PVE::ProcFSTools::read_proc_mounts()
+    $cache->{mountdata} = PVE::ProcFSTools::parse_proc_mounts()
 	if !$cache->{mountdata};
 
     my $path = $scfg->{path};
@@ -263,7 +264,7 @@ sub status {
 sub activate_storage {
     my ($class, $storeid, $scfg, $cache) = @_;
 
-    $cache->{mountdata} = PVE::ProcFSTools::read_proc_mounts()
+    $cache->{mountdata} = PVE::ProcFSTools::parse_proc_mounts()
 	if !$cache->{mountdata};
 
     my $path = $scfg->{path};
@@ -287,7 +288,7 @@ sub activate_storage {
 sub deactivate_storage {
     my ($class, $storeid, $scfg, $cache) = @_;
 
-    $cache->{mountdata} = PVE::ProcFSTools::read_proc_mounts()
+    $cache->{mountdata} = PVE::ProcFSTools::parse_proc_mounts()
 	if !$cache->{mountdata};
 
     my $path = $scfg->{path};

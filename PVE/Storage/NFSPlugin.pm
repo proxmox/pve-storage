@@ -20,12 +20,12 @@ sub nfs_is_mounted {
     $server = "[$server]" if Net::IP::ip_is_ipv6($server);
     my $source = "$server:$export";
 
-    $mountdata = PVE::ProcFSTools::read_proc_mounts() if !$mountdata;
-
-    if ($mountdata =~ m|^\Q$source\E/?\s\Q$mountpoint\E\snfs|m) {
-	return $mountpoint;
-    } 
-
+    $mountdata = PVE::ProcFSTools::parse_proc_mounts() if !$mountdata;
+    return $mountpoint if grep {
+	$_->[2] eq 'nfs' &&
+	$_->[0] eq $source &&
+	$_->[1] eq $mountpoint
+    } @$mountdata;
     return undef;
 }
 
@@ -102,7 +102,7 @@ sub check_config {
 sub status {
     my ($class, $storeid, $scfg, $cache) = @_;
 
-    $cache->{mountdata} = PVE::ProcFSTools::read_proc_mounts()
+    $cache->{mountdata} = PVE::ProcFSTools::parse_proc_mounts()
 	if !$cache->{mountdata};
 
     my $path = $scfg->{path};
@@ -117,7 +117,7 @@ sub status {
 sub activate_storage {
     my ($class, $storeid, $scfg, $cache) = @_;
 
-    $cache->{mountdata} = PVE::ProcFSTools::read_proc_mounts()
+    $cache->{mountdata} = PVE::ProcFSTools::parse_proc_mounts()
 	if !$cache->{mountdata};
 
     my $path = $scfg->{path};
@@ -143,7 +143,7 @@ sub activate_storage {
 sub deactivate_storage {
     my ($class, $storeid, $scfg, $cache) = @_;
 
-    $cache->{mountdata} = PVE::ProcFSTools::read_proc_mounts()
+    $cache->{mountdata} = PVE::ProcFSTools::parse_proc_mounts()
 	if !$cache->{mountdata};
 
     my $path = $scfg->{path};
