@@ -1,3 +1,11 @@
+libpve-storage-perl (4.0-32) unstable; urgency=medium
+
+  * make use of the new ProcFSTools::parse_proc_mounts
+
+  * add support for lvmthin
+
+ -- Proxmox Support Team <support@proxmox.com>  Sat, 14 Nov 2015 10:38:10 +0100
+
 libpve-storage-perl (4.0-31) unstable; urgency=medium
 
   *  zfs: enable posixacl and xattr for subvolumes
