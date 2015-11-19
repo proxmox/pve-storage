@@ -149,12 +149,12 @@ sub path {
 
     if ($vtype eq "images") {
 	if ($volname =~ m/^subvol-/) {
-	    # fixme: we currently assume standard mount point?!
 	    $path = "/$scfg->{pool}/$volname";
+	    $path .= "/.zfs/snapshot/$snapname" if defined($snapname);
 	} else {
 	    $path = "/dev/zvol/$scfg->{pool}/$volname";
+	    $path .= "\@$snapname" if defined($snapname);
 	}
-	$path .= "\@$snapname" if defined($snapname);
     } else {
 	die "$vtype is not allowed in ZFSPool!";
     }
