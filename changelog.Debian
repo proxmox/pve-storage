@@ -1,3 +1,9 @@
+libpve-storage-perl (4.0-34) unstable; urgency=medium
+
+  * Change zfspoolplugin path when snapshot is given (use .zfs/snapshot/)
+
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 19 Nov 2015 12:38:07 +0100
+
 libpve-storage-perl (4.0-33) unstable; urgency=medium
 
   * Fixed ZFS over iSCSI snapshot rollback
