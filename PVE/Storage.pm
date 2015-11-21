@@ -475,7 +475,8 @@ sub storage_migrate {
 				outfunc => sub {});
 		}
 
-		my $cmd = ['/usr/bin/rsync', '--progress', '--sparse', '--whole-file',
+        $src .= "/" if(-d $src);
+        my $cmd = ['/usr/bin/rsync', '-a','--numeric-ids','--info=progress2', '--sparse', '--whole-file',        
 			   $src, "root\@${target_host}:$dst"];
 
 		my $percent = -1;
@@ -483,7 +484,7 @@ sub storage_migrate {
 		run_command($cmd, outfunc => sub {
 		    my $line = shift;
 
-		    if ($line =~ m/^\s*(\d+\s+(\d+)%\s.*)$/) {
+            if ($line =~ m/^\s*([0-9,]+\s+(\d+)%\s.*)$/) {                
 			if ($2 > $percent) {
 			    $percent = $2;
 			    print "rsync status: $1\n";
