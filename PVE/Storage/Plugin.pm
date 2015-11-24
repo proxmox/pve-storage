@@ -571,7 +571,11 @@ sub alloc_image {
 	# only allow this if size = 0, so that user knows what he is doing
 	die "storage does not support subvol quotas\n" if $size != 0;
 	
-	(mkdir $path) || die "unable to create subvol '$path' - $!\n";
+	my $old_umask = umask(0022);
+	my $err;
+	mkdir($path) or $err = "unable to create subvol '$path' - $!\n";
+	umask $old_umask;
+	die $err if $err;
     } else {
 	my $cmd = ['/usr/bin/qemu-img', 'create'];
 
