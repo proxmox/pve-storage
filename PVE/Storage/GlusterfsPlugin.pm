@@ -74,7 +74,7 @@ sub glusterfs_is_mounted {
 
     return $mountpoint if grep {
 	$_->[2] eq 'fuse.glusterfs' &&
-	$_->[0] eq $volume &&
+	$_->[0] =~ /^\S+:\Q$volume\E$/ &&
 	$_->[1] eq $mountpoint
     } @$mountdata;
     return undef;

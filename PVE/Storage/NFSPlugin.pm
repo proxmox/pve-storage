@@ -23,7 +23,7 @@ sub nfs_is_mounted {
     $mountdata = PVE::ProcFSTools::parse_proc_mounts() if !$mountdata;
     return $mountpoint if grep {
 	$_->[2] eq 'nfs' &&
-	$_->[0] eq $source &&
+	$_->[0] =~ m|^\Q$source\E/?$| &&
 	$_->[1] eq $mountpoint
     } @$mountdata;
     return undef;
