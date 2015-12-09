@@ -1,3 +1,9 @@
+libpve-storage-perl (4.0-36) unstable; urgency=medium
+
+  * Revert "Change zfspoolplugin path when snapshot is given."
+
+ -- Proxmox Support Team <support@proxmox.com>  Wed, 09 Dec 2015 07:40:21 +0100
+
 libpve-storage-perl (4.0-35) unstable; urgency=medium
 
   * allow rx permissions for group/world on .subvol dirs
