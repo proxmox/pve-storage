@@ -41,7 +41,6 @@ sub options {
 	sparse => { optional => 1 },
 	nodes => { optional => 1 },
 	disable => { optional => 1 },
-        maxfiles => { optional => 1 },
 	content => { optional => 1 },
     };
 }
