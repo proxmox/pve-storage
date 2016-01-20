@@ -218,20 +218,27 @@ sub deactivate_volume {
 sub clone_image {
     my ($class, $scfg, $storeid, $volname, $vmid, $snap) = @_;
 
-    die "clone_image from snapshots not implemented" if $snap;
-
-    my ($vtype, undef, undef, undef, undef, $isBase, $format) =
-        $class->parse_volname($volname);
-
-    die "clone_image only works on base images\n" if !$isBase;
-
     my $vg = $scfg->{vgname};
+
+    my $lv;
+
+    if ($snap) {
+	$lv = "$vg/snap_${volname}_$snap";
+    } else {
+	my ($vtype, undef, undef, undef, undef, $isBase, $format) =
+	    $class->parse_volname($volname);
+
+	die "clone_image only works on base images\n" if !$isBase;
+
+	$lv = "$vg/$volname";
+    }
+
     my $lvs = PVE::Storage::LVMPlugin::lvm_list_volumes($vg);
 
     my $name =  PVE::Storage::LVMPlugin::lvm_find_free_diskname($lvs, $vg, $storeid, $vmid);
 
-    my $cmd = ['/sbin/lvcreate', '-n', $name, '-prw', '-kn', '-s', "$vg/$volname"];
-    run_command($cmd, errmsg => "clone image '$vg/$volname' error");
+    my $cmd = ['/sbin/lvcreate', '-n', $name, '-prw', '-kn', '-s', $lv];
+    run_command($cmd, errmsg => "clone image '$lv' error");
 
     return $name;
 }
@@ -312,7 +319,7 @@ sub volume_has_feature {
 
     my $features = {
 	snapshot => { current => 1 },
-	clone => { base => 1},
+	clone => { base => 1, snap => 1},
 	template => { current => 1},
 	copy => { base => 1, current => 1, snap => 1},
     };
