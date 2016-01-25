@@ -49,7 +49,7 @@ my $zfs_get_base = sub {
 sub zfs_request {
     my ($class, $scfg, $timeout, $method, @params) = @_;
 
-    $timeout = 5 if !$timeout;
+    $timeout = 10 if !$timeout;
 
     my $msg = '';
 
