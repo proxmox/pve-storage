@@ -476,7 +476,7 @@ sub storage_migrate {
 		}
 
 		my $cmd = ['/usr/bin/rsync', '--progress', '--sparse', '--whole-file',
-			   $src, "root\@${target_host}:$dst"];
+			   $src, "[root\@${target_host}]:$dst"];
 
 		my $percent = -1;
 
