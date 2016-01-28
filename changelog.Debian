@@ -1,3 +1,9 @@
+libpve-storage-perl (4.0-40) unstable; urgency=medium
+
+  * storage_migrate: another ipv6 fix for an rsync command
+
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 28 Jan 2016 11:11:26 +0100
+
 libpve-storage-perl (4.0-39) unstable; urgency=medium
 
   * increase timeout for ZFSPlugin
