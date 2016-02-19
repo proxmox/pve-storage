@@ -239,6 +239,41 @@ __PACKAGE__->register_method ({
     }});
 
 __PACKAGE__->register_method ({
+    name => 'thinlvmscan',
+    path => 'lvmthin',
+    method => 'GET',
+    description => "List local LVM Thin Pools.",
+    protected => 1,
+    proxyto => "node",
+    permissions => {
+	check => ['perm', '/storage', ['Datastore.Allocate']],
+    },
+    parameters => {
+	additionalProperties => 0,
+	properties => {
+	    node => get_standard_option('pve-node'),
+	    vg => {
+		type => 'string',
+		pattern => '[a-zA-Z0-9\.\+\_][a-zA-Z0-9\.\+\_\-]+', # see lvm(8) manpage
+		maxLength => 100,
+	    },
+	},
+    },
+    returns => {
+	type => 'array',
+	items => {
+	    type => "object",
+	    properties => {
+		lv => { type => 'string'},
+	    },
+	},
+    },
+    code => sub {
+	my ($param) = @_;
+	return PVE::Storage::LvmThinPlugin::list_thinpools($param->{vg});
+    }});
+
+__PACKAGE__->register_method ({
     name => 'usbscan', 
     path => 'usb', 
     method => 'GET',

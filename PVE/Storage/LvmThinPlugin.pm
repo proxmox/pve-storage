@@ -163,6 +163,20 @@ sub list_images {
     return $res;
 }
 
+sub list_thinpools {
+    my ($vg) = @_;
+
+    my $lvs = PVE::Storage::LVMPlugin::lvm_list_volumes($vg);
+    my $thinpools = [];
+
+    foreach my $lvname (keys %{$lvs->{$vg}}) {
+	next if $lvs->{$vg}->{$lvname}->{lv_type} ne 't';
+	push @$thinpools, { lv => $lvname };
+    }
+
+    return $thinpools;
+}
+
 sub status {
     my ($class, $storeid, $scfg, $cache) = @_;
 
