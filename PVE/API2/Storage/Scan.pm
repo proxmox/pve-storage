@@ -239,7 +239,7 @@ __PACKAGE__->register_method ({
     }});
 
 __PACKAGE__->register_method ({
-    name => 'thinlvmscan',
+    name => 'lvmthinscan',
     path => 'lvmthin',
     method => 'GET',
     description => "List local LVM Thin Pools.",
@@ -270,6 +270,7 @@ __PACKAGE__->register_method ({
     },
     code => sub {
 	my ($param) = @_;
+
 	return PVE::Storage::LvmThinPlugin::list_thinpools($param->{vg});
     }});
 

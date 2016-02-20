@@ -159,6 +159,13 @@ our $cmddef = {
 			 printf "$rec->{vg}\n";
 		     }
 		 }],
+    lvmthinscan => [ "PVE::API2::Storage::Scan", 'lvmthinscan', ['vg'],
+		 { node => $nodename }, sub  {
+		     my $res = shift;
+		     foreach my $rec (@$res) {
+			 printf "$rec->{lv}\n";
+		     }
+		 }],
     zfsscan => [ "PVE::API2::Storage::Scan", 'zfsscan', [],
 		 { node => $nodename }, sub  {
 		     my $res = shift;
