@@ -742,6 +742,8 @@ sub volume_has_feature {
 	copy => { base => {qcow2 => 1, raw => 1, vmdk => 1},
 		  current => {qcow2 => 1, raw => 1, vmdk => 1},
 		  snap => {qcow2 => 1} },
+	sparseinit => { base => {qcow2 => 1, raw => 1, vmdk => 1},
+			current => {qcow2 => 1, raw => 1, vmdk => 1} },
     };
 
     my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $format) =

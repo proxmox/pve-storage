@@ -435,6 +435,7 @@ sub volume_has_feature {
 	clone => { base => 1},
 	template => { current => 1},
 	copy => { base => 1, current => 1, snap => 1},
+	sparseinit => { base => 1, current => 1 },
     };
 
     my ($vtype, $name, $vmid, $basename, $basevmid, $isBase) =
