@@ -1,3 +1,10 @@
+libpve-storage-perl (4.0-43) unstable; urgency=medium
+
+  * depend on thin-provisioning-tools (required my systemd to activate
+    thin pools at boot time)
+
+ -- Proxmox Support Team <support@proxmox.com>  Tue, 01 Mar 2016 08:03:02 +0100
+
 libpve-storage-perl (4.0-42) unstable; urgency=medium
 
   * add sparseinit to has_feature
