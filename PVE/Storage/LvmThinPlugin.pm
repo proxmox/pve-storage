@@ -209,6 +209,9 @@ sub activate_volume {
 	my $snapvol = "snap_${volname}_$snapname";
 	my $cmd = ['/sbin/lvchange', '-ay', '-K', "$vg/$snapvol"];
 	run_command($cmd, errmsg => "activate_volume '$vg/$snapvol' error");
+    } elsif ($volname =~ /^base-/) {
+	my $cmd = ['/sbin/lvchange', '-ay', '-K', "$vg/$volname"];
+	run_command($cmd, errmsg => "activate_volume '$vg/$volname' error");
     } else {
 	# other volumes are active by default
     }
@@ -224,6 +227,9 @@ sub deactivate_volume {
 	my $snapvol = "snap_${volname}_$snapname";
 	my $cmd = ['/sbin/lvchange', '-an', "$vg/$snapvol"];
 	run_command($cmd, errmsg => "deactivate_volume '$vg/$snapvol' error");
+    } elsif ($volname =~ /^base-/) {
+	my $cmd = ['/sbin/lvchange', '-an', "$vg/$volname"];
+	run_command($cmd, errmsg => "deactivate_volume '$vg/$volname' error");
     } else {
 	# other volumes are kept active
     }
