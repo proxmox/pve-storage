@@ -6,11 +6,13 @@ use IO::File;
 use POSIX;
 use PVE::Tools qw(run_command);
 use PVE::Storage::ZFSPoolPlugin;
+use PVE::RPCEnvironment;
 
 use base qw(PVE::Storage::ZFSPoolPlugin);
 use PVE::Storage::LunCmd::Comstar;
 use PVE::Storage::LunCmd::Istgt;
 use PVE::Storage::LunCmd::Iet;
+
 
 my @ssh_opts = ('-o', 'BatchMode=yes');
 my @ssh_cmd = ('/usr/bin/ssh', @ssh_opts);
@@ -49,7 +51,8 @@ my $zfs_get_base = sub {
 sub zfs_request {
     my ($class, $scfg, $timeout, $method, @params) = @_;
 
-    $timeout = 10 if !$timeout;
+    $timeout = PVE::RPCEnvironment::is_worker() ? 60*60 : 10
+	if !$timeout;
 
     my $msg = '';
 

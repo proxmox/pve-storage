@@ -6,7 +6,7 @@ use IO::File;
 use POSIX;
 use PVE::Tools qw(run_command);
 use PVE::Storage::Plugin;
-
+use PVE::RPCEnvironment;
 
 use base qw(PVE::Storage::Plugin);
 
@@ -164,7 +164,8 @@ sub path {
 sub zfs_request {
     my ($class, $scfg, $timeout, $method, @params) = @_;
 
-    $timeout = 5 if !$timeout;
+    $timeout = PVE::RPCEnvironment::is_worker() ? 60*60 : 5
+	if !$timeout;
 
     my $cmd = [];
 
