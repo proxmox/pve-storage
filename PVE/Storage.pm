@@ -510,18 +510,19 @@ sub storage_migrate {
 
 	    my $zfspath = "$scfg->{pool}\/$volname";
 
-	    my $snap = "zfs snapshot $zfspath\@__migration__";
+	    my $snap = ['zfs', 'snapshot', "$zfspath\@__migration__"];
 
-	    my $send = "zfs send -Rpv $zfspath\@__migration__ \| ssh root\@$target_host zfs recv $zfspath";
+	    my $send = [['zfs', 'send', '-Rpv', "$zfspath\@__migration__"], ['ssh', "root\@$target_host",
+			'zfs', 'recv', $zfspath]];
 
-	    my $destroy_target = "ssh root\@$target_host zfs destroy $zfspath\@__migration__";
+	    my $destroy_target = ['ssh', "root\@$target_host", 'zfs', 'destroy', "$zfspath\@__migration__"];
  	    run_command($snap);
 	    eval{
 		run_command($send);
 	    };
 	    my $err;
 	    if ($err = $@){
-		run_command("zfs destroy $zfspath\@__migration__");
+		run_command(['zfs', 'destroy', "$zfspath\@__migration__"]);
 		die $err;
 	    }
 	    run_command($destroy_target);
