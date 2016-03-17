@@ -2,6 +2,8 @@ libpve-storage-perl (4.0-46) unstable; urgency=medium
 
   * Use is_worker to decide default timeout for ZFS
 
+  * Include all snapshots when migrate storage zfs to zfs
+
  -- Proxmox Support Team <support@proxmox.com>  Tue, 15 Mar 2016 16:50:26 +0100
 
 libpve-storage-perl (4.0-45) unstable; urgency=medium
