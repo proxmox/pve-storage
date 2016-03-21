@@ -461,7 +461,6 @@ sub storage_migrate {
 		run_command(['/bin/cp', $src, $dst]);
 
 	    } else {
-
 		run_command(['/usr/bin/ssh', "root\@${target_host}",
 			     '/bin/mkdir', '-p', $dirname]);
 
@@ -475,8 +474,15 @@ sub storage_migrate {
 				outfunc => sub {});
 		}
 
-		my $cmd = ['/usr/bin/rsync', '--progress', '--sparse', '--whole-file',
-			   $src, "[root\@${target_host}]:$dst"];
+		my $cmd;
+		if ($format eq 'subvol') {
+		    $cmd = ['/usr/bin/rsync', '--progress', '-X', '-A', '--numeric-ids',
+			    '-aH', '--delete', '--no-whole-file', '--inplace',
+			    '--one-file-system', "$src/", "[root\@${target_host}]:$dst"];
+		} else {
+		    $cmd = ['/usr/bin/rsync', '--progress', '--sparse', '--whole-file',
+			    $src, "[root\@${target_host}]:$dst"];
+		}
 
 		my $percent = -1;
 
