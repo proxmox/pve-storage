@@ -70,7 +70,7 @@ __PACKAGE__->register_method ({
 	my $rpcenv = PVE::RPCEnvironment::get();
 	my $authuser = $rpcenv->get_user();
 
-	my $cfg = cfs_read_file("storage.cfg");
+	my $cfg = PVE::Storage::config();
 
 	my @sids = PVE::Storage::storage_ids($cfg);
 
@@ -105,7 +105,7 @@ __PACKAGE__->register_method ({
     code => sub {
 	my ($param) = @_;
 
-	my $cfg = cfs_read_file("storage.cfg");
+	my $cfg = PVE::Storage::config();
 
 	return &$api_storage_config($cfg, $param->{storage});
     }});
@@ -137,7 +137,7 @@ __PACKAGE__->register_method ({
         PVE::Storage::lock_storage_config(
 	    sub {
 
-		my $cfg = cfs_read_file('storage.cfg');
+		my $cfg = PVE::Storage::config();
 
 		if (my $scfg = PVE::Storage::storage_config($cfg, $storeid, 1)) {
 		    die "storage ID '$storeid' already defined\n";
@@ -170,7 +170,7 @@ __PACKAGE__->register_method ({
 		    PVE::Storage::activate_storage($cfg, $storeid);
 		}
 
-		cfs_write_file('storage.cfg', $cfg);
+		PVE::Storage::write_config($cfg);
 	    
 	    }, "create storage failed");
 
@@ -197,7 +197,7 @@ __PACKAGE__->register_method ({
         PVE::Storage::lock_storage_config(
 	 sub {
 
-	    my $cfg = cfs_read_file('storage.cfg');
+	    my $cfg = PVE::Storage::config();
 
 	    PVE::SectionConfig::assert_if_modified($cfg, $digest);
 
@@ -210,7 +210,7 @@ __PACKAGE__->register_method ({
 		$scfg->{$k} = $opts->{$k};
 	    }
 
-	    cfs_write_file('storage.cfg', $cfg);
+	    PVE::Storage::write_config($cfg);
 
 	    }, "update storage failed");
 
@@ -243,7 +243,7 @@ __PACKAGE__->register_method ({
         PVE::Storage::lock_storage_config(
 	    sub {
 
-		my $cfg = cfs_read_file('storage.cfg');
+		my $cfg = PVE::Storage::config();
 
 		die "storage '$storeid' does not exist\n"
 		    if !($cfg->{ids}->{$storeid});
@@ -253,7 +253,7 @@ __PACKAGE__->register_method ({
 
 		delete $cfg->{ids}->{$storeid};
 
-		cfs_write_file('storage.cfg', $cfg);
+		PVE::Storage::write_config($cfg);
 
 	    }, "delete storage failed");
 

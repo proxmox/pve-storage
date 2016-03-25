@@ -5,7 +5,7 @@ use warnings;
 use Data::Dumper;
 
 use PVE::SafeSyslog;
-use PVE::Cluster qw(cfs_read_file);
+use PVE::Cluster;
 use PVE::Storage;
 use PVE::INotify;
 use PVE::Exception qw(raise_param_exc);
@@ -66,7 +66,7 @@ __PACKAGE__->register_method ({
 
 	my $storeid = $param->{storage};
 
-	my $cfg = cfs_read_file("storage.cfg");
+	my $cfg = PVE::Storage::config();
 
 	my $vollist = PVE::Storage::volume_list($cfg, $storeid, $param->{vmid}, $param->{content});
 
@@ -150,7 +150,7 @@ __PACKAGE__->register_method ({
 	    $param->{format} = $fmt;
 	}
 
-	my $cfg = cfs_read_file('storage.cfg');
+	my $cfg = PVE::Storage::config();
     
 	my $volid = PVE::Storage::vdisk_alloc ($cfg, $storeid, $param->{vmid}, 
 					       $param->{format}, 
@@ -217,7 +217,7 @@ __PACKAGE__->register_method ({
 
 	my ($volid, $storeid) = &$real_volume_id($param->{storage}, $param->{volume});
 
-	my $cfg = cfs_read_file('storage.cfg');
+	my $cfg = PVE::Storage::config();
 
 	$rpcenv->check_volume_access($authuser, $cfg, undef, $volid);
 
@@ -267,7 +267,7 @@ __PACKAGE__->register_method ({
 	my $rpcenv = PVE::RPCEnvironment::get();
 	my $authuser = $rpcenv->get_user();
 
-	my $cfg = cfs_read_file('storage.cfg');
+	my $cfg = PVE::Storage::config();
 
 	my ($volid, $storeid) = &$real_volume_id($param->{storage}, $param->{volume});
 
@@ -331,7 +331,7 @@ __PACKAGE__->register_method ({
 
 	print "DEBUG: COPY $src_volid TO $dst_volid\n";
 
-	my $cfg = cfs_read_file('storage.cfg');
+	my $cfg = PVE::Storage::config();
 
 	# do all parameter checks first
 

@@ -7,7 +7,7 @@ use File::Path;
 use File::Basename;
 use PVE::Tools;
 use PVE::INotify;
-use PVE::Cluster qw(cfs_read_file);
+use PVE::Cluster;
 use PVE::Storage;
 use PVE::API2::Storage::Content;
 use PVE::RESTHandler;
@@ -85,7 +85,7 @@ __PACKAGE__->register_method ({
 
 	undef $target if $target && ($target eq $localnode || $target eq 'localhost');
 	
-	my $cfg = cfs_read_file("storage.cfg");
+	my $cfg = PVE::Storage::config();
 
 	my $info = PVE::Storage::storage_info($cfg, $param->{content});
 
@@ -182,7 +182,7 @@ __PACKAGE__->register_method ({
     code => sub {
 	my ($param) = @_;
 
-	my $cfg = cfs_read_file("storage.cfg");
+	my $cfg = PVE::Storage::config();
 
 	my $info = PVE::Storage::storage_info($cfg, $param->{content});
 
@@ -323,7 +323,7 @@ __PACKAGE__->register_method ({
 
 	my $user = $rpcenv->get_user();
 
-	my $cfg = cfs_read_file("storage.cfg");
+	my $cfg = PVE::Storage::config();
 
 	my $node = $param->{node};
 	my $scfg = PVE::Storage::storage_check_enabled($cfg, $param->{storage}, $node);

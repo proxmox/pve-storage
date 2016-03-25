@@ -13,7 +13,7 @@ use Cwd 'abs_path';
 use Socket;
 
 use PVE::Tools qw(run_command file_read_firstline $IPV6RE);
-use PVE::Cluster qw(cfs_read_file cfs_lock_file);
+use PVE::Cluster qw(cfs_read_file cfs_write_file cfs_lock_file);
 use PVE::Exception qw(raise_param_exc);
 use PVE::JSONSchema;
 use PVE::INotify;
@@ -54,6 +54,12 @@ my $UDEVADM = '/sbin/udevadm';
 
 sub config {
     return cfs_read_file("storage.cfg");
+}
+
+sub write_config {
+    my ($cfg) = @_;
+
+    cfs_write_file('storage.cfg', $cfg);
 }
 
 sub lock_storage_config {
