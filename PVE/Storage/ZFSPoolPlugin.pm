@@ -101,7 +101,7 @@ sub zfs_parse_zvol_list {
 	my $name = pop @parts;
 	my $pool = join('/', @parts);
 
-	next unless $name =~ m!^(vm|base|subvol)-(\d+)-(\S+)$!;
+	next unless $name =~ m!^(vm|base|subvol|basevol)-(\d+)-(\S+)$!;
 	$zvol->{owner} = $2;
 
 	$zvol->{pool} = $pool;
@@ -129,8 +129,8 @@ sub zfs_parse_zvol_list {
 sub parse_volname {
     my ($class, $volname) = @_;
 
-    if ($volname =~ m/^(((base|vm)-(\d+)-\S+)\/)?((base)?(vm|subvol)?-(\d+)-\S+)$/) {
-	my $format = $7 && $7 eq 'subvol' ? 'subvol' : 'raw';
+    if ($volname =~ m/^(((base|vm|basevol)-(\d+)-\S+)\/)?((base|basevol)?(vm|subvol)?-(\d+)-\S+)$/) {
+	my $format = ($7 && $7 eq 'subvol') || ( $6 && $6 eq 'basevol') ? 'subvol' : 'raw';
 	return ('images', $5, $8, $2, $4, $6, $format);
     }
 
@@ -149,9 +149,9 @@ sub path {
     if ($vtype eq "images") {
 	if ($volname =~ m/^subvol-/) {
 	    # fixme: we currently assume standard mount point?!
-	    $path = "/$scfg->{pool}/$volname";
+	    $path = "/$scfg->{pool}/$name";
 	} else {
-	    $path = "/dev/zvol/$scfg->{pool}/$volname";
+	    $path = "/dev/zvol/$scfg->{pool}/$name";
 	}
 	$path .= "\@$snapname" if defined($snapname);
     } else {
@@ -385,7 +385,7 @@ sub zfs_find_free_diskname {
 
     foreach my $image (keys %$dat) {
         my $volname = $dat->{$image}->{name};
-        if ($volname =~ m/(vm|base|subvol)-$vmid-disk-(\d+)/){
+        if ($volname =~ m/(vm|base|subvol|basevol)-$vmid-disk-(\d+)/){
             $disk_ids->{$2} = 1;
         }
     }
@@ -402,6 +402,8 @@ sub zfs_find_free_diskname {
 sub zfs_get_latest_snapshot {
     my ($class, $scfg, $volname) = @_;
 
+    my $vname = ($class->parse_volname($volname))[1];
+
     # abort rollback if snapshot is not the latest
     my @params = ('-t', 'snapshot', '-o', 'name', '-s', 'creation');
     my $text = $class->zfs_request($scfg, undef, 'list', @params);
@@ -409,7 +411,7 @@ sub zfs_get_latest_snapshot {
 
     my $recentsnap;
     foreach (@snapshots) {
-        if (/$scfg->{pool}\/$volname/) {
+        if (/$scfg->{pool}\/$vname/) {
             s/^.*@//;
             $recentsnap = $_;
         }
@@ -439,12 +441,11 @@ sub status {
 sub volume_size_info {
     my ($class, $scfg, $storeid, $volname, $timeout) = @_;
 
-    my (undef, undef, undef, undef, undef, undef, $format) =
+    my (undef, $vname, undef, undef, undef, undef, $format) =
         $class->parse_volname($volname);
 
     my $attr = $format eq 'subvol' ? 'refquota' : 'volsize';
-    my $text = $class->zfs_request($scfg, undef, 'get', '-Hp', $attr, "$scfg->{pool}/$volname");
-
+    my $text = $class->zfs_request($scfg, undef, 'get', '-Hp', $attr, "$scfg->{pool}/$vname");
     if ($text =~ /\s$attr\s(\d+)\s/) {
 	return $1;
     }
@@ -455,20 +456,26 @@ sub volume_size_info {
 sub volume_snapshot {
     my ($class, $scfg, $storeid, $volname, $snap) = @_;
 
-    $class->zfs_request($scfg, undef, 'snapshot', "$scfg->{pool}/$volname\@$snap");
+    my $vname = ($class->parse_volname($volname))[1];
+
+    $class->zfs_request($scfg, undef, 'snapshot', "$scfg->{pool}/$vname\@$snap");
 }
 
 sub volume_snapshot_delete {
     my ($class, $scfg, $storeid, $volname, $snap, $running) = @_;
 
-    $class->deactivate_volume($storeid, $scfg, $volname, $snap, {});
-    $class->zfs_request($scfg, undef, 'destroy', "$scfg->{pool}/$volname\@$snap");
+    my $vname = ($class->parse_volname($volname))[1];
+
+    $class->deactivate_volume($storeid, $scfg, $vname, $snap, {});
+    $class->zfs_request($scfg, undef, 'destroy', "$scfg->{pool}/$vname\@$snap");
 }
 
 sub volume_snapshot_rollback {
     my ($class, $scfg, $storeid, $volname, $snap) = @_;
 
-    $class->zfs_request($scfg, undef, 'rollback', "$scfg->{pool}/$volname\@$snap");
+    my $vname = ($class->parse_volname($volname))[1];
+
+    $class->zfs_request($scfg, undef, 'rollback', "$scfg->{pool}/$vname\@$snap");
 }
 
 sub volume_rollback_is_possible {
@@ -526,9 +533,15 @@ sub clone_image {
 
     my $name = $class->zfs_find_free_diskname($storeid, $scfg, $vmid, $format);
 
-    $class->zfs_request($scfg, undef, 'clone', "$scfg->{pool}/$basename\@$snap", "$scfg->{pool}/$name");
+    if ($format eq 'subvol') {
+	my $size = $class->zfs_request($scfg, undef, 'list', '-H', '-o', 'refquota', "$scfg->{pool}/$basename");
+	chomp($size);
+	$class->zfs_request($scfg, undef, 'clone', "$scfg->{pool}/$basename\@$snap", "$scfg->{pool}/$name", '-o', "refquota=$size");
+    } else {
+	$class->zfs_request($scfg, undef, 'clone', "$scfg->{pool}/$basename\@$snap", "$scfg->{pool}/$name");
+    }
 
-    return $name;
+    return "$basename/$name";
 }
 
 sub create_base {
@@ -536,14 +549,17 @@ sub create_base {
 
     my $snap = '__base__';
 
-    my ($vtype, $name, $vmid, $basename, $basevmid, $isBase) =
+    my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $format) =
         $class->parse_volname($volname);
 
     die "create_base not possible with base image\n" if $isBase;
 
     my $newname = $name;
-    $newname =~ s/^vm-/base-/;
-
+    if ( $format eq 'subvol' ) {
+	$newname =~ s/^subvol-/basevol-/;
+    } else {
+	$newname =~ s/^vm-/base-/;
+    }
     my $newvolname = $basename ? "$basename/$newname" : "$newname";
 
     $class->zfs_request($scfg, undef, 'rename', "$scfg->{pool}/$name", "$scfg->{pool}/$newname");
@@ -560,12 +576,12 @@ sub volume_resize {
 
     my $new_size = int($size/1024);
 
-    my (undef, undef, undef, undef, undef, undef, $format) =
+    my (undef, $vname, undef, undef, undef, undef, $format) =
         $class->parse_volname($volname);
 
     my $attr = $format eq 'subvol' ? 'refquota' : 'volsize';
 
-    $class->zfs_request($scfg, undef, 'set', "$attr=${new_size}k", "$scfg->{pool}/$volname");
+    $class->zfs_request($scfg, undef, 'set', "$attr=${new_size}k", "$scfg->{pool}/$vname");
 
     return $new_size;
 }
