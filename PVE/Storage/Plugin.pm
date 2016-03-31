@@ -235,7 +235,8 @@ sub decode_value {
 
 	foreach my $c (PVE::Tools::split_list($value)) {
 	    if (!$valid_content->{$c}) {
-		die "storage does not support content type '$c'\n";
+		warn "storage does not support content type '$c'\n";
+		next;
 	    }
 	    $res->{$c} = 1;
 	}
@@ -249,7 +250,8 @@ sub decode_value {
 	my $valid_formats = $def->{format}->[0];
 
 	if (!$valid_formats->{$value}) {
-	    die "storage does not support format '$value'\n";
+	    warn "storage does not support format '$value'\n";
+	    next;
 	}
 
 	return $value;
