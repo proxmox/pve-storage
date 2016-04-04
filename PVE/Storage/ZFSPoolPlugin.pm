@@ -148,7 +148,7 @@ sub path {
     my $path = '';
 
     if ($vtype eq "images") {
-	if ($volname =~ m/^subvol-/) {
+	if ($name =~ m/^subvol-/ || $name =~ m/^basevol-/) {
 	    # fixme: we currently assume standard mount point?!
 	    $path = "/$scfg->{pool}/$name";
 	} else {
