@@ -27,13 +27,23 @@ my $basesnap = '@__base__';
 my $tests = {};
 
 #create zfs suvol for testing
-
 my $pool = undef;
 my $zpath = undef;
 my $cfg = undef;
 my $scfg = undef;
 my $count = 0;
 my $testnum = 18;
+my $end_test = $testnum;
+my $start_test = 1;
+
+if (@ARGV == 2) {
+    $end_test = $ARGV[1];
+    $start_test = $ARGV[0];
+} elsif (@ARGV == 1) {
+    $start_test = $ARGV[0];
+    $end_test = $ARGV[0];
+}
+
 
 my $test18 = sub {
 
@@ -2471,7 +2481,7 @@ $cfg = {'ids' => {
 
 $zpath = $subvol;
 
-for (my $i = 1; $i <= $testnum; $i++) {
+for (my $i = $start_test; $i <= $end_test; $i++) {
     setup_zfs();
 
     eval {
