@@ -1,3 +1,11 @@
+libpve-storage-perl (4.0-48) unstable; urgency=medium
+
+  * zfs_parse_zvol_list: simplify regex
+
+  * zfs: encode base volumes in linked clones
+
+ -- Proxmox Support Team <support@proxmox.com>  Mon, 04 Apr 2016 08:56:03 +0200
+
 libpve-storage-perl (4.0-47) unstable; urgency=medium
 
   * fix LXC migration from local subvol
