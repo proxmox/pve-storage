@@ -32,7 +32,7 @@ my $zpath = undef;
 my $cfg = undef;
 my $scfg = undef;
 my $count = 0;
-my $testnum = 18;
+my $testnum = 19;
 my $end_test = $testnum;
 my $start_test = 1;
 
@@ -44,6 +44,185 @@ if (@ARGV == 2) {
     $end_test = $ARGV[0];
 }
 
+my $test19 = sub {
+
+    print "\nrun test19 \"path\"\n";
+
+    my @res;
+    my $fail = 0;
+    eval {
+	@res = PVE::Storage::path($cfg, "$storagename:$vmdisk");
+	if ($res[0] ne "\/dev\/zvol\/regressiontest\/$vmdisk") {
+	    $count++;
+	    $fail = 1;
+	    warn "Test 19 a: path is not correct: expected \'\/dev\/zvol\/regressiontest\/$vmdisk'\  get \'$res[0]\'";
+	}
+	if ($res[1] ne "102") {
+	    if (!$fail) {
+		$count++;
+		$fail = 1;
+	    }
+	    warn "Test 19 a: owner is not correct: expected \'102\'  get \'$res[1]\'";
+	}
+	if ($res[2] ne "images") {
+	    if (!$fail) {
+		$count++;
+		$fail = 1;
+	    }
+	    warn "Test 19 a: owner is not correct: expected \'images\'  get \'$res[2]\'";
+	}
+    };
+    if ( $@ ) {
+	$count++;
+	warn "Test 19 a: $@";
+    }
+
+    @res = undef;
+    $fail = 0;
+    eval {
+	@res = PVE::Storage::path($cfg, "$storagename:$vmbase");
+	if ($res[0] ne "\/dev\/zvol\/regressiontest\/$vmbase") {
+	    $count++;
+	    $fail = 1;
+	    warn "Test 19 b: path is not correct: expected \'\/dev\/zvol\/regressiontest\/$vmbase'\  get \'$res[0]\'";
+	}
+	if ($res[1] ne "100") {
+	    if (!$fail) {
+		$count++;
+		$fail = 1;
+	    }
+	    warn "Test 19 b: owner is not correct: expected \'100\'  get \'$res[1]\'";
+	}
+	if ($res[2] ne "images") {
+	    if (!$fail) {
+		$count++;
+		$fail = 1;
+	    }
+	    warn "Test 19 b: owner is not correct: expected \'images\'  get \'$res[2]\'";
+	}
+    };
+    if ( $@ ) {
+	$count++;
+	warn "Test 19 b: $@";
+    }
+
+    @res = undef;
+    $fail = 0;
+    eval {
+	@res = PVE::Storage::path($cfg, "$storagename:$vmbase\/$vmlinked");
+	if ($res[0] ne "\/dev\/zvol\/regressiontest\/$vmlinked") {
+	    $count++;
+	    $fail = 1;
+	    warn "Test 19 c: path is not correct: expected \'\/dev\/zvol\/regressiontest\/$vmlinked'\  get \'$res[0]\'";
+	}
+	if ($res[1] ne "101") {
+	    if (!$fail) {
+		$count++;
+		$fail = 1;
+	    }
+	    warn "Test 19 c: owner is not correct: expected \'101\'  get \'$res[1]\'";
+	}
+	if ($res[2] ne "images") {
+	    if (!$fail) {
+		$count++;
+		$fail = 1;
+	    }
+	    warn "Test 19 c: owner is not correct: expected \'images\'  get \'$res[2]\'";
+	}
+    };
+    if ( $@ ) {
+	$count++;
+	warn "Test 19 c: $@";
+    }
+
+    @res = undef;
+    $fail = 0;
+    eval {
+	@res = PVE::Storage::path($cfg, "$storagename:$ctdisk");
+	if ($res[0] ne "\/regressiontest\/$ctdisk") {
+	    $count++;
+	    $fail = 1;
+	    warn "Test 19 d: path is not correct: expected \'/regressiontest\/$ctdisk'\  get \'$res[0]\'";
+	}
+	if ($res[1] ne "202") {
+	    if (!$fail) {
+		$count++;
+		$fail = 1;
+	    }
+	    warn "Test 19 d: owner is not correct: expected \'202\'  get \'$res[1]\'";
+	}
+	if ($res[2] ne "images") {
+	    if (!$fail) {
+		$count++;
+		$fail = 1;
+	    }
+	    warn "Test 19 d: owner is not correct: expected \'images\'  get \'$res[2]\'";
+	}
+    };
+    if ( $@ ) {
+	$count++;
+	warn "Test 19 d: $@";
+    }
+
+    @res = undef;
+    $fail = 0;
+    eval {
+	@res = PVE::Storage::path($cfg, "$storagename:$ctbase");
+	if ($res[0] ne "\/regressiontest\/$ctbase") {
+	    $count++;
+	    $fail = 1;
+	    warn "Test 19 e: path is not correct: expected \'\/regressiontest\/$ctbase'\  get \'$res[0]\'";
+	}
+	if ($res[1] ne "200") {
+	    if (!$fail) {
+		$count++;
+		$fail = 1;
+	    }
+	    warn "Test 19 e: owner is not correct: expected \'200\'  get \'$res[1]\'";
+	}
+	if ($res[2] ne "images") {
+	    if (!$fail) {
+		$count++;
+		$fail = 1;
+	    }
+	    warn "Test 19 e: owner is not correct: expected \'images\'  get \'$res[2]\'";
+	}
+    };
+    if ( $@ ) {
+	$count++;
+	warn "Test 19 e: $@";
+    }
+
+    @res = undef;
+    $fail = 0;
+    eval {
+	@res = PVE::Storage::path($cfg, "$storagename:$ctbase\/$ctlinked");
+	if ($res[0] ne "\/regressiontest\/$ctlinked") {
+	    $count++;
+	    $fail = 1;
+	    warn "Test 19 f: path is not correct: expected \'\/regressiontest\/$ctlinked'\  get \'$res[0]\'";
+	}
+	if ($res[1] ne "201") {
+	    if (!$fail) {
+		$count++;
+		$fail = 1;
+	    }
+	    warn "Test 19 f: owner is not correct: expected \'201\'  get \'$res[1]\'";
+	}
+	if ($res[2] ne "images") {
+	    if (!$fail) {
+		$count++;
+		$fail = 1;
+	    }
+	    warn "Test 19 f: owner is not correct: expected \'images\'  get \'$res[2]\'";
+	}
+    };
+    if ( $@ ) {
+	$count++;
+	warn "Test 19 f: $@";
+    }
+};
+$tests->{19} = $test19;
 
 my $test18 = sub {
 
