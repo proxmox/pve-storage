@@ -800,7 +800,7 @@ my $test8 = sub {
 	my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $format) = PVE::Storage::parse_volname($cfg, "$storagename:$vmdisk");
 
 	if ($vtype ne 'images' || $vmid ne '102' ||  $name ne $vmdisk ||
-	    defined($basename) || defined($basevmid) || defined($isBase) ||
+	    defined($basename) || defined($basevmid) || $isBase ||
 	    $format ne 'raw') {
 	    $count++;
 	    warn "Test8 a: parsing wrong";
@@ -816,7 +816,7 @@ my $test8 = sub {
 	my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $format) = PVE::Storage::parse_volname($cfg, "$storagename:$vmbase");
 
 	if ($vtype ne 'images' || $vmid ne '100' ||  $name ne $vmbase ||
-	    defined($basename) || defined($basevmid) || $isBase ne 'base' ||
+	    defined($basename) || defined($basevmid) || !$isBase ||
 	    $format ne 'raw') {
 	    $count++;
 	    warn "Test8 b: parsing wrong";
@@ -831,7 +831,7 @@ my $test8 = sub {
 	my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $format) = PVE::Storage::parse_volname($cfg, "$storagename:$vmbase\/$vmlinked");
 
 	if ($vtype ne 'images' ||  $name ne $vmlinked || $vmid ne '101' ||
-	    $basename ne $vmbase || $basevmid ne '100' || defined($isBase) ||
+	    $basename ne $vmbase || $basevmid ne '100' || $isBase ||
 	    $format ne 'raw') {
 	    $count++;
 	    warn "Test8 c: parsing wrong";
@@ -846,7 +846,7 @@ my $test8 = sub {
 	my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $format) = PVE::Storage::parse_volname($cfg, "$storagename:$ctdisk");
 
 	if ($vtype ne 'images' || $vmid ne '202' ||  $name ne $ctdisk ||
-	    defined($basename) || defined($basevmid) || defined($isBase) ||
+	    defined($basename) || defined($basevmid) || $isBase ||
 	    $format ne 'subvol') {
 	    $count++;
 	    warn "Test8 d: parsing wrong";
@@ -861,7 +861,7 @@ my $test8 = sub {
     eval {
 	my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $format) = PVE::Storage::parse_volname($cfg, "$storagename:$ctbase");
 	if ($vtype ne 'images' || $vmid ne '200' ||  $name ne $ctbase ||
-	    defined($basename) || defined($basevmid) || $isBase ne 'basevol' ||
+	    defined($basename) || defined($basevmid) || !$isBase ||
 	    $format ne 'subvol') {
 	    $count++;
 	    warn "Test8 e: parsing wrong";
@@ -876,7 +876,7 @@ my $test8 = sub {
 	my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $format) = PVE::Storage::parse_volname($cfg, "$storagename:$ctbase\/$ctlinked");
 
 	if ($vtype ne 'images' ||  $name ne $ctlinked || $vmid ne '201' ||
-	    $basename ne $ctbase || $basevmid ne '200' || defined($isBase) ||
+	    $basename ne $ctbase || $basevmid ne '200' || $isBase ||
 	    $format ne 'subvol') {
 	    $count++;
 	    warn "Test8 f: parsing wrong";
