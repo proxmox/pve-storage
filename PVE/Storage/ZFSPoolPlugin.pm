@@ -129,9 +129,10 @@ sub zfs_parse_zvol_list {
 sub parse_volname {
     my ($class, $volname) = @_;
 
-    if ($volname =~ m/^(((base|vm|basevol)-(\d+)-\S+)\/)?((base|basevol)?(vm|subvol)?-(\d+)-\S+)$/) {
-	my $format = ($7 && $7 eq 'subvol') || ( $6 && $6 eq 'basevol') ? 'subvol' : 'raw';
-	return ('images', $5, $8, $2, $4, $6, $format);
+    if ($volname =~ m/^(((base|basevol)-(\d+)-\S+)\/)?((base|basevol|vm|subvol)-(\d+)-\S+)$/) {
+	my $format = ($6 eq 'subvol' || $6 eq 'basevol') ? 'subvol' : 'raw';
+	my $isBase = ($6 eq 'base' || $6 eq 'basevol');
+	return ('images', $5, $7, $2, $4, $isBase, $format);
     }
 
     die "unable to parse zfs volume name '$volname'\n";
