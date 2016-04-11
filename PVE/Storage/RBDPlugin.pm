@@ -520,7 +520,7 @@ sub deactivate_volume {
     return if ! -b $path;
 
     my $cmd = &$rbd_cmd($scfg, $storeid, 'unmap', $path);
-    run_rbd_command($cmd, errmsg => "can't unmount rbd volume $name");
+    run_rbd_command($cmd, errmsg => "can't unmap rbd volume $name");
 
     return 1;
 }
