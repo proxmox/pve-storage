@@ -72,10 +72,11 @@ sub check_drbd_res {
     
     die "got undefined drbd result\n" if !$rc;
 
+    # Messages for return codes 1 to 99 are not considered an error.
     foreach my $res (@$rc) {
 	my ($code, $format, $details) = @$res;
 
-	next if $code == 0;
+	next if $code < 100;
 
 	my $msg;
 	if (defined($format)) {
@@ -190,7 +191,7 @@ sub alloc_image {
 
     die "unable to allocate an image name for VM $vmid in storage '$storeid'\n"
 	if !defined($name);
-    
+
     my ($rc, $res) = $hdl->create_resource($name, {});
     check_drbd_res($rc);
 
@@ -205,7 +206,7 @@ sub alloc_image {
 	    'allow-two-primaries' => 'yes',
 	});
     check_drbd_res($rc);
- 
+
     my $redundancy = get_redundancy($scfg);;
     
     ($rc, $res) = $hdl->auto_deploy($name, $redundancy, 0, 0);
