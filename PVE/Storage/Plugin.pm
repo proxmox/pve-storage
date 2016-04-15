@@ -24,7 +24,8 @@ my $defaultData = {
 	    { completion => \&PVE::Storage::complete_storage }),
 	nodes => get_standard_option('pve-node-list', { optional => 1 }),
 	content => {
-	    description => "Allowed content types. Note: value 'rootdir' is used for Containers, and value 'images' for KVM-Qemu VM's.\n",
+	    description => "Allowed content types.\n\nNOTE: the value " .
+		"'rootdir' is used for Containers, and value 'images' for VMs.\n",
 	    type => 'string', format => 'pve-storage-content-list',
 	    optional => 1,
 	    completion => \&PVE::Storage::complete_content_type,
@@ -46,7 +47,7 @@ my $defaultData = {
 	    optional => 1,
 	},
 	'format' => {
-	    description => "Default Image format.",
+	    description => "Default image format.",
 	    type => 'string', format => 'pve-storage-format',
 	    optional => 1,
 	},
