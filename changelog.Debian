@@ -1,3 +1,9 @@
+libpve-storage-perl (4.0-51) unstable; urgency=medium
+
+  * add pvesm extractconfig
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 03 Jun 2016 12:05:27 +0200
+
 libpve-storage-perl (4.0-50) unstable; urgency=medium
 
   * DRBDPlugin: check_drbd_res() - ignore info codes
