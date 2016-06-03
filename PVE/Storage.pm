@@ -1221,6 +1221,125 @@ sub foreach_volid {
     }
 }
 
+sub extract_vzdump_config_tar {
+    my ($archive, $conf_re) = @_;
+
+    die "ERROR: file '$archive' does not exist\n" if ! -f $archive;
+
+    my $pid = open(my $fh, '-|', 'tar', 'tf', $archive) ||
+       die "unable to open file '$archive'\n";
+
+    my $file;
+    while (defined($file = <$fh>)) {
+	if ($file =~ m!$conf_re!) {
+	    $file = $1; # untaint
+	    last;
+	}
+    }
+
+    kill 15, $pid;
+    waitpid $pid, 0;
+    close $fh;
+
+    die "ERROR: archive contains no configuration file\n" if !$file;
+    chomp $file;
+
+    my $raw = '';
+    my $out = sub {
+	my $output = shift;
+	$raw .= "$output\n";
+    };
+
+    PVE::Tools::run_command(['tar', '-xpOf', $archive, $file, '--occurrence'], outfunc => $out);
+
+    return wantarray ? ($raw, $file) : $raw;
+}
+
+sub extract_vzdump_config_vma {
+    my ($archive, $comp) = @_;
+
+    my $cmd;
+    my $raw = '';
+    my $out = sub {
+	my $output = shift;
+	$raw .= "$output\n";
+    };
+
+
+    if ($comp) {
+	my $uncomp;
+	if ($comp eq 'gz') {
+	    $uncomp = ["zcat", $archive];
+	} elsif ($comp eq 'lzo') {
+	    $uncomp = ["lzop", "-d", "-c", $archive];
+	} else {
+	    die "unknown compression method '$comp'\n";
+	}
+	$cmd = [$uncomp, ["vma", "config", "-"]];
+
+	# in some cases, lzop/zcat exits with 1 when its stdout pipe is
+	# closed early by vma, detect this and ignore the exit code later
+	my $broken_pipe;
+	my $errstring;
+	my $err = sub {
+	    my $output = shift;
+	    if ($output =~ m/lzop: Broken pipe: <stdout>/ || $output =~ m/gzip: stdout: Broken pipe/) {
+		$broken_pipe = 1;
+	    } elsif (!defined ($errstring) && $output !~ m/^\s*$/) {
+		$errstring = "Failed to extract config from VMA archive: $output\n";
+	    }
+	};
+
+	# in other cases, the pipeline will exit with exit code 141
+	# because of the broken pipe, handle / ignore this as well
+	my $rc;
+	eval {
+	    $rc = PVE::Tools::run_command($cmd, outfunc => $out, errfunc => $err, noerr => 1);
+	};
+	my $rerr = $@;
+
+	# use exit code if no stderr output and not just broken pipe
+	if (!$errstring && !$broken_pipe && $rc > 0 && $rc != 141) {
+	    die "$rerr\n" if $rerr;
+	    die "config extraction failed with exit code $rc\n";
+	}
+	die "$errstring\n" if $errstring;
+    } else {
+	# simple case without compression and weird piping behaviour
+	PVE::Tools::run_command(["vma", "config", $archive], outfunc => $out);
+    }
+
+    return wantarray ? ($raw, undef) : $raw;
+}
+
+sub extract_vzdump_config {
+    my ($cfg, $volid) = @_;
+
+    my $archive = abs_filesystem_path($cfg, $volid);
+
+    if ($volid =~ /\/vzdump-(lxc|openvz)-\d+-(\d{4})_(\d{2})_(\d{2})-(\d{2})_(\d{2})_(\d{2})\.(tgz|(tar(\.(gz|lzo))?))$/) {
+	return extract_vzdump_config_tar($archive,'^(\./etc/vzdump/(pct|vps)\.conf)$');
+    } elsif ($volid =~ /\/vzdump-qemu-\d+-(\d{4})_(\d{2})_(\d{2})-(\d{2})_(\d{2})_(\d{2})\.(tgz|((tar|vma)(\.(gz|lzo))?))$/) {
+	my $format;
+	my $comp;
+	if ($7 eq 'tgz') {
+	    $format = 'tar';
+	    $comp = 'gz';
+	} else {
+	    $format = $9;
+	    $comp = $11 if defined($11);
+	}
+
+	if ($format eq 'tar') {
+	    return extract_vzdump_config_tar($archive, qr!\(\./qemu-server\.conf\)!);
+	} else {
+	    return extract_vzdump_config_vma($archive, $comp);
+	}
+    } else {
+	die "cannot determine backup guest type for backup archive '$volid'\n";
+    }
+}
+
 # bash completion helper
 
 sub complete_storage {
