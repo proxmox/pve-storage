@@ -53,6 +53,43 @@ __PACKAGE__->register_method ({
 
     }});
 
+__PACKAGE__->register_method ({
+    name => 'extractconfig',
+    path => 'extractconfig',
+    method => 'GET',
+    description => "Extract configuration from vzdump backup archive.",
+    permissions => {
+	description => "The user needs 'VM.Backup' permissions on the backed up guest ID, and 'Datastore.AllocateSpace' on the backup storage.",
+	user => 'all',
+    },
+    protected => 1,
+    parameters => {
+	additionalProperties => 0,
+	properties => {
+	    volume => {
+		description => "Volume identifier",
+		type => 'string',
+		completion => \&PVE::Storage::complete_volume,
+	    },
+	},
+    },
+    returns => { type => 'null' },
+    code => sub {
+	my ($param) = @_;
+	my $volume = $param->{volume};
+
+	my $rpcenv = PVE::RPCEnvironment::get();
+	my $authuser = $rpcenv->get_user();
+
+	my $storage_cfg = PVE::Storage::config();
+	$rpcenv->check_volume_access($authuser, $storage_cfg, undef, $volume);
+
+	my $config_raw = PVE::Storage::extract_vzdump_config($storage_cfg, $volume);
+
+	print "$config_raw\n";
+	return;
+    }});
+
 my $print_content = sub {
     my ($list) = @_;
 
@@ -175,6 +212,7 @@ our $cmddef = {
 		     }
 		 }],
     path => [ __PACKAGE__, 'path', ['volume']],
+    extractconfig => [__PACKAGE__, 'extractconfig', ['volume']],
 };
 
 1;
