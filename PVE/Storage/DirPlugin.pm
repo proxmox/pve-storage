@@ -28,6 +28,11 @@ sub properties {
 	    description => "File system path.",
 	    type => 'string', format => 'pve-storage-path',
 	},
+	mkdir => {
+	    description => "Create the directory if it doesn't exist.",
+	    type => 'boolean',
+	    default => 'yes',
+	},
     };
 }
 
@@ -40,6 +45,7 @@ sub options {
         maxfiles => { optional => 1 },
 	content => { optional => 1 },
 	format => { optional => 1 },
+	mkdir => { optional => 1 },
    };
 }
 
@@ -48,8 +54,10 @@ sub options {
 sub activate_storage {
     my ($class, $storeid, $scfg, $cache) = @_;
 
-    my $path = $scfg->{path};
-    mkpath $path;
+    if (!defined($scfg->{mkdir}) || $scfg->{mkdir}) {
+	my $path = $scfg->{path};
+	mkpath $path;
+    }
 
     $class->SUPER::activate_storage($storeid, $scfg, $cache);    
 }
