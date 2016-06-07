@@ -542,6 +542,39 @@ sub storage_migrate {
  	} else {
  	    die "$errstr - target type $tcfg->{type} is not valid\n";
  	}
+
+    } elsif ($scfg->{type} eq 'lvmthin' || $scfg->{type} eq 'lvm') {
+
+	if ($tcfg->{type} eq 'lvmthin' || $tcfg->{type} eq 'lvm') {
+
+	    die "$errstr - pool on target has not same name as source!"
+		if $tcfg->{type} ne $scfg->{type};
+
+	    my (undef, $volname) = parse_volname($cfg, $volid);
+	    my $size = volume_size_info($cfg, $volid, 5);
+	    my $path = path($cfg, $volid);
+
+	    $volname =~ m/^vm-(\d+)-/;
+	    my $vmid = $1;
+
+	    run_command(['/usr/bin/ssh', "root\@${target_host}",
+			 'pvesm', 'alloc', $target_storeid, $vmid,
+			 $volname, $size/1024]);
+
+	    eval {
+		run_command([["dd", "if=$path"],
+			     ["/usr/bin/ssh", "root\@${target_host}", "-C",
+			      "dd", 'conv=sparse', "of=$path"]]);
+	    };
+	    if (my $err = $@) {
+		run_command(['/usr/bin/ssh', "root\@${target_host}",
+			 'pvesm', 'free', $volid]);
+	    } else {
+		vdisk_free($cfg, $volid);
+	    }
+	} else {
+	    die "$errstr - target type $tcfg->{type} is not valid\n";
+	}
     } else {
 	die "$errstr - source type '$scfg->{type}' not implemented\n";
     }
