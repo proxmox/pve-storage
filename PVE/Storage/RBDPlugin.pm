@@ -79,6 +79,36 @@ my $rados_cmd = sub {
     return $cmd;
 };
 
+my $ceph_version_parser = sub {
+	my $line = shift;
+	if ($line =~ m/^ceph version ((\d+)\.(\d+)\.(\d+))(?: \([a-fA-F0-9]+\))?$/) {
+	    return ($2, $3, $4, $1);
+	} else {
+	    warn "Could not parse Ceph version: '$line'\n";
+	}
+};
+
+sub ceph_version {
+    my ($cache) = @_;
+
+    my $version_string = $cache;
+
+    my $major;
+    my $minor;
+    my $bugfix;
+
+    if (defined($version_string)) {
+	($major, $minor, $bugfix, $version_string) = &$version_parser($version_string);
+    } else {
+	run_command('ceph version', outfunc => sub {
+	    my $line = shift;
+	    ($major, $minor, $bugfix, $version_string) = &$version_parser($line);
+	});
+    }
+    return undef if !defined($version_string);
+    return wantarray ? ($major, $minor, $bugfix, $version_string) : $version_string;
+}
+
 sub run_rbd_command {
     my ($cmd, %args) = @_;
 
