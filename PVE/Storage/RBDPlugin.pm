@@ -79,6 +79,19 @@ my $rados_cmd = sub {
     return $cmd;
 };
 
+# needed for volumes created using ceph jewel (or higher)
+my $krdb_feature_disable = sub {
+    my ($scfg, $storeid, $name) = @_;
+
+    return 1 if !$scfg->{krbd};
+
+    my ($major, undef, undef, undef) = ceph_version();
+    return 1 if $major < 10;
+
+    my $feature_cmd = &$rbd_cmd($scfg, $storeid, 'feature', 'disable', $name, 'deep-flatten,fast-diff,object-map,exclusive-lock');
+    run_rbd_command($feature_cmd, errmsg => "could not disable krbd-incompatible image features of rbd volume $name");
+};
+
 my $ceph_version_parser = sub {
 	my $line = shift;
 	if ($line =~ m/^ceph version ((\d+)\.(\d+)\.(\d+))(?: \([a-fA-F0-9]+\))?$/) {
@@ -404,6 +417,8 @@ sub clone_image {
 
     run_rbd_command($cmd, errmsg => "rbd clone '$basename' error");
 
+    &$krdb_feature_disable($scfg, $storeid, $name);
+
     return $newvol;
 }
 
@@ -418,6 +433,8 @@ sub alloc_image {
 
     my $cmd = &$rbd_cmd($scfg, $storeid, 'create', '--image-format' , 2, '--size', int(($size+1023)/1024), $name);
     run_rbd_command($cmd, errmsg => "rbd create $name' error");
+
+    &$krdb_feature_disable($scfg, $storeid, $name);
 
     return $name;
 }
