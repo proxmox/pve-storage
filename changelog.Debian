@@ -1,3 +1,11 @@
+libpve-storage-perl (4.0-52) unstable; urgency=medium
+
+  * disable jewel image features when using krdb
+
+  * add ceph version helpers
+
+ -- Proxmox Support Team <support@proxmox.com>  Tue, 07 Jun 2016 10:30:02 +0200
+
 libpve-storage-perl (4.0-51) unstable; urgency=medium
 
   * add pvesm extractconfig
