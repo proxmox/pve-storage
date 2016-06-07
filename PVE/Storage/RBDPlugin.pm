@@ -111,11 +111,11 @@ sub ceph_version {
     my $bugfix;
 
     if (defined($version_string)) {
-	($major, $minor, $bugfix, $version_string) = &$version_parser($version_string);
+	($major, $minor, $bugfix, $version_string) = &$ceph_version_parser($version_string);
     } else {
 	run_command('ceph version', outfunc => sub {
 	    my $line = shift;
-	    ($major, $minor, $bugfix, $version_string) = &$version_parser($line);
+	    ($major, $minor, $bugfix, $version_string) = &$ceph_version_parser($line);
 	});
     }
     return undef if !defined($version_string);
