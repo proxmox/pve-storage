@@ -558,15 +558,17 @@ sub storage_migrate {
 			  $target_volname, int($size/1024)]);
 
 	    eval {
-		run_command([["dd", "if=$src"],
-			     ["/usr/bin/ssh", "root\@${target_host}", "-C",
+		if ($tcfg->{type} eq 'lvmthin') {
+		    run_command([["dd", "if=$src"],["/usr/bin/ssh", "root\@${target_host}", "-C",
 			      "dd", 'conv=sparse', "of=$dst"]]);
+		} else {
+		    run_command([["dd", "if=$src"],["/usr/bin/ssh", "root\@${target_host}", "-C",
+			      "dd", "of=$dst"]]);
+		}
 	    };
 	    if (my $err = $@) {
 		run_command(['/usr/bin/ssh', "root\@${target_host}",
 			 'pvesm', 'free', $target_volid]);
-	    } else {
-		vdisk_free($cfg, $volid);
 	    }
 	} else {
 	    die "$errstr - migrate from source type '$scfg->{type}' to '$tcfg->{type}' not implemented\n";
