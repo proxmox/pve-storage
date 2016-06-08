@@ -548,25 +548,23 @@ sub storage_migrate {
 	if (($scfg->{type} eq $tcfg->{type}) &&
 	    ($tcfg->{type} eq 'lvmthin' || $tcfg->{type} eq 'lvm')) {
 
-	    my (undef, $volname) = parse_volname($cfg, $volid);
+	    my (undef, $volname, $vmid) = parse_volname($cfg, $volid);
 	    my $size = volume_size_info($cfg, $volid, 5);
-	    my $path = path($cfg, $volid);
-
-	    $volname =~ m/^vm-(\d+)-/;
-	    my $vmid = $1;
+	    my $src = path($cfg, $volid);
+	    my $dst = path($cfg, $target_volid);
 
 	    run_command(['/usr/bin/ssh', "root\@${target_host}",
 			 'pvesm', 'alloc', $target_storeid, $vmid,
-			 $volname, $size/1024]);
+			  $target_volname, int($size/1024)]);
 
 	    eval {
-		run_command([["dd", "if=$path"],
+		run_command([["dd", "if=$src"],
 			     ["/usr/bin/ssh", "root\@${target_host}", "-C",
-			      "dd", 'conv=sparse', "of=$path"]]);
+			      "dd", 'conv=sparse', "of=$dst"]]);
 	    };
 	    if (my $err = $@) {
 		run_command(['/usr/bin/ssh', "root\@${target_host}",
-			 'pvesm', 'free', $volid]);
+			 'pvesm', 'free', $target_volid]);
 	    } else {
 		vdisk_free($cfg, $volid);
 	    }
