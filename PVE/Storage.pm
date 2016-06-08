@@ -545,10 +545,8 @@ sub storage_migrate {
 
     } elsif ($scfg->{type} eq 'lvmthin' || $scfg->{type} eq 'lvm') {
 
-	if ($tcfg->{type} eq 'lvmthin' || $tcfg->{type} eq 'lvm') {
-
-	    die "$errstr - pool on target has not same name as source!"
-		if $tcfg->{type} ne $scfg->{type};
+	if (($scfg->{type} eq $tcfg->{type}) &&
+	    ($tcfg->{type} eq 'lvmthin' || $tcfg->{type} eq 'lvm')) {
 
 	    my (undef, $volname) = parse_volname($cfg, $volid);
 	    my $size = volume_size_info($cfg, $volid, 5);
@@ -573,7 +571,7 @@ sub storage_migrate {
 		vdisk_free($cfg, $volid);
 	    }
 	} else {
-	    die "$errstr - target type $tcfg->{type} is not valid\n";
+	    die "$errstr - migrate from source type '$scfg->{type}' to '$tcfg->{type}' not implemented\n";
 	}
     } else {
 	die "$errstr - source type '$scfg->{type}' not implemented\n";
