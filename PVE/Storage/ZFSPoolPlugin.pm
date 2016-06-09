@@ -206,7 +206,7 @@ sub alloc_image {
 	my $devname = "/dev/zvol/$scfg->{pool}/$volname";
 
 	run_command("udevadm trigger --subsystem-match block");
-	system("udevadm settle --timeout 10 --exit-if-exists=${devname}");
+	system('udevadm', 'settle', '--timeout', '10', "--exit-if-exists=${devname}");
 
     } elsif ( $fmt eq 'subvol') {
 
