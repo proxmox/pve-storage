@@ -341,7 +341,7 @@ __PACKAGE__->register_method ({
 
 	chomp $filename;
 	$filename =~ s/^.*[\/\\]//;
-	$filename =~ s/\s/_/g;
+	$filename =~ s/[^-a-zA-Z0-9_.]/_/g;
 
 	my $path;
 
