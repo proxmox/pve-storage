@@ -151,7 +151,7 @@ our $cmddef = {
     alloc => [ "PVE::API2::Storage::Content", 'create', ['storage', 'vmid', 'filename', 'size'],
 	       { node => $nodename }, sub {
 		   my $volid = shift;
-		   print "sucessfuly created '$volid'\n";
+		   print "successfully created '$volid'\n";
 	       }],
     free => [ "PVE::API2::Storage::Content", 'delete', ['volume'],
 	      { node => $nodename } ],
