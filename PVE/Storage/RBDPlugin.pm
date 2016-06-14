@@ -113,7 +113,7 @@ sub ceph_version {
     if (defined($version_string)) {
 	($major, $minor, $bugfix, $version_string) = &$ceph_version_parser($version_string);
     } else {
-	run_command('ceph version', outfunc => sub {
+	run_command('ceph --version', outfunc => sub {
 	    my $line = shift;
 	    ($major, $minor, $bugfix, $version_string) = &$ceph_version_parser($line);
 	});
