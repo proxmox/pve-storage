@@ -569,6 +569,7 @@ sub storage_migrate {
 	    if (my $err = $@) {
 		run_command(['/usr/bin/ssh', "root\@${target_host}",
 			 'pvesm', 'free', $target_volid]);
+		die $err;
 	    }
 	} else {
 	    die "$errstr - migrate from source type '$scfg->{type}' to '$tcfg->{type}' not implemented\n";
