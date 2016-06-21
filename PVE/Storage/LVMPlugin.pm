@@ -140,6 +140,7 @@ sub lvm_list_volumes {
 	    lv_type => $lv_type,
 	};
 	$d->{pool_lv} = $pool_lv if $pool_lv;
+	$d->{tags} = $tags if $tags;
 
 	if ($lv_type eq 't') {
 	    $data_percent ||= 0;
@@ -183,6 +184,10 @@ sub properties {
 	    description => "Wipe throughput (cstream -t parameter value).",
 	    type => 'string',
 	},
+	tagged_only => {
+	    description => "Only use logical volumes tagged with 'pve-vm-ID'.",
+	    type => 'boolean',
+	}
     };
 }
 
@@ -196,6 +201,7 @@ sub options {
         saferemove_throughput => { optional => 1 },
 	content => { optional => 1 },
         base => { fixed => 1, optional => 1 },
+	tagged_only => { optional => 1 },
     };
 }
 
@@ -339,6 +345,12 @@ sub free_image {
     return undef;
 }
 
+my $check_tags = sub {
+    my ($tags) = @_;
+
+    return defined($tags) && $tags =~ /(^|,)pve-vm-\d+(,|$)/;
+};
+
 sub list_images {
     my ($class, $storeid, $scfg, $vmid, $vollist, $cache) = @_;
 
@@ -356,6 +368,8 @@ sub list_images {
 	    my $owner = $1;
 
 	    my $info = $dat->{$volname};
+
+	    next if $scfg->{tagged_only} && !&$check_tags($info->{tags});
 
 	    next if $info->{lv_type} ne '-';
 
