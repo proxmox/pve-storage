@@ -194,13 +194,13 @@ sub properties {
 sub options {
     return {
 	vgname => { fixed => 1 },
-        nodes => { optional => 1 },
+	nodes => { optional => 1 },
 	shared => { optional => 1 },
 	disable => { optional => 1 },
-        saferemove => { optional => 1 },
-        saferemove_throughput => { optional => 1 },
+	saferemove => { optional => 1 },
+	saferemove_throughput => { optional => 1 },
 	content => { optional => 1 },
-        base => { fixed => 1, optional => 1 },
+	base => { fixed => 1, optional => 1 },
 	tagged_only => { optional => 1 },
     };
 }
