@@ -597,7 +597,7 @@ sub free_image {
 
     my $path = $class->filesystem_path($scfg, $volname);
 
-    if ($format eq 'subvol') {
+    if (defined($format) && ($format eq 'subvol')) {
 	File::Path::remove_tree($path);
     } else {
     
