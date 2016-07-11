@@ -3,6 +3,7 @@ package PVE::Storage::RBDPlugin;
 use strict;
 use warnings;
 use IO::File;
+use Net::IP;
 use PVE::Tools qw(run_command trim);
 use PVE::Storage::Plugin;
 use PVE::JSONSchema qw(get_standard_option);
@@ -25,11 +26,21 @@ my $add_pool_to_disk = sub {
     return "$pool/$disk";
 };
 
+my $hostlist = sub {
+    my ($list_text, $separator) = @_;
+    my @monhostlist = PVE::Tools::split_list($list_text);
+    return join($separator, map {
+	my ($host, $port) = PVE::Tools::parse_host_and_port($_);
+	$port = defined($port) ? ":$port" : '';
+	$host = "[$host]" if Net::IP::ip_is_ipv6($host);
+	"${host}${port}"
+    } @monhostlist);
+};
+
 my $rbd_cmd = sub {
     my ($scfg, $storeid, $op, @options) = @_;
 
-    my $monhost = $scfg->{monhost};
-    $monhost =~ s/;/,/g;
+    my $monhost = &$hostlist($scfg->{monhost}, ',');
 
     my $keyring = "/etc/pve/priv/ceph/${storeid}.keyring";
     my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
@@ -55,8 +66,7 @@ my $rbd_cmd = sub {
 my $rados_cmd = sub {
     my ($scfg, $storeid, $op, @options) = @_;
 
-    my $monhost = $scfg->{monhost};
-    $monhost =~ s/;/,/g;
+    my $monhost = &$hostlist($scfg->{monhost}, ',');
 
     my $keyring = "/etc/pve/priv/ceph/${storeid}.keyring";
     my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
@@ -248,7 +258,7 @@ sub properties {
     return {
 	monhost => {
 	    description => "Monitors daemon ips.",
-	    type => 'string',
+	    type => 'string', format => 'pve-storage-portal-dns-list',
 	},
 	pool => {
 	    description => "Pool.",
@@ -302,7 +312,7 @@ sub path {
     my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
     return ("/dev/rbd/$pool/$name", $vmid, $vtype) if $scfg->{krbd};
 
-    my $monhost = $scfg->{monhost};
+    my $monhost = &$hostlist($scfg->{monhost}, ';');
     $monhost =~ s/:/\\:/g;
 
     my $username =  $scfg->{username} ? $scfg->{username} : 'admin';
