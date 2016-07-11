@@ -299,10 +299,12 @@ sub path {
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
     $name .= '@'.$snapname if $snapname;
 
+    my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
+    return ("/dev/rbd/$pool/$name", $vmid, $vtype) if $scfg->{krbd};
+
     my $monhost = $scfg->{monhost};
     $monhost =~ s/:/\\:/g;
 
-    my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
     my $username =  $scfg->{username} ? $scfg->{username} : 'admin';
 
     my $path = "rbd:$pool/$name:mon_host=$monhost";
@@ -313,8 +315,6 @@ sub path {
     }else{
 	$path .= ":auth_supported=none";
     }
-
-    $path = "/dev/rbd/$pool/$name" if $scfg->{krbd};
 
     return ($path, $vmid, $vtype);
 }
