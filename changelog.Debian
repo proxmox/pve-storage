@@ -1,3 +1,17 @@
+libpve-storage-perl (4.0-56) unstable; urgency=medium
+
+  * Remove unused pve-storage-monhost format
+
+  * rbd: use pve-storage-portal-dns-list for monhost
+
+  * cleanups
+
+  * add tagged_only option to LVM storage
+
+  * add check if format is defined to avoid warning
+
+ -- Proxmox Support Team <support@proxmox.com>  Mon, 11 Jul 2016 14:24:15 +0200
+
 libpve-storage-perl (4.0-55) unstable; urgency=medium
 
   * fix #1033 storage_migrate on LVMThin - add die.
