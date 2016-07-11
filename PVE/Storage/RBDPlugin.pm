@@ -232,18 +232,6 @@ sub rbd_volume_info {
 
 # Configuration
 
-PVE::JSONSchema::register_format('pve-storage-monhost', \&parse_monhost);
-sub parse_monhost {
-    my ($name, $noerr) = @_;
-
-    if ($name !~ m/^[a-z][a-z0-9\-\_\.]*[a-z0-9]$/i) {
-	return undef if $noerr;
-	die "lvm name '$name' contains illegal characters\n";
-    }
-
-    return $name;
-}
-
 sub type {
     return 'rbd';
 }
