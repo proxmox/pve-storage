@@ -75,7 +75,7 @@ sub lock_storage_config {
 sub storage_config {
     my ($cfg, $storeid, $noerr) = @_;
 
-    die "no storage id specified\n" if !$storeid;
+    die "no storage ID specified\n" if !$storeid;
 
     my $scfg = $cfg->{ids}->{$storeid};
 
@@ -515,7 +515,7 @@ sub storage_migrate {
 
 	if ($tcfg->{type} eq 'zfspool') {
 
-	    die "$errstr - pool on target has not same name as source!"
+	    die "$errstr - pool on target does not have the same name as on source!"
 		if $tcfg->{pool} ne $scfg->{pool};
 
 	    my (undef, $volname) = parse_volname($cfg, $volid);
@@ -618,7 +618,7 @@ sub vdisk_create_base {
 sub vdisk_alloc {
     my ($cfg, $storeid, $vmid, $fmt, $name, $size) = @_;
 
-    die "no storage id specified\n" if !$storeid;
+    die "no storage ID specified\n" if !$storeid;
 
     PVE::JSONSchema::parse_storage_id($storeid);
 
@@ -961,7 +961,7 @@ sub deactivate_volumes {
 	}
     }
 
-    die "volume deativation failed: " . join(' ', @errlist)
+    die "volume deactivation failed: " . join(' ', @errlist)
 	if scalar(@errlist);
 }
 
