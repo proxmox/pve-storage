@@ -559,10 +559,10 @@ sub storage_migrate {
 
 	    eval {
 		if ($tcfg->{type} eq 'lvmthin') {
-		    run_command([["dd", "if=$src"],["/usr/bin/ssh", "root\@${target_host}", "-C",
+		    run_command([["dd", "if=$src"],["/usr/bin/ssh", "root\@${target_host}",
 			      "dd", 'conv=sparse', "of=$dst"]]);
 		} else {
-		    run_command([["dd", "if=$src"],["/usr/bin/ssh", "root\@${target_host}", "-C",
+		    run_command([["dd", "if=$src"],["/usr/bin/ssh", "root\@${target_host}",
 			      "dd", "of=$dst"]]);
 		}
 	    };
