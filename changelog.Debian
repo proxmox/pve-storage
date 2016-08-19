@@ -1,3 +1,11 @@
+libpve-storage-perl (4.0-57) unstable; urgency=medium
+
+  * remove compression option from lvm migration
+
+  * fix spelling / grammar
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 19 Aug 2016 14:59:26 +0200
+
 libpve-storage-perl (4.0-56) unstable; urgency=medium
 
   * Remove unused pve-storage-monhost format
