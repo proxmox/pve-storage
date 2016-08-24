@@ -56,6 +56,12 @@ my $rbd_cmd = sub {
 	push @$cmd, '--auth_supported', 'none';
     }
 
+    my $cephconfig = "/etc/pve/priv/ceph/${storeid}.conf";
+
+    if(-e $cephconfig){
+	push @$cmd, '-c', $cephconfig;
+    }
+
     push @$cmd, $op;
 
     push @$cmd, @options if scalar(@options);
@@ -80,6 +86,12 @@ my $rados_cmd = sub {
 	push @$cmd, '--auth_supported', 'cephx';
     }else{
 	push @$cmd, '--auth_supported', 'none';
+    }
+
+    my $cephconfig = "/etc/pve/priv/ceph/${storeid}.conf";
+
+    if(-e $cephconfig){
+	push @$cmd, '-c', $cephconfig;
     }
 
     push @$cmd, $op;
@@ -312,6 +324,12 @@ sub path {
         $path .= ":id=$username:auth_supported=cephx:keyring=$keyring";
     }else{
 	$path .= ":auth_supported=none";
+    }
+
+    my $cephconfig = "/etc/pve/priv/ceph/${storeid}.conf";
+
+    if(-e $cephconfig){
+	$path .= ":conf=$cephconfig";
     }
 
     return ($path, $vmid, $vtype);
