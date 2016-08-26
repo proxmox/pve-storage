@@ -12,7 +12,7 @@ use File::Path;
 use Cwd 'abs_path';
 use Socket;
 
-use PVE::Tools qw(run_command file_read_firstline $IPV6RE);
+use PVE::Tools qw(run_command file_read_firstline dir_glob_foreach $IPV6RE);
 use PVE::Cluster qw(cfs_read_file cfs_write_file cfs_lock_file);
 use PVE::Exception qw(raise_param_exc);
 use PVE::JSONSchema;
@@ -33,7 +33,10 @@ use PVE::Storage::ZFSPoolPlugin;
 use PVE::Storage::ZFSPlugin;
 use PVE::Storage::DRBDPlugin;
 
-# load and initialize all plugins
+# Storage API version. Icrement it on changes in storage API interface.
+use constant APIVER => 1;
+
+# load standard plugins
 PVE::Storage::DirPlugin->register();
 PVE::Storage::LVMPlugin->register();
 PVE::Storage::LvmThinPlugin->register();
@@ -46,6 +49,34 @@ PVE::Storage::GlusterfsPlugin->register();
 PVE::Storage::ZFSPoolPlugin->register();
 PVE::Storage::ZFSPlugin->register();
 PVE::Storage::DRBDPlugin->register();
+
+# load third-party plugins
+if ( -d '/usr/share/perl5/PVE/Storage/Custom' ) {
+    dir_glob_foreach('/usr/share/perl5/PVE/Storage/Custom', '.*\.pm$', sub {
+	my ($file) = @_;
+	my $modname = 'PVE::Storage::Custom::' . $file;
+	$modname =~ s!\.pm$!!;
+	$file = 'PVE/Storage/Custom/' . $file;
+
+	eval {
+	    require $file;
+	};
+	if ($@) {
+	    warn $@;
+	# Check storage API version and that file is really storage plugin.
+	} elsif ($modname->isa('PVE::Storage::Plugin') && $modname->can('api') && $modname->api() == APIVER) {
+            eval {
+	        import $file;
+	        $modname->register();
+            };
+            warn $@ if $@;
+	} else {
+	    warn "Error loading storage plugin \"$modname\" because of API version mismatch. Please, update it.\n"
+	}
+    });
+}
+
+# initialize all plugins
 PVE::Storage::Plugin->init();
 
 my $UDEVADM = '/sbin/udevadm';
