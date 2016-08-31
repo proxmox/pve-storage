@@ -834,6 +834,8 @@ sub activate_storage {
     die "unable to activate storage '$storeid' - " .
 	"directory '$path' does not exist\n" if ! -d $path;
 
+    return if defined($scfg->{mkdir}) && !$scfg->{mkdir};
+
     if (defined($scfg->{content})) {
 	foreach my $vtype (keys %$vtype_subdirs) {
 	    # OpenVZMigrate uses backup (dump) dir

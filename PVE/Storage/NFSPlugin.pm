@@ -85,6 +85,7 @@ sub options {
 	options => { optional => 1 },
 	content => { optional => 1 },
 	format => { optional => 1 },
+	mkdir => { optional => 1 },
     };
 }
 
@@ -129,7 +130,7 @@ sub activate_storage {
 	# NOTE: only call mkpath when not mounted (avoid hang 
 	# when NFS server is offline 
 		    
-	mkpath $path;
+	mkpath $path if !(defined($scfg->{mkdir}) && !$scfg->{mkdir});
 
 	die "unable to activate storage '$storeid' - " .
 	    "directory '$path' does not exist\n" if ! -d $path;
