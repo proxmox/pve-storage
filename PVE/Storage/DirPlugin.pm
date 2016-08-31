@@ -2,6 +2,7 @@ package PVE::Storage::DirPlugin;
 
 use strict;
 use warnings;
+use Cwd;
 use File::Path;
 use PVE::Storage::Plugin;
 use PVE::JSONSchema qw(get_standard_option);
@@ -33,6 +34,13 @@ sub properties {
 	    type => 'boolean',
 	    default => 'yes',
 	},
+	is_mountpoint => {
+	    description =>
+		"Assume the directory is an externally managed mountpoint. " .
+		"If nothing is mounted the storage will be considered offline.",
+	    type => 'boolean',
+	    default => 'no',
+	},
     };
 }
 
@@ -46,17 +54,50 @@ sub options {
 	content => { optional => 1 },
 	format => { optional => 1 },
 	mkdir => { optional => 1 },
+	is_mountpoint => { optional => 1 },
    };
 }
 
 # Storage implementation
+#
+
+# NOTE: should ProcFSTools::is_mounted accept an optional cache like this?
+sub path_is_mounted {
+    my ($mountpoint, $mountdata) = @_;
+
+    $mountpoint = Cwd::realpath($mountpoint); # symlinks
+    return 0 if !defined($mountpoint); # path does not exist
+
+    $mountdata = PVE::ProcFSTools::parse_proc_mounts() if !$mountdata;
+    return 1 if grep { $_->[1] eq $mountpoint } @$mountdata;
+    return undef;
+}
+
+sub status {
+    my ($class, $storeid, $scfg, $cache) = @_;
+
+    $cache->{mountdata} = PVE::ProcFSTools::parse_proc_mounts()
+	if !$cache->{mountdata};
+
+    my $path = $scfg->{path};
+
+    return undef if !path_is_mounted($path, $cache->{mountdata});
+
+    return $class->SUPER::status($storeid, $scfg, $cache);
+}
+
 
 sub activate_storage {
     my ($class, $storeid, $scfg, $cache) = @_;
 
+    my $path = $scfg->{path};
     if (!defined($scfg->{mkdir}) || $scfg->{mkdir}) {
-	my $path = $scfg->{path};
 	mkpath $path;
+    }
+
+    if ($scfg->{is_mountpoint} && !path_is_mounted($path, $cache->{mountdata})) {
+	die "unable to activate storage '$storeid' - " .
+	    "directory is expected to be a mount point but is not mounted: '$path'\n";
     }
 
     $class->SUPER::activate_storage($storeid, $scfg, $cache);    
