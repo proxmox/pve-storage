@@ -10,13 +10,11 @@ use PVE::JSONSchema qw(get_standard_option);
 
 use base qw(PVE::Storage::Plugin);
 
-sub rbd_unittobytes {
-  {
-       "M"  => 1024*1024,
-       "G"  => 1024*1024*1024,
-       "T"  => 1024*1024*1024*1024,
-  }
-}
+my $rbd_unittobytes = {
+    "M"  => 1024*1024,
+    "G"  => 1024*1024*1024,
+    "T"  => 1024*1024*1024*1024,
+};
 
 my $add_pool_to_disk = sub {
     my ($scfg, $disk) = @_;
@@ -189,7 +187,7 @@ sub rbd_ls {
 
 	    $list->{$pool}->{$image} = {
 		name => $image,
-		size => $size*rbd_unittobytes()->{$unit},
+		size => $size*$rbd_unittobytes->{$unit},
 		parent => $parent,
 		vmid => $owner
 	    };
@@ -226,7 +224,7 @@ sub rbd_volume_info {
 	my $line = shift;
 
 	if ($line =~ m/size (\d+) (M|G|T)B in (\d+) objects/) {
-	    $size = $1 * rbd_unittobytes()->{$2} if ($1);
+	    $size = $1 * $rbd_unittobytes->{$2} if ($1);
 	} elsif ($line =~ m/parent:\s(\S+)\/(\S+)/) {
 	    $parent = $2;
 	} elsif ($line =~ m/format:\s(\d+)/) {
