@@ -26,6 +26,7 @@ my $add_pool_to_disk = sub {
 
 my $hostlist = sub {
     my ($list_text, $separator) = @_;
+
     my @monhostlist = PVE::Tools::split_list($list_text);
     return join($separator, map {
 	my ($host, $port) = PVE::Tools::parse_host_and_port($_);
@@ -46,17 +47,17 @@ my $rbd_cmd = sub {
 
     my $cmd = ['/usr/bin/rbd', '-p', $pool, '-m', $monhost]; 
 
-    if(-e $keyring){
+    if (-e $keyring) {
 	push @$cmd, '-n', "client.$username";
 	push @$cmd, '--keyring', $keyring;
 	push @$cmd, '--auth_supported', 'cephx';
-    }else{
+    } else {
 	push @$cmd, '--auth_supported', 'none';
     }
 
     my $cephconfig = "/etc/pve/priv/ceph/${storeid}.conf";
 
-    if(-e $cephconfig){
+    if (-e $cephconfig) {
 	push @$cmd, '-c', $cephconfig;
     }
 
@@ -78,17 +79,17 @@ my $rados_cmd = sub {
 
     my $cmd = ['/usr/bin/rados', '-p', $pool, '-m', $monhost];
 
-    if(-e $keyring){
+    if (-e $keyring) {
 	push @$cmd, '-n', "client.$username";
 	push @$cmd, '--keyring', $keyring;
 	push @$cmd, '--auth_supported', 'cephx';
-    }else{
+    } else {
 	push @$cmd, '--auth_supported', 'none';
     }
 
     my $cephconfig = "/etc/pve/priv/ceph/${storeid}.conf";
 
-    if(-e $cephconfig){
+    if (-e $cephconfig) {
 	push @$cmd, '-c', $cephconfig;
     }
 
@@ -113,12 +114,12 @@ my $krdb_feature_disable = sub {
 };
 
 my $ceph_version_parser = sub {
-	my $line = shift;
-	if ($line =~ m/^ceph version ((\d+)\.(\d+)\.(\d+))(?: \([a-fA-F0-9]+\))?$/) {
-	    return ($2, $3, $4, $1);
-	} else {
-	    warn "Could not parse Ceph version: '$line'\n";
-	}
+    my $line = shift;
+    if ($line =~ m/^ceph version ((\d+)\.(\d+)\.(\d+))(?: \([a-fA-F0-9]+\))?$/) {
+	return ($2, $3, $4, $1);
+    } else {
+	warn "Could not parse Ceph version: '$line'\n";
+    }
 };
 
 sub ceph_version {
@@ -318,15 +319,15 @@ sub path {
     my $path = "rbd:$pool/$name:mon_host=$monhost";
     my $keyring = "/etc/pve/priv/ceph/${storeid}.keyring";
 
-    if(-e $keyring ){
+    if (-e $keyring) {
         $path .= ":id=$username:auth_supported=cephx:keyring=$keyring";
-    }else{
+    } else {
 	$path .= ":auth_supported=none";
     }
 
     my $cephconfig = "/etc/pve/priv/ceph/${storeid}.conf";
 
-    if(-e $cephconfig){
+    if (-e $cephconfig) {
 	$path .= ":conf=$cephconfig";
     }
 
