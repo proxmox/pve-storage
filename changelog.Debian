@@ -1,3 +1,17 @@
+libpve-storage-perl (4.0-58) unstable; urgency=medium
+
+  * sheepdog 1.0 changed the path from /usr/sbin/dog to /usr/bin/dog
+
+  * add api entries for disk management
+
+  * add Diskmanage Utilities
+
+  * rbd: allow to use client custom ceph conf for each storeid
+
+  * Add support for custom storage plugins
+
+ -- Proxmox Support Team <support@proxmox.com>  Wed, 07 Sep 2016 09:14:19 +0200
+
 libpve-storage-perl (4.0-57) unstable; urgency=medium
 
   * remove compression option from lvm migration
