@@ -14,7 +14,7 @@ my $collie_cmd = sub {
 
     my $portal = $scfg->{portal};
     my ($server, $port) = split(':', $portal);
-    my $cmd = ['/usr/sbin/dog', $class, $op, '-a', $server];
+    my $cmd = ['/usr/bin/dog', $class, $op, '-a', $server];
     push @$cmd, '-p', $port if $port;
 
     push @$cmd, @options if scalar(@options);
