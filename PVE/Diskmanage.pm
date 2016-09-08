@@ -76,8 +76,9 @@ sub get_smart_data {
     my $smartdata = {};
     my $datastarted = 0;
 
+    my $returncode = 0;
     eval {
-	run_command([$SMARTCTL, '-a', '-f', 'brief', $disk], outfunc => sub{
+	$returncode = run_command([$SMARTCTL, '-a', '-f', 'brief', $disk], noerr => 1, outfunc => sub{
 	    my ($line) = @_;
 
 	    if ($datastarted && $line =~ m/^[ \d]{2}\d/) {
@@ -101,7 +102,14 @@ sub get_smart_data {
 	    }
 	});
     };
-    die "Error getting S.M.A.R.T. data: $@\n" if $@;
+    my $err = $@;
+
+    # bit 0 and 1 mark an severe smartctl error
+    # all others are for disk status, so ignore them
+    # see smartctl(8)
+    if ((defined($returncode) && ($returncode & 0b00000011)) || $err) {
+	die "Error getting S.M.A.R.T. data: Exit code: $returncode\n";
+    }
     $smartdata->{health} = 'UNKOWN' if !defined $smartdata->{health};
     return $smartdata;
 }
@@ -114,7 +122,7 @@ sub get_smart_health {
     my $message = "UNKOWN";
 
     eval {
-	run_command([$SMARTCTL, '-H', $disk], outfunc => sub {
+	run_command([$SMARTCTL, '-H', $disk], noerr => 1, outfunc => sub {
 	    my ($line) = @_;
 
 	    if ($line =~ m/test result: (.*)$/) {
