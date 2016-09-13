@@ -495,7 +495,7 @@ sub list_images {
 
             my $volid = "$storeid:$volname";
 
-            my $owner = $dat->{$volname}->{vmid};
+            my $owner = $dat->{$image}->{vmid};
             if ($vollist) {
                 my $found = grep { $_ eq $volid } @$vollist;
                 next if !$found;
@@ -503,7 +503,7 @@ sub list_images {
                 next if defined ($vmid) && ($owner ne $vmid);
             }
 
-            my $info = $dat->{$volname};
+            my $info = $dat->{$image};
             $info->{volid} = $volid;
 	    $info->{format} = 'raw';
 
