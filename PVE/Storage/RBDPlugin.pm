@@ -489,31 +489,31 @@ sub list_images {
     my $res = [];
 
     if (my $dat = $cache->{rbd}->{$pool}) {
-        foreach my $image (keys %$dat) {
+	foreach my $image (keys %$dat) {
 
-            my $volname = $dat->{$image}->{name};
+	    my $volname = $dat->{$image}->{name};
 	    my $parent = $dat->{$image}->{parent};
 
 	    if ($parent && $parent =~ m/^(base-\d+-\S+)\@__base__$/) {
 		$volname = "$1/$volname";
 	    }
 
-            my $volid = "$storeid:$volname";
+	    my $volid = "$storeid:$volname";
 
-            my $owner = $dat->{$image}->{vmid};
-            if ($vollist) {
-                my $found = grep { $_ eq $volid } @$vollist;
-                next if !$found;
-            } else {
-                next if defined ($vmid) && ($owner ne $vmid);
-            }
+	    my $owner = $dat->{$image}->{vmid};
+	    if ($vollist) {
+		my $found = grep { $_ eq $volid } @$vollist;
+		next if !$found;
+	    } else {
+		next if defined ($vmid) && ($owner ne $vmid);
+	    }
 
-            my $info = $dat->{$image};
-            $info->{volid} = $volid;
+	    my $info = $dat->{$image};
+	    $info->{volid} = $volid;
 	    $info->{format} = 'raw';
 
-            push @$res, $info;
-        }
+	    push @$res, $info;
+	}
     }
     
     return $res;
