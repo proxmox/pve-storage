@@ -710,7 +710,7 @@ sub vdisk_free {
 
 		if ($basename && defined($basevmid) && $basevmid == $vmid && $basename eq $name) {
 		    die "base volume '$volname' is still in use " .
-			"(use by '$tmpvolname')\n";
+			"(used by '$tmpvolname')\n";
 		}
 	    }
 	}
