@@ -492,6 +492,11 @@ sub list_images {
         foreach my $image (keys %$dat) {
 
             my $volname = $dat->{$image}->{name};
+	    my $parent = $dat->{$image}->{parent};
+
+	    if ($parent && $parent =~ m/^(base-\d+-\S+)\@__base__$/) {
+		$volname = "$1/$volname";
+	    }
 
             my $volid = "$storeid:$volname";
 
