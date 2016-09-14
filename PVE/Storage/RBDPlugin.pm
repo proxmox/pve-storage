@@ -491,8 +491,11 @@ sub list_images {
     if (my $dat = $cache->{rbd}->{$pool}) {
 	foreach my $image (keys %$dat) {
 
-	    my $volname = $dat->{$image}->{name};
-	    my $parent = $dat->{$image}->{parent};
+	    my $info = $dat->{$image};
+
+	    my $volname = $info->{name};
+	    my $parent = $info->{parent};
+	    my $owner = $info->{vmid};
 
 	    if ($parent && $parent =~ m/^(base-\d+-\S+)\@__base__$/) {
 		$volname = "$1/$volname";
@@ -500,7 +503,6 @@ sub list_images {
 
 	    my $volid = "$storeid:$volname";
 
-	    my $owner = $dat->{$image}->{vmid};
 	    if ($vollist) {
 		my $found = grep { $_ eq $volid } @$vollist;
 		next if !$found;
@@ -508,7 +510,6 @@ sub list_images {
 		next if defined ($vmid) && ($owner ne $vmid);
 	    }
 
-	    my $info = $dat->{$image};
 	    $info->{volid} = $volid;
 	    $info->{format} = 'raw';
 
