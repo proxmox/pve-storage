@@ -444,7 +444,7 @@ sub create_base {
     my ($class, $storeid, $scfg, $volname) = @_;
 
     # this only works for file based storage types
-    die "storage definintion has no path\n" if !$scfg->{path};
+    die "storage definition has no path\n" if !$scfg->{path};
 
     my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $format) =
 	$class->parse_volname($volname);
