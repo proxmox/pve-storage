@@ -341,6 +341,44 @@ sub parse_volume_id {
     return PVE::Storage::Plugin::parse_volume_id($volid, $noerr);
 }
 
+my $volume_is_base_and_used__no_lock = sub {
+    my ($scfg, $storeid, $plugin, $volname) = @_;
+
+    my ($vtype, $name, $vmid, undef, undef, $isBase, undef) =
+	$plugin->parse_volname($volname);
+
+    if ($isBase) {
+	my $vollist = $plugin->list_images($storeid, $scfg);
+	foreach my $info (@$vollist) {
+	    my (undef, $tmpvolname) = parse_volume_id($info->{volid});
+	    my $basename = undef;
+	    my $basevmid = undef;
+
+	    eval{
+		(undef, undef, undef, $basename, $basevmid) =
+		    $plugin->parse_volname($tmpvolname);
+	    };
+
+	    if ($basename && defined($basevmid) && $basevmid == $vmid && $basename eq $name) {
+		return 1;
+	    }
+	}
+    }
+    return 0;
+};
+
+sub volume_is_base_and_used {
+    my ($cfg, $volid) = @_;
+
+    my ($storeid, $volname) = parse_volume_id($volid);
+    my $scfg = storage_config($cfg, $storeid);
+    my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
+
+    $plugin->cluster_lock_storage($storeid, $scfg->{shared}, undef, sub {
+	return &$volume_is_base_and_used__no_lock($scfg, $storeid, $plugin, $volname);
+    });
+}
+
 # try to map a filesystem path to a volume identifier
 sub path_to_volume_id {
     my ($cfg, $path) = @_;
@@ -661,9 +699,7 @@ sub vdisk_free {
     my ($cfg, $volid) = @_;
 
     my ($storeid, $volname) = parse_volume_id($volid);
-
     my $scfg = storage_config($cfg, $storeid);
-
     my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
 
     activate_storage($cfg, $storeid);
@@ -672,27 +708,11 @@ sub vdisk_free {
 
     # lock shared storage
     $plugin->cluster_lock_storage($storeid, $scfg->{shared}, undef, sub {
+	die "base volume '$volname' is still in use by linked clones\n"
+	    if &$volume_is_base_and_used__no_lock($scfg, $storeid, $plugin, $volname);
 
-	my ($vtype, $name, $vmid, undef, undef, $isBase, $format) =
+	my (undef, undef, undef, undef, undef, $isBase, $format) =
 	    $plugin->parse_volname($volname);
-	if ($isBase) {
-	    my $vollist = $plugin->list_images($storeid, $scfg);
-	    foreach my $info (@$vollist) {
-		my (undef, $tmpvolname) = parse_volume_id($info->{volid});
-		my $basename = undef;
-		my $basevmid = undef;
-
-		eval{
-		    (undef, undef, undef, $basename, $basevmid) =
-			$plugin->parse_volname($tmpvolname);
-		};
-
-		if ($basename && defined($basevmid) && $basevmid == $vmid && $basename eq $name) {
-		    die "base volume '$volname' is still in use " .
-			"(used by '$tmpvolname')\n";
-		}
-	    }
-	}
 	$cleanup_worker = $plugin->free_image($storeid, $scfg, $volname, $isBase, $format);
     });
 
