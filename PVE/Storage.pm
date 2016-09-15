@@ -321,6 +321,9 @@ sub parse_vmid {
     return int($vmid);
 }
 
+# NOTE: basename and basevmid are always undef for LVM-thin, where the
+# clone -> base reference is not encoded in the volume ID.
+# see note in PVE::Storage::LvmThinPlugin for details.
 sub parse_volname {
     my ($cfg, $volid) = @_;
 
@@ -367,6 +370,9 @@ my $volume_is_base_and_used__no_lock = sub {
     return 0;
 };
 
+# NOTE: this check does not work for LVM-thin, where the clone -> base
+# reference is not encoded in the volume ID.
+# see note in PVE::Storage::LvmThinPlugin for details.
 sub volume_is_base_and_used {
     my ($cfg, $volid) = @_;
 
@@ -708,6 +714,7 @@ sub vdisk_free {
 
     # lock shared storage
     $plugin->cluster_lock_storage($storeid, $scfg->{shared}, undef, sub {
+	# LVM-thin allows deletion of still referenced base volumes!
 	die "base volume '$volname' is still in use by linked clones\n"
 	    if &$volume_is_base_and_used__no_lock($scfg, $storeid, $plugin, $volname);
 

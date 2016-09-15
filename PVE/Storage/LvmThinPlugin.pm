@@ -15,6 +15,12 @@ use PVE::JSONSchema qw(get_standard_option);
 # lvcreate -n pvepool -L 20G pve
 # lvconvert --type thin-pool pve/pvepool
 
+# NOTE: volumes which were created as linked clones of another base volume
+# are currently not tracking this relationship in their volume IDs. this is
+# generally not a problem, as LVM thin allows deletion of such base volumes
+# without affecting the linked clones. this leads to increased disk usage
+# when migrating LVM-thin volumes, which is normally prevented for linked clones.
+
 use base qw(PVE::Storage::LVMPlugin);
 
 sub type {
@@ -46,6 +52,9 @@ sub options {
     };
 }
 
+# NOTE: the fourth and fifth element of the returned array are always
+# undef, even if the volume is a linked clone of another volume. see note
+# at beginning of file.
 sub parse_volname {
     my ($class, $volname) = @_;
 
