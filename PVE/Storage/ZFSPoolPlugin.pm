@@ -248,27 +248,26 @@ sub list_images {
 
 	foreach my $image (keys %$dat) {
 
-	    my $volname = $dat->{$image}->{name};
-	    my $parent = $dat->{$image}->{parent};
+	    my $info = $dat->{$image};
 
-	    my $volid = undef;
-            if ($parent && $parent =~ m/^(\S+)@(\S+)$/) {
+	    my $volname = $info->{name};
+	    my $parent = $info->{parent};
+	    my $owner = $info->{vmid};
+
+	    if ($parent && $parent =~ m/^(\S+)\@__base__$/) {
 		my ($basename) = ($1);
-		$volid = "$storeid:$basename/$volname";
+		$info->{volid} = "$storeid:$basename/$volname";
 	    } else {
-		$volid = "$storeid:$volname";
+		$info->{volid} = "$storeid:$volname";
 	    }
 
-	    my $owner = $dat->{$volname}->{vmid};
 	    if ($vollist) {
-		my $found = grep { $_ eq $volid } @$vollist;
+		my $found = grep { $_ eq $info->{volid} } @$vollist;
 		next if !$found;
 	    } else {
 		next if defined ($vmid) && ($owner ne $vmid);
 	    }
 
-	    my $info = $dat->{$volname};
-	    $info->{volid} = $volid;
 	    push @$res, $info;
 	}
     }

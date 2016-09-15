@@ -498,19 +498,18 @@ sub list_images {
 	    my $owner = $info->{vmid};
 
 	    if ($parent && $parent =~ m/^(base-\d+-\S+)\@__base__$/) {
-		$volname = "$1/$volname";
+		$info->{volid} = "$storeid:$1/$volname";
+	    } else {
+		$info->{volid} = "$storeid:$volname";
 	    }
 
-	    my $volid = "$storeid:$volname";
-
 	    if ($vollist) {
-		my $found = grep { $_ eq $volid } @$vollist;
+		my $found = grep { $_ eq $info->{volid} } @$vollist;
 		next if !$found;
 	    } else {
 		next if defined ($vmid) && ($owner ne $vmid);
 	    }
 
-	    $info->{volid} = $volid;
 	    $info->{format} = 'raw';
 
 	    push @$res, $info;
