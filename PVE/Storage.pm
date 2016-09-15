@@ -341,27 +341,6 @@ sub parse_volume_id {
     return PVE::Storage::Plugin::parse_volume_id($volid, $noerr);
 }
 
-sub volume_is_base {
-    my ($cfg, $volid) = @_;
-
-    my ($sid, $volname) = parse_volume_id($volid, 1);
-    return 0 if !$sid;
-
-    if (my $scfg = $cfg->{ids}->{$sid}) {
-	my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
-	my ($vtype, $name, $vmid, $basename, $basevmid, $isBase) =
-	    $plugin->parse_volname($volname);
-	return $isBase ? 1 : 0;
-    } else {
-	# stale volid with undefined storage - so we can just guess
-	if ($volid =~ m/base-/) {
-	    return 1;
-	}
-    }
-
-    return 0;
-}
-
 # try to map a filesystem path to a volume identifier
 sub path_to_volume_id {
     my ($cfg, $path) = @_;

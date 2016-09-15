@@ -818,7 +818,7 @@ my $test10 =sub {
     print "\nrun test10 \"volume_is_base\"\n";
 
     eval {
-	if (1 == PVE::Storage::volume_is_base($cfg, "$storagename:$vmdisk")) {
+	if (1 == volume_is_base($cfg, "$storagename:$vmdisk")) {
 	    $count++;
 	    warn "Test10 a: is no base";
 	}
@@ -830,7 +830,7 @@ my $test10 =sub {
     }
 
     eval {
-	if (0 == PVE::Storage::volume_is_base($cfg, "$storagename:$vmbase")) {
+	if (0 == volume_is_base($cfg, "$storagename:$vmbase")) {
 	    $count++;
 	    warn "Test10 b: is base";
 	}
@@ -842,7 +842,7 @@ my $test10 =sub {
     }
 
     eval {
-	if (1 == PVE::Storage::volume_is_base($cfg, "$storagename:$vmbase\/$vmlinked")) {
+	if (1 == volume_is_base($cfg, "$storagename:$vmbase\/$vmlinked")) {
 	    $count++;
 	    warn "Test10 c: is no base";
 	}
@@ -854,7 +854,7 @@ my $test10 =sub {
     }
 
     eval {
-	if (1 == PVE::Storage::volume_is_base($cfg, "$storagename:$ctdisk")) {
+	if (1 == volume_is_base($cfg, "$storagename:$ctdisk")) {
 	    $count++;
 	    warn "Test10 d: is no base";
 	}
@@ -866,7 +866,7 @@ my $test10 =sub {
     }
 
     eval {
-	if (0 == PVE::Storage::volume_is_base($cfg, "$storagename:$ctbase")) {
+	if (0 == volume_is_base($cfg, "$storagename:$ctbase")) {
 	    $count++;
 	    warn "Test10 e: is base";
 	}
@@ -878,7 +878,7 @@ my $test10 =sub {
     }
 
     eval {
-	if (1 == PVE::Storage::volume_is_base($cfg, "$storagename:$ctbase\/$ctlinked")) {
+	if (1 == volume_is_base($cfg, "$storagename:$ctbase\/$ctlinked")) {
 	    $count++;
 	    warn "Test10 f: is no base";
 	}
@@ -2639,6 +2639,15 @@ sub clean_up_zpool {
 	warn $@;}
     unlink 'zpool.img';
 }
+
+sub volume_is_base {
+    my ($cfg, $volid) = @_;
+
+    my (undef, undef, undef, undef, undef, $isBase, undef) = PVE::Storage::parse_volname($cfg, $volid);
+
+    return $isBase;
+}
+
 
 setup_zpool();
 
