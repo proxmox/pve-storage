@@ -1,3 +1,11 @@
+libpve-storage-perl (4.0-61) unstable; urgency=medium
+
+  * rbd: detect linked clones/base volumes correctly
+
+  * harmonize/cleanup list_images code
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 16 Sep 2016 07:58:59 +0200
+
 libpve-storage-perl (4.0-60) unstable; urgency=medium
 
   * do not automatically die on smartctl exit code > 0
