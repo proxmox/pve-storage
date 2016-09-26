@@ -1008,9 +1008,9 @@ sub storage_info {
     my $ids = $cfg->{ids};
 
     my $info = {};
-    
+
     my @ctypes = PVE::Tools::split_list($content);
-    
+
     my $slist = [];
     foreach my $storeid (keys %$ids) {
 
@@ -1026,7 +1026,7 @@ sub storage_info {
 	    }
 	    next if !$want_ctype;
 	}
-	
+
 	my $type = $ids->{$storeid}->{type};
 
 	$info->{$storeid} = {
@@ -1059,9 +1059,9 @@ sub storage_info {
 	eval { ($total, $avail, $used, $active) = $plugin->status($storeid, $scfg, $cache); };
 	warn $@ if $@;
 	next if !$active;
-	$info->{$storeid}->{total} = int ($total);
-	$info->{$storeid}->{avail} = int ($avail);
-	$info->{$storeid}->{used} = int ($used);
+	$info->{$storeid}->{total} = int($total);
+	$info->{$storeid}->{avail} = int($avail);
+	$info->{$storeid}->{used} = int($used);
 	$info->{$storeid}->{active} = $active;
     }
 
