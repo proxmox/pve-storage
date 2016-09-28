@@ -78,7 +78,7 @@ sub get_smart_data {
 
     my $returncode = 0;
     eval {
-	$returncode = run_command([$SMARTCTL, '-a', '-f', 'brief', $disk], noerr => 1, outfunc => sub{
+	$returncode = run_command([$SMARTCTL, '-H', '-A', '-f', 'brief', $disk], noerr => 1, outfunc => sub{
 	    my ($line) = @_;
 
 	    if ($datastarted && $line =~ m/^[ \d]{2}\d/) {
