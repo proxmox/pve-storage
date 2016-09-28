@@ -260,10 +260,13 @@ sub create_base {
 sub clone_image {
     my ($class, $scfg, $storeid, $volname, $vmid, $snap) = @_;
 
-    my $name  = $class->SUPER::clone_image($scfg, $storeid, $volname, $vmid, $snap);
+    my $name = $class->SUPER::clone_image($scfg, $storeid, $volname, $vmid, $snap);
 
-    my $guid = $class->zfs_create_lu($scfg, $name);
-    $class->zfs_add_lun_mapping_entry($scfg, $name, $guid);
+    # get ZFS dataset name from PVE volname
+    my (undef, $clonedname) = $class->parse_volname($name);
+
+    my $guid = $class->zfs_create_lu($scfg, $clonedname);
+    $class->zfs_add_lun_mapping_entry($scfg, $clonedname, $guid);
 
     return $name;
 }
