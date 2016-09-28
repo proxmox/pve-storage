@@ -138,7 +138,7 @@ __PACKAGE__->register_method ({
 	    $result = PVE::Diskmanage::get_smart_data($disk);
 	}
 
-	$result->{health} = 'UNKOWN' if !defined $result->{health};
+	$result->{health} = 'UNKNOWN' if !defined $result->{health};
 
 	return $result;
     }});
