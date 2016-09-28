@@ -81,19 +81,20 @@ sub get_smart_data {
 	$returncode = run_command([$SMARTCTL, '-H', '-A', '-f', 'brief', $disk], noerr => 1, outfunc => sub{
 	    my ($line) = @_;
 
-	    if ($datastarted && $line =~ m/^[ \d]{2}\d/) {
-		$line = trim($line);
-		my @data = split /\s+/, $line;
+# ATA SMART attributes, e.g.:
+# ID# ATTRIBUTE_NAME          FLAGS    VALUE WORST THRESH FAIL RAW_VALUE
+#   1 Raw_Read_Error_Rate     POSR-K   100   100   000    -    0
+	    if ($datastarted && $line =~ m/^([ \d]{2}\d)\s+(\S+)\s+(\S{6})\s+(\d+)\s+(\d+)\s+(\d+)\s+(\S+)\s+(.*)$/) {
 		my $entry = {};
-		$entry->{name} = $data[1];
-		$entry->{flags} = $data[2];
+		$entry->{name} = $2 if defined $2;
+		$entry->{flags} = $3 if defined $3;
 		# the +0 makes a number out of the strings
-		$entry->{value} = $data[3] + 0;
-		$entry->{worst} = $data[4] + 0;
-		$entry->{threshold} = $data[5] + 0;
-		$entry->{fail} = $data[6];
-		$entry->{raw} = $data[7];
-		$entry->{id} = $data[0];
+		$entry->{value} = $4+0 if defined $4;
+		$entry->{worst} = $5+0 if defined $5;
+		$entry->{threshold} = $6+0 if defined $6;
+		$entry->{fail} = $7 if defined $7;
+		$entry->{raw} = $8 if defined $8;
+		$entry->{id} = $1 if defined $1;
 		push @{$smartdata->{attributes}}, $entry;
 	    } elsif ($line =~ m/self\-assessment test result: (.*)$/) {
 		$smartdata->{health} = $1;
