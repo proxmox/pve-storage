@@ -110,7 +110,6 @@ sub get_smart_data {
     if ((defined($returncode) && ($returncode & 0b00000011)) || $err) {
 	die "Error getting S.M.A.R.T. data: Exit code: $returncode\n";
     }
-    $smartdata->{health} = 'UNKOWN' if !defined $smartdata->{health};
     return $smartdata;
 }
 
@@ -119,22 +118,19 @@ sub get_smart_health {
 
     return "NOT A DEVICE" if !assert_blockdev($disk, 1);
 
-    my $message = "UNKOWN";
+    my $message;
 
-    eval {
-	run_command([$SMARTCTL, '-H', $disk], noerr => 1, outfunc => sub {
-	    my ($line) = @_;
+    run_command([$SMARTCTL, '-H', $disk], noerr => 1, outfunc => sub {
+	my ($line) = @_;
 
-	    if ($line =~ m/test result: (.*)$/) {
-		$message = $1;
-	    } elsif ($line =~ m/open device: (.*) failed: (.*)$/) {
-		$message = "FAILED TO OPEN";
-	    } elsif ($line =~ m/^SMART Disabled/) {
-		$message = "SMART DISABLED";
-	    }
-	});
-    };
-    # we ignore errors here because by default we want to return UNKNOWN
+	if ($line =~ m/test result: (.*)$/) {
+	    $message = $1;
+	} elsif ($line =~ m/open device: (.*) failed: (.*)$/) {
+	    $message = "FAILED TO OPEN";
+	} elsif ($line =~ m/^SMART Disabled/) {
+	    $message = "SMART DISABLED";
+	}
+    });
 
     return $message;
 }
@@ -366,29 +362,30 @@ sub get_disks {
 	    }
 	}
 
-	my $health;
+	my $health = 'UNKNOWN';
 	my $wearout;
-	if ($type eq 'ssd' && !defined($disk)) {
-	    # if we have an ssd we try to get the wearout indicator
-	    my $smartdata = get_smart_data($devpath);
-	    $health = $smartdata->{health};
-	    foreach my $attr (@{$smartdata->{attributes}}) {
-		# ID 233 is media wearout indicator on intel and sandisk
-		# ID 177 is media wearout indicator on samsung
-		next if ($attr->{id} != 233 && $attr->{id} != 177);
-		next if ($attr->{name} !~ m/wear/i);
-		$wearout = $attr->{value};
+	eval {
+	    if ($type eq 'ssd' && !defined($disk)) {
+		# if we have an ssd we try to get the wearout indicator
+		$wearout = 'N/A';
+		my $smartdata = get_smart_data($devpath);
+		$health = $smartdata->{health};
+		foreach my $attr (@{$smartdata->{attributes}}) {
+		    # ID 233 is media wearout indicator on intel and sandisk
+		    # ID 177 is media wearout indicator on samsung
+		    next if ($attr->{id} != 233 && $attr->{id} != 177);
+		    next if ($attr->{name} !~ m/wear/i);
+		    $wearout = $attr->{value};
 
-		# prefer the 233 value
-		last if ($attr->{id} == 233);
+		    # prefer the 233 value
+		    last if ($attr->{id} == 233);
+		}
+	    } elsif (!defined($disk)) {
+		# we do not need smart data if we check a single disk
+		# because this functionality is only for disk_is_used
+		$health = get_smart_health($devpath) if !defined($disk);
 	    }
-
-	    $wearout = 'N/A' if !defined($wearout);
-	} elsif (!defined($disk)) {
-	    # we do not need smart data if we check a single disk
-	    # because this functionality is only for disk_is_used
-	    $health = get_smart_health($devpath) if !defined($disk);
-	}
+	};
 
 	my $used;
 
