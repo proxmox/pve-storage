@@ -1,3 +1,17 @@
+libpve-storage-perl (4.0-62) unstable; urgency=medium
+
+  * fix #1122: correctly create LUNs for linked clones
+
+  * fix #1012: dir storage: add is_mountpoint option
+
+  * improve SMART error handling
+
+  * path based storages: improve the mkdir option
+
+  * Avoid JavaScript gets a string "0"
+
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 29 Sep 2016 08:45:07 +0200
+
 libpve-storage-perl (4.0-61) unstable; urgency=medium
 
   * rbd: detect linked clones/base volumes correctly
