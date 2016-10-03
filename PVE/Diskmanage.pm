@@ -77,6 +77,10 @@ sub get_smart_data {
     my $type;
 
     my $returncode = 0;
+
+    $disk =~ s/n\d+$//
+        if $disk =~ m!^/dev/nvme\d+n\d+$!;
+
     eval {
 	$returncode = run_command([$SMARTCTL, '-H', '-A', '-f', 'brief', $disk], noerr => 1, outfunc => sub{
 	    my ($line) = @_;
@@ -134,6 +138,8 @@ sub get_smart_health {
     return "NOT A DEVICE" if !assert_blockdev($disk, 1);
 
     my $message;
+    $disk =~ s/n\d+$//
+        if $disk =~ m!^/dev/nvme\d+n\d+$!;
 
     run_command([$SMARTCTL, '-H', $disk], noerr => 1, outfunc => sub {
 	my ($line) = @_;
