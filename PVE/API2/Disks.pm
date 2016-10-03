@@ -124,7 +124,15 @@ __PACKAGE__->register_method ({
 	    },
 	},
     },
-    returns => { type => 'object' },
+    returns => {
+	type => 'object',
+	properties => {
+	    health => { type => 'string' },
+	    type => { type => 'string', optional => 1 },
+	    attributes => { type => 'array', optional => 1},
+	    text => { type => 'string', optional => 1 },
+	},
+    },
     code => sub {
 	my ($param) = @_;
 
