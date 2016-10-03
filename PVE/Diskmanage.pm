@@ -74,7 +74,7 @@ sub get_smart_data {
 
     assert_blockdev($disk);
     my $smartdata = {};
-    my $datastarted = 0;
+    my $type;
 
     my $returncode = 0;
     eval {
@@ -84,7 +84,12 @@ sub get_smart_data {
 # ATA SMART attributes, e.g.:
 # ID# ATTRIBUTE_NAME          FLAGS    VALUE WORST THRESH FAIL RAW_VALUE
 #   1 Raw_Read_Error_Rate     POSR-K   100   100   000    -    0
-	    if ($datastarted && $line =~ m/^([ \d]{2}\d)\s+(\S+)\s+(\S{6})\s+(\d+)\s+(\d+)\s+(\d+)\s+(\S+)\s+(.*)$/) {
+#
+# SAS and NVME disks, e.g.:
+# Data Units Written:                 5,584,952 [2.85 TB]
+# Accumulated start-stop cycles:  34
+
+	    if (defined($type) && $type eq 'ata' && $line =~ m/^([ \d]{2}\d)\s+(\S+)\s+(\S{6})\s+(\d+)\s+(\d+)\s+(\d+)\s+(\S+)\s+(.*)$/) {
 		my $entry = {};
 		$entry->{name} = $2 if defined $2;
 		$entry->{flags} = $3 if defined $3;
@@ -99,7 +104,13 @@ sub get_smart_data {
 	    } elsif ($line =~ m/(?:Health Status|self\-assessment test result): (.*)$/ ) {
 		$smartdata->{health} = $1;
 	    } elsif ($line =~ m/Vendor Specific SMART Attributes with Thresholds:/) {
-		$datastarted = 1;
+		$type = 'ata';
+		delete $smartdata->{text};
+	    } elsif ($line =~ m/=== START OF (READ )?SMART DATA SECTION ===/) {
+		$type = 'text';
+	    } elsif (defined($type) && $type eq 'text') {
+		$smartdata->{text} = '' if !defined $smartdata->{text};
+		$smartdata->{text} .= "$line\n";
 	    }
 	});
     };
@@ -111,6 +122,9 @@ sub get_smart_data {
     if ((defined($returncode) && ($returncode & 0b00000011)) || $err) {
 	die "Error getting S.M.A.R.T. data: Exit code: $returncode\n";
     }
+
+    $smartdata->{type} = $type;
+
     return $smartdata;
 }
 
