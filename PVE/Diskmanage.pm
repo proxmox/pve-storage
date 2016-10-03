@@ -96,7 +96,7 @@ sub get_smart_data {
 		$entry->{raw} = $8 if defined $8;
 		$entry->{id} = $1 if defined $1;
 		push @{$smartdata->{attributes}}, $entry;
-	    } elsif ($line =~ m/self\-assessment test result: (.*)$/) {
+	    } elsif ($line =~ m/(?:Health Status|self\-assessment test result): (.*)$/ ) {
 		$smartdata->{health} = $1;
 	    } elsif ($line =~ m/Vendor Specific SMART Attributes with Thresholds:/) {
 		$datastarted = 1;
