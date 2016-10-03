@@ -61,7 +61,7 @@ sub disk_is_used {
     my $dev = $disk;
     $dev =~ s|^/dev/||;
 
-    my $disklist = get_disks($dev);
+    my $disklist = get_disks($dev, 1);
 
     die "'$disk' is not a valid local disk\n" if !defined($disklist->{$dev});
     return 1 if $disklist->{$dev}->{used};
@@ -283,7 +283,7 @@ sub get_sysdir_info {
 }
 
 sub get_disks {
-    my ($disk) = @_;
+    my ($disk, $nosmart) = @_;
     my $disklist = {};
 
     my $mounted = {};
@@ -365,28 +365,30 @@ sub get_disks {
 
 	my $health = 'UNKNOWN';
 	my $wearout;
-	eval {
-	    if ($type eq 'ssd' && !defined($disk)) {
-		# if we have an ssd we try to get the wearout indicator
-		$wearout = 'N/A';
-		my $smartdata = get_smart_data($devpath);
-		$health = $smartdata->{health};
-		foreach my $attr (@{$smartdata->{attributes}}) {
-		    # ID 233 is media wearout indicator on intel and sandisk
-		    # ID 177 is media wearout indicator on samsung
-		    next if ($attr->{id} != 233 && $attr->{id} != 177);
-		    next if ($attr->{name} !~ m/wear/i);
-		    $wearout = $attr->{value};
 
-		    # prefer the 233 value
-		    last if ($attr->{id} == 233);
+	if (!$nosmart) {
+	    eval {
+		if ($type eq 'ssd') {
+		    # if we have an ssd we try to get the wearout indicator
+		    $wearout = 'N/A';
+		    my $smartdata = get_smart_data($devpath);
+		    $health = $smartdata->{health};
+		    foreach my $attr (@{$smartdata->{attributes}}) {
+			# ID 233 is media wearout indicator on intel and sandisk
+			# ID 177 is media wearout indicator on samsung
+			next if ($attr->{id} != 233 && $attr->{id} != 177);
+			next if ($attr->{name} !~ m/wear/i);
+			$wearout = $attr->{value};
+
+			# prefer the 233 value
+			last if ($attr->{id} == 233);
+		    }
+		} else {
+		    # else we just get the health
+		    $health = get_smart_health($devpath);
 		}
-	    } elsif (!defined($disk)) {
-		# we do not need smart data if we check a single disk
-		# because this functionality is only for disk_is_used
-		$health = get_smart_health($devpath) if !defined($disk);
-	    }
-	};
+	    };
+	}
 
 	my $used;
 
