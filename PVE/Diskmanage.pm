@@ -284,6 +284,44 @@ sub get_sysdir_info {
     return $data;
 }
 
+sub get_wear_leveling_info {
+    my ($attributes, $model) = @_;
+
+    my $wearout;
+
+    my $vendormap = {
+	'kingston' => 231,
+	'samsung' => 177,
+	'intel' => 233,
+	'sandisk' => 233,
+	'default' => 233,
+    };
+
+    # find target attr id
+
+    my $attrid;
+
+    foreach my $vendor (keys $vendormap) {
+	if ($model =~ m/$vendor/i) {
+	    $attrid = $vendormap->{$vendor};
+	    # found the attribute
+	    last;
+	}
+    }
+
+    if (!$attrid) {
+	$attrid = $vendormap->{default};
+    }
+
+    foreach my $attr (@$attributes) {
+	next if $attr->{id} != $attrid;
+	$wearout = $attr->{value};
+	last;
+    }
+
+    return $wearout;
+}
+
 sub get_disks {
     my ($disk, $nosmart) = @_;
     my $disklist = {};
@@ -366,7 +404,7 @@ sub get_disks {
 	}
 
 	my $health = 'UNKNOWN';
-	my $wearout;
+	my $wearout = 'N/A';
 
 	if (!$nosmart) {
 	    eval {
@@ -375,17 +413,8 @@ sub get_disks {
 
 		if ($type eq 'ssd') {
 		    # if we have an ssd we try to get the wearout indicator
-		    $wearout = 'N/A';
-		    foreach my $attr (@{$smartdata->{attributes}}) {
-			# ID 233 is media wearout indicator on intel and sandisk
-			# ID 177 is media wearout indicator on samsung
-			next if ($attr->{id} != 233 && $attr->{id} != 177);
-			next if ($attr->{name} !~ m/wear/i);
-			$wearout = $attr->{value};
-
-			# prefer the 233 value
-			last if ($attr->{id} == 233);
-		    }
+		    my $wearval = get_wear_leveling_info($smartdata->{attributes}, $sysdata->{model});
+		    $wearout = $wearval if $wearval;
 		}
 	    };
 	}
