@@ -1,3 +1,17 @@
+libpve-storage-perl (4.0-63) unstable; urgency=medium
+
+  * fix #1123: modify NVME device path for SMART support
+
+  * add return schema to smart API path
+
+  * fix #1120: non-ATA disks with unstructured smart data
+
+  * fix #1120: SCSI SMART health parsing
+
+  * disks: allow get_disks without smart checks
+
+ -- Proxmox Support Team <support@proxmox.com>  Wed, 05 Oct 2016 07:16:23 +0200
+
 libpve-storage-perl (4.0-62) unstable; urgency=medium
 
   * fix #1122: correctly create LUNs for linked clones
