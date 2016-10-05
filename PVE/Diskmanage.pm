@@ -370,10 +370,10 @@ sub get_disks {
 	# vdX: virtual block device
 	# xvdX: xen virtual block device
 	# nvmeXnY: nvme devices
-	# cXnY: cciss devices
+	# cciss!cXnY: cciss devices
 	return if $dev !~ m/^(h|s|x?v)d[a-z]+$/ &&
 		  $dev !~ m/^nvme\d+n\d+$/ &&
-		  $dev !~ m/^c\d+d\d+$/;
+		  $dev !~ m/^cciss\!c\d+d\d+$/;
 
 	my $data = get_udev_info($dev);
 	return if !defined($data);
