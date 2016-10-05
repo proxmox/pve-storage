@@ -70,7 +70,7 @@ sub disk_is_used {
 }
 
 sub get_smart_data {
-    my ($disk) = @_;
+    my ($disk, $healthonly) = @_;
 
     assert_blockdev($disk);
     my $smartdata = {};
@@ -81,8 +81,12 @@ sub get_smart_data {
     $disk =~ s/n\d+$//
         if $disk =~ m!^/dev/nvme\d+n\d+$!;
 
+    my $cmd = [$SMARTCTL, '-H'];
+    push @$cmd, '-A', '-f', 'brief' if !$healthonly;
+    push @$cmd, $disk;
+
     eval {
-	$returncode = run_command([$SMARTCTL, '-H', '-A', '-f', 'brief', $disk], noerr => 1, outfunc => sub{
+	$returncode = run_command($cmd, noerr => 1, outfunc => sub{
 	    my ($line) = @_;
 
 # ATA SMART attributes, e.g.:
@@ -115,6 +119,8 @@ sub get_smart_data {
 	    } elsif (defined($type) && $type eq 'text') {
 		$smartdata->{text} = '' if !defined $smartdata->{text};
 		$smartdata->{text} .= "$line\n";
+	    } elsif ($line =~ m/SMART Disabled/) {
+		$smartdata->{health} = "SMART Disabled";
 	    }
 	});
     };
@@ -130,30 +136,6 @@ sub get_smart_data {
     $smartdata->{type} = $type;
 
     return $smartdata;
-}
-
-sub get_smart_health {
-    my ($disk) = @_;
-
-    return "NOT A DEVICE" if !assert_blockdev($disk, 1);
-
-    my $message;
-    $disk =~ s/n\d+$//
-        if $disk =~ m!^/dev/nvme\d+n\d+$!;
-
-    run_command([$SMARTCTL, '-H', $disk], noerr => 1, outfunc => sub {
-	my ($line) = @_;
-
-	if ($line =~ m/test result: (.*)$/) {
-	    $message = $1;
-	} elsif ($line =~ m/open device: (.*) failed: (.*)$/) {
-	    $message = "FAILED TO OPEN";
-	} elsif ($line =~ m/^SMART Disabled/) {
-	    $message = "SMART DISABLED";
-	}
-    });
-
-    return $message;
 }
 
 sub get_zfs_devices {
@@ -388,11 +370,12 @@ sub get_disks {
 
 	if (!$nosmart) {
 	    eval {
+		my $smartdata = get_smart_data($devpath, ($type ne 'ssd'));
+		$health = $smartdata->{health} if $smartdata->{health};
+
 		if ($type eq 'ssd') {
 		    # if we have an ssd we try to get the wearout indicator
 		    $wearout = 'N/A';
-		    my $smartdata = get_smart_data($devpath);
-		    $health = $smartdata->{health};
 		    foreach my $attr (@{$smartdata->{attributes}}) {
 			# ID 233 is media wearout indicator on intel and sandisk
 			# ID 177 is media wearout indicator on samsung
@@ -403,9 +386,6 @@ sub get_disks {
 			# prefer the 233 value
 			last if ($attr->{id} == 233);
 		    }
-		} else {
-		    # else we just get the health
-		    $health = get_smart_health($devpath);
 		}
 	    };
 	}

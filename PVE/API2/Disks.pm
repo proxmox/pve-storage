@@ -140,13 +140,10 @@ __PACKAGE__->register_method ({
 
 	my $result = {};
 
-	if ($param->{healthonly}) {
-	    $result = { health => PVE::Diskmanage::get_smart_health($disk) };
-	} else {
-	    $result = PVE::Diskmanage::get_smart_data($disk);
-	}
+	my $result = PVE::Diskmanage::get_smart_data($disk, $param->{healthonly});
 
 	$result->{health} = 'UNKNOWN' if !defined $result->{health};
+	$result = { health => $result->{health} } if $param->{healthonly};
 
 	return $result;
     }});
