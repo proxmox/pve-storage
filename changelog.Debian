@@ -1,3 +1,11 @@
+libpve-storage-perl (4.0-64) unstable; urgency=medium
+
+  * correctly parse cciss devices in get_disks
+
+  * fix #1135: refactor wear level parsing
+
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 06 Oct 2016 07:53:11 +0200
+
 libpve-storage-perl (4.0-63) unstable; urgency=medium
 
   * fix #1123: modify NVME device path for SMART support
