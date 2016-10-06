@@ -11,6 +11,7 @@ use PVE::JSONSchema qw(get_standard_option);
 use base qw(PVE::Storage::Plugin);
 
 my $rbd_unittobytes = {
+    "k"  => 1024,
     "M"  => 1024*1024,
     "G"  => 1024*1024*1024,
     "T"  => 1024*1024*1024*1024,
@@ -183,7 +184,7 @@ sub rbd_ls {
     my $parser = sub {
 	my $line = shift;
 
-	if ($line =~  m/^((vm|base)-(\d+)-disk-\d+)\s+(\d+)(M|G|T)\s((\S+)\/((vm|base)-\d+-\S+@\S+))?/) {
+	if ($line =~  m/^((vm|base)-(\d+)-disk-\d+)\s+(\d+)(k|M|G|T)\s((\S+)\/((vm|base)-\d+-\S+@\S+))?/) {
 	    my ($image, $owner, $size, $unit, $parent) = ($1, $3, $4, $5, $8);
 
 	    $list->{$pool}->{$image} = {
@@ -224,7 +225,7 @@ sub rbd_volume_info {
     my $parser = sub {
 	my $line = shift;
 
-	if ($line =~ m/size (\d+) (M|G|T)B in (\d+) objects/) {
+	if ($line =~ m/size (\d+) (k|M|G|T)B in (\d+) objects/) {
 	    $size = $1 * $rbd_unittobytes->{$2} if ($1);
 	} elsif ($line =~ m/parent:\s(\S+)\/(\S+)/) {
 	    $parent = $2;
