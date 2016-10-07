@@ -301,7 +301,7 @@ sub get_wear_leveling_info {
 
     my $attrid;
 
-    foreach my $vendor (keys $vendormap) {
+    foreach my $vendor (keys %$vendormap) {
 	if ($model =~ m/$vendor/i) {
 	    $attrid = $vendormap->{$vendor};
 	    # found the attribute
