@@ -76,12 +76,14 @@ sub path_is_mounted {
 sub status {
     my ($class, $storeid, $scfg, $cache) = @_;
 
-    $cache->{mountdata} = PVE::ProcFSTools::parse_proc_mounts()
-	if !$cache->{mountdata};
+    if ($scfg->{is_mountpoint}) {
+	$cache->{mountdata} = PVE::ProcFSTools::parse_proc_mounts()
+	    if !$cache->{mountdata};
 
-    my $path = $scfg->{path};
+	my $path = $scfg->{path};
 
-    return undef if !path_is_mounted($path, $cache->{mountdata});
+	return undef if !path_is_mounted($path, $cache->{mountdata});
+    }
 
     return $class->SUPER::status($storeid, $scfg, $cache);
 }
