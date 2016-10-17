@@ -324,6 +324,21 @@ sub get_wear_leveling_info {
     return $wearout;
 }
 
+sub dir_is_empty {
+    my ($dir) = @_;
+
+    my $dh = IO::Dir->new ($dir);
+    return 1 if !$dh;
+
+    while (defined(my $tmp = $dh->read)) {
+	next if $tmp eq '.' || $tmp eq '..';
+	$dh->close;
+	return 0;
+    }
+    $dh->close;
+    return 1;
+}
+
 sub get_disks {
     my ($disk, $nosmart) = @_;
     my $disklist = {};
@@ -340,21 +355,6 @@ sub get_disks {
     my $dev_is_mounted = sub {
 	my ($dev) = @_;
 	return $mounted->{$dev};
-    };
-
-    my $dir_is_empty = sub {
-	my ($dir) = @_;
-
-	my $dh = IO::Dir->new ($dir);
-	return 1 if !$dh;
-
-	while (defined(my $tmp = $dh->read)) {
-	    next if $tmp eq '.' || $tmp eq '..';
-	    $dh->close;
-	    return 0;
-	}
-	$dh->close;
-	return 1;
     };
 
     my $journalhash = get_ceph_journals();
@@ -479,7 +479,7 @@ sub get_disks {
 
 	    $journal_count++ if $journalhash->{"$partpath/$part"};
 
-	    if (!&$dir_is_empty("$sysdir/$part/holders") && !$found_lvm)  {
+	    if (!dir_is_empty("$sysdir/$part/holders") && !$found_lvm)  {
 		$found_dm = 1;
 	    }
 	});
@@ -493,7 +493,7 @@ sub get_disks {
 	# multipath, software raid, etc.
 	# this check comes in last, to show more specific info
 	# if we have it
-	$used = 'Device Mapper' if !$used && !&$dir_is_empty("$sysdir/holders");
+	$used = 'Device Mapper' if !$used && !dir_is_empty("$sysdir/holders");
 
 	$disklist->{$dev}->{used} = $used if $used;
 	$disklist->{$dev}->{osdid} = $osdid;
