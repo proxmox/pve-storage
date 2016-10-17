@@ -266,6 +266,8 @@ sub get_udev_info {
 sub get_sysdir_info {
     my ($sysdir) = @_;
 
+    return undef if ! -d "$sysdir/device";
+
     my $data = {};
 
     my $size = file_read_firstline("$sysdir/size");
@@ -381,10 +383,8 @@ sub get_disks {
 
 	my $sysdir = "/sys/block/$dev";
 
-	return if ! -d "$sysdir/device";
-
 	# we do not want iscsi devices
-	return if readlink($sysdir) =~ m|host[^/]*/session[^/]*|;
+	return if -l $sysdir && readlink($sysdir) =~ m|host[^/]*/session[^/]*|;
 
 	my $sysdata = get_sysdir_info($sysdir);
 	return if !defined($sysdata);
