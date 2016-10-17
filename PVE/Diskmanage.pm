@@ -217,7 +217,7 @@ sub get_udev_info {
     my $info = "";
     my $data = {};
     eval {
-	run_command([$UDEVADM, 'info', '-n', $dev, '--query', 'all'], outfunc => sub {
+	run_command([$UDEVADM, 'info', '-p', $dev, '--query', 'all'], outfunc => sub {
 	    my ($line) = @_;
 	    $info .= "$line\n";
 	});
@@ -375,7 +375,7 @@ sub get_disks {
 		  $dev !~ m/^nvme\d+n\d+$/ &&
 		  $dev !~ m/^cciss\!c\d+d\d+$/;
 
-	my $data = get_udev_info($dev);
+	my $data = get_udev_info("/sys/block/$dev");
 	return if !defined($data);
 	my $devpath = $data->{devpath};
 
