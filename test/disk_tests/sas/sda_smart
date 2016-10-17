@@ -1,0 +1,20 @@
+=== START OF READ SMART DATA SECTION ===
+SMART Health Status: OK
+
+Percentage used endurance indicator: 0%
+Current Drive Temperature:     20 C
+Drive Trip Temperature:        70 C
+
+Manufactured in week 47 of year 2012
+Specified cycle count over device lifetime:  0
+Accumulated start-stop cycles:  0
+Specified load-unload count over device lifetime:  0
+Accumulated load-unload cycles:  0
+Elements in grown defect list: 0
+
+Vendor (Seagate) cache information
+  Blocks sent to initiator = 1286675833552896
+
+Vendor (Seagate/Hitachi) factory information
+  number of hours powered up = 7127.12
+  number of minutes until next internal SMART test = 0

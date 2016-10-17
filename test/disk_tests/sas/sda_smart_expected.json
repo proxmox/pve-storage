@@ -1,0 +1,5 @@
+{
+    "health" : "OK",
+    "text" : "\nPercentage used endurance indicator: 0%\nCurrent Drive Temperature:     20 C\nDrive Trip Temperature:        70 C\n\nManufactured in week 47 of year 2012\nSpecified cycle count over device lifetime:  0\nAccumulated start-stop cycles:  0\nSpecified load-unload count over device lifetime:  0\nAccumulated load-unload cycles:  0\nElements in grown defect list: 0\n\nVendor (Seagate) cache information\n  Blocks sent to initiator = 1286675833552896\n\nVendor (Seagate/Hitachi) factory information\n  number of hours powered up = 7127.12\n  number of minutes until next internal SMART test = 0\n",
+    "type" : "text"
+}
