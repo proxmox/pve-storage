@@ -1,0 +1,32 @@
+{
+    "sdb" : {
+	"devpath" : "/dev/sdb",
+	"size" : 1024000,
+	"gpt" : 1,
+	"osdid" : -1,
+	"rpm" : 7200,
+	"model" : "ST4000NM0033-9ZM170",
+	"vendor" : "ATA",
+	"health" : "PASSED",
+	"type" : "hdd",
+	"wwn" : "0x0000000000000000",
+	"journals" : 0,
+	"wearout" : "N/A",
+	"serial" : "00000000"
+    },
+    "sda" : {
+	"osdid" : -1,
+	"size" : 1024000,
+	"gpt" : 1,
+	"devpath" : "/dev/sda",
+	"model" : "ST4000DM000-1F2168",
+	"rpm" : 5900,
+	"type" : "hdd",
+	"health" : "PASSED",
+	"vendor" : "ATA",
+	"serial" : "00000000",
+	"wearout" : "N/A",
+	"journals" : 0,
+	"wwn" : "0x0000000000000000"
+    }
+}

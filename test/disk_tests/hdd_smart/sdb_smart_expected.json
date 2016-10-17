@@ -1,0 +1,216 @@
+{
+    "attributes" : [
+	{
+	    "threshold" : 44,
+	    "fail" : "-",
+	    "id" : "  1",
+	    "name" : "Raw_Read_Error_Rate",
+	    "worst" : 63,
+	    "raw" : "215697022",
+	    "value" : 83,
+	    "flags" : "POSR--"
+	},
+	{
+	    "flags" : "PO----",
+	    "value" : 92,
+	    "id" : "  3",
+	    "raw" : "0",
+	    "worst" : 91,
+	    "name" : "Spin_Up_Time",
+	    "threshold" : 0,
+	    "fail" : "-"
+	},
+	{
+	    "fail" : "-",
+	    "threshold" : 20,
+	    "value" : 100,
+	    "flags" : "-O--CK",
+	    "worst" : 100,
+	    "name" : "Start_Stop_Count",
+	    "raw" : "265",
+	    "id" : "  4"
+	},
+	{
+	    "flags" : "PO--CK",
+	    "value" : 100,
+	    "id" : "  5",
+	    "raw" : "0",
+	    "name" : "Reallocated_Sector_Ct",
+	    "worst" : 100,
+	    "threshold" : 10,
+	    "fail" : "-"
+	},
+	{
+	    "id" : "  7",
+	    "raw" : "1572375006",
+	    "name" : "Seek_Error_Rate",
+	    "worst" : 60,
+	    "flags" : "POSR--",
+	    "value" : 91,
+	    "threshold" : 30,
+	    "fail" : "-"
+	},
+	{
+	    "raw" : "9885",
+	    "name" : "Power_On_Hours",
+	    "worst" : 89,
+	    "id" : "  9",
+	    "flags" : "-O--CK",
+	    "value" : 89,
+	    "fail" : "-",
+	    "threshold" : 0
+	},
+	{
+	    "fail" : "-",
+	    "threshold" : 97,
+	    "value" : 100,
+	    "flags" : "PO--C-",
+	    "worst" : 100,
+	    "name" : "Spin_Retry_Count",
+	    "raw" : "0",
+	    "id" : " 10"
+	},
+	{
+	    "threshold" : 20,
+	    "fail" : "-",
+	    "id" : " 12",
+	    "raw" : "265",
+	    "name" : "Power_Cycle_Count",
+	    "worst" : 100,
+	    "flags" : "-O--CK",
+	    "value" : 100
+	},
+	{
+	    "name" : "End-to-End_Error",
+	    "worst" : 100,
+	    "raw" : "0",
+	    "id" : "184",
+	    "value" : 100,
+	    "flags" : "-O--CK",
+	    "fail" : "-",
+	    "threshold" : 99
+	},
+	{
+	    "threshold" : 0,
+	    "fail" : "-",
+	    "id" : "187",
+	    "raw" : "0",
+	    "name" : "Reported_Uncorrect",
+	    "worst" : 100,
+	    "flags" : "-O--CK",
+	    "value" : 100
+	},
+	{
+	    "threshold" : 0,
+	    "fail" : "-",
+	    "id" : "188",
+	    "raw" : "0",
+	    "name" : "Command_Timeout",
+	    "worst" : 100,
+	    "flags" : "-O--CK",
+	    "value" : 100
+	},
+	{
+	    "fail" : "-",
+	    "threshold" : 0,
+	    "raw" : "0",
+	    "worst" : 100,
+	    "name" : "High_Fly_Writes",
+	    "id" : "189",
+	    "flags" : "-O--CK",
+	    "value" : 100
+	},
+	{
+	    "flags" : "-O-RCK",
+	    "value" : 45,
+	    "raw" : "55 (147 229 55 24 0)",
+	    "worst" : 36,
+	    "name" : "Airflow_Temperature_Cel",
+	    "id" : "190",
+	    "fail" : "NOW",
+	    "threshold" : 45
+	},
+	{
+	    "fail" : "-",
+	    "threshold" : 0,
+	    "raw" : "0",
+	    "worst" : 100,
+	    "name" : "G-Sense_Error_Rate",
+	    "id" : "191",
+	    "flags" : "-O---K",
+	    "value" : 100
+	},
+	{
+	    "threshold" : 0,
+	    "fail" : "-",
+	    "id" : "192",
+	    "raw" : "57",
+	    "worst" : 100,
+	    "name" : "Power-Off_Retract_Count",
+	    "flags" : "-O--CK",
+	    "value" : 100
+	},
+	{
+	    "fail" : "-",
+	    "threshold" : 0,
+	    "value" : 100,
+	    "flags" : "-O--CK",
+	    "name" : "Load_Cycle_Count",
+	    "worst" : 100,
+	    "raw" : "265",
+	    "id" : "193"
+	},
+	{
+	    "threshold" : 0,
+	    "fail" : "-",
+	    "flags" : "-O--CK",
+	    "value" : 55,
+	    "id" : "194",
+	    "raw" : "55 (0 16 0 0 0)",
+	    "name" : "Temperature_Celsius",
+	    "worst" : 64
+	},
+	{
+	    "threshold" : 0,
+	    "fail" : "-",
+	    "id" : "195",
+	    "name" : "Hardware_ECC_Recovered",
+	    "worst" : 13,
+	    "raw" : "215697022",
+	    "value" : 23,
+	    "flags" : "-O---K"
+	},
+	{
+	    "worst" : 100,
+	    "name" : "Current_Pending_Sector",
+	    "raw" : "0",
+	    "id" : "197",
+	    "value" : 100,
+	    "flags" : "-O--C-",
+	    "fail" : "-",
+	    "threshold" : 0
+	},
+	{
+	    "worst" : 100,
+	    "name" : "Offline_Uncorrectable",
+	    "raw" : "0",
+	    "id" : "198",
+	    "value" : 100,
+	    "flags" : "----C-",
+	    "fail" : "-",
+	    "threshold" : 0
+	},
+	{
+	    "fail" : "-",
+	    "threshold" : 0,
+	    "value" : 200,
+	    "flags" : "-OSRCK",
+	    "worst" : 200,
+	    "name" : "UDMA_CRC_Error_Count",
+	    "raw" : "0",
+	    "id" : "199"
+	}
+    ],
+    "type" : "ata",
+    "health" : "PASSED"
+}
