@@ -282,7 +282,7 @@ sub get_sysdir_info {
     $data->{size} = $size * 512;
 
     # dir/queue/rotational should be 1 for hdd, 0 for ssd
-    $data->{rotational} = file_read_firstline("$sysdir/queue/rotational");
+    $data->{rotational} = file_read_firstline("$sysdir/queue/rotational") // -1;
 
     $data->{vendor} = file_read_firstline("$sysdir/device/vendor") || 'unknown';
     $data->{model} = file_read_firstline("$sysdir/device/model") || 'unknown';
