@@ -255,6 +255,10 @@ sub get_udev_info {
 	$data->{usb} = 1;
     }
 
+    if ($info =~ m/^E: ID_MODEL=(.+)$/m) {
+	$data->{model} = $1;
+    }
+
     $data->{wwn} = 'unknown';
     if ($info =~ m/^E: ID_WWN=(.*)$/m) {
 	$data->{wwn} = $1;
@@ -413,7 +417,7 @@ sub get_disks {
 
 		if ($type eq 'ssd') {
 		    # if we have an ssd we try to get the wearout indicator
-		    my $wearval = get_wear_leveling_info($smartdata->{attributes}, $sysdata->{model});
+		    my $wearval = get_wear_leveling_info($smartdata->{attributes}, $data->{model} || $sysdir->{model});
 		    $wearout = $wearval if $wearval;
 		}
 	    };
@@ -429,7 +433,7 @@ sub get_disks {
 
 	$disklist->{$dev} = {
 	    vendor => $sysdata->{vendor},
-	    model => $sysdata->{model},
+	    model => $data->{model} || $sysdata->{model},
 	    size => $sysdata->{size},
 	    serial => $data->{serial},
 	    gpt => $data->{gpt},
