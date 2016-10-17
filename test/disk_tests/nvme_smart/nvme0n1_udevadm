@@ -1,0 +1,18 @@
+
+P: /devices/pci0000:00/0000:00:01.1/0000:02:00.0/nvme/nvme0/nvme0n1
+N: nvme0n1
+S: disk/by-id/lvm-pv-uuid-Py4eod-qfzj-i8Q3-Dxu6-xf0Q-H3Wr-w5Fo8V
+E: DEVLINKS=/dev/disk/by-id/lvm-pv-uuid-Py4eod-qfzj-i8Q3-Dxu6-xf0Q-H3Wr-w5Fo8V
+E: DEVNAME=/dev/nvme0n1
+E: DEVPATH=/devices/pci0000:00/0000:00:01.1/0000:02:00.0/nvme/nvme0/nvme0n1
+E: DEVTYPE=disk
+E: ID_FS_TYPE=LVM2_member
+E: ID_FS_USAGE=raid
+E: ID_FS_UUID=Py4eod-qfzj-i8Q3-Dxu6-xf0Q-H3Wr-w5Fo8V
+E: ID_FS_UUID_ENC=Py4eod-qfzj-i8Q3-Dxu6-xf0Q-H3Wr-w5Fo8V
+E: ID_FS_VERSION=LVM2 001
+E: MAJOR=259
+E: MINOR=0
+E: SUBSYSTEM=block
+E: TAGS=:systemd:
+E: USEC_INITIALIZED=3842
