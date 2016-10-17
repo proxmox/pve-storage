@@ -1,0 +1,6 @@
+testpool	2.00T	1.00T	2.60T	-	5%	28%	1.00x	ONLINE	-
+	/dev/sdc	3.62T	1.02T	2.60T	-	5%	28%
+log      -      -      -         -      -      -
+	/dev/sdd1	15.9G	2.79M	15.9G	-	82%	0%
+cache      -      -      -         -      -      -
+	/dev/sdd2	42.5G	36.2G	6.36G	-	0%	85%
