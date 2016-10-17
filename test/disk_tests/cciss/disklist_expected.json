@@ -1,0 +1,17 @@
+{
+    "cciss!c0d0" : {
+	"wearout" : "N/A",
+	"vendor" : "HP",
+	"rpm" : -1,
+	"type" : "unknown",
+	"serial" : "SER111",
+	"osdid" : -1,
+	"health" : "UNKNOWN",
+	"model" : "LOGICAL_VOLUME",
+	"size" : 5120,
+	"wwn" : "0x0000000000000000",
+	"journals" : 0,
+	"gpt" : 1,
+	"devpath" : "/dev/cciss/c0d0"
+    }
+}
