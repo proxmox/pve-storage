@@ -1,0 +1,46 @@
+{
+    "attributes" : [
+	{
+	    "worst" : 0,
+	    "threshold" : 0,
+	    "name" : "Wear_Leveling_Count",
+	    "value" : 0,
+	    "id" : "177",
+	    "raw" : "0",
+	    "flags" : "------",
+	    "fail" : "-"
+	},
+	{
+	    "worst" : 100,
+	    "name" : "Unknown_SSD_Attribute",
+	    "threshold" : 0,
+	    "id" : "230",
+	    "fail" : "-",
+	    "flags" : "PO--C-",
+	    "raw" : "100",
+	    "value" : 100
+	},
+	{
+	    "worst" : 91,
+	    "threshold" : 11,
+	    "name" : "Temperature_Celsius",
+	    "id" : "231",
+	    "flags" : "------",
+	    "raw" : "4294967296",
+	    "fail" : "-",
+	    "value" : 91
+	},
+	{
+	    "worst" : 0,
+	    "threshold" : 0,
+	    "name" : "Media_Wearout_Indicator",
+	    "id" : "233",
+	    "flags" : "-O--CK",
+	    "raw" : "43362",
+	    "fail" : "-",
+	    "value" : 0
+	}
+    ],
+    "type" : "ata",
+    "health" : "PASSED"
+}

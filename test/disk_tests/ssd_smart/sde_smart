@@ -1,0 +1,19 @@
+smartctl 6.4 2014-10-07 r4002 [x86_64-linux-4.4.19-1-pve] (local build)
+Copyright (C) 2002-14, Bruce Allen, Christian Franke, www.smartmontools.org
+
+=== START OF READ SMART DATA SECTION ===
+SMART overall-health self-assessment test result: PASSED
+
+SMART Attributes Data Structure revision number: 10
+Vendor Specific SMART Attributes with Thresholds:
+ID# ATTRIBUTE_NAME          FLAGS    VALUE WORST THRESH FAIL RAW_VALUE
+177 Wear_Leveling_Count     ------   000   000   000    -    0
+230 Unknown_SSD_Attribute   PO--C-   100   100   000    -    100
+231 Temperature_Celsius     ------   091   091   011    -    4294967296
+233 Media_Wearout_Indicator -O--CK   000   000   000    -    43362
+                            ||||||_ K auto-keep
+                            |||||__ C event count
+                            ||||___ R error rate
+                            |||____ S speed/performance
+                            ||_____ O updated online
+                            |______ P prefailure warning

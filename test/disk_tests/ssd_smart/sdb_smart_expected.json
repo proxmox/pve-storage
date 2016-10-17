@@ -1,0 +1,256 @@
+{
+    "health" : "PASSED",
+    "type" : "ata",
+    "attributes" : [
+	{
+	    "name" : "Reallocated_Sector_Ct",
+	    "threshold" : 0,
+	    "worst" : 100,
+	    "fail" : "-",
+	    "flags" : "-O--CK",
+	    "raw" : "0",
+	    "id" : "  5",
+	    "value" : 100
+	},
+	{
+	    "worst" : 100,
+	    "name" : "Power_On_Hours",
+	    "threshold" : 0,
+	    "id" : "  9",
+	    "fail" : "-",
+	    "raw" : "1259",
+	    "flags" : "-O--CK",
+	    "value" : 100
+	},
+	{
+	    "value" : 100,
+	    "id" : " 12",
+	    "raw" : "191",
+	    "flags" : "-O--CK",
+	    "fail" : "-",
+	    "worst" : 100,
+	    "threshold" : 0,
+	    "name" : "Power_Cycle_Count"
+	},
+	{
+	    "id" : "170",
+	    "raw" : "0",
+	    "flags" : "PO--CK",
+	    "fail" : "-",
+	    "value" : 100,
+	    "worst" : 100,
+	    "threshold" : 10,
+	    "name" : "Available_Reservd_Space"
+	},
+	{
+	    "threshold" : 0,
+	    "name" : "Program_Fail_Count",
+	    "worst" : 100,
+	    "value" : 100,
+	    "raw" : "0",
+	    "flags" : "-O--CK",
+	    "fail" : "-",
+	    "id" : "171"
+	},
+	{
+	    "worst" : 100,
+	    "name" : "Erase_Fail_Count",
+	    "threshold" : 0,
+	    "id" : "172",
+	    "fail" : "-",
+	    "flags" : "-O--CK",
+	    "raw" : "0",
+	    "value" : 100
+	},
+	{
+	    "worst" : 100,
+	    "threshold" : 0,
+	    "name" : "Unsafe_Shutdown_Count",
+	    "value" : 100,
+	    "id" : "174",
+	    "raw" : "164",
+	    "flags" : "-O--CK",
+	    "fail" : "-"
+	},
+	{
+	    "value" : 100,
+	    "fail" : "-",
+	    "flags" : "PO--CK",
+	    "raw" : "5670 (1 343)",
+	    "id" : "175",
+	    "name" : "Power_Loss_Cap_Test",
+	    "threshold" : 10,
+	    "worst" : 100
+	},
+	{
+	    "worst" : 100,
+	    "threshold" : 0,
+	    "name" : "SATA_Downshift_Count",
+	    "value" : 100,
+	    "id" : "183",
+	    "raw" : "0",
+	    "flags" : "-O--CK",
+	    "fail" : "-"
+	},
+	{
+	    "worst" : 100,
+	    "name" : "End-to-End_Error",
+	    "threshold" : 90,
+	    "value" : 100,
+	    "id" : "184",
+	    "fail" : "-",
+	    "raw" : "0",
+	    "flags" : "PO--CK"
+	},
+	{
+	    "worst" : 100,
+	    "name" : "Reported_Uncorrect",
+	    "threshold" : 0,
+	    "value" : 100,
+	    "id" : "187",
+	    "fail" : "-",
+	    "raw" : "0",
+	    "flags" : "-O--CK"
+	},
+	{
+	    "worst" : 71,
+	    "name" : "Temperature_Case",
+	    "threshold" : 0,
+	    "id" : "190",
+	    "fail" : "-",
+	    "raw" : "28 (Min/Max 21/30)",
+	    "flags" : "-O---K",
+	    "value" : 72
+	},
+	{
+	    "worst" : 100,
+	    "threshold" : 0,
+	    "name" : "Unsafe_Shutdown_Count",
+	    "value" : 100,
+	    "id" : "192",
+	    "raw" : "164",
+	    "flags" : "-O--CK",
+	    "fail" : "-"
+	},
+	{
+	    "id" : "194",
+	    "fail" : "-",
+	    "raw" : "28",
+	    "flags" : "-O---K",
+	    "value" : 100,
+	    "worst" : 100,
+	    "name" : "Temperature_Internal",
+	    "threshold" : 0
+	},
+	{
+	    "worst" : 100,
+	    "threshold" : 0,
+	    "name" : "Current_Pending_Sector",
+	    "value" : 100,
+	    "id" : "197",
+	    "raw" : "0",
+	    "flags" : "-O--C-",
+	    "fail" : "-"
+	},
+	{
+	    "worst" : 100,
+	    "threshold" : 0,
+	    "name" : "CRC_Error_Count",
+	    "value" : 100,
+	    "id" : "199",
+	    "flags" : "-OSRCK",
+	    "raw" : "0",
+	    "fail" : "-"
+	},
+	{
+	    "worst" : 100,
+	    "name" : "Host_Writes_32MiB",
+	    "threshold" : 0,
+	    "id" : "225",
+	    "fail" : "-",
+	    "flags" : "-O--CK",
+	    "raw" : "296600",
+	    "value" : 100
+	},
+	{
+	    "value" : 100,
+	    "id" : "226",
+	    "raw" : "3747",
+	    "flags" : "-O--CK",
+	    "fail" : "-",
+	    "worst" : 100,
+	    "threshold" : 0,
+	    "name" : "Workld_Media_Wear_Indic"
+	},
+	{
+	    "worst" : 100,
+	    "threshold" : 0,
+	    "name" : "Workld_Host_Reads_Perc",
+	    "id" : "227",
+	    "raw" : "0",
+	    "flags" : "-O--CK",
+	    "fail" : "-",
+	    "value" : 100
+	},
+	{
+	    "threshold" : 0,
+	    "name" : "Workload_Minutes",
+	    "worst" : 100,
+	    "raw" : "75111",
+	    "flags" : "-O--CK",
+	    "fail" : "-",
+	    "id" : "228",
+	    "value" : 100
+	},
+	{
+	    "fail" : "-",
+	    "raw" : "0",
+	    "flags" : "PO--CK",
+	    "id" : "232",
+	    "value" : 100,
+	    "name" : "Available_Reservd_Space",
+	    "threshold" : 10,
+	    "worst" : 100
+	},
+	{
+	    "value" : 97,
+	    "fail" : "-",
+	    "flags" : "-O--CK",
+	    "raw" : "0",
+	    "id" : "233",
+	    "name" : "Media_Wearout_Indicator",
+	    "threshold" : 0,
+	    "worst" : 97
+	},
+	{
+	    "value" : 100,
+	    "fail" : "-",
+	    "raw" : "0/0",
+	    "flags" : "-O--CK",
+	    "id" : "234",
+	    "name" : "Thermal_Throttle",
+	    "threshold" : 0,
+	    "worst" : 100
+	},
+	{
+	    "worst" : 100,
+	    "name" : "Host_Writes_32MiB",
+	    "threshold" : 0,
+	    "id" : "241",
+	    "fail" : "-",
+	    "raw" : "296600",
+	    "flags" : "-O--CK",
+	    "value" : 100
+	},
+	{
+	    "value" : 100,
+	    "id" : "242",
+	    "fail" : "-",
+	    "raw" : "1207",
+	    "flags" : "-O--CK",
+	    "worst" : 100,
+	    "name" : "Host_Reads_32MiB",
+	    "threshold" : 0
+	}
+    ]
+}

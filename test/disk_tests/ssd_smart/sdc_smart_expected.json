@@ -1,0 +1,16 @@
+{
+    "type" : "ata",
+    "health" : "PASSED",
+    "attributes" : [
+	{
+	    "value" : 99,
+	    "fail" : "-",
+	    "raw" : "34",
+	    "flags" : "PO--CK",
+	    "id" : "177",
+	    "name" : "Wear_Leveling_Count",
+	    "threshold" : 0,
+	    "worst" : 99
+	}
+    ]
+}

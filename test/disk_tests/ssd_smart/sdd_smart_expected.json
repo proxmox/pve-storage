@@ -1,0 +1,16 @@
+{
+    "attributes" : [
+	{
+	    "id" : "232",
+	    "fail" : "-",
+	    "raw" : "100",
+	    "flags" : "PO--CK",
+	    "value" : 100,
+	    "worst" : 100,
+	    "name" : "Available_Reservd_Space",
+	    "threshold" : 4
+	}
+    ],
+    "type" : "ata",
+    "health" : "PASSED"
+}

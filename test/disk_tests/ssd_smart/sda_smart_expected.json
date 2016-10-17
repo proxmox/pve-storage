@@ -1,0 +1,236 @@
+{
+    "type" : "ata",
+    "health" : "PASSED",
+    "attributes" : [
+	{
+	    "worst" : 100,
+	    "threshold" : 0,
+	    "name" : "Raw_Read_Error_Rate",
+	    "id" : "  1",
+	    "flags" : "POSR-K",
+	    "raw" : "0",
+	    "fail" : "-",
+	    "value" : 100
+	},
+	{
+	    "worst" : 100,
+	    "threshold" : 10,
+	    "name" : "Reallocate_NAND_Blk_Cnt",
+	    "id" : "  5",
+	    "flags" : "-O--CK",
+	    "raw" : "0",
+	    "fail" : "-",
+	    "value" : 100
+	},
+	{
+	    "name" : "Power_On_Hours",
+	    "threshold" : 0,
+	    "worst" : 100,
+	    "value" : 100,
+	    "fail" : "-",
+	    "raw" : "1309",
+	    "flags" : "-O--CK",
+	    "id" : "  9"
+	},
+	{
+	    "threshold" : 0,
+	    "name" : "Power_Cycle_Count",
+	    "worst" : 100,
+	    "raw" : "200",
+	    "flags" : "-O--CK",
+	    "fail" : "-",
+	    "id" : " 12",
+	    "value" : 100
+	},
+	{
+	    "value" : 100,
+	    "raw" : "0",
+	    "flags" : "-O--CK",
+	    "fail" : "-",
+	    "id" : "171",
+	    "threshold" : 0,
+	    "name" : "Program_Fail_Count",
+	    "worst" : 100
+	},
+	{
+	    "value" : 100,
+	    "id" : "172",
+	    "raw" : "0",
+	    "flags" : "-O--CK",
+	    "fail" : "-",
+	    "worst" : 100,
+	    "threshold" : 0,
+	    "name" : "Erase_Fail_Count"
+	},
+	{
+	    "threshold" : 0,
+	    "name" : "Ave_Block-Erase_Count",
+	    "worst" : 100,
+	    "raw" : "12",
+	    "flags" : "-O--CK",
+	    "fail" : "-",
+	    "id" : "173",
+	    "value" : 100
+	},
+	{
+	    "name" : "Unexpect_Power_Loss_Ct",
+	    "threshold" : 0,
+	    "worst" : 100,
+	    "value" : 100,
+	    "fail" : "-",
+	    "raw" : "53",
+	    "flags" : "-O--CK",
+	    "id" : "174"
+	},
+	{
+	    "raw" : "5565",
+	    "flags" : "PO--CK",
+	    "fail" : "-",
+	    "id" : "180",
+	    "value" : 0,
+	    "threshold" : 0,
+	    "name" : "Unused_Reserve_NAND_Blk",
+	    "worst" : 0
+	},
+	{
+	    "name" : "SATA_Interfac_Downshift",
+	    "threshold" : 0,
+	    "worst" : 100,
+	    "fail" : "-",
+	    "raw" : "0",
+	    "flags" : "-O--CK",
+	    "id" : "183",
+	    "value" : 100
+	},
+	{
+	    "worst" : 100,
+	    "threshold" : 0,
+	    "name" : "Error_Correction_Count",
+	    "id" : "184",
+	    "flags" : "-O--CK",
+	    "raw" : "0",
+	    "fail" : "-",
+	    "value" : 100
+	},
+	{
+	    "name" : "Reported_Uncorrect",
+	    "threshold" : 0,
+	    "worst" : 100,
+	    "value" : 100,
+	    "fail" : "-",
+	    "flags" : "-O--CK",
+	    "raw" : "0",
+	    "id" : "187"
+	},
+	{
+	    "worst" : 54,
+	    "name" : "Temperature_Celsius",
+	    "threshold" : 0,
+	    "id" : "194",
+	    "fail" : "-",
+	    "flags" : "-O---K",
+	    "raw" : "32 (Min/Max 22/46)",
+	    "value" : 68
+	},
+	{
+	    "raw" : "0",
+	    "flags" : "-O--CK",
+	    "fail" : "-",
+	    "id" : "196",
+	    "value" : 100,
+	    "threshold" : 0,
+	    "name" : "Reallocated_Event_Count",
+	    "worst" : 100
+	},
+	{
+	    "id" : "197",
+	    "fail" : "-",
+	    "flags" : "-O--CK",
+	    "raw" : "0",
+	    "value" : 100,
+	    "worst" : 100,
+	    "name" : "Current_Pending_Sector",
+	    "threshold" : 0
+	},
+	{
+	    "threshold" : 0,
+	    "name" : "Offline_Uncorrectable",
+	    "worst" : 100,
+	    "flags" : "----CK",
+	    "raw" : "0",
+	    "fail" : "-",
+	    "id" : "198",
+	    "value" : 100
+	},
+	{
+	    "worst" : 100,
+	    "name" : "UDMA_CRC_Error_Count",
+	    "threshold" : 0,
+	    "id" : "199",
+	    "fail" : "-",
+	    "raw" : "0",
+	    "flags" : "-O--CK",
+	    "value" : 100
+	},
+	{
+	    "value" : 100,
+	    "id" : "202",
+	    "flags" : "----CK",
+	    "raw" : "0",
+	    "fail" : "-",
+	    "worst" : 100,
+	    "threshold" : 1,
+	    "name" : "Percent_Lifetime_Used"
+	},
+	{
+	    "name" : "Write_Error_Rate",
+	    "threshold" : 0,
+	    "worst" : 100,
+	    "value" : 100,
+	    "fail" : "-",
+	    "raw" : "0",
+	    "flags" : "-OSR--",
+	    "id" : "206"
+	},
+	{
+	    "name" : "Success_RAIN_Recov_Cnt",
+	    "threshold" : 0,
+	    "worst" : 100,
+	    "fail" : "-",
+	    "raw" : "0",
+	    "flags" : "-O--CK",
+	    "id" : "210",
+	    "value" : 100
+	},
+	{
+	    "value" : 100,
+	    "id" : "246",
+	    "fail" : "-",
+	    "raw" : "6751830403",
+	    "flags" : "-O--CK",
+	    "worst" : 100,
+	    "name" : "Total_Host_Sector_Write",
+	    "threshold" : 0
+	},
+	{
+	    "name" : "Host_Program_Page_Count",
+	    "threshold" : 0,
+	    "worst" : 100,
+	    "fail" : "-",
+	    "raw" : "211228065",
+	    "flags" : "-O--CK",
+	    "id" : "247",
+	    "value" : 100
+	},
+	{
+	    "value" : 100,
+	    "fail" : "-",
+	    "raw" : "253276904",
+	    "flags" : "-O--CK",
+	    "id" : "248",
+	    "name" : "Bckgnd_Program_Page_Cnt",
+	    "threshold" : 0,
+	    "worst" : 100
+	}
+    ]
+}

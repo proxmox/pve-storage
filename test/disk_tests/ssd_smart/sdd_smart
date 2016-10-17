@@ -1,0 +1,40 @@
+smartctl 6.4 2014-10-07 r4002 [x86_64-linux-4.4.19-1-pve] (local build)
+Copyright (C) 2002-14, Bruce Allen, Christian Franke, www.smartmontools.org
+
+=== START OF READ SMART DATA SECTION ===
+SMART overall-health self-assessment test result: PASSED
+
+SMART Attributes Data Structure revision number: 4
+Vendor Specific SMART Attributes with Thresholds:
+ID# ATTRIBUTE_NAME          FLAGS    VALUE WORST THRESH FAIL RAW_VALUE
+  5 Reallocated_Sector_Ct   -O--CK   100   100   ---    -    0
+  9 Power_On_Hours          -O--CK   100   100   ---    -    799
+ 12 Power_Cycle_Count       -O--CK   100   100   ---    -    92
+165 Unknown_Attribute       -O--CK   100   100   ---    -    9699447
+166 Unknown_Attribute       -O--CK   100   100   ---    -    1
+167 Unknown_Attribute       -O--CK   100   100   ---    -    46
+168 Unknown_Attribute       -O--CK   100   100   ---    -    5
+169 Unknown_Attribute       -O--CK   100   100   ---    -    1079
+170 Unknown_Attribute       -O--CK   100   100   ---    -    0
+171 Unknown_Attribute       -O--CK   100   100   ---    -    0
+172 Unknown_Attribute       -O--CK   100   100   ---    -    0
+173 Unknown_Attribute       -O--CK   100   100   ---    -    1
+174 Unknown_Attribute       -O--CK   100   100   ---    -    22
+184 End-to-End_Error        -O--CK   100   100   ---    -    0
+187 Reported_Uncorrect      -O--CK   100   100   ---    -    0
+188 Command_Timeout         -O--CK   100   100   ---    -    0
+194 Temperature_Celsius     -O---K   073   064   ---    -    27 (Min/Max 23/64)
+199 UDMA_CRC_Error_Count    -O--CK   100   100   ---    -    0
+230 Unknown_SSD_Attribute   -O--CK   100   100   ---    -    146029805602
+232 Available_Reservd_Space PO--CK   100   100   004    -    100
+233 Media_Wearout_Indicator -O--CK   100   100   ---    -    1574
+234 Unknown_Attribute       -O--CK   100   100   ---    -    2303
+241 Total_LBAs_Written      ----CK   253   253   ---    -    2111
+242 Total_LBAs_Read         ----CK   253   253   ---    -    1542
+244 Unknown_Attribute       -O--CK   000   100   ---    -    0
+                            ||||||_ K auto-keep
+                            |||||__ C event count
+                            ||||___ R error rate
+                            |||____ S speed/performance
+                            ||_____ O updated online
+                            |______ P prefailure warning
