@@ -1,3 +1,9 @@
+libpve-storage-perl (4.0-67) unstable; urgency=medium
+
+  * fix #1165: only check mount status when is_mountpoint is set
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 21 Oct 2016 08:53:24 +0200
+
 libpve-storage-perl (4.0-66) unstable; urgency=medium
 
   * disks: fix warnings
