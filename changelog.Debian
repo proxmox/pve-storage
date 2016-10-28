@@ -1,3 +1,13 @@
+libpve-storage-perl (4.0-68) unstable; urgency=medium
+
+  * add more regression test
+
+  * Diskmanage: use model from udevadm
+
+  * Diskmanage: use /sys/block/ path for udev instead of name
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 28 Oct 2016 10:52:52 +0200
+
 libpve-storage-perl (4.0-67) unstable; urgency=medium
 
   * fix #1165: only check mount status when is_mountpoint is set
