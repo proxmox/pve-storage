@@ -608,7 +608,7 @@ sub volume_resize {
 
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
 
-    my $cmd = &$rbd_cmd($scfg, $storeid, 'resize', '--size', ($size/1024/1024), $name);
+    my $cmd = &$rbd_cmd($scfg, $storeid, 'resize', '--allow-shrink', '--size', ($size/1024/1024), $name);
     run_rbd_command($cmd, errmsg => "rbd resize '$volname' error");
     return undef;
 }
