@@ -165,8 +165,7 @@ sub path {
 sub zfs_request {
     my ($class, $scfg, $timeout, $method, @params) = @_;
 
-    $timeout = PVE::RPCEnvironment::is_worker() ? 60*60 : 5
-	if !$timeout;
+    my $default_timeout = PVE::RPCEnvironment::is_worker() ? 60*60 : 5;
 
     my $cmd = [];
 
@@ -174,6 +173,7 @@ sub zfs_request {
 	push @$cmd, 'zpool', 'list';
     } elsif ($method eq 'zpool_import') {
 	push @$cmd, 'zpool', 'import';
+	$default_timeout = 15 if $default_timeout < 15;
     } else {
 	push @$cmd, 'zfs', $method;
     }
@@ -186,6 +186,8 @@ sub zfs_request {
         my $line = shift;
         $msg .= "$line\n";
     };
+
+    $timeout =  $default_timeout if !$timeout;
 
     run_command($cmd, errmsg => "zfs error", outfunc => $output, timeout => $timeout);
 
