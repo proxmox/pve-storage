@@ -172,6 +172,8 @@ sub zfs_request {
 
     if ($method eq 'zpool_list') {
 	push @$cmd, 'zpool', 'list';
+    } elsif ($method eq 'zpool_import') {
+	push @$cmd, 'zpool', 'import';
     } else {
 	push @$cmd, 'zfs', $method;
     }
@@ -492,16 +494,22 @@ sub volume_rollback_is_possible {
 sub activate_storage {
     my ($class, $storeid, $scfg, $cache) = @_;
 
-    my @param = ('-o', 'name', '-H');
-
-    my $text = $class->zfs_request($scfg, undef, 'zpool_list', @param);
-
     # Note: $scfg->{pool} can include dataset <pool>/<dataset>
     my $pool = $scfg->{pool};
     $pool =~ s!/.*$!!;
 
-    if ($text !~ $pool) {
-	run_command("zpool import -d /dev/disk/by-id/ -a");
+    my @param = ('-o', 'name', '-H', "$pool");
+    my $res;
+    eval {
+	$res = $class->zfs_request($scfg, undef, 'zpool_list', @param);
+    };
+
+    if ($@ || !defined($res) || $res !~ $pool) {
+	eval {
+	    @param = ('-d', '/dev/disk/by-id/', "$pool");
+	    $class->zfs_request($scfg, undef, 'zpool_import', @param);
+	};
+	die "could not activate storage '$storeid', $@\n" if $@;
     }
     return 1;
 }
