@@ -213,6 +213,47 @@ sub path {
     return wantarray ? ($path, $vmid, $vtype) : $path;
 }
 
+sub clone_image {
+    my ($class, $scfg, $storeid, $volname, $vmid, $snap) = @_;
+
+    die "storage definintion has no path\n" if !$scfg->{path};
+
+    my ($vtype, $basename, $basevmid, undef, undef, $isBase, $format) =
+	$class->parse_volname($volname);
+
+    die "clone_image on wrong vtype '$vtype'\n" if $vtype ne 'images';
+
+    die "this storage type does not support clone_image on snapshot\n" if $snap;
+
+    die "this storage type does not support clone_image on subvolumes\n" if $format eq 'subvol';
+
+    die "clone_image only works on base images\n" if !$isBase;
+
+    my $imagedir = $class->get_subdir($scfg, 'images');
+    $imagedir .= "/$vmid";
+
+    mkpath $imagedir;
+
+    my $name = &$find_free_diskname($imagedir, $vmid, "qcow2");
+
+    warn "clone $volname: $vtype, $name, $vmid to $name (base=../$basevmid/$basename)\n";
+
+    my $path = "$imagedir/$name";
+
+    die "disk image '$path' already exists\n" if -e $path;
+
+    my $server = &$get_active_server($scfg, 1);
+    my $glustervolume = $scfg->{volume};
+    my $volumepath = "gluster://$server/$glustervolume/images/$vmid/$name";
+
+    my $cmd = ['/usr/bin/qemu-img', 'create', '-b', "../$basevmid/$basename",
+	       '-f', 'qcow2', $volumepath];
+
+    run_command($cmd, errmsg => "unable to create image");
+
+    return "$basevmid/$basename/$vmid/$name";
+}
+
 sub alloc_image {
     my ($class, $storeid, $scfg, $vmid, $fmt, $name, $size) = @_;
 
