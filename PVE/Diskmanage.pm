@@ -307,6 +307,7 @@ sub get_wear_leveling_info {
 	'samsung' => 177,
 	'intel' => 233,
 	'sandisk' => 233,
+	'crucial' => 202,
 	'default' => 233,
     };
 
