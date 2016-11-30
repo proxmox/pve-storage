@@ -1,3 +1,15 @@
+libpve-storage-perl (4.0-70) unstable; urgency=medium
+
+  * change regression test for crucial
+
+  * add crucial smart attribute for wear leveling
+
+  * correct regression test for sandisk ssds
+
+  * catch '---' in threshold output of sandisk ssds
+
+ -- Proxmox Support Team <support@proxmox.com>  Wed, 30 Nov 2016 17:22:44 +0100
+
 libpve-storage-perl (4.0-69) unstable; urgency=medium
 
   * use qemu gluster blockdriver for linked clone creation
