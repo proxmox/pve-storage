@@ -6,7 +6,7 @@
 	"gpt" : 1,
 	"health" : "PASSED",
 	"journals" : 0,
-	"wearout" : "N/A",
+	"wearout" : "100",
 	"osdid" : -1,
 	"size" : 512000,
 	"type" : "ssd",
