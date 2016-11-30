@@ -50,7 +50,7 @@
 	"serial" : "000000000000",
 	"vendor" : "ATA",
 	"journals" : 0,
-	"wearout" : "N/A",
+	"wearout" : "100",
 	"health" : "PASSED",
 	"devpath" : "/dev/sdd",
 	"model" : "SanDisk SD8SB8U1T001122",
