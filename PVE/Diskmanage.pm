@@ -97,14 +97,21 @@ sub get_smart_data {
 # Data Units Written:                 5,584,952 [2.85 TB]
 # Accumulated start-stop cycles:  34
 
-	    if (defined($type) && $type eq 'ata' && $line =~ m/^([ \d]{2}\d)\s+(\S+)\s+(\S{6})\s+(\d+)\s+(\d+)\s+(\d+)\s+(\S+)\s+(.*)$/) {
+	    if (defined($type) && $type eq 'ata' && $line =~ m/^([ \d]{2}\d)\s+(\S+)\s+(\S{6})\s+(\d+)\s+(\d+)\s+(\S+)\s+(\S+)\s+(.*)$/) {
 		my $entry = {};
+
+
 		$entry->{name} = $2 if defined $2;
 		$entry->{flags} = $3 if defined $3;
 		# the +0 makes a number out of the strings
 		$entry->{value} = $4+0 if defined $4;
 		$entry->{worst} = $5+0 if defined $5;
-		$entry->{threshold} = $6+0 if defined $6;
+		# some disks report the default threshold as --- instead of 000
+		if (defined($6) && $6 eq '---') {
+		    $entry->{threshold} = 0;
+		} else {
+		    $entry->{threshold} = $6+0 if defined $6;
+		}
 		$entry->{fail} = $7 if defined $7;
 		$entry->{raw} = $8 if defined $8;
 		$entry->{id} = $1 if defined $1;
