@@ -5,6 +5,7 @@ use warnings;
 use PVE::ProcFSTools;
 use Data::Dumper;
 use Cwd qw(abs_path);
+use Fcntl ':mode';
 
 use PVE::Tools qw(extract_param run_command file_get_contents file_read_firstline dir_glob_regex dir_glob_foreach trim);
 
@@ -514,6 +515,33 @@ sub get_disks {
 
     return $disklist;
 
+}
+
+sub get_partnum {
+    my ($part_path) = @_;
+
+    my ($mode, $rdev) = (stat($part_path))[2,6];
+
+    next if !$mode || !S_ISBLK($mode) || !$rdev;
+    my $major = int($rdev / 0x100);
+    my $minor = $rdev % 0x100;
+    my $partnum_path = "/sys/dev/block/$major:$minor/";
+
+    my $partnum;
+
+    $partnum = file_read_firstline("${partnum_path}partition");
+
+    die "Partition does not exists\n" if !defined($partnum);
+
+    #untaint and ensure it is a int
+    if ($partnum =~ m/(\d+)/) {
+	$partnum = $1;
+	die "Partition number $partnum is invalid\n" if $partnum > 128;
+    } else {
+	die "Failed to get partition number\n";
+    }
+
+    return $partnum;
 }
 
 1;
