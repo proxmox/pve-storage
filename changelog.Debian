@@ -1,3 +1,11 @@
+libpve-storage-perl (4.0-71) unstable; urgency=medium
+
+  * Add new function get_blockdev
+
+  * Add new function get_partnum
+
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 22 Dec 2016 12:15:40 +0100
+
 libpve-storage-perl (4.0-70) unstable; urgency=medium
 
   * change regression test for crucial
