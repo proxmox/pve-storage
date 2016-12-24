@@ -613,11 +613,11 @@ sub storage_migrate {
 
 	    eval {
 		if ($tcfg->{type} eq 'lvmthin') {
-		    run_command([["dd", "if=$src"],["/usr/bin/ssh", "root\@${target_host}",
-			      "dd", 'conv=sparse', "of=$dst"]]);
+		    run_command([["dd", "if=$src", "bs=4k"],["/usr/bin/ssh", "root\@${target_host}",
+			      "dd", 'conv=sparse', "of=$dst", "bs=4k"]]);
 		} else {
-		    run_command([["dd", "if=$src"],["/usr/bin/ssh", "root\@${target_host}",
-			      "dd", "of=$dst"]]);
+		    run_command([["dd", "if=$src", "bs=4k"],["/usr/bin/ssh", "root\@${target_host}",
+			      "dd", "of=$dst", "bs=4k"]]);
 		}
 	    };
 	    if (my $err = $@) {
