@@ -586,12 +586,13 @@ sub storage_migrate {
 	    eval{
 		run_command($send);
 	    };
-	    my $err;
-	    if ($err = $@){
-		run_command(['zfs', 'destroy', "$zfspath\@__migration__"]);
-		die $err;
-	    }
-	    run_command($destroy_target);
+	    my $err = $@;
+	    warn "zfs send/receive failed, cleaning up snapshot(s)..\n" if $err;
+	    eval { run_command(['zfs', 'destroy', "$zfspath\@__migration__"]); };
+	    warn "could not remove source snapshot: $@\n" if $@;
+	    eval { run_command($destroy_target); };
+	    warn "could not remove target snapshot: $@\n" if $@;
+	    die $err if $err;
 
  	} else {
  	    die "$errstr - target type $tcfg->{type} is not valid\n";
