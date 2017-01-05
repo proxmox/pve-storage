@@ -376,6 +376,11 @@ sub get_disks {
 
     my $lvmlist = get_lvm_devices();
 
+    # we get cciss/c0d0 but need cciss!c0d0
+    if (defined($disk) && $disk =~ m|^cciss/|) {
+	$disk =~ s|cciss/|cciss!|;
+    }
+
     dir_glob_foreach('/sys/block', '.*', sub {
 	my ($dev) = @_;
 	return if defined($disk) && $disk ne $dev;
