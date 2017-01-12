@@ -1,3 +1,17 @@
+libpve-storage-perl (4.0-72) unstable; urgency=medium
+
+  * add setup_environment hook to CLIHandler class
+
+  * sheepdog : volume_resize return if running
+
+  * fix #1099 (again): map cciss/c0d0 to cciss!c0d0
+
+  * fix #1135: always clean up ZFS snapshots on migration
+
+  * storage_migrate: use bs=4k to copy images with dd
+
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 12 Jan 2017 14:05:22 +0100
+
 libpve-storage-perl (4.0-71) unstable; urgency=medium
 
   * Add new function get_blockdev
