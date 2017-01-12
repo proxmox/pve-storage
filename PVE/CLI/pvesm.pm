@@ -23,6 +23,10 @@ use base qw(PVE::CLIHandler);
 
 my $nodename = PVE::INotify::nodename();
 
+sub setup_environment {
+    PVE::RPCEnvironment->setup_default_cli_env();
+}
+
 __PACKAGE__->register_method ({
     name => 'path',
     path => 'path',
