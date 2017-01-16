@@ -604,7 +604,7 @@ sub volume_size_info {
 sub volume_resize {
     my ($class, $scfg, $storeid, $volname, $size, $running) = @_;
 
-    return 1 if $running;
+    return 1 if $running && !$scfg->{krbd};
 
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
 
