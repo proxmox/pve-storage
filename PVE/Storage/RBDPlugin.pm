@@ -635,7 +635,7 @@ sub volume_snapshot_rollback {
 sub volume_snapshot_delete {
     my ($class, $scfg, $storeid, $volname, $snap, $running) = @_;
 
-    return 1 if $running;
+    return 1 if $running && !$scfg->{krbd};
 
     $class->deactivate_volume($storeid, $scfg, $volname, $snap, {});
 
