@@ -86,7 +86,7 @@ __PACKAGE__->register_method ({
 	my $authuser = $rpcenv->get_user();
 
 	my $storage_cfg = PVE::Storage::config();
-	$rpcenv->check_volume_access($authuser, $storage_cfg, undef, $volume);
+	PVE::Storage::check_volume_access($rpcenv, $authuser, $storage_cfg, undef, $volume);
 
 	my $config_raw = PVE::Storage::extract_vzdump_config($storage_cfg, $volume);
 

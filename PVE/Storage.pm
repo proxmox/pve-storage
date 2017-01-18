@@ -344,6 +344,32 @@ sub parse_volume_id {
     return PVE::Storage::Plugin::parse_volume_id($volid, $noerr);
 }
 
+# test if we have read access to volid
+sub check_volume_access {
+    my ($rpcenv, $user, $cfg, $vmid, $volid) = @_;
+
+    my ($sid, $volname) = parse_volume_id($volid, 1);
+    if ($sid) {
+	my ($vtype, undef, $ownervm) = parse_volname($cfg, $volid);
+	if ($vtype eq 'iso' || $vtype eq 'vztmpl') {
+	    # we simply allow access
+	} elsif (defined($ownervm) && defined($vmid) && ($ownervm == $vmid)) {
+	    # we are owner - allow access
+	} elsif ($vtype eq 'backup' && $ownervm) {
+	    $rpcenv->check($user, "/storage/$sid", ['Datastore.AllocateSpace']);
+	    $rpcenv->check($user, "/vms/$ownervm", ['VM.Backup']);
+	} else {
+	    # allow if we are Datastore administrator
+	    $rpcenv->check($user, "/storage/$sid", ['Datastore.Allocate']);
+	}
+    } else {
+	die "Only root can pass arbitrary filesystem paths."
+	    if $user ne 'root@pam';
+    }
+
+    return undef;
+}
+
 my $volume_is_base_and_used__no_lock = sub {
     my ($scfg, $storeid, $plugin, $volname) = @_;
 
