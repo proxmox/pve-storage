@@ -165,7 +165,7 @@ sub path {
 sub zfs_request {
     my ($class, $scfg, $timeout, $method, @params) = @_;
 
-    my $default_timeout = PVE::RPCEnvironment::is_worker() ? 60*60 : 5;
+    my $default_timeout = PVE::RPCEnvironment->is_worker() ? 60*60 : 5;
 
     my $cmd = [];
 

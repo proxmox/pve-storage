@@ -51,7 +51,7 @@ my $zfs_get_base = sub {
 sub zfs_request {
     my ($class, $scfg, $timeout, $method, @params) = @_;
 
-    $timeout = PVE::RPCEnvironment::is_worker() ? 60*60 : 10
+    $timeout = PVE::RPCEnvironment->is_worker() ? 60*60 : 10
 	if !$timeout;
 
     my $msg = '';
