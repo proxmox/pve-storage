@@ -1,3 +1,15 @@
+libpve-storage-perl (4.0-73) unstable; urgency=medium
+
+  * PVE::Storage: new helper check_volume_access()
+
+  * fixes for new PVE::RPCEnvironment implementation
+
+  * fix #1252: rbd: delete snapshots when using krbd
+
+  * Fix RBD resize with krbd option enabled
+
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 19 Jan 2017 09:13:43 +0100
+
 libpve-storage-perl (4.0-72) unstable; urgency=medium
 
   * add setup_environment hook to CLIHandler class
