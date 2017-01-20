@@ -1327,7 +1327,7 @@ sub extract_vzdump_config_tar {
 
     my $file;
     while (defined($file = <$fh>)) {
-	if ($file =~ m!$conf_re!) {
+	if ($file =~ $conf_re) {
 	    $file = $1; # untaint
 	    last;
 	}
@@ -1414,7 +1414,7 @@ sub extract_vzdump_config {
     my $archive = abs_filesystem_path($cfg, $volid);
 
     if ($volid =~ /vzdump-(lxc|openvz)-\d+-(\d{4})_(\d{2})_(\d{2})-(\d{2})_(\d{2})_(\d{2})\.(tgz|(tar(\.(gz|lzo))?))$/) {
-	return extract_vzdump_config_tar($archive,'^(\./etc/vzdump/(pct|vps)\.conf)$');
+	return extract_vzdump_config_tar($archive, qr!^(\./etc/vzdump/(pct|vps)\.conf)$!);
     } elsif ($volid =~ /vzdump-qemu-\d+-(\d{4})_(\d{2})_(\d{2})-(\d{2})_(\d{2})_(\d{2})\.(tgz|((tar|vma)(\.(gz|lzo))?))$/) {
 	my $format;
 	my $comp;
