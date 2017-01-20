@@ -1413,9 +1413,9 @@ sub extract_vzdump_config {
 
     my $archive = abs_filesystem_path($cfg, $volid);
 
-    if ($volid =~ /\/vzdump-(lxc|openvz)-\d+-(\d{4})_(\d{2})_(\d{2})-(\d{2})_(\d{2})_(\d{2})\.(tgz|(tar(\.(gz|lzo))?))$/) {
+    if ($volid =~ /vzdump-(lxc|openvz)-\d+-(\d{4})_(\d{2})_(\d{2})-(\d{2})_(\d{2})_(\d{2})\.(tgz|(tar(\.(gz|lzo))?))$/) {
 	return extract_vzdump_config_tar($archive,'^(\./etc/vzdump/(pct|vps)\.conf)$');
-    } elsif ($volid =~ /\/vzdump-qemu-\d+-(\d{4})_(\d{2})_(\d{2})-(\d{2})_(\d{2})_(\d{2})\.(tgz|((tar|vma)(\.(gz|lzo))?))$/) {
+    } elsif ($volid =~ /vzdump-qemu-\d+-(\d{4})_(\d{2})_(\d{2})-(\d{2})_(\d{2})_(\d{2})\.(tgz|((tar|vma)(\.(gz|lzo))?))$/) {
 	my $format;
 	my $comp;
 	if ($7 eq 'tgz') {
