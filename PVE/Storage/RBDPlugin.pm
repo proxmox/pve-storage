@@ -338,17 +338,24 @@ sub path {
 my $find_free_diskname = sub {
     my ($storeid, $scfg, $vmid) = @_;
 
-    my $rbd = rbd_ls($scfg, $storeid);
-    my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
+    my $cmd = &$rbd_cmd($scfg, $storeid, 'ls');
     my $disk_ids = {};
-    my $dat = $rbd->{$pool};
 
-    foreach my $image (keys %$dat) {
-	my $volname = $dat->{$image}->{name};
-	if ($volname =~ m/(vm|base)-$vmid-disk-(\d+)/){
+    my $parser = sub {
+	my $line = shift;
+
+	if ($line =~  m/^(vm|base)-\Q$vmid\E+-disk-(\d+)$/) {
 	    $disk_ids->{$2} = 1;
 	}
-    }
+    };
+
+    eval {
+	run_rbd_command($cmd, errmsg => "rbd error", errfunc => sub {}, outfunc => $parser);
+    };
+    my $err = $@;
+
+    die $err if $err && $err !~ m/doesn't contain rbd images/;
+
     #fix: can we search in $rbd hash key with a regex to find (vm|base) ?
     for (my $i = 1; $i < 100; $i++) {
         if (!$disk_ids->{$i}) {
