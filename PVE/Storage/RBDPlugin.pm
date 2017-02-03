@@ -450,7 +450,7 @@ sub alloc_image {
     my ($class, $storeid, $scfg, $vmid, $fmt, $name, $size) = @_;
 
 
-    die "illegal name '$name' - sould be 'vm-$vmid-*'\n"
+    die "illegal name '$name' - should be 'vm-$vmid-*'\n"
 	if  $name && $name !~ m/^vm-$vmid-/;
 
     $name = &$find_free_diskname($storeid, $scfg, $vmid) if !$name;
