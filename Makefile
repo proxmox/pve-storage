@@ -43,8 +43,9 @@ install: pvesm.1 pvesm.bash-completion
 	gzip -9 ${DESTDIR}/usr/share/man/man1/pvesm.1
 	install -m 0644 -D pvesm.bash-completion ${DESTDIR}${BASHCOMPLDIR}/pvesm
 
-.PHONY: deb ${DEB}
-deb ${DEB}:
+.PHONY: deb
+deb: ${DEB}
+${DEB}:
 	rm -rf debian
 	mkdir debian
 	make DESTDIR=${CURDIR}/debian install
