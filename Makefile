@@ -57,7 +57,7 @@ ${DEB}:
 	install -m 0644 triggers debian/DEBIAN
 	gzip -9 debian/${DOCDIR}/changelog.Debian
 	echo "git clone git://git.proxmox.com/git/pve-storage.git\\ngit checkout ${GITVERSION}" > debian/${DOCDIR}/SOURCE
-	dpkg-deb --build debian	
+	fakeroot dpkg-deb --build debian
 	mv debian.deb ${DEB}
 	rm -rf debian
 	lintian ${DEB}
