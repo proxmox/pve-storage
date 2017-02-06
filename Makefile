@@ -40,7 +40,7 @@ install: pvesm.1 pvesm.bash-completion
 	make -C PVE install
 	install -d ${DESTDIR}/usr/share/man/man1
 	install -m 0644 pvesm.1 ${DESTDIR}/usr/share/man/man1/
-	gzip -9 ${DESTDIR}/usr/share/man/man1/pvesm.1
+	gzip -9 -n ${DESTDIR}/usr/share/man/man1/pvesm.1
 	install -m 0644 -D pvesm.bash-completion ${DESTDIR}${BASHCOMPLDIR}/pvesm
 
 .PHONY: deb
@@ -55,7 +55,7 @@ ${DEB}:
 	install -D -m 0644 copyright debian/${DOCDIR}/copyright
 	install -m 0644 changelog.Debian debian/${DOCDIR}/
 	install -m 0644 triggers debian/DEBIAN
-	gzip -9 debian/${DOCDIR}/changelog.Debian
+	gzip -9 -n debian/${DOCDIR}/changelog.Debian
 	echo "git clone git://git.proxmox.com/git/pve-storage.git\\ngit checkout ${GITVERSION}" > debian/${DOCDIR}/SOURCE
 	fakeroot dpkg-deb --build debian
 	mv debian.deb ${DEB}
