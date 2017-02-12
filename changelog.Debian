@@ -1,3 +1,19 @@
+libpve-storage-perl (4.0-74) unstable; urgency=medium
+
+  * fix bug #1280: Can't locate object method "root@pam"
+
+  * buildsys: use gzip -n to disable timestamps
+
+  * buildsys: use fakeroot for dpkg-deb
+
+  * buildsys: make job safety
+
+  * extract_vzdump_config: handle RE consistently
+
+  * weaken matching for vzdump config extract filename
+
+ -- Proxmox Support Team <support@proxmox.com>  Sun, 12 Feb 2017 10:09:58 +0100
+
 libpve-storage-perl (4.0-73) unstable; urgency=medium
 
   * PVE::Storage: new helper check_volume_access()
