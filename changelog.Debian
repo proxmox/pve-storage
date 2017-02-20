@@ -1,3 +1,12 @@
+libpve-storage-perl (4.0-75) unstable; urgency=medium
+
+  * rbd: use faster list operations where possible
+
+  * rbd: fix a minor inconsistency in what is recognized as a valid disk image
+    name
+
+ -- Proxmox Support Team <support@proxmox.com>  Mon, 20 Feb 2017 10:05:07 +0100
+
 libpve-storage-perl (4.0-74) unstable; urgency=medium
 
   * fix bug #1280: Can't locate object method "root@pam"
