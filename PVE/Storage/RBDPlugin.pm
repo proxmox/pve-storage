@@ -186,7 +186,7 @@ sub rbd_ls {
 
 	if ($line =~  m/^((vm|base)-(\d+)-\S+)\s+(\d+)(k|M|G|T)\s((\S+)\/((vm|base)-\d+-\S+@\S+))?/) {
 	    my ($image, $owner, $size, $unit, $parent) = ($1, $3, $4, $5, $8);
-	    next if $image =~ /@/; #skip snapshots
+	    return if $image =~ /@/; #skip snapshots
 
 	    $list->{$pool}->{$image} = {
 		name => $image,
