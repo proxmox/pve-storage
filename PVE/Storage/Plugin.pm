@@ -597,6 +597,12 @@ sub free_image {
 
     my $path = $class->filesystem_path($scfg, $volname);
 
+    if ($isBase) {
+	# try to remove immutable flag
+	eval { run_command(['/usr/bin/chattr', '-i', $path]); };
+	warn $@ if $@;
+    }
+
     if (defined($format) && ($format eq 'subvol')) {
 	File::Path::remove_tree($path);
     } else {
@@ -604,12 +610,6 @@ sub free_image {
 	if (! -f $path) {
 	    warn "disk image '$path' does not exists\n";
 	    return undef;
-	}
-
-	if ($isBase) {
-	    # try to remove immutable flag
-	    eval { run_command(['/usr/bin/chattr', '-i', $path]); };
-	    warn $@ if $@;
 	}
 
 	unlink($path) || die "unlink '$path' failed - $!\n";
