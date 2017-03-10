@@ -1,3 +1,11 @@
+libpve-storage-perl (5.0-1) unstable; urgency=medium
+
+  * correctly cleanup immutable flag for subvols when freeing them
+
+  * rebuild for PVE 5.0 / Debian Stretch
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 10 Mar 2017 09:23:15 +0100
+
 libpve-storage-perl (4.0-76) unstable; urgency=medium
 
   * rbd: fix warnings printed when listing images
