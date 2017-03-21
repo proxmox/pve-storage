@@ -537,8 +537,12 @@ sub status {
 
     my $parser = sub {
 	my $line = shift;
-	if ($line =~ m/^\s+total\s(\S+)\s+(\d+)/) {
+	if ($line =~ m/^\s*total(?:\s|_)(\S+)\s+(\d+)(k|M|G|T)?/) {
 	    $stats->{$1} = $2;
+	    # luminous has units here..
+	    if ($3) {
+		$stats->{$1} *= $rbd_unittobytes->{$3}/1024;
+	    }
 	}
     };
 
