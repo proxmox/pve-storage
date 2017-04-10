@@ -1,3 +1,9 @@
+libpve-storage-perl (5.0-3) unstable; urgency=medium
+
+  * fix vma extraction return code handling
+
+ -- Proxmox Support Team <support@proxmox.com>  Mon, 10 Apr 2017 16:21:10 +0200
+
 libpve-storage-perl (5.0-2) unstable; urgency=medium
 
   * rbd: fix "rados df" output parser for luminous
