@@ -1395,7 +1395,7 @@ sub extract_vzdump_config_vma {
 	my $rerr = $@;
 
 	# use exit code if no stderr output and not just broken pipe
-	if (!$errstring && !$broken_pipe && $rc > 0 && $rc != 141) {
+	if (!$errstring && !$broken_pipe && $rc != 0 && $rc != 141) {
 	    die "$rerr\n" if $rerr;
 	    die "config extraction failed with exit code $rc\n";
 	}
