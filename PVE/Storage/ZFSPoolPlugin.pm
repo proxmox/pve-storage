@@ -465,6 +465,54 @@ sub volume_snapshot {
     $class->zfs_request($scfg, undef, 'snapshot', "$scfg->{pool}/$vname\@$snap");
 }
 
+sub volume_send {
+    my ($class, $scfg, $storeid, $volname, $ip, $snap,
+	$incremental_snap, $verbose, $limit, $target_path) = @_;
+
+    my ($vtype, $name, $vmid) = $class->parse_volname($volname);
+
+    my $zpath = "$scfg->{pool}/$name";
+
+    die "$vtype is not allowed in ZFSPool!" if ($vtype ne "images");
+
+    my $cmdsend = [];
+    my $cmdlimit = [];
+
+    push @$cmdsend, 'zfs', 'send', '-R';
+    push @$cmdsend, '-v' if defined($verbose);
+
+    if( defined($incremental_snap)) {
+	push @$cmdsend, '-I', "$zpath\@${incremental_snap}";
+    }
+
+    push @$cmdsend, '--', "$zpath\@${snap}";
+
+    # limit in kByte/s
+    if ($limit){
+	my $bwl = $limit * 1024;
+	push @$cmdlimit, 'cstream', '-t', $bwl;
+    }
+
+    my $cmdrecv = [];
+
+    push @$cmdrecv, 'ssh', '-o', 'BatchMode=yes', "root\@${ip}", '--' if $ip;
+    push @$cmdrecv, 'zfs', 'recv', '-F', '--';
+
+    $zpath = $target_path if defined($target_path);
+    push @$cmdrecv, $zpath;
+
+
+    if ($limit) {
+	eval { run_command([$cmdsend, $cmdlimit, $cmdrecv]) };
+    } else {
+	eval { run_command([$cmdsend, $cmdrecv]) };
+    }
+
+    if (my $err = $@) {
+	die $err;
+    }
+}
+
 sub volume_snapshot_delete {
     my ($class, $scfg, $storeid, $volname, $snap, $running) = @_;
 

@@ -697,6 +697,14 @@ sub volume_snapshot {
     return undef;
 }
 
+sub volume_send {
+    my ($class, $scfg, $storeid, $volname, $ip, $snap,
+	$incremental_snap, $verbose, $limit, $target_path) = @_;
+
+    # implement in subclass
+    die "Volume_send is not implemented for $class";
+}
+
 sub volume_rollback_is_possible {
     my ($class, $scfg, $storeid, $volname, $snap) = @_; 
 

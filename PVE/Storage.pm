@@ -216,6 +216,24 @@ sub volume_snapshot {
     }
 }
 
+sub volume_send {
+    my ($cfg, $volid, $snap, $ip, $incremental_snap, $verbose, $limit,
+	$target_path) = @_;
+
+    my ($storeid, $volname) = parse_volume_id($volid, 1);
+    if ($storeid) {
+	my $scfg = storage_config($cfg, $storeid);
+	my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
+	return $plugin->volume_send($scfg, $storeid, $volname, $ip, $snap,
+				    $incremental_snap, $verbose, $limit, $target_path);
+
+    } elsif ($volid =~ m|^(/.+)$| && -e $volid) {
+	die "send file/device '$volid' is not possible\n";
+    } else {
+	die "unable to parse volume ID '$volid'\n";
+    }
+}
+
 sub volume_snapshot_rollback {
     my ($cfg, $volid, $snap) = @_;
 
