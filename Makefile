@@ -10,6 +10,8 @@ MANDIR=${PREFIX}/share/man
 DOCDIR=${PREFIX}/share/doc/${PACKAGE}
 MAN1DIR=${MANDIR}/man1/
 BASHCOMPLDIR=${PREFIX}/share/bash-completion/completions/
+CRONDIR=/etc/cron.d
+CRONREPLICA=${CRONDIR}/pve-replica
 
 export PERLDIR=${PREFIX}/share/perl5
 
@@ -42,6 +44,8 @@ install: pvesm.1 pvesm.bash-completion pvesr.bash-completion
 	install -d ${DESTDIR}${SBINDIR}
 	install -m 0755 pvesm ${DESTDIR}${SBINDIR}
 	install -m 0755 pvesr ${DESTDIR}${SBINDIR}
+	install -d ${DESTDIR}${CRONDIR}
+	install -m 0644 pve-replica ${DESTDIR}${CRONREPLICA}
 	make -C PVE install
 	install -d ${DESTDIR}/var/lib/pve-replica
 	install -d ${DESTDIR}/usr/share/man/man1
@@ -63,6 +67,7 @@ ${DEB}:
 	install -D -m 0644 copyright debian/${DOCDIR}/copyright
 	install -m 0644 changelog.Debian debian/${DOCDIR}/
 	install -m 0644 triggers debian/DEBIAN
+	install -m 0644 conffiles debian/DEBIAN
 	gzip -9 -n debian/${DOCDIR}/changelog.Debian
 	echo "git clone git://git.proxmox.com/git/pve-storage.git\\ngit checkout ${GITVERSION}" > debian/${DOCDIR}/SOURCE
 	fakeroot dpkg-deb --build debian
