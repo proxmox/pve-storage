@@ -832,6 +832,15 @@ sub status {
     return ($res->{total}, $res->{avail}, $res->{used}, 1);
 }
 
+sub volume_snapshot_list {
+    my ($class, $scfg, $storeid, $volname, $prefix, $ip) = @_;
+
+    # implement in subclass
+    die "Volume_snapshot_list is not implemented for $class";
+
+    # retrun an empty array if dataset does not exist.
+}
+
 sub activate_storage {
     my ($class, $storeid, $scfg, $cache) = @_;
 

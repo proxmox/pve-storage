@@ -7,6 +7,7 @@ use POSIX;
 use PVE::Tools qw(run_command);
 use PVE::Storage::Plugin;
 use PVE::RPCEnvironment;
+use Net::IP;
 
 use base qw(PVE::Storage::Plugin);
 
@@ -495,7 +496,11 @@ sub volume_send {
 
     my $cmdrecv = [];
 
-    push @$cmdrecv, 'ssh', '-o', 'BatchMode=yes', "root\@${ip}", '--' if $ip;
+    if ($ip) {
+	$ip = "[$ip]" if Net::IP::ip_is_ipv6($ip);
+	push @$cmdrecv, 'ssh', '-o', 'BatchMode=yes', "root\@${ip}", '--';
+    }
+
     push @$cmdrecv, 'zfs', 'recv', '-F', '--';
 
     $zpath = $target_path if defined($target_path);
@@ -539,6 +544,38 @@ sub volume_rollback_is_possible {
     }
 
     return 1; 
+}
+
+sub volume_snapshot_list {
+    my ($class, $scfg, $storeid, $volname, $prefix, $ip) = @_;
+
+    my ($vtype, $name, $vmid) = $class->parse_volname($volname);
+
+    my $zpath = "$scfg->{pool}/$name";
+
+    $prefix = '' if !defined($prefix);
+    my $snaps = [];
+
+    my $cmd = ['zfs', 'list', '-r', '-H', '-S', 'name', '-t', 'snap', '-o',
+	       'name', $zpath];
+
+    if ($ip) {
+	$ip = "[$ip]" if Net::IP::ip_is_ipv6($ip);
+	unshift @$cmd, 'ssh', '-o', ' BatchMode=yes', "root\@${ip}", '--';
+    }
+
+    my $outfunc = sub {
+	my $line = shift;
+
+	if ($line =~ m/^\Q$zpath\E@(\Q$prefix\E.*)$/) {
+	    push @$snaps, $1;
+	}
+    };
+
+    eval { run_command( [$cmd], outfunc => $outfunc , errfunc => sub{}); };
+
+    # return an empty array if dataset does not exist.
+    return $snaps;
 }
 
 sub activate_storage {
