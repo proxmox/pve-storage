@@ -33,15 +33,23 @@ pvesm.bash-completion:
 	perl -I. -T -e "use PVE::CLI::pvesm; PVE::CLI::pvesm->generate_bash_completions();" >$@.tmp
 	mv $@.tmp $@
 
+pvesr.bash-completion:
+	perl -I. -T -e "use PVE::CLI::pvesr; PVE::CLI::pvesr->generate_bash_completions();" >$@.tmp
+	mv $@.tmp $@
+
 .PHONY: install
-install: pvesm.1 pvesm.bash-completion
+install: pvesm.1 pvesm.bash-completion pvesr.bash-completion
 	install -d ${DESTDIR}${SBINDIR}
 	install -m 0755 pvesm ${DESTDIR}${SBINDIR}
+	install -m 0755 pvesr ${DESTDIR}${SBINDIR}
 	make -C PVE install
+	install -d ${DESTDIR}/var/lib/pve-replica
 	install -d ${DESTDIR}/usr/share/man/man1
 	install -m 0644 pvesm.1 ${DESTDIR}/usr/share/man/man1/
 	gzip -9 -n ${DESTDIR}/usr/share/man/man1/pvesm.1
 	install -m 0644 -D pvesm.bash-completion ${DESTDIR}${BASHCOMPLDIR}/pvesm
+	install -m 0644 -D pvesr.bash-completion ${DESTDIR}${BASHCOMPLDIR}/pverepm
+
 
 .PHONY: deb
 deb: ${DEB}
@@ -65,7 +73,7 @@ ${DEB}:
 .PHONY: clean
 clean:
 	make cleanup-docgen
-	rm -rf debian *.deb ${PACKAGE}-*.tar.gz dist *.1 *.tmp pvesm.bash-completion
+	rm -rf debian *.deb ${PACKAGE}-*.tar.gz dist *.1 *.tmp pvesm.bash-completion pvesr.bash-completion
 	find . -name '*~' -exec rm {} ';'
 
 .PHONY: distclean

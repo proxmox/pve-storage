@@ -1,4 +1,4 @@
-SOURCES=pvesm.pm
+SOURCES=pvesm.pm pvesr.pm
 
 .PHONY: install
 install: ${SOURCES}

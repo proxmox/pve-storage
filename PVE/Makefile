@@ -3,6 +3,7 @@
 .PHONY: install
 install:
 	install -D -m 0644 Storage.pm ${DESTDIR}${PERLDIR}/PVE/Storage.pm
+	install -D -m 0644 ReplicationTools.pm ${DESTDIR}${PERLDIR}/PVE/ReplicationTools.pm
 	install -D -m 0644 Diskmanage.pm ${DESTDIR}${PERLDIR}/PVE/Diskmanage.pm
 	make -C Storage install
 	make -C API2 install
