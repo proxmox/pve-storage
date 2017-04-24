@@ -164,7 +164,7 @@ sub path {
 }
 
 sub zfs_request {
-    my ($class, $scfg, $timeout, $method, @params) = @_;
+    my ($class, $scfg, $ip, $timeout, $method, @params) = @_;
 
     my $default_timeout = PVE::RPCEnvironment->is_worker() ? 60*60 : 5;
 
@@ -285,7 +285,7 @@ sub zfs_get_pool_stats {
     my $available = 0;
     my $used = 0;
 
-    my $text = $class->zfs_request($scfg, undef, 'get', '-o', 'value', '-Hp',
+    my $text = $class->zfs_request($scfg, undef, undef, 'get', '-o', 'value', '-Hp',
                'available,used', $scfg->{pool});
 
     my @lines = split /\n/, $text;
@@ -312,7 +312,7 @@ sub zfs_create_zvol {
 
     push @$cmd, '-V', "${size}k", "$scfg->{pool}/$zvol";
 
-    $class->zfs_request($scfg, undef, @$cmd);
+    $class->zfs_request($scfg, undef, undef, @$cmd);
 }
 
 sub zfs_create_subvol {
@@ -323,7 +323,7 @@ sub zfs_create_subvol {
     my $cmd = ['create', '-o', 'acltype=posixacl', '-o', 'xattr=sa',
 	       '-o', "refquota=${size}k", $dataset];
 
-    $class->zfs_request($scfg, undef, @$cmd);
+    $class->zfs_request($scfg, undef, undef, @$cmd);
 }
 
 sub zfs_delete_zvol {
@@ -333,7 +333,7 @@ sub zfs_delete_zvol {
 
     for (my $i = 0; $i < 6; $i++) {
 
-	eval { $class->zfs_request($scfg, undef, 'destroy', '-r', "$scfg->{pool}/$zvol"); };
+	eval { $class->zfs_request($scfg, undef, undef, 'destroy', '-r', "$scfg->{pool}/$zvol"); };
 	if ($err = $@) {
 	    if ($err =~ m/^zfs error:(.*): dataset is busy.*/) {
 		sleep(1);
@@ -354,7 +354,7 @@ sub zfs_delete_zvol {
 sub zfs_list_zvol {
     my ($class, $scfg) = @_;
 
-    my $text = $class->zfs_request($scfg, 10, 'list', '-o', 'name,volsize,origin,type,refquota', '-t', 'volume,filesystem', '-Hr');
+    my $text = $class->zfs_request($scfg, undef, 10, 'list', '-o', 'name,volsize,origin,type,refquota', '-t', 'volume,filesystem', '-Hr');
     my $zvols = zfs_parse_zvol_list($text);
     return undef if !$zvols;
 
@@ -411,7 +411,7 @@ sub zfs_get_latest_snapshot {
 
     # abort rollback if snapshot is not the latest
     my @params = ('-t', 'snapshot', '-o', 'name', '-s', 'creation');
-    my $text = $class->zfs_request($scfg, undef, 'list', @params);
+    my $text = $class->zfs_request($scfg, undef, undef, 'list', @params);
     my @snapshots = split(/\n/, $text);
 
     my $recentsnap;
@@ -450,7 +450,7 @@ sub volume_size_info {
         $class->parse_volname($volname);
 
     my $attr = $format eq 'subvol' ? 'refquota' : 'volsize';
-    my $text = $class->zfs_request($scfg, undef, 'get', '-Hp', $attr, "$scfg->{pool}/$vname");
+    my $text = $class->zfs_request($scfg, undef, undef, 'get', '-Hp', $attr, "$scfg->{pool}/$vname");
     if ($text =~ /\s$attr\s(\d+)\s/) {
 	return $1;
     }
@@ -463,7 +463,7 @@ sub volume_snapshot {
 
     my $vname = ($class->parse_volname($volname))[1];
 
-    $class->zfs_request($scfg, undef, 'snapshot', "$scfg->{pool}/$vname\@$snap");
+    $class->zfs_request($scfg, undef, undef, 'snapshot', "$scfg->{pool}/$vname\@$snap");
 }
 
 sub volume_send {
@@ -506,7 +506,6 @@ sub volume_send {
     $zpath = $target_path if defined($target_path);
     push @$cmdrecv, $zpath;
 
-
     if ($limit) {
 	eval { run_command([$cmdsend, $cmdlimit, $cmdrecv]) };
     } else {
@@ -524,7 +523,7 @@ sub volume_snapshot_delete {
     my $vname = ($class->parse_volname($volname))[1];
 
     $class->deactivate_volume($storeid, $scfg, $vname, $snap, {});
-    $class->zfs_request($scfg, undef, 'destroy', "$scfg->{pool}/$vname\@$snap");
+    $class->zfs_request($scfg, undef, undef, 'destroy', "$scfg->{pool}/$vname\@$snap");
 }
 
 sub volume_snapshot_rollback {
@@ -532,7 +531,7 @@ sub volume_snapshot_rollback {
 
     my $vname = ($class->parse_volname($volname))[1];
 
-    $class->zfs_request($scfg, undef, 'rollback', "$scfg->{pool}/$vname\@$snap");
+    $class->zfs_request($scfg, undef, undef, 'rollback', "$scfg->{pool}/$vname\@$snap");
 }
 
 sub volume_rollback_is_possible {
@@ -588,13 +587,13 @@ sub activate_storage {
     my @param = ('-o', 'name', '-H', "$pool");
     my $res;
     eval {
-	$res = $class->zfs_request($scfg, undef, 'zpool_list', @param);
+	$res = $class->zfs_request($scfg, undef, undef, 'zpool_list', @param);
     };
 
     if ($@ || !defined($res) || $res !~ $pool) {
 	eval {
 	    @param = ('-d', '/dev/disk/by-id/', "$pool");
-	    $class->zfs_request($scfg, undef, 'zpool_import', @param);
+	    $class->zfs_request($scfg, undef, undef, 'zpool_import', @param);
 	};
 	die "could not activate storage '$storeid', $@\n" if $@;
     }
@@ -629,11 +628,11 @@ sub clone_image {
     my $name = $class->zfs_find_free_diskname($storeid, $scfg, $vmid, $format);
 
     if ($format eq 'subvol') {
-	my $size = $class->zfs_request($scfg, undef, 'list', '-H', '-o', 'refquota', "$scfg->{pool}/$basename");
+	my $size = $class->zfs_request($scfg, undef, undef, 'list', '-H', '-o', 'refquota', "$scfg->{pool}/$basename");
 	chomp($size);
-	$class->zfs_request($scfg, undef, 'clone', "$scfg->{pool}/$basename\@$snap", "$scfg->{pool}/$name", '-o', "refquota=$size");
+	$class->zfs_request($scfg, undef, undef, 'clone', "$scfg->{pool}/$basename\@$snap", "$scfg->{pool}/$name", '-o', "refquota=$size");
     } else {
-	$class->zfs_request($scfg, undef, 'clone', "$scfg->{pool}/$basename\@$snap", "$scfg->{pool}/$name");
+	$class->zfs_request($scfg, undef, undef, 'clone', "$scfg->{pool}/$basename\@$snap", "$scfg->{pool}/$name");
     }
 
     return "$basename/$name";
@@ -657,7 +656,7 @@ sub create_base {
     }
     my $newvolname = $basename ? "$basename/$newname" : "$newname";
 
-    $class->zfs_request($scfg, undef, 'rename', "$scfg->{pool}/$name", "$scfg->{pool}/$newname");
+    $class->zfs_request($scfg, undef, undef, 'rename', "$scfg->{pool}/$name", "$scfg->{pool}/$newname");
 
     my $running  = undef; #fixme : is create_base always offline ?
 
@@ -676,7 +675,7 @@ sub volume_resize {
 
     my $attr = $format eq 'subvol' ? 'refquota' : 'volsize';
 
-    $class->zfs_request($scfg, undef, 'set', "$attr=${new_size}k", "$scfg->{pool}/$vname");
+    $class->zfs_request($scfg, undef, undef, 'set', "$attr=${new_size}k", "$scfg->{pool}/$vname");
 
     return $new_size;
 }
