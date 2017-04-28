@@ -14,8 +14,7 @@ use JSON;
 use Data::Dumper qw(Dumper);
 
 my $STATE_DIR = '/var/lib/pve-replica';
-my $STATE_FILE = "/pve-replica.state";
-my $STATE_PATH = $STATE_DIR.$STATE_FILE;
+my $STATE_PATH = "$STATE_DIR/pve-replica.state";
 
 PVE::Cluster::cfs_update;
 my $local_node = PVE::INotify::nodename();
@@ -165,9 +164,9 @@ sub sync_guest {
 	my ($storeid) = PVE::Storage::parse_volume_id($volid);
 
 	my $store = $storage_config->{ids}->{$storeid};
-	die "Storage not availible on node: $tnode\n"
+	die "Storage $storeid not availible on node: $tnode\n"
 	    if $store->{nodes}  && !$store->{nodes}->{$tnode};
-	die "Storage not availible on node: $local_node\n"
+	die "Storage $storeid not availible on node: $local_node\n"
 	    if $store->{nodes} && !$store->{nodes}->{$local_node};
 
     }
@@ -248,7 +247,7 @@ sub sync_guest {
 
 		$jobs->{$vmid} = $job;
 		write_state($jobs);
-		die "$err";
+		die $err;
 	    }
 
 	    $disks_status->{$volid}->{synced} = 1;
@@ -298,9 +297,9 @@ sub job_enable {
 	$job->{interval} = $config->{replica_interval} || 15;
 
 	$job->{tnode} = $target || $config->{replica_target};
-	die "Replica Target must be set\n" if !defined($job->{tnode});
+	die "Replication target must be set\n" if !defined($job->{tnode});
 
-	die "Target and source Node can't be the same\n"
+	die "Target and source node can't be the same\n"
 	    if $job->{tnode} eq $local_node;
 
 	$job->{fail} = 0;
@@ -404,7 +403,7 @@ sub get_syncable_guestdisks {
     } elsif ($vm_type eq 'lxc') {
 	PVE::LXC::Config->foreach_mountpoint($config, $func);
     } else {
-	die "Unknown VM Type: $vm_type";
+	die "Unknown VM type: $vm_type";
     }
 
     return wantarray ? ($warnings, $syncable_disks) : $syncable_disks;
@@ -566,7 +565,7 @@ sub update_conf {
 		$jobs->{$vmid}->{limit} = $value ||
 		    delet $jobs->{$vmid}->{limit};
 	}  else {
-	    die "Config parameter: $key not known";
+	    die "Config parameter $key not known";
 	}
 
 	write_state($jobs);
