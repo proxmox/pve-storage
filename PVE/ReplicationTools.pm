@@ -381,6 +381,7 @@ sub get_syncable_guestdisks {
     my $warnings = 0;
     my $func = sub {
 	my ($id, $volume) = @_;
+	return if !defined($volume->{replica}) || !$volume->{replica};
 
 	my $volname;
 	if ($vm_type eq 'qemu') {
@@ -392,9 +393,7 @@ sub get_syncable_guestdisks {
 	if( PVE::Storage::volume_has_feature($cfg, 'replicate', $volname , undef, $running)) {
 	    $syncable_disks->{$volname} = 1;
 	} else {
-	    warn "Can't sync Volume: $volname\n"
-		if !$noerr &&
-		   (!defined($volume->{replica}) || $volume->{replica});
+	    warn "Can't sync Volume: $volname\n" if !$noerr;
 	    $warnings = 1;
 	}
     };
