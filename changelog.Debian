@@ -1,3 +1,13 @@
+libpve-storage-perl (5.0-4) unstable; urgency=medium
+
+  * storage api: added volume_send plugin method
+
+  * storage api: added volume_snapshot_list plugin method
+
+  * added storage replication utilities
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 28 Apr 2017 12:17:40 +0200
+
 libpve-storage-perl (5.0-3) unstable; urgency=medium
 
   * fix vma extraction return code handling
