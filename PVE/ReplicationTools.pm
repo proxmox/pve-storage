@@ -6,6 +6,7 @@ use strict;
 use PVE::Tools qw(run_command);
 use PVE::Cluster;
 use PVE::QemuConfig;
+use PVE::QemuServer;
 use PVE::LXC::Config;
 use PVE::LXC;
 use PVE::Storage;
