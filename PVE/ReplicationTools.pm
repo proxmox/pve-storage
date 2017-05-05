@@ -5,6 +5,7 @@ use strict;
 use Data::Dumper;
 use JSON;
 
+use PVE::INotify;
 use PVE::Tools;
 use PVE::Cluster;
 use PVE::QemuConfig;
