@@ -2,17 +2,16 @@ package PVE::ReplicationTools;
 
 use warnings;
 use strict;
+use Data::Dumper;
+use JSON;
 
-use PVE::Tools qw(run_command);
+use PVE::Tools;
 use PVE::Cluster;
 use PVE::QemuConfig;
 use PVE::QemuServer;
 use PVE::LXC::Config;
 use PVE::LXC;
 use PVE::Storage;
-use Time::Local;
-use JSON;
-use Data::Dumper qw(Dumper);
 
 my $STATE_DIR = '/var/lib/pve-replica';
 my $STATE_PATH = "$STATE_DIR/pve-replica.state";
@@ -69,7 +68,7 @@ sub get_node_ip {
     if (my $network = $dc_conf->{storage_replication_network}) {
 
 	my $cmd = ['ssh', '-o', 'Batchmode=yes', "root\@$remoteip", '--'
-		   ,'pvecm', 'mtunnel', '--get_migration_ip',
+		   ,'pvecm', 'mtunnel', '--get_migration_ip e',
 		   '--migration_network', $network];
 
 	PVE::Tools::run_command($cmd, outfunc => sub {
