@@ -2,15 +2,16 @@ package PVE::CLI::pvesr;
 
 use strict;
 use warnings;
+use POSIX qw(strftime);
 
-use PVE::API2::StorageReplication;
 use PVE::JSONSchema qw(get_standard_option);
 use PVE::INotify;
 use PVE::RPCEnvironment;
 use PVE::Tools qw(extract_param);
 use PVE::SafeSyslog;
 use PVE::CLIHandler;
-use POSIX qw(strftime);
+
+use PVE::API2::Storage::Replication;
 
 use base qw(PVE::CLIHandler);
 

@@ -1,4 +1,4 @@
-package PVE::API2::StorageReplication;
+package PVE::API2::Storage::Replication;
 
 use warnings;
 use strict;
