@@ -45,17 +45,18 @@ sub write_state {
 
     mkdir $STATE_DIR;
 
-    PVE::Tools::file_set_contents($STATE_PATH, JSON::encode_json($state));
+    PVE::Tools::file_set_contents($STATE_PATH, encode_json($state));
 }
 
 sub read_state {
 
-    return {} if !(-e $STATE_PATH);
+    return {} if ! -e $STATE_PATH;
 
     my $raw = PVE::Tools::file_get_contents($STATE_PATH);
 
     return {} if $raw eq '';
-    return JSON::decode_json($raw);
+
+    return decode_json($raw);
 }
 
 sub get_node_ip {
