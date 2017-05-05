@@ -17,7 +17,6 @@ use Data::Dumper qw(Dumper);
 my $STATE_DIR = '/var/lib/pve-replica';
 my $STATE_PATH = "$STATE_DIR/pve-replica.state";
 
-PVE::Cluster::cfs_update;
 my $local_node = PVE::INotify::nodename();
 
 my $cluster_nodes;
