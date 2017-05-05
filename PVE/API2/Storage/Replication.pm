@@ -4,6 +4,7 @@ use warnings;
 use strict;
 
 use PVE::JSONSchema qw(get_standard_option);
+use PVE::RPCEnvironment;
 use PVE::ReplicationTools;
 
 use PVE::RESTHandler;
@@ -44,6 +45,10 @@ __PACKAGE__->register_method ({
     path => 'jobs',
     method => 'GET',
     description => "List replication jobs.",
+    permissions => {
+	description => "Only list jobs where you have VM.Audit permissons on /vms/<vmid>.",
+	user => 'all',
+    },
     protected => 1,
     proxyto => 'node',
     parameters => {
@@ -63,9 +68,20 @@ __PACKAGE__->register_method ({
     code => sub {
 	my ($param) = @_;
 
+	my $rpcenv = PVE::RPCEnvironment::get();
+	my $authuser = $rpcenv->get_user();
+
 	my $jobs = PVE::ReplicationTools::get_all_jobs();
 
-	return PVE::RESTHandler::hash_to_array($jobs, 'vmid');
+	my $res = [];
+	foreach my $vmid (sort keys %$jobs) {
+	    next if !$rpcenv->check($authuser, "/vms/$vmid", [ 'VM.Audit' ]);
+	    my $job = $jobs->{$vmid};
+	    $job->{vmid} = $vmid;
+	    push @$res, $job;
+	}
+
+	return $res;
     }});
 
 __PACKAGE__->register_method ({
@@ -73,6 +89,9 @@ __PACKAGE__->register_method ({
     path => 'jobs/vmid',
     method => 'DELETE',
     description => "Destroy replication job.",
+    permissions => {
+	check => ['perm', '/vms/{vmid}', ['VM.Config.Disk']],
+    },
     protected => 1,
     parameters => {
 	additionalProperties => 0,
