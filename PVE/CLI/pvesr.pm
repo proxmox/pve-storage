@@ -121,44 +121,13 @@ __PACKAGE__->register_method ({
 	return undef;
     }});
 
-__PACKAGE__->register_method ({
-    name => 'destroyjob',
-    path => 'destroyjob',
-    method => 'DELETE',
-    description => "Destroy an async replication job",
-    permissions => {
-	description => {
-	    check => ['perm', '/storage', ['Datastore.Allocate']],
-	},
-    },
-    protected => 1,
-    parameters => {
-	additionalProperties => 0,
-	properties => {
-	    vmid => {
-		type => 'string', format => 'pve-vmid',
-		description => "The VMID of the guest.",
-		completion => \&PVE::Cluster::complete_local_vmid,
-	    },
-	},
-    },
-    returns => { type => 'null' },
-    code => sub {
-	my ($param) = @_;
-
-	my $vmid = extract_param($param, 'vmid');
-
-	PVE::ReplicationTools::destroy_replica($vmid);
-
-    }});
-
-
-
 our $cmddef = {
     jobs => [ 'PVE::API2::Storage::Replication', 'jobs' , [],
 	      {node => $nodename}, $print_job_list ],
+
+    destroyjob => [ 'PVE::API2::Storage::Replication', 'destroy_job' , ['vmid']],
+
     run => [ __PACKAGE__ , 'run'],
-    destroyjob => [ __PACKAGE__ , 'destroyjob', ['vmid']],
 };
 
 1;

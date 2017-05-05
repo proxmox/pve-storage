@@ -44,9 +44,6 @@ __PACKAGE__->register_method ({
     path => 'jobs',
     method => 'GET',
     description => "List replication jobs.",
-    permissions => {
-	user => 'all',
-    },
     protected => 1,
     proxyto => 'node',
     parameters => {
@@ -69,6 +66,30 @@ __PACKAGE__->register_method ({
 	my $jobs = PVE::ReplicationTools::get_all_jobs();
 
 	return PVE::RESTHandler::hash_to_array($jobs, 'vmid');
+    }});
+
+__PACKAGE__->register_method ({
+    name => 'destroy_job',
+    path => 'jobs/vmid',
+    method => 'DELETE',
+    description => "Destroy replication job.",
+    protected => 1,
+    parameters => {
+	additionalProperties => 0,
+	properties => {
+	    vmid => {
+		description => "The VMID of the guest.",
+		type => 'string', format => 'pve-vmid',
+	    },
+	},
+    },
+    returns => { type => 'null' },
+    code => sub {
+	my ($param) = @_;
+
+	PVE::ReplicationTools::destroy_replica($param->{vmid});
+
+	return undef;
     }});
 
 1;
