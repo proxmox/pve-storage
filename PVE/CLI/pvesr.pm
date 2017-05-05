@@ -22,16 +22,16 @@ sub setup_environment {
 }
 
 my $print_job_list = sub {
-    my ($conf) = @_;
+    my ($list) = @_;
 
     printf("%-10s%-20s%-20s%-5s%-10s%-5s\n",
 	   "VMID", "DEST", "LAST SYNC","IVAL", "STATE", "FAIL");
 
-    foreach my $vmid (sort keys %$conf) {
-	my $job = $conf->{$vmid};
+    foreach my $job (sort { $a->{vmid} <=> $b->{vmid} } @$list) {
+
 	my $timestr = strftime("%Y-%m-%d_%H:%M:%S", localtime($job->{lastsync}));
 
-	printf("%-9s ", $vmid);
+	printf("%-9s ", $job->{vmid});
 	printf("%-19s ", $job->{tnode});
 	printf("%-19s ", $timestr);
 	printf("%-4s ", $job->{interval});

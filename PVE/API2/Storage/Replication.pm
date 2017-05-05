@@ -55,11 +55,20 @@ __PACKAGE__->register_method ({
 	    node => get_standard_option('pve-node'),
 	},
     },
-    returns => { type => 'object' },
+    returns => {
+	type => 'array',
+	items => {
+	    type => "object",
+	    properties => {},
+	},
+	links => [ { rel => 'child', href => "{vmid}" } ],
+    },
     code => sub {
 	my ($param) = @_;
 
-	return PVE::ReplicationTools::get_all_jobs();
+	my $jobs = PVE::ReplicationTools::get_all_jobs();
+
+	return PVE::RESTHandler::hash_to_array($jobs, 'vmid');
     }});
 
 1;
