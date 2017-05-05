@@ -11,8 +11,37 @@ use PVE::RESTHandler;
 use base qw(PVE::RESTHandler);
 
 __PACKAGE__->register_method ({
-    name => 'list',
-    path => 'list',
+    name => 'index',
+    path => '',
+    method => 'GET',
+    permissions => { user => 'all' },
+    description => "Directory index.",
+    parameters => {
+	additionalProperties => 0,
+	properties => {
+	    node => get_standard_option('pve-node'),
+	},
+    },
+    returns => {
+	type => 'array',
+	items => {
+	    type => "object",
+	    properties => {},
+	},
+	links => [ { rel => 'child', href => "{name}" } ],
+    },
+    code => sub {
+	my ($param) = @_;
+
+	return [
+	    { name => 'jobs' },
+	];
+    }});
+
+
+__PACKAGE__->register_method ({
+    name => 'jobs',
+    path => 'jobs',
     method => 'GET',
     description => "List of all replication jobs.",
     permissions => {
