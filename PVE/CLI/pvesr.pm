@@ -21,28 +21,23 @@ sub setup_environment {
     PVE::RPCEnvironment->setup_default_cli_env();
 }
 
-my $print_list = sub {
-    my ($conf, $json) = @_;
+my $print_job_list = sub {
+    my ($conf) = @_;
 
-    if (defined($json)) {
-	print JSON::encode_json($conf);
-    } else {
-	printf("%-10s%-20s%-20s%-5s%-10s%-5s\n",
-	       "VMID", "DEST", "LAST SYNC","IVAL", "STATE", "FAIL");
+    printf("%-10s%-20s%-20s%-5s%-10s%-5s\n",
+	   "VMID", "DEST", "LAST SYNC","IVAL", "STATE", "FAIL");
 
-	foreach my $vmid (sort keys %$conf) {
-	    my $job = $conf->{$vmid};
-	    my $timestr = strftime("%Y-%m-%d_%H:%M:%S", localtime($job->{lastsync}));
+    foreach my $vmid (sort keys %$conf) {
+	my $job = $conf->{$vmid};
+	my $timestr = strftime("%Y-%m-%d_%H:%M:%S", localtime($job->{lastsync}));
 
-	    printf("%-9s ", $vmid);
-	    printf("%-19s ", $job->{tnode});
-	    printf("%-19s ", $timestr);
-	    printf("%-4s ", $job->{interval});
-	    printf("%-9s ", $job->{state});
-	    printf("%-9s\n", $job->{fail});
-	}
+	printf("%-9s ", $vmid);
+	printf("%-19s ", $job->{tnode});
+	printf("%-19s ", $timestr);
+	printf("%-4s ", $job->{interval});
+	printf("%-9s ", $job->{state});
+	printf("%-9s\n", $job->{fail});
     }
-
 };
 
 sub set_list {
@@ -157,63 +152,11 @@ __PACKAGE__->register_method ({
 
     }});
 
-__PACKAGE__->register_method ({
-    name => 'list',
-    path => 'list',
-    method => 'GET',
-    description => "List of all replication jobs.",
-    permissions => {
-	user => 'all'
-    },
-    protected => 1,
-    parameters => {
-	additionalProperties => 0,
-	properties => {
-	    vmid => {
-		type => 'string', format => 'pve-vmid',
-		description => "The VMID of the guest.",
-		completion => \&PVE::Cluster::complete_local_vmid,
-	    },
-	},
-    },
-    protected => 1,
-    proxyto => 'node',
-    parameters => {
-	additionalProperties => 0,
-	properties => {
-	    node => get_standard_option('pve-node'),
-	    nodes => get_standard_option('pve-node-list' ,
-					 {description => "Notes where the jobs is located.",
-					  optional => 1}),
-	    json => {
-		optional => 1,
-		type => 'boolean',
-		description => "Output in JSON format.",
-	    },
-	},
-    },
-    returns => { type => 'string' },
-    code => sub {
-	my ($param) = @_;
-
-	if ($param->{nodes}) {
-	    foreach my $node (PVE::Tools::split_list($param->{nodes})) {
-		die "Node: $node does not exists.\n" if
-		    !PVE::Cluster::check_node_exists($node);
-	    }
-	}
-
-	my $nodes = $param->{nodes} ?
-	    $param->{nodes} : $param->{node};
-
-	my $list = PVE::ReplicationTools::get_all_jobs($nodes);
-
-	&$print_list($list, $param->{json});
-}});
 
 
 our $cmddef = {
-    list => [  __PACKAGE__ , 'list' , [],  {node => $nodename}],
+    jobs => [ 'PVE::API2::Storage::Replication', 'jobs' , [],
+	      {node => $nodename}, $print_job_list ],
     run => [ __PACKAGE__ , 'run'],
     destroyjob => [ __PACKAGE__ , 'destroyjob', ['vmid']],
 };

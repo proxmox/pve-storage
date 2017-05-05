@@ -43,7 +43,7 @@ __PACKAGE__->register_method ({
     name => 'jobs',
     path => 'jobs',
     method => 'GET',
-    description => "List of all replication jobs.",
+    description => "List replication jobs.",
     permissions => {
 	user => 'all',
     },
@@ -53,26 +53,13 @@ __PACKAGE__->register_method ({
 	additionalProperties => 0,
 	properties => {
 	    node => get_standard_option('pve-node'),
-	    nodes => get_standard_option('pve-node-list' ,
-					 {description => "Notes where the jobs is located.",
-					  optional => 1}),
 	},
     },
     returns => { type => 'object' },
     code => sub {
 	my ($param) = @_;
 
-	if ($param->{nodes}) {
-	    foreach my $node (PVE::Tools::split_list($param->{nodes})) {
-		die "Node: $node does not exists.\n" if
-		    !PVE::Cluster::check_node_exists($node);
-	    }
-	}
-
-	my $nodes = $param->{nodes} ?
-	    $param->{nodes} : $param->{node};
-
-	return PVE::ReplicationTools::get_all_jobs($nodes);
-}});
+	return PVE::ReplicationTools::get_all_jobs();
+    }});
 
 1;

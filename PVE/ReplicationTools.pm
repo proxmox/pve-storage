@@ -85,57 +85,32 @@ sub get_node_ip {
 }
 
 sub get_all_jobs {
-    my ($nodes) = @_;
-
-    my @nodelist = PVE::Tools::split_list($nodes);
 
     my $vms = PVE::Cluster::get_vmlist();
+
     my $state = read_state();
+
     my $jobs = {};
 
-    my $outfunc = sub {
-	my $line = shift;
+    foreach my $vmid (keys %{$vms->{ids}}) {
+	next if $vms->{ids}->{$vmid}->{node} ne $local_node;
 
-	my $remote_jobs = JSON::decode_json($line);
-	foreach my $vmid (keys %$remote_jobs) {
-	    $jobs->{$vmid} = $remote_jobs->{$vmid};
-	}
-    };
+	my $vm_state = $state->{$vmid};
+	next if !defined($vm_state);
 
-    foreach my $node (@nodelist) {
-	if ($local_node ne $node) {
+	my $job = {};
 
-	    my $ip = get_node_ip($node);
-	    $ip = [$ip] if Net::IP::ip_is_ipv6($ip);
+	$job->{limit}    = $vm_state->{limit};
+	$job->{interval} = $vm_state->{interval};
+	$job->{tnode}    = $vm_state->{tnode};
+	$job->{lastsync} = $vm_state->{lastsync};
+	$job->{state}    = $vm_state->{state};
+	$job->{fail}     = $vm_state->{fail};
 
-	    my @cmd = ('ssh', '-o', 'Batchmode=yes', "root\@$ip", '--',
-		       'pvesr', 'list', '--json');
-
-	    run_command([@cmd], outfunc=>$outfunc)
-
-	} else {
-
-	    foreach my $vmid (keys %{$vms->{ids}}) {
-
-		next if !($vms->{ids}->{$vmid}->{node} eq $local_node);
-		next if !defined($state->{$vmid});
-		my $vm_state = $state->{$vmid};
-		my $job = {};
-
-		$job->{limit}    = $vm_state->{limit};
-		$job->{interval} = $vm_state->{interval};
-		$job->{tnode}    = $vm_state->{tnode};
-		$job->{lastsync} = $vm_state->{lastsync};
-		$job->{state}    = $vm_state->{state};
-		$job->{fail}     = $vm_state->{fail};
-
-		$jobs->{$vmid}   = $job;
-	    }
-
-	}
+	$jobs->{$vmid}   = $job;
     }
 
-    return ($jobs);
+    return $jobs;
 }
 
 sub sync_guest {
