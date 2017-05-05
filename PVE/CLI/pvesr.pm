@@ -101,11 +101,6 @@ __PACKAGE__->register_method ({
     path => 'run',
     method => 'POST',
     description => "This method will run by the systemd-timer and sync all jobs",
-    permissions => {
-	description => {
-	    check => ['perm', '/', [ 'Sys.Console' ]],
-	},
-    },
     protected => 1,
     parameters => {
 	additionalProperties => 0,
