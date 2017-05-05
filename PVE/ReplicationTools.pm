@@ -67,7 +67,7 @@ sub get_node_ip {
     if (my $network = $dc_conf->{storage_replication_network}) {
 
 	my $cmd = ['ssh', '-o', 'Batchmode=yes', "root\@$remoteip", '--'
-		   ,'pvecm', 'mtunnel', '--get_migration_ip e',
+		   ,'pvecm', 'mtunnel', '--get_migration_ip',
 		   '--migration_network', $network];
 
 	PVE::Tools::run_command($cmd, outfunc => sub {
