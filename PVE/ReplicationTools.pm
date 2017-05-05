@@ -18,8 +18,6 @@ my $STATE_PATH = "$STATE_DIR/pve-replica.state";
 
 my $local_node = PVE::INotify::nodename();
 
-my $cluster_nodes;
-
 my $get_guestconfig = sub {
     my ($vmid) = @_;
 
