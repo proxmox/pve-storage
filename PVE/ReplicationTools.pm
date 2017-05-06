@@ -29,12 +29,14 @@ my $get_guestconfig = sub {
     my $guestconf;
     my $running;
 
-    if ($type =~ m/^qemu$/) {
+    if ($type eq 'qemu') {
 	$guestconf = PVE::QemuConfig->load_config($vmid);
 	$running = PVE::QemuServer::check_running($vmid);
-    } elsif ($type =~ m/^lxc$/) {
+    } elsif ($type eq 'lxc') {
 	$guestconf = PVE::LXC::Config->load_config($vmid);
 	$running = PVE::LXC::check_running($vmid);
+    } else {
+	die "internal error";
     }
 
     return ($guestconf, $type, $running);
@@ -124,7 +126,7 @@ sub sync_guest {
     my $job = $jobs->{$vmid};
     my $tnode = $job->{tnode};
 
-    if ($vm_type eq "qemu" && defined($guest_conf->{agent}) ) {
+    if ($vm_type eq 'qemu' && defined($guest_conf->{agent}) ) {
 	$qga = PVE::QemuServer::qga_check_running($vmid)
 	    if $running;
     }
