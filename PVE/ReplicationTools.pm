@@ -235,7 +235,7 @@ sub sync_guest {
 	    $disks_status->{$volid}->{synced} = 1;
 	}
 
-	# delet old snapshot if exists
+	# delete old snapshot if exists
 	cleanup_snapshot($disks_status, $snapname, $storage_config, $running, $ip, $lastsync) if
 	    $lastsync != 0;
 
@@ -538,7 +538,7 @@ sub update_conf {
 	    $jobs->{$vmid}->{interval} = $value || 15;
 	} elsif ($key eq 'replica_rate_limit'){
 		$jobs->{$vmid}->{limit} = $value ||
-		    delet $jobs->{$vmid}->{limit};
+		    delete $jobs->{$vmid}->{limit};
 	}  else {
 	    die "Config parameter $key not known";
 	}
