@@ -251,13 +251,6 @@ sub sync_guest {
     return $snap_time;
 }
 
-sub get_snapshots {
-    my ($vol, $prefix, $nodes) = @_;
-
-    my $plugin = $vol->{plugin};
-    return $plugin->get_snapshots($vol, $prefix, $nodes);
-}
-
 sub send_image {
     my ($vol, $param, $ip, $all_snaps_in_delta, $alter_path) = @_;
 
