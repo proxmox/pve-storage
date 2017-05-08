@@ -455,7 +455,7 @@ sub destroy_replica {
 
 	my ($guest_conf, $vm_type) = &$get_guestconfig($vmid);
 
-	destroy_all_snapshots($vmid, 'replica');
+	destroy_all_snapshots($vmid, 'replica_');
 	destroy_all_snapshots($vmid, undef, $guest_conf->{replica_target});
 
 	delete($jobs->{$vmid});
@@ -488,7 +488,7 @@ sub get_lastsync {
     my $time;
     foreach my $volid (keys %$sync_vol) {
 	my $list =
-	    PVE::Storage::volume_snapshot_list($cfg, $volid, 'replica', $local_node);
+	    PVE::Storage::volume_snapshot_list($cfg, $volid, 'replica_', $local_node);
 
 	if (my $tmp_snap = shift @$list) {
 	    $tmp_snap =~ m/^replica_(\d+)$/;
