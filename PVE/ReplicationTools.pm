@@ -19,6 +19,12 @@ my $STATE_PATH = "$STATE_DIR/pve-replica.state";
 
 my $local_node = PVE::INotify::nodename();
 
+my $get_ssh_cmd = sub {
+    my ($ip) = @_;
+
+    return ['ssh', '-o', 'Batchmode=yes', "root\@$ip" ];
+};
+
 my $get_guestconfig = sub {
     my ($vmid) = @_;
 
@@ -69,9 +75,9 @@ sub get_node_ip {
     my $dc_conf = PVE::Cluster::cfs_read_file('datacenter.cfg');
     if (my $network = $dc_conf->{storage_replication_network}) {
 
-	my $cmd = ['ssh', '-o', 'Batchmode=yes', "root\@$remoteip", '--'
-		   ,'pvecm', 'mtunnel', '--get_migration_ip',
-		   '--migration_network', $network];
+	my $cmd = $get_ssh_cmd->($remoteip);
+
+	push @$cmd, '--', 'pvecm', 'mtunnel', '--get_migration_ip', '--migration_network', $network;
 
 	PVE::Tools::run_command($cmd, outfunc => sub {
 	    my $line = shift;
@@ -413,8 +419,10 @@ sub destroy_all_snapshots {
 	} else {
 	    if ($ip) {
 
-		my $cmd = ['ssh', '-o', 'Batchmode=yes', "root\@$ip", '--'
-		   ,'pvesm', 'free', $volid];
+		my $cmd = $get_ssh_cmd->($ip);
+
+		push @$cmd, '--', 'pvesm', 'free', $volid;
+
 		PVE::Tools::run_command($cmd);
 	    } else {
 		PVE::Storage::vdisk_free($cfg, $volid);
