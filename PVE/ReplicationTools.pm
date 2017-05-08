@@ -176,7 +176,7 @@ sub sync_guest {
 
     my $snapname = "replica_$snap_time";
 
-    my $disks_status = { snapname => $snapname };
+    my $disks_status = {};
 
     my $sync_job = sub {
 
@@ -433,7 +433,6 @@ sub cleanup_snapshot {
     }
 
     foreach my $volid (keys %$disks) {
-	next if $volid eq "snapname";
 
 	if (defined($ip) && (defined($lastsync_snap) || $disks->{$volid}->{synced})) {
 	    PVE::Storage::volume_snapshot_delete_remote($cfg, $volid, $snapname, $ip);
