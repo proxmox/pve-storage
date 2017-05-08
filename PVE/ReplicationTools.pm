@@ -434,7 +434,7 @@ sub cleanup_snapshot {
     foreach my $volid (keys %$disks) {
 	next if $volid eq "snapname";
 
-	if (defined($lastsync_snap) || $disks->{$volid}->{synced}) {
+	if (defined($ip) && (defined($lastsync_snap) || $disks->{$volid}->{synced})) {
 	    PVE::Storage::volume_snapshot_delete_remote($cfg, $volid, $snapname, $ip);
 	}
 
