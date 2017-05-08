@@ -70,7 +70,7 @@ sub read_state {
 sub get_node_ip {
     my ($nodename) = @_;
 
-    my $remoteip = PVE::Cluster::remote_node_ip($nodename, 1);
+    my $remoteip = PVE::Cluster::remote_node_ip($nodename);
 
     my $dc_conf = PVE::Cluster::cfs_read_file('datacenter.cfg');
     if (my $network = $dc_conf->{storage_replication_network}) {
