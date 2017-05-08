@@ -418,7 +418,7 @@ sub destroy_all_snapshots {
 
 		PVE::Tools::run_command($cmd);
 	    } else {
-		PVE::Storage::vdisk_free($cfg, $volid);
+		die "internal error";
 	    }
 	}
     }
