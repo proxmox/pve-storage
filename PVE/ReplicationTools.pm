@@ -237,7 +237,7 @@ sub sync_guest {
 
 	# delet old snapshot if exists
 	cleanup_snapshot($disks_status, $snapname, $storage_config, $running, $ip, $lastsync) if
-	    $job->{lastsync} ne '0';
+	    $job->{lastsync} != 0;
 
 	$job->{lastsync} = $snap_time;
 	$job->{state} = "ok";
