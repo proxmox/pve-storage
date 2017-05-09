@@ -25,28 +25,30 @@ my $get_ssh_cmd = sub {
     return ['ssh', '-o', 'Batchmode=yes', "root\@$ip" ];
 };
 
-my $get_guestconfig = sub {
+sub get_guest_config {
     my ($vmid) = @_;
 
     my $vms = PVE::Cluster::get_vmlist();
 
-    my $type = $vms->{ids}->{$vmid}->{type};
+    die "no such guest '$vmid'\n" if !defined($vms->{ids}->{$vmid});
 
-    my $guestconf;
+    my $vm_type = $vms->{ids}->{$vmid}->{type};
+
+    my $conf;
     my $running;
 
-    if ($type eq 'qemu') {
-	$guestconf = PVE::QemuConfig->load_config($vmid);
+    if ($vm_type eq 'qemu') {
+	$conf = PVE::QemuConfig->load_config($vmid);
 	$running = PVE::QemuServer::check_running($vmid);
-    } elsif ($type eq 'lxc') {
-	$guestconf = PVE::LXC::Config->load_config($vmid);
+    } elsif ($vm_type eq 'lxc') {
+	$conf = PVE::LXC::Config->load_config($vmid);
 	$running = PVE::LXC::check_running($vmid);
     } else {
 	die "internal error";
     }
 
-    return ($guestconf, $type, $running);
-};
+    return ($conf, $vm_type, $running);
+}
 
 sub write_state {
     my ($state) = @_;
@@ -126,7 +128,7 @@ sub sync_guest {
     $jobs->{$vmid}->{state} = 'sync';
     write_state($jobs);
 
-    my ($guest_conf, $vm_type, $running) = &$get_guestconfig($vmid);
+    my ($guest_conf, $vm_type, $running) = get_guest_config($vmid);
     my $qga = 0;
 
     my $job = $jobs->{$vmid};
@@ -266,7 +268,7 @@ sub job_enable {
 
 	my $jobs = read_state();
 	my $job = $jobs->{$vmid};
-	my ($config) = &$get_guestconfig($vmid);
+	my ($config) = get_guest_config($vmid);
 	my $param = {};
 
 	$job->{interval} = $config->{replica_interval} || 15;
@@ -362,7 +364,7 @@ sub destroy_all_snapshots {
 
     my $ip = defined($node) ? get_node_ip($node) : undef;
 
-    my ($guest_conf, $vm_type, $running) = &$get_guestconfig($vmid);
+    my ($guest_conf, $vm_type, $running) = get_guest_config($vmid);
 
     my $storecfg = PVE::Storage::config();
     my $disks = get_replicatable_volumes($storecfg, $guest_conf, $vm_type);
@@ -427,7 +429,7 @@ sub destroy_replica {
 
 	return if !defined($jobs->{$vmid});
 
-	my ($guest_conf, $vm_type) = &$get_guestconfig($vmid);
+	my ($guest_conf, $vm_type) = get_guest_config($vmid);
 
 	destroy_all_snapshots($vmid, 'replica_');
 	destroy_all_snapshots($vmid, undef, $guest_conf->{replica_target});
@@ -454,7 +456,7 @@ sub destroy_replica {
 sub get_lastsync {
     my ($vmid) = @_;
 
-    my ($conf, $vm_type) = &$get_guestconfig($vmid);
+    my ($conf, $vm_type) = get_guest_config($vmid);
 
     my $storecfg = PVE::Storage::config();
     my $sync_vol = get_replicatable_volumes($storecfg, $conf, $vm_type);
