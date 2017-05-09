@@ -516,6 +516,8 @@ sub update_conf {
     };
 
     PVE::Tools::lock_file_full($STATE_PATH, 60, 0 , $update);
+    die $@ if $@;
 }
+
 
 1;
