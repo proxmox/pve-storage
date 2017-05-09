@@ -102,7 +102,6 @@ sub get_all_jobs {
 
     foreach my $vmid (keys %{$vms->{ids}}) {
 	next if $vms->{ids}->{$vmid}->{node} ne $local_node;
-
 	my $vm_state = $state->{$vmid};
 	next if !defined($vm_state);
 
@@ -464,7 +463,7 @@ sub get_lastsync {
     my $time;
     foreach my $volid (keys %$sync_vol) {
 	my $list =
-	    PVE::Storage::volume_snapshot_list($storecfg, $volid, 'replica_', $local_node);
+	    PVE::Storage::volume_snapshot_list($storecfg, $volid, 'replica_');
 
 	if (my $tmp_snap = shift @$list) {
 	    $tmp_snap =~ m/^replica_(\d+)$/;
@@ -481,7 +480,7 @@ sub get_last_replica_snap {
     my ($volid) = @_;
 
     my $storecfg = PVE::Storage::config();
-    my $list = PVE::Storage::volume_snapshot_list($storecfg, $volid, 'replica_', $local_node);
+    my $list = PVE::Storage::volume_snapshot_list($storecfg, $volid, 'replica_');
 
     return shift @$list;
 }
