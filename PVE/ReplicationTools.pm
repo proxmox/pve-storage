@@ -139,10 +139,10 @@ sub sync_guest {
 
     my $storecfg = PVE::Storage::config();
     # will not die if a disk is not syncable
-    my $disks = get_syncable_guestdisks($storecfg, $guest_conf, $vm_type);
+    my $disks = get_replicatable_volumes($storecfg, $guest_conf, $vm_type);
 
     # check if all nodes have the storage availible
-    foreach my $volid (keys  %$disks) {
+    foreach my $volid (keys %$disks) {
 	my ($storeid) = PVE::Storage::parse_volume_id($volid);
 
 	my $store = $storecfg->{ids}->{$storeid};
@@ -345,7 +345,7 @@ sub job_remove {
     die $@ if $@;
 }
 
-sub get_syncable_guestdisks {
+sub get_replicatable_volumes {
     my ($storecfg, $conf, $vm_type, $noerr) = @_;
 
     if ($vm_type eq 'qemu') {
@@ -365,7 +365,7 @@ sub destroy_all_snapshots {
     my ($guest_conf, $vm_type, $running) = &$get_guestconfig($vmid);
 
     my $storecfg = PVE::Storage::config();
-    my $disks = get_syncable_guestdisks($storecfg, $guest_conf, $vm_type);
+    my $disks = get_replicatable_volumes($storecfg, $guest_conf, $vm_type);
 
     my $snapshots = {};
     foreach my $volid (keys %$disks) {
@@ -457,7 +457,7 @@ sub get_lastsync {
     my ($conf, $vm_type) = &$get_guestconfig($vmid);
 
     my $storecfg = PVE::Storage::config();
-    my $sync_vol = get_syncable_guestdisks($storecfg, $conf, $vm_type);
+    my $sync_vol = get_replicatable_volumes($storecfg, $conf, $vm_type);
 
     my $time;
     foreach my $volid (keys %$sync_vol) {
