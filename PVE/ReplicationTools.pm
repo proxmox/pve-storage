@@ -17,8 +17,6 @@ use PVE::Storage;
 my $STATE_DIR = '/var/lib/pve-replica';
 my $STATE_PATH = "$STATE_DIR/pve-replica.state";
 
-my $local_node = PVE::INotify::nodename();
-
 my $get_ssh_cmd = sub {
     my ($ip) = @_;
 
@@ -100,6 +98,8 @@ sub get_all_jobs {
 
     my $jobs = {};
 
+    my $local_node = PVE::INotify::nodename();
+
     foreach my $vmid (keys %{$vms->{ids}}) {
 	next if $vms->{ids}->{$vmid}->{node} ne $local_node;
 	my $vm_state = $state->{$vmid};
@@ -122,6 +122,8 @@ sub get_all_jobs {
 
 sub sync_guest {
     my ($vmid, $param) = @_;
+
+    my $local_node = PVE::INotify::nodename();
 
     my $jobs = read_state();
     $jobs->{$vmid}->{state} = 'sync';
@@ -261,6 +263,8 @@ sub send_image {
 
 sub job_enable {
     my ($vmid, $no_sync, $target) = @_;
+
+    my $local_node = PVE::INotify::nodename();
 
     my $update_state = sub {
 	my ($state) = @_;
