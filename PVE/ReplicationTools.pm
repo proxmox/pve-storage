@@ -137,15 +137,15 @@ sub sync_guest {
 	    if $running;
     }
 
+    my $storecfg = PVE::Storage::config();
     # will not die if a disk is not syncable
-    my $disks = get_syncable_guestdisks($guest_conf, $vm_type);
+    my $disks = get_syncable_guestdisks($storecfg, $guest_conf, $vm_type);
 
     # check if all nodes have the storage availible
-    my $storage_config = PVE::Storage::config();
     foreach my $volid (keys  %$disks) {
 	my ($storeid) = PVE::Storage::parse_volume_id($volid);
 
-	my $store = $storage_config->{ids}->{$storeid};
+	my $store = $storecfg->{ids}->{$storeid};
 	die "Storage $storeid not availible on node: $tnode\n"
 	    if $store->{nodes}  && !$store->{nodes}->{$tnode};
 	die "Storage $storeid not availible on node: $local_node\n"
@@ -184,7 +184,7 @@ sub sync_guest {
 	foreach my $volid (keys %$disks) {
 
 	    eval {
-		PVE::Storage::volume_snapshot($storage_config, $volid, $snapname);
+		PVE::Storage::volume_snapshot($storecfg, $volid, $snapname);
 	    };
 
 	    if (my $err = $@) {
@@ -195,7 +195,7 @@ sub sync_guest {
 		    };
 		    warn $@ if $@;
 		}
-		cleanup_snapshot($disks_status, $snapname, $storage_config, $running);
+		cleanup_snapshot($disks_status, $snapname, $storecfg, $running);
 		$jobs->{$vmid}->{state} = 'error';
 		write_state($jobs);
 
@@ -216,14 +216,14 @@ sub sync_guest {
 	foreach my $volid (keys %$disks) {
 
 	    eval {
-		PVE::Storage::volume_send($storage_config, $volid, $snapname,
+		PVE::Storage::volume_send($storecfg, $volid, $snapname,
 					  $ip, $incremental_snap,
 					  $param->{verbose}, $limit);
 		$job->{fail} = 0;
 	    };
 
 	    if (my $err = $@) {
-		cleanup_snapshot($disks_status, $snapname, $storage_config, $running, $ip);
+		cleanup_snapshot($disks_status, $snapname, $storecfg, $running, $ip);
 		$job->{fail}++;
 		$job->{state} = 'error' if $job->{fail} > 3;
 
@@ -236,7 +236,7 @@ sub sync_guest {
 	}
 
 	# delete old snapshot if exists
-	cleanup_snapshot($disks_status, $snapname, $storage_config, $running, $ip, $lastsync) if
+	cleanup_snapshot($disks_status, $snapname, $storecfg, $running, $ip, $lastsync) if
 	    $lastsync != 0;
 
 	$job->{lastsync} = $snap_time;
@@ -346,41 +346,15 @@ sub job_remove {
 }
 
 sub get_syncable_guestdisks {
-    my ($config, $vm_type, $running, $noerr) = @_;
-
-    my $syncable_disks = {};
-
-    my $cfg = PVE::Storage::config();
-
-    my $warnings = 0;
-    my $func = sub {
-	my ($id, $volume) = @_;
-	return if !defined($volume->{replica}) || !$volume->{replica};
-
-	my $volname;
-	if ($vm_type eq 'qemu') {
-	    $volname = $volume->{file};
-	} else {
-	    $volname = $volume->{volume};
-	}
-
-	if( PVE::Storage::volume_has_feature($cfg, 'replicate', $volname , undef, $running)) {
-	    $syncable_disks->{$volname} = 1;
-	} else {
-	    warn "Can't sync Volume: $volname\n" if !$noerr;
-	    $warnings = 1;
-	}
-    };
+    my ($storecfg, $conf, $vm_type, $noerr) = @_;
 
     if ($vm_type eq 'qemu') {
-	PVE::QemuServer::foreach_drive($config, $func);
+	PVE::QemuConfig->get_replicatable_volumes($storecfg, $conf, $noerr);
     } elsif ($vm_type eq 'lxc') {
-	PVE::LXC::Config->foreach_mountpoint($config, $func);
+	PVE::LXC::Config->get_replicatable_volumes($storecfg, $conf, $noerr);
     } else {
-	die "Unknown VM type: $vm_type";
+	die "internal error";
     }
-
-    return wantarray ? ($warnings, $syncable_disks) : $syncable_disks;
 }
 
 sub destroy_all_snapshots {
@@ -390,13 +364,13 @@ sub destroy_all_snapshots {
 
     my ($guest_conf, $vm_type, $running) = &$get_guestconfig($vmid);
 
-    my $disks = get_syncable_guestdisks($guest_conf, $vm_type);
-    my $cfg = PVE::Storage::config();
+    my $storecfg = PVE::Storage::config();
+    my $disks = get_syncable_guestdisks($storecfg, $guest_conf, $vm_type);
 
     my $snapshots = {};
     foreach my $volid (keys %$disks) {
 	$snapshots->{$volid} =
-	    PVE::Storage::volume_snapshot_list($cfg, $volid, $regex, $node, $ip);
+	    PVE::Storage::volume_snapshot_list($storecfg, $volid, $regex, $node, $ip);
     }
 
     foreach my $volid (keys %$snapshots) {
@@ -404,9 +378,9 @@ sub destroy_all_snapshots {
 	if (defined($regex)) {
 	    foreach my $snap (@{$snapshots->{$volid}}) {
 		if ($ip) {
-		    PVE::Storage::volume_snapshot_delete_remote($cfg, $volid, $snap, $ip);
+		    PVE::Storage::volume_snapshot_delete_remote($storecfg, $volid, $snap, $ip);
 		} else {
-		    PVE::Storage::volume_snapshot_delete($cfg, $volid, $snap, $running);
+		    PVE::Storage::volume_snapshot_delete($storecfg, $volid, $snap, $running);
 		}
 	    }
 	} else {
@@ -426,7 +400,7 @@ sub destroy_all_snapshots {
 }
 
 sub cleanup_snapshot {
-    my ($disks, $snapname, $cfg, $running, $ip, $lastsync_snap) = @_;
+    my ($disks, $snapname, $storecfg, $running, $ip, $lastsync_snap) = @_;
 
     if ($lastsync_snap) {
 	$snapname = "replica_$lastsync_snap";
@@ -435,11 +409,11 @@ sub cleanup_snapshot {
     foreach my $volid (keys %$disks) {
 
 	if (defined($ip) && (defined($lastsync_snap) || $disks->{$volid}->{synced})) {
-	    PVE::Storage::volume_snapshot_delete_remote($cfg, $volid, $snapname, $ip);
+	    PVE::Storage::volume_snapshot_delete_remote($storecfg, $volid, $snapname, $ip);
 	}
 
 	if (defined($lastsync_snap) || $disks->{$volid}->{snapshot}) {
-	    PVE::Storage::volume_snapshot_delete($cfg, $volid, $snapname, $running);
+	    PVE::Storage::volume_snapshot_delete($storecfg, $volid, $snapname, $running);
 	}
     }
 }
@@ -482,13 +456,13 @@ sub get_lastsync {
 
     my ($conf, $vm_type) = &$get_guestconfig($vmid);
 
-    my $sync_vol = get_syncable_guestdisks($conf, $vm_type);
-    my $cfg = PVE::Storage::config();
+    my $storecfg = PVE::Storage::config();
+    my $sync_vol = get_syncable_guestdisks($storecfg, $conf, $vm_type);
 
     my $time;
     foreach my $volid (keys %$sync_vol) {
 	my $list =
-	    PVE::Storage::volume_snapshot_list($cfg, $volid, 'replica_', $local_node);
+	    PVE::Storage::volume_snapshot_list($storecfg, $volid, 'replica_', $local_node);
 
 	if (my $tmp_snap = shift @$list) {
 	    $tmp_snap =~ m/^replica_(\d+)$/;
@@ -504,20 +478,10 @@ sub get_lastsync {
 sub get_last_replica_snap {
     my ($volid) = @_;
 
-    my $cfg = PVE::Storage::config();
-    my $list = PVE::Storage::volume_snapshot_list($cfg, $volid, 'replica_', $local_node);
+    my $storecfg = PVE::Storage::config();
+    my $list = PVE::Storage::volume_snapshot_list($storecfg, $volid, 'replica_', $local_node);
 
     return shift @$list;
-}
-
-sub check_guest_volumes_syncable {
-    my ($conf, $vm_type) = @_;
-
-    my ($warnings, $disks) = get_syncable_guestdisks($conf, $vm_type, 1);
-
-    return undef if $warnings || !%$disks;
-
-    return 1;
 }
 
 sub update_conf {
