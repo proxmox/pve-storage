@@ -495,7 +495,7 @@ sub volume_rollback_is_possible {
 }
 
 sub volume_snapshot_list {
-    my ($class, $scfg, $storeid, $volname, $prefix, $ip) = @_;
+    my ($class, $scfg, $storeid, $volname, $prefix) = @_;
 
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
 
@@ -506,11 +506,6 @@ sub volume_snapshot_list {
 
     my $cmd = ['zfs', 'list', '-r', '-H', '-S', 'name', '-t', 'snap', '-o',
 	       'name', $zpath];
-
-    if ($ip) {
-	$ip = "[$ip]" if Net::IP::ip_is_ipv6($ip);
-	unshift @$cmd, 'ssh', '-o', ' BatchMode=yes', "root\@${ip}", '--';
-    }
 
     my $outfunc = sub {
 	my $line = shift;

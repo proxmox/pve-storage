@@ -825,7 +825,7 @@ sub status {
 }
 
 sub volume_snapshot_list {
-    my ($class, $scfg, $storeid, $volname, $prefix, $ip) = @_;
+    my ($class, $scfg, $storeid, $volname, $prefix) = @_;
 
     # implement in subclass
     die "Volume_snapshot_list is not implemented for $class";
