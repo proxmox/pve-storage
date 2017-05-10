@@ -1,5 +1,5 @@
 
-SOURCES= Content.pm Status.pm Config.pm Scan.pm Replication.pm
+SOURCES= Content.pm Status.pm Config.pm Scan.pm
 
 .PHONY: install
 install:
