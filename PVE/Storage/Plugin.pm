@@ -725,13 +725,6 @@ sub volume_snapshot_rollback {
     return undef;
 }
 
-sub volume_snapshot_delete_remote {
-    my ($class, $scfg, $storeid, $volname, $snap, $ip) = @_;
-
-    # implement in subclass
-    die "Volume_snapshot_delete_remote is not implemented for $class";
-}
-
 sub volume_snapshot_delete {
     my ($class, $scfg, $storeid, $volname, $snap, $running) = @_;
 

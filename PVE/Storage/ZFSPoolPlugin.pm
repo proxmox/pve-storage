@@ -180,10 +180,7 @@ sub zfs_request {
     }
 
     push @$cmd, @params;
-    if ($ip) {
-	$ip = "[$ip]" if Net::IP::ip_is_ipv6($ip);
-	unshift @$cmd, 'ssh', '-o', 'BatchMode=yes', "root\@${ip}", '--';
-    }
+ 
     my $msg = '';
 
     my $output = sub {
@@ -520,20 +517,12 @@ sub volume_send {
     }
 }
 
-sub volume_snapshot_delete_remote {
-    my ($class, $scfg, $storeid, $volname, $snap, $ip) = @_;
-
-    my $vname = ($class->parse_volname($volname))[1];
-    $class->zfs_request($scfg, $ip, undef, 'destroy', "$scfg->{pool}/$vname\@$snap");
-}
-
 sub volume_snapshot_delete {
     my ($class, $scfg, $storeid, $volname, $snap, $running) = @_;
 
     my $vname = ($class->parse_volname($volname))[1];
 
     $class->deactivate_volume($storeid, $scfg, $vname, $snap, {});
-
     $class->zfs_request($scfg, undef, undef, 'destroy', "$scfg->{pool}/$vname\@$snap");
 }
 
