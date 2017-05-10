@@ -336,13 +336,6 @@ sub volume_snapshot_rollback {
     $class->zfs_add_lun_mapping_entry($scfg, $volname);
 }
 
-sub volume_send {
-    my ($class, $scfg, $storeid, $volname, $ip, $snap,
-	$incremental_snap, $verbose, $limit, $target_path) = @_;
-
-    die "Volume_send is not implemented for ZFS over iSCSI.\n";
-}
-
 sub volume_has_feature {
     my ($class, $scfg, $feature, $storeid, $volname, $snapname, $running) = @_;
 
