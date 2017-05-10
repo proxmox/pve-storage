@@ -32,7 +32,6 @@ use PVE::Storage::GlusterfsPlugin;
 use PVE::Storage::ZFSPoolPlugin;
 use PVE::Storage::ZFSPlugin;
 use PVE::Storage::DRBDPlugin;
-use PVE::ReplicationTools;
 
 # Storage API version. Icrement it on changes in storage API interface.
 use constant APIVER => 1;
@@ -621,27 +620,14 @@ sub storage_migrate {
 	    my $zfspath = "$scfg->{pool}\/$volname";
 
 	    my $snap = ['zfs', 'snapshot', "$zfspath\@__migration__"];
-	    my $send = ['zfs', 'send', '-Rpv'];
-	    my $rec = ['ssh', "root\@$target_host", 'zfs', 'recv','-F' ,$zfspath];
 
-	    if (my $snapname = PVE::ReplicationTools::get_last_replica_snap($volid)) {
-
-		#check if target snapshot exists.
-		my $checksnap = ['/usr/bin/ssh', "root\@${target_host}", "-o",
-		    'BatchMode=yes', 'zfs', 'list', '-Hrt', 'snap',
-		    "$zfspath\@$snapname "];
-		eval {
-		    run_command($checksnap);
-		    push @$send, '-I', "$zfspath\@$snapname";
-		};
-
-	    }
-	    push @$send, "--", "$zfspath\@__migration__";
+	    my $send = [['zfs', 'send', '-Rpv', "$zfspath\@__migration__"], ['ssh', "root\@$target_host",
+			'zfs', 'recv', $zfspath]];
 
 	    my $destroy_target = ['ssh', "root\@$target_host", 'zfs', 'destroy', "$zfspath\@__migration__"];
  	    run_command($snap);
 	    eval{
-		run_command([$send,$rec]);
+		run_command($send);
 	    };
 	    my $err = $@;
 	    warn "zfs send/receive failed, cleaning up snapshot(s)..\n" if $err;
