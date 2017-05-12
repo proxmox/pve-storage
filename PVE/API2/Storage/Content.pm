@@ -258,6 +258,12 @@ __PACKAGE__->register_method ({
 		type => 'string',
 		completion => \&PVE::Storage::complete_volume,
 	    },
+	    snapshot => {
+		description => "Delete a snapshot instead of the entire disk.",
+		type => 'string',
+		pattern => qr/[a-z0-9_\-]{1,40}/,
+		optional => 1,
+	    }
 	},
     },
     returns => { type => 'null' },
@@ -279,7 +285,12 @@ __PACKAGE__->register_method ({
 	    $rpcenv->check($authuser, "/storage/$storeid", ['Datastore.Allocate']);
 	}
 
-	PVE::Storage::vdisk_free ($cfg, $volid);
+	my $snapshot = $param->{snapshot};
+	if (defined($snapshot)) {
+	    PVE::Storage::volume_snapshot_delete($cfg, $volid, $snapshot, 0);
+	} else {
+	    PVE::Storage::vdisk_free($cfg, $volid);
+	}
 
 	return undef;
     }});
