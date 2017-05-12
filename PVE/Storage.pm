@@ -1453,6 +1453,28 @@ sub extract_vzdump_config {
     }
 }
 
+sub volume_export {
+    my ($cfg, $fh, $volid, $format, $snapshot, $base_snapshot, $with_snapshots) = @_;
+
+    my ($storeid, $volname) = parse_volume_id($volid, 1);
+    die "cannot export volume '$volid'\n" if !$storeid;
+    my $scfg = storage_config($cfg, $storeid);
+    my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
+    return $plugin->volume_export($scfg, $storeid, $fh, $volname, $format,
+                                  $snapshot, $base_snapshot, $with_snapshots);
+}
+
+sub volume_import {
+    my ($cfg, $fh, $volid, $format, $base_snapshot, $with_snapshots) = @_;
+
+    my ($storeid, $volname) = parse_volume_id($volid, 1);
+    die "cannot import into volume '$volid'\n" if !$storeid;
+    my $scfg = storage_config($cfg, $storeid);
+    my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
+    return $plugin->volume_import($scfg, $storeid, $fh, $volname, $format,
+                                  $base_snapshot, $with_snapshots);
+}
+
 # bash completion helper
 
 sub complete_storage {

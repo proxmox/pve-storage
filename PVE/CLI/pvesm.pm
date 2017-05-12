@@ -21,6 +21,8 @@ use PVE::CLIHandler;
 
 use base qw(PVE::CLIHandler);
 
+my $KNOWN_EXPORT_FORMATS = ['zfs'];
+
 my $nodename = PVE::INotify::nodename();
 
 sub setup_environment {
@@ -144,6 +146,141 @@ my $print_status = sub {
     }
 };
 
+__PACKAGE__->register_method ({
+    name => 'export',
+    path => 'export',
+    method => 'GET',
+    description => "Export a volume.",
+    protected => 1,
+    parameters => {
+	additionalProperties => 0,
+	properties => {
+	    volume => {
+		description => "Volume identifier",
+		type => 'string',
+		completion => \&PVE::Storage::complete_volume,
+	    },
+	    format => {
+		description => "Export stream format",
+		type => 'string',
+		enum => $KNOWN_EXPORT_FORMATS,
+	    },
+	    filename => {
+		description => "Destination file name",
+		type => 'string',
+	    },
+	    base => {
+		description => "Snapshot to start an incremental stream from",
+		type => 'string',
+		pattern => qr/[a-z0-9_\-]{1,40}/,
+		maxLength => 40,
+		optional => 1,
+	    },
+	    snapshot => {
+		description => "Snapshot to export",
+		type => 'string',
+		pattern => qr/[a-z0-9_\-]{1,40}/,
+		maxLength => 40,
+		optional => 1,
+	    },
+	    'with-snapshots' => {
+		description =>
+		    "Whether to include intermediate snapshots in the stream",
+		type => 'boolean',
+		optional => 1,
+		default => 0,
+	    },
+	},
+    },
+    returns => { type => 'null' },
+    code => sub {
+	my ($param) = @_;
+
+	my $filename = $param->{filename};
+
+	my $outfh;
+	if ($filename eq '-') {
+	    $outfh = \*STDOUT;
+	} else {
+	    open($outfh, '>', $filename)
+		or die "open($filename): $!\n";
+	}
+
+	eval {
+	    my $cfg = PVE::Storage::config();
+	    PVE::Storage::volume_export($cfg, $outfh, $param->{volume}, $param->{format},
+		$param->{snapshot}, $param->{base}, $param->{'with-snapshots'});
+	};
+	my $err = $@;
+	if ($filename ne '-') {
+	    close($outfh);
+	    unlink($filename) if $err;
+	}
+	die $err if $err;
+	return;
+    }
+});
+
+__PACKAGE__->register_method ({
+    name => 'import',
+    path => 'import',
+    method => 'PUT',
+    description => "Import a volume.",
+    protected => 1,
+    parameters => {
+	additionalProperties => 0,
+	properties => {
+	    volume => {
+		description => "Volume identifier",
+		type => 'string',
+		completion => \&PVE::Storage::complete_volume,
+	    },
+	    format => {
+		description => "Import stream format",
+		type => 'string',
+		enum => $KNOWN_EXPORT_FORMATS,
+	    },
+	    filename => {
+		description => "Source file name",
+		type => 'string',
+	    },
+	    base => {
+		description => "Base snapshot of an incremental stream",
+		type => 'string',
+		pattern => qr/[a-z0-9_\-]{1,40}/,
+		maxLength => 40,
+		optional => 1,
+	    },
+	    'with-snapshots' => {
+		description =>
+		    "Whether the stream includes intermediate snapshots",
+		type => 'boolean',
+		optional => 1,
+		default => 0,
+	    },
+	},
+    },
+    returns => { type => 'null' },
+    code => sub {
+	my ($param) = @_;
+
+	my $filename = $param->{filename};
+
+	my $infh;
+	if ($filename eq '-') {
+	    $infh = \*STDIN;
+	} else {
+	    open($infh, '<', $filename)
+		or die "open($filename): $!\n";
+	}
+
+	my $cfg = PVE::Storage::config();
+	PVE::Storage::volume_import($cfg, $infh, $param->{volume}, $param->{format},
+	    $param->{base}, $param->{'with-snapshots'});
+	return;
+    }
+});
+
 our $cmddef = {
     add => [ "PVE::API2::Storage::Config", 'create', ['type', 'storage'] ],
     set => [ "PVE::API2::Storage::Config", 'update', ['storage'] ],
@@ -217,6 +354,8 @@ our $cmddef = {
 		 }],
     path => [ __PACKAGE__, 'path', ['volume']],
     extractconfig => [__PACKAGE__, 'extractconfig', ['volume']],
+    export => [ __PACKAGE__, 'export', ['volume', 'format', 'filename']],
+    import => [ __PACKAGE__, 'import', ['volume', 'format', 'filename']],
 };
 
 1;

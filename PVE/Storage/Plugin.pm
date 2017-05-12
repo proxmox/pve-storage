@@ -888,5 +888,16 @@ sub check_connection {
     return 1;
 }
 
+# Export a volume into a file handle as a stream of desired format.
+sub volume_export {
+    my ($class, $scfg, $storeid, $fh, $volname, $format, $snapshot, $base_snapshot, $with_snapshots) = @_;
+    die "volume export not implemented for $class";
+}
+
+# Import data from a stream, creating a new or replacing or adding to an existing volume.
+sub volume_import {
+    my ($class, $scfg, $storeid, $fh, $volname, $format, $base_snapshot, $with_snapshots) = @_;
+    die "volume import not implemented for $class";
+}
 
 1;

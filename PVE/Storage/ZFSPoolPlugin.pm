@@ -652,4 +652,66 @@ sub volume_has_feature {
     return undef;
 }
 
+sub volume_export {
+    my ($class, $scfg, $storeid, $fh, $volname, $format, $snapshot, $base_snapshot, $with_snapshots) = @_;
+
+    die "unsupported export stream format for $class: $format\n"
+	if $format ne 'zfs';
+
+    die "$class storage can only export snapshots\n"
+	if !defined($snapshot);
+
+    my $fd = fileno($fh);
+    die "internal error: invalid file handle for volume_export\n"
+	if !defined($fd);
+    $fd = ">&$fd";
+
+    # For zfs we always create a replication stream (-R) which means the remote
+    # side will always delete non-existing source snapshots. This should work
+    # for all our use cases.
+    my $cmd = ['zfs', 'send', '-Rpv'];
+    if (defined($base_snapshot)) {
+	my $arg = $with_snapshots ? '-I' : '-i';
+	push @$cmd, $arg, $base_snapshot;
+    }
+    push @$cmd, '--', "$scfg->{pool}/$volname\@$snapshot";
+
+    run_command($cmd, output => $fd);
+
+    return;
+}
+
+sub volume_import {
+    my ($class, $scfg, $storeid, $fh, $volname, $format, $base_snapshot, $with_snapshots) = @_;
+
+    die "unsupported import stream format for $class: $format\n"
+	if $format ne 'zfs';
+
+    my $fd = fileno($fh);
+    die "internal error: invalid file handle for volume_import\n"
+	if !defined($fd);
+
+    my $zfspath = "$scfg->{pool}/$volname";
+    my $suffix = defined($base_snapshot) ? "\@$base_snapshot" : '';
+    my $exists = 0 == run_command(['zfs', 'get', '-H', 'name', $zfspath.$suffix],
+			     noerr => 1, errfunc => sub {});
+    if (defined($base_snapshot)) {
+	die "base snapshot '$zfspath\@$base_snapshot' doesn't exist\n" if !$exists;
+    } else {
+	die "volume '$zfspath' already exists\n" if $exists;
+    }
+
+    eval { run_command(['zfs', 'recv', '-F', '--', $zfspath], input => "<&$fd") };
+    if (my $err = $@) {
+	if (defined($base_snapshot)) {
+	    eval { run_command(['zfs', 'rollback', '-r', '--', "$zfspath\@$base_snapshot"]) };
+	} else {
+	    eval { run_command(['zfs', 'destroy', '-r', '--', $zfspath]) };
+	}
+	die $err;
+    }
+
+    return;
+}
+
 1;
