@@ -894,10 +894,20 @@ sub volume_export {
     die "volume export not implemented for $class";
 }
 
+sub volume_export_formats {
+    my ($class, $scfg, $storeid, $volname, $snapshot, $base_snapshot, $with_snapshots) = @_;
+    die "volume export formats not implemented for $class";
+}
+
 # Import data from a stream, creating a new or replacing or adding to an existing volume.
 sub volume_import {
     my ($class, $scfg, $storeid, $fh, $volname, $format, $base_snapshot, $with_snapshots) = @_;
     die "volume import not implemented for $class";
+}
+
+sub volume_import_formats {
+    my ($class, $scfg, $storeid, $volname, $base_snapshot, $with_snapshots) = @_;
+    die "volume import formats not implemented for $class";
 }
 
 1;

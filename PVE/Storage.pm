@@ -1485,6 +1485,37 @@ sub volume_import {
                                   $base_snapshot, $with_snapshots);
 }
 
+sub volume_export_formats {
+    my ($cfg, $volid, $snapshot, $base_snapshot, $with_snapshots) = @_;
+
+    my ($storeid, $volname) = parse_volume_id($volid, 1);
+    return if !$storeid;
+    my $scfg = storage_config($cfg, $storeid);
+    my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
+    return $plugin->volume_export_formats($scfg, $storeid, $volname,
+                                          $base_snapshot, $with_snapshots);
+}
+
+sub volume_import_formats {
+    my ($cfg, $volid, $base_snapshot, $with_snapshots) = @_;
+
+    my ($storeid, $volname) = parse_volume_id($volid, 1);
+    return if !$storeid;
+    my $scfg = storage_config($cfg, $storeid);
+    my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
+    return $plugin->volume_import_formats($scfg, $storeid, $volname,
+                                          $base_snapshot, $with_snapshots);
+}
+
+sub volume_transfer_formats {
+    my ($cfg, $src_volid, $dst_volid, $snapshot, $base_snapshot, $with_snapshots) = @_;
+    my @export_formats = volume_export_formats($cfg, $src_volid, $snapshot, $base_snapshot, $with_snapshots);
+    my @import_formats = volume_import_formats($cfg, $dst_volid, $base_snapshot, $with_snapshots);
+    my %import_hash = map { $_ => 1 } @import_formats;
+    my @common = grep { $import_hash{$_} } @export_formats;
+    return @common;
+}
+
 # bash completion helper
 
 sub complete_storage {

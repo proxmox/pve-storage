@@ -681,6 +681,16 @@ sub volume_export {
     return;
 }
 
+sub volume_export_formats {
+    my ($class, $scfg, $storeid, $volname, $snapshot, $base_snapshot, $with_snapshots) = @_;
+
+    my @formats = ('zfs');
+    # TODOs:
+    # push @formats, 'fies' if $volname !~ /^(?:basevol|subvol)-/;
+    # push @formats, 'raw' if !$base_snapshot && !$with_snapshots;
+    return @formats;
+}
+
 sub volume_import {
     my ($class, $scfg, $storeid, $fh, $volname, $format, $base_snapshot, $with_snapshots) = @_;
 
@@ -712,6 +722,12 @@ sub volume_import {
     }
 
     return;
+}
+
+sub volume_import_formats {
+    my ($class, $scfg, $storeid, $volname, $base_snapshot, $with_snapshots) = @_;
+
+    return $class->volume_export_formats($scfg, $storeid, $volname, undef, $base_snapshot, $with_snapshots);
 }
 
 1;
