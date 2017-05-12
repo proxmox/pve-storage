@@ -525,7 +525,7 @@ sub abs_filesystem_path {
 }
 
 sub storage_migrate {
-    my ($cfg, $volid, $target_host, $target_storeid, $target_volname) = @_;
+    my ($cfg, $volid, $target_host, $target_storeid, $target_volname, $base_snapshot) = @_;
 
     my ($storeid, $volname) = parse_volume_id($volid);
     $target_volname = $volname if !$target_volname;
@@ -546,10 +546,17 @@ sub storage_migrate {
 
     local $ENV{RSYNC_RSH} = $ssh;
 
+    my $no_incremental = sub {
+	my ($type) = @_;
+	die "incremental migration not supported on storage type $type\n"
+	    if defined($base_snapshot);
+    };
+
     # only implemented for file system based storage
     if ($scfg->{path}) {
-	if ($tcfg->{path}) {
+	$no_incremental->($scfg->{type});
 
+	if ($tcfg->{path}) {
 	    my $src_plugin = PVE::Storage::Plugin->lookup($scfg->{type});
 	    my $dst_plugin = PVE::Storage::Plugin->lookup($tcfg->{type});
 	    my $src = $src_plugin->path($scfg, $volname, $storeid);
@@ -622,6 +629,12 @@ sub storage_migrate {
 	    my $recv = ['ssh', "root\@$target_host", '--', 'pvesm', 'import', $volid, 'zfs', '-', '-with-snapshots', '1'];
 	    my $free = ['ssh', "root\@$target_host", '--', 'pvesm', 'free', $volid, '-snapshot', '__migration__'];
 
+	    if (defined($base_snapshot)) {
+		# Check if the snapshot exists on the remote side:
+		push @$send, '-snapshot', $base_snapshot;
+		push @$recv, '-base', $base_snapshot;
+	    }
+
 	    volume_snapshot($cfg, $volid, '__migration__');
 	    eval{
 		run_command([$send, $recv]);
@@ -638,6 +651,7 @@ sub storage_migrate {
  	}
 
     } elsif ($scfg->{type} eq 'lvmthin' || $scfg->{type} eq 'lvm') {
+	$no_incremental->($scfg->{type});
 
 	if (($scfg->{type} eq $tcfg->{type}) &&
 	    ($tcfg->{type} eq 'lvmthin' || $tcfg->{type} eq 'lvm')) {
