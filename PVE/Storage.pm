@@ -616,27 +616,23 @@ sub storage_migrate {
 		if $tcfg->{pool} ne $scfg->{pool};
 
 	    my (undef, $volname) = parse_volname($cfg, $volid);
-
 	    my $zfspath = "$scfg->{pool}\/$volname";
 
-	    my $snap = ['zfs', 'snapshot', "$zfspath\@__migration__"];
+	    my $send = ['pvesm', 'export', $volid, 'zfs', '-', '-snapshot', '__migration__', '-with-snapshots', '1'];
+	    my $recv = ['ssh', "root\@$target_host", '--', 'pvesm', 'import', $volid, 'zfs', '-', '-with-snapshots', '1'];
+	    my $free = ['ssh', "root\@$target_host", '--', 'pvesm', 'free', $volid, '-snapshot', '__migration__'];
 
-	    my $send = [['zfs', 'send', '-Rpv', "$zfspath\@__migration__"], ['ssh', "root\@$target_host",
-			'zfs', 'recv', $zfspath]];
-
-	    my $destroy_target = ['ssh', "root\@$target_host", 'zfs', 'destroy', "$zfspath\@__migration__"];
- 	    run_command($snap);
+	    volume_snapshot($cfg, $volid, '__migration__');
 	    eval{
-		run_command($send);
+		run_command([$send, $recv]);
 	    };
 	    my $err = $@;
-	    warn "zfs send/receive failed, cleaning up snapshot(s)..\n" if $err;
-	    eval { run_command(['zfs', 'destroy', "$zfspath\@__migration__"]); };
+	    warn "send/receive failed, cleaning up snapshot(s)..\n" if $err;
+	    eval { volume_snapshot_delete($cfg, $volid, '__migration__', 0) };
 	    warn "could not remove source snapshot: $@\n" if $@;
-	    eval { run_command($destroy_target); };
+	    eval { run_command($free) };
 	    warn "could not remove target snapshot: $@\n" if $@;
 	    die $err if $err;
-
  	} else {
  	    die "$errstr - target type $tcfg->{type} is not valid\n";
  	}
