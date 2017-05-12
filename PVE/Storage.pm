@@ -647,10 +647,8 @@ sub storage_migrate {
 	    warn "send/receive failed, cleaning up snapshot(s)..\n" if $err;
 	    eval { volume_snapshot_delete($cfg, $volid, '__migration__', 0) };
 	    warn "could not remove source snapshot: $@\n" if $@;
-	    if (defined($free)) {
-		eval { run_command($free) };
-		warn "could not remove target snapshot: $@\n" if $@;
-	    }
+	    eval { run_command($free) };
+	    warn "could not remove target snapshot: $@\n" if $@;
 	    die $err if $err;
  	} else {
  	    die "$errstr - target type $tcfg->{type} is not valid\n";
