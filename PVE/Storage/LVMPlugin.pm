@@ -44,7 +44,7 @@ sub lvm_pv_info {
 
 	$pvinfo = {
 	    pvname => $pvname,
-	    size => $size,
+	    size => int($size),
 	    vgname => $vgname,
 	    uuid => $uuid,
 	};
@@ -136,7 +136,7 @@ sub lvm_list_volumes {
 	my $lv_type = substr($lv_attr, 0, 1);
 
 	my $d = {
-	    lv_size => $lv_size,
+	    lv_size => int($lv_size),
 	    lv_type => $lv_type,
 	};
 	$d->{pool_lv} = $pool_lv if $pool_lv;
