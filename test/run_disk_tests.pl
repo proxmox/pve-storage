@@ -6,5 +6,7 @@ use warnings;
 use TAP::Harness;
 
 my $harness = TAP::Harness->new( { verbosity => -2 });
-$harness->runtests( "disklist_test.pm" );
+my $res = $harness->runtests( "disklist_test.pm" );
+
+exit -1 if $res->{failed};
 
