@@ -279,6 +279,7 @@ my $test17 = sub {
 
     eval {
 	PVE::Storage::activate_storage($cfg, $storagename);
+	PVE::Storage::deactivate_storage($cfg, $storagename);
     };
     if ($@) {
 	$count++;
