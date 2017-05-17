@@ -2613,11 +2613,20 @@ sub setup_zfs {
 sub cleanup_zfs {
 
     print "destroy $pool\/$subvol\n" if $verbose;
-    run_command("zfs destroy $zpath -r");
+    eval { run_command("zfs destroy $zpath -r"); };
+    if ($@) {
+	print "cleanup failed: $@\nretrying once\n" if $verbose;
+	eval { run_command("zfs destroy $zpath -r"); };
+	if ($@) {
+	    clean_up_zpool();
+	    setup_zpool();
+	}
+    }
 }
 
 sub setup_zpool {
 
+    unlink 'zpool.img';
     eval {
 	run_command("dd if=/dev/zero of=zpool.img bs=1M count=8000 ");
     };
