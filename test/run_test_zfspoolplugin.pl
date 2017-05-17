@@ -2628,7 +2628,7 @@ sub setup_zpool {
 
     unlink 'zpool.img';
     eval {
-	run_command("dd if=/dev/zero of=zpool.img bs=1M count=8000 ");
+	run_command("truncate -s 8G zpool.img");
     };
     if ($@) {
 	clean_up_zpool();
