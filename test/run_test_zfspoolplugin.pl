@@ -2658,6 +2658,11 @@ sub volume_is_base {
     return $isBase;
 }
 
+eval { run_command("zpool status"); };
+if ($@) {
+    warn "zpool status failed, not running tests: $@\n";
+    exit 0;
+}
 
 setup_zpool();
 
