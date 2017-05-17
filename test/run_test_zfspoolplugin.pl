@@ -2701,3 +2701,5 @@ $time = time - $time;
 print "Stop tests for ZFSPoolPlugin\n";
 print "$count tests failed\n";
 print "Time: ${time}s\n";
+
+exit -1 if $count > 0;
