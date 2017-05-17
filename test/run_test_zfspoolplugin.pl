@@ -2606,6 +2606,8 @@ sub setup_zfs {
 
     print "create linked clone $vmlinked\n" if $verbose;
     run_command("zfs clone $zpath\/$ctbase$basesnap $zpath\/$ctlinked -o refquota=${volsize}G");
+    run_command("udevadm trigger --subsystem-match block");
+    run_command("udevadm settle --timeout 10 --exit-if-exists=/dev/zvol/$zpath\/$ctlinked");
 }
 
 sub cleanup_zfs {
