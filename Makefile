@@ -45,7 +45,7 @@ install: pvesm.1 pvesm.bash-completion
 
 .PHONY: deb
 deb: ${DEB}
-${DEB}:
+${DEB}: check
 	rm -rf debian
 	mkdir debian
 	make DESTDIR=${CURDIR}/debian install
@@ -61,6 +61,9 @@ ${DEB}:
 	mv debian.deb ${DEB}
 	rm -rf debian
 	lintian ${DEB}
+
+check:
+	make -C test
 
 .PHONY: clean
 clean:
