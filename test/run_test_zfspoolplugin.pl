@@ -26,7 +26,7 @@ my $ctlinked = "subvol-201-disk-1";
 my $basesnap = '@__base__';
 my $tests = {};
 
-#create zfs suvol for testing
+#create zfs subvol for testing
 my $pool = undef;
 my $zpath = undef;
 my $cfg = undef;
@@ -226,7 +226,7 @@ $tests->{19} = $test19;
 
 my $test18 = sub {
 
-    print "\nrun test17 \"scan_zfs\"\n";
+    print "\nrun test18 \"scan_zfs\"\n";
     my $res;
 
     eval {
@@ -1620,7 +1620,7 @@ my $test5 = sub {
 	$count++;
 	warn "Test5 f: $@";
     }
-    print "######Ignore Output if no Test5 g: is includet######\n";
+    print "######Ignore Output if no Test5 g: is included######\n";
     eval{
 	PVE::Storage::volume_snapshot_delete($cfg, "$storagename:$vmbase", '__base__');
 	eval{
@@ -1635,7 +1635,7 @@ my $test5 = sub {
 	$count++;
 	warn "Test5 PVE g: snapshot __base__ can be erased";
     }
-    print "######End Ignroe#######\n";
+    print "######End Ignore#######\n";
 };
 $tests->{5} = $test5;
 
