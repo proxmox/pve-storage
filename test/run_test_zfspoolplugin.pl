@@ -894,7 +894,7 @@ $tests->{10} = $test10;
 
 my $test9 =sub {
 
-    print "\nrun test9 \"parse_volname\"\n";
+    print "\nrun test9 \"parse_volume_id\"\n";
 
     eval {
 	my ($store, $disk) = PVE::Storage::parse_volume_id("$storagename:$vmdisk");
