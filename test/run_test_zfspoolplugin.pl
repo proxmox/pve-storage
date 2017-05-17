@@ -2583,8 +2583,6 @@ $tests->{1} = $test1;
 
 sub setup_zfs {
 
-    my $tmp = undef;
-
     #create VM zvol
     print "create zvol $vmdisk\n" if $verbose;
     run_command("zfs create -V${volsize}G $zpath\/$vmdisk");
