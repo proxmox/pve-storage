@@ -525,7 +525,7 @@ sub abs_filesystem_path {
 }
 
 sub storage_migrate {
-    my ($cfg, $volid, $target_host, $target_storeid, $target_volname, $base_snapshot) = @_;
+    my ($cfg, $volid, $target_host, $target_storeid, $target_volname, $base_snapshot, $snapshot) = @_;
 
     my ($storeid, $volname) = parse_volume_id($volid);
     $target_volname = $volname if !$target_volname;
@@ -551,10 +551,17 @@ sub storage_migrate {
 	die "incremental migration not supported on storage type $type\n"
 	    if defined($base_snapshot);
     };
+    my $no_snapshot = sub {
+	my ($type) = @_;
+	# $snapshot is currently only used by replication
+	die "replicating storage migration not supported on storage type $type\n"
+	    if defined($snapshot);
+    };
 
     # only implemented for file system based storage
     if ($scfg->{path}) {
 	$no_incremental->($scfg->{type});
+	$no_snapshot->($scfg->{type});
 
 	if ($tcfg->{path}) {
 	    my $src_plugin = PVE::Storage::Plugin->lookup($scfg->{type});
@@ -622,16 +629,19 @@ sub storage_migrate {
 	    die "$errstr - pool on target does not have the same name as on source!"
 		if $tcfg->{pool} ne $scfg->{pool};
 
+	    my $snapname = $snapshot // '__migration__';
+
 	    my (undef, $volname) = parse_volname($cfg, $volid);
 	    my $zfspath = "$scfg->{pool}\/$volname";
 
-	    my @formats = volume_transfer_formats($cfg, $volid, $volid, '__migration__', $base_snapshot, 1);
+	    my @formats = volume_transfer_formats($cfg, $volid, $volid, $snapname, $base_snapshot, 1);
 	    die "cannot migrate from storage type '$scfg->{type}' to '$tcfg->{type}'\n" if !@formats;
 	    my $format = $formats[0];
 
-	    my $send = ['pvesm', 'export', $volid, $format, '-', '-snapshot', '__migration__', '-with-snapshots', '1'];
+	    my $send = ['pvesm', 'export', $volid, $format, '-', '-snapshot', $snapname, '-with-snapshots', '1'];
 	    my $recv = ['ssh', "root\@$target_host", '--', 'pvesm', 'import', $volid, $format, '-', '-with-snapshots', '1'];
-	    my $free = ['ssh', "root\@$target_host", '--', 'pvesm', 'free', $volid, '-snapshot', '__migration__'];
+	    my $free = ['ssh', "root\@$target_host", '--', 'pvesm', 'free', $volid, '-snapshot', $snapname]
+		if !defined($snapshot);
 
 	    if (defined($base_snapshot)) {
 		# Check if the snapshot exists on the remote side:
@@ -639,16 +649,18 @@ sub storage_migrate {
 		push @$recv, '-base', $base_snapshot;
 	    }
 
-	    volume_snapshot($cfg, $volid, '__migration__');
+	    volume_snapshot($cfg, $volid, $snapname);
 	    eval {
 		run_command([$send, $recv]);
 	    };
 	    my $err = $@;
 	    warn "send/receive failed, cleaning up snapshot(s)..\n" if $err;
-	    eval { volume_snapshot_delete($cfg, $volid, '__migration__', 0) };
-	    warn "could not remove source snapshot: $@\n" if $@;
-	    eval { run_command($free) };
-	    warn "could not remove target snapshot: $@\n" if $@;
+	    if (!defined($snapshot)) {
+		eval { volume_snapshot_delete($cfg, $volid, $snapname, 0) };
+		warn "could not remove source snapshot: $@\n" if $@;
+		eval { run_command($free) };
+		warn "could not remove target snapshot: $@\n" if $@;
+	    }
 	    die $err if $err;
  	} else {
  	    die "$errstr - target type $tcfg->{type} is not valid\n";
@@ -656,6 +668,7 @@ sub storage_migrate {
 
     } elsif ($scfg->{type} eq 'lvmthin' || $scfg->{type} eq 'lvm') {
 	$no_incremental->($scfg->{type});
+	$no_snapshot->($scfg->{type});
 
 	if (($scfg->{type} eq $tcfg->{type}) &&
 	    ($tcfg->{type} eq 'lvmthin' || $tcfg->{type} eq 'lvm')) {
