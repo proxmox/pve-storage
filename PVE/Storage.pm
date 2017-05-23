@@ -626,19 +626,24 @@ sub storage_migrate {
 	    die "$errstr - pool on target does not have the same name as on source!"
 		if $tcfg->{pool} ne $scfg->{pool};
 
-	    my $snapname = $snapshot // '__migration__';
+	    my $migration_snapshot;
+	    if (!defined($snapshot)) {
+		$migration_snapshot = 1;
+		$snapshot = '__migration__';
+	    }
 
 	    my (undef, $volname) = parse_volname($cfg, $volid);
 	    my $zfspath = "$scfg->{pool}\/$volname";
 
-	    my @formats = volume_transfer_formats($cfg, $volid, $volid, $snapname, $base_snapshot, 1);
+	    my @formats = volume_transfer_formats($cfg, $volid, $volid, $snapshot, $base_snapshot, 1);
 	    die "cannot migrate from storage type '$scfg->{type}' to '$tcfg->{type}'\n" if !@formats;
 	    my $format = $formats[0];
 
-	    my $send = ['pvesm', 'export', $volid, $format, '-', '-snapshot', $snapname, '-with-snapshots', '1'];
+	    my $send = ['pvesm', 'export', $volid, $format, '-', '-snapshot', $snapshot, '-with-snapshots', '1'];
 	    my $recv = [@$ssh, '--', 'pvesm', 'import', $volid, $format, '-', '-with-snapshots', '1'];
-	    my $free = [@$ssh, '--', 'pvesm', 'free', $volid, '-snapshot', $snapname]
-		if !defined($snapshot);
+	    if ($migration_snapshot) {
+		push @$recv, '-delete-snapshot', $snapshot;
+	    }
 
 	    if (defined($base_snapshot)) {
 		# Check if the snapshot exists on the remote side:
@@ -646,17 +651,15 @@ sub storage_migrate {
 		push @$recv, '-base', $base_snapshot;
 	    }
 
-	    volume_snapshot($cfg, $volid, $snapname);
+	    volume_snapshot($cfg, $volid, $snapshot) if $migration_snapshot;
 	    eval {
 		run_command([$send, $recv]);
 	    };
 	    my $err = $@;
 	    warn "send/receive failed, cleaning up snapshot(s)..\n" if $err;
-	    if (!defined($snapshot)) {
-		eval { volume_snapshot_delete($cfg, $volid, $snapname, 0) };
+	    if ($migration_snapshot) {
+		eval { volume_snapshot_delete($cfg, $volid, $snapshot, 0) };
 		warn "could not remove source snapshot: $@\n" if $@;
-		eval { run_command($free) };
-		warn "could not remove target snapshot: $@\n" if $@;
 	    }
 	    die $err if $err;
  	} else {
