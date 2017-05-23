@@ -525,7 +525,7 @@ sub abs_filesystem_path {
 }
 
 sub storage_migrate {
-    my ($cfg, $volid, $target_host, $target_storeid, $target_volname, $base_snapshot, $snapshot) = @_;
+    my ($cfg, $volid, $target_sshinfo, $target_storeid, $target_volname, $base_snapshot, $snapshot) = @_;
 
     my ($storeid, $volname) = parse_volume_id($volid);
     $target_volname = $volname if !$target_volname;
@@ -539,12 +539,11 @@ sub storage_migrate {
 
     my $target_volid = "${target_storeid}:${target_volname}";
 
+    my $target_host = $target_sshinfo->{name};
     my $errstr = "unable to migrate '$volid' to '${target_volid}' on host '$target_host'";
 
-    my $sshoptions = "-o 'BatchMode=yes'";
-    my $ssh = "/usr/bin/ssh $sshoptions";
-
-    local $ENV{RSYNC_RSH} = $ssh;
+    my $ssh = PVE::Cluster::ssh_info_to_command($target_sshinfo);
+    local $ENV{RSYNC_RSH} = PVE::Tools::cmd2string($ssh);
 
     my $no_incremental = sub {
 	my ($type) = @_;
@@ -578,16 +577,14 @@ sub storage_migrate {
 		run_command(['/bin/cp', $src, $dst]);
 
 	    } else {
-		run_command(['/usr/bin/ssh', "root\@${target_host}",
-			     '/bin/mkdir', '-p', $dirname]);
+		run_command([@$ssh, '/bin/mkdir', '-p', $dirname]);
 
 		# we use rsync with --sparse, so we can't use --inplace,
 		# so we remove file on the target if it already exists to
 		# save space
 		my ($size, $format) = PVE::Storage::Plugin::file_size_info($src);
 		if ($format && ($format eq 'raw') && $size) {
-		    run_command(['/usr/bin/ssh', "root\@${target_host}",
-				 'rm', '-f', $dst],
+		    run_command([@$ssh, 'rm', '-f', $dst],
 				outfunc => sub {});
 		}
 
@@ -639,8 +636,8 @@ sub storage_migrate {
 	    my $format = $formats[0];
 
 	    my $send = ['pvesm', 'export', $volid, $format, '-', '-snapshot', $snapname, '-with-snapshots', '1'];
-	    my $recv = ['ssh', "root\@$target_host", '--', 'pvesm', 'import', $volid, $format, '-', '-with-snapshots', '1'];
-	    my $free = ['ssh', "root\@$target_host", '--', 'pvesm', 'free', $volid, '-snapshot', $snapname]
+	    my $recv = [@$ssh, '--', 'pvesm', 'import', $volid, $format, '-', '-with-snapshots', '1'];
+	    my $free = [@$ssh, '--', 'pvesm', 'free', $volid, '-snapshot', $snapname]
 		if !defined($snapshot);
 
 	    if (defined($base_snapshot)) {
@@ -678,22 +675,21 @@ sub storage_migrate {
 	    my $src = path($cfg, $volid);
 	    my $dst = path($cfg, $target_volid);
 
-	    run_command(['/usr/bin/ssh', "root\@${target_host}",
+	    run_command([@$ssh, '--',
 			 'pvesm', 'alloc', $target_storeid, $vmid,
 			  $target_volname, int($size/1024)]);
 
 	    eval {
 		if ($tcfg->{type} eq 'lvmthin') {
-		    run_command([["dd", "if=$src", "bs=4k"],["/usr/bin/ssh", "root\@${target_host}",
+		    run_command([["dd", "if=$src", "bs=4k"],[@$ssh,
 			      "dd", 'conv=sparse', "of=$dst", "bs=4k"]]);
 		} else {
-		    run_command([["dd", "if=$src", "bs=4k"],["/usr/bin/ssh", "root\@${target_host}",
+		    run_command([["dd", "if=$src", "bs=4k"],[@$ssh,
 			      "dd", "of=$dst", "bs=4k"]]);
 		}
 	    };
 	    if (my $err = $@) {
-		run_command(['/usr/bin/ssh', "root\@${target_host}",
-			 'pvesm', 'free', $target_volid]);
+		run_command([@$ssh, 'pvesm', 'free', $target_volid]);
 		die $err;
 	    }
 	} else {
