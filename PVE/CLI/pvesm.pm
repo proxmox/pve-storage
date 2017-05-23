@@ -258,6 +258,13 @@ __PACKAGE__->register_method ({
 		optional => 1,
 		default => 0,
 	    },
+	    'delete-snapshot' => {
+		description => "A snapshot to delete on success",
+		type => 'string',
+		pattern => qr/[a-z0-9_\-]{1,80}/,
+		maxLength => 80,
+		optional => 1,
+	    },
 	},
     },
     returns => { type => 'null' },
@@ -275,8 +282,12 @@ __PACKAGE__->register_method ({
 	}
 
 	my $cfg = PVE::Storage::config();
-	PVE::Storage::volume_import($cfg, $infh, $param->{volume}, $param->{format},
+	my $volume = $param->{volume};
+	my $delete = $param->{'delete-snapshot'};
+	PVE::Storage::volume_import($cfg, $infh, $volume, $param->{format},
 	    $param->{base}, $param->{'with-snapshots'});
+	PVE::Storage::volume_snapshot_delete($cfg, $volume, $delete)
+	    if defined($delete);
 	return;
     }
 });
