@@ -525,7 +525,7 @@ sub abs_filesystem_path {
 }
 
 sub storage_migrate {
-    my ($cfg, $volid, $target_sshinfo, $target_storeid, $target_volname, $base_snapshot, $snapshot) = @_;
+    my ($cfg, $volid, $target_sshinfo, $target_storeid, $target_volname, $base_snapshot, $snapshot, $ratelimit_bps) = @_;
 
     my ($storeid, $volname) = parse_volume_id($volid);
     $target_volname = $volname if !$target_volname;
@@ -556,6 +556,9 @@ sub storage_migrate {
 	die "replicating storage migration not supported on storage type $type\n"
 	    if defined($snapshot);
     };
+
+    my @cstream = ([ '/usr/bin/cstream', '-t', $ratelimit_bps ])
+	if defined($ratelimit_bps);
 
     # only implemented for file system based storage
     if ($scfg->{path}) {
@@ -589,12 +592,15 @@ sub storage_migrate {
 		}
 
 		my $cmd;
+		my @bwlimit = ("--bwlimit=${ratelimit_bps}b") if defined($ratelimit_bps);
 		if ($format eq 'subvol') {
 		    $cmd = ['/usr/bin/rsync', '--progress', '-X', '-A', '--numeric-ids',
 			    '-aH', '--delete', '--no-whole-file', '--inplace',
-			    '--one-file-system', "$src/", "[root\@${target_host}]:$dst"];
+			    '--one-file-system', @bwlimit,
+			    "$src/", "[root\@${target_host}]:$dst"];
 		} else {
 		    $cmd = ['/usr/bin/rsync', '--progress', '--sparse', '--whole-file',
+			    @bwlimit,
 			    $src, "[root\@${target_host}]:$dst"];
 		}
 
@@ -653,7 +659,7 @@ sub storage_migrate {
 
 	    volume_snapshot($cfg, $volid, $snapshot) if $migration_snapshot;
 	    eval {
-		run_command([$send, $recv]);
+		run_command([$send, @cstream, $recv]);
 	    };
 	    my $err = $@;
 	    warn "send/receive failed, cleaning up snapshot(s)..\n" if $err;
@@ -684,11 +690,11 @@ sub storage_migrate {
 
 	    eval {
 		if ($tcfg->{type} eq 'lvmthin') {
-		    run_command([["dd", "if=$src", "bs=4k"],[@$ssh,
-			      "dd", 'conv=sparse', "of=$dst", "bs=4k"]]);
+		    run_command([["dd", "if=$src", "bs=4k"], @cstream,
+			      [@$ssh, "dd", 'conv=sparse', "of=$dst", "bs=4k"]]);
 		} else {
-		    run_command([["dd", "if=$src", "bs=4k"],[@$ssh,
-			      "dd", "of=$dst", "bs=4k"]]);
+		    run_command([["dd", "if=$src", "bs=4k"], @cstream,
+			      [@$ssh, "dd", "of=$dst", "bs=4k"]]);
 		}
 	    };
 	    if (my $err = $@) {
