@@ -7,6 +7,7 @@ use Data::Dumper;
 use POSIX;
 use IO::Select;
 use IO::File;
+use IO::Socket::IP;
 use File::Basename;
 use File::Path;
 use Cwd 'abs_path';
@@ -525,7 +526,7 @@ sub abs_filesystem_path {
 }
 
 sub storage_migrate {
-    my ($cfg, $volid, $target_sshinfo, $target_storeid, $target_volname, $base_snapshot, $snapshot, $ratelimit_bps) = @_;
+    my ($cfg, $volid, $target_sshinfo, $target_storeid, $target_volname, $base_snapshot, $snapshot, $ratelimit_bps, $insecure) = @_;
 
     my ($storeid, $volname) = parse_volume_id($volid);
     $target_volname = $volname if !$target_volname;
@@ -645,8 +646,16 @@ sub storage_migrate {
 	    die "cannot migrate from storage type '$scfg->{type}' to '$tcfg->{type}'\n" if !@formats;
 	    my $format = $formats[0];
 
+	    my @insecurecmd;
+	    if ($insecure) {
+		@insecurecmd = ('pvecm', 'mtunnel', '-run-command', 1);
+		if (my $network = $target_sshinfo->{network}) {
+		    push @insecurecmd, '-migration_network', $network;
+		}
+	    }
+
 	    my $send = ['pvesm', 'export', $volid, $format, '-', '-snapshot', $snapshot, '-with-snapshots', '1'];
-	    my $recv = [@$ssh, '--', 'pvesm', 'import', $volid, $format, '-', '-with-snapshots', '1'];
+	    my $recv = [@$ssh, @insecurecmd, '--', 'pvesm', 'import', $volid, $format, '-', '-with-snapshots', '1'];
 	    if ($migration_snapshot) {
 		push @$recv, '-delete-snapshot', $snapshot;
 	    }
@@ -659,7 +668,18 @@ sub storage_migrate {
 
 	    volume_snapshot($cfg, $volid, $snapshot) if $migration_snapshot;
 	    eval {
-		run_command([$send, @cstream, $recv]);
+		if ($insecure) {
+		    my $pid = open(my $info, '-|', @$recv)
+			or die "receive command failed: $!\n";
+		    my $ip = <$info> // die "no tunnel IP received\n";
+		    my $port = <$info> // die "no tunnel port received\n";
+		    chomp($ip, $port);
+		    my $socket = IO::Socket::IP->new(PeerHost => $ip, PeerPort => $port, Type => SOCK_STREAM)
+			or die "failed to connect to tunnel at $ip:$port\n";
+		    run_command([$send, @cstream], output => '>&'.fileno($socket));
+		} else {
+		    run_command([$send, @cstream, $recv]);
+		}
 	    };
 	    my $err = $@;
 	    warn "send/receive failed, cleaning up snapshot(s)..\n" if $err;
