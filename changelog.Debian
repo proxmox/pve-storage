@@ -1,3 +1,19 @@
+libpve-storage-perl (5.0-5) unstable; urgency=medium
+
+  * api: add import/export format querying
+
+  * migrate: snapshot parameter for use with replication
+
+  * migrate: replace target ip parameter with sshinfo parameter
+
+  * pvesm: import/export commands
+
+  * storage_migrate: use pvesm import/export for zfs
+
+  * do not install replication code (moved code to pve-manager)
+
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 01 Jun 2017 09:40:37 +0200
+
 libpve-storage-perl (5.0-4) unstable; urgency=medium
 
   * storage api: added volume_send plugin method
