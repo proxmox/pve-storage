@@ -539,8 +539,8 @@ sub storage_migrate {
 
     my $target_volid = "${target_storeid}:${target_volname}";
 
-    my $target_host = $target_sshinfo->{name};
-    my $errstr = "unable to migrate '$volid' to '${target_volid}' on host '$target_host'";
+    my $target_ip = $target_sshinfo->{ip};
+    my $errstr = "unable to migrate '$volid' to '${target_volid}' on host '$target_sshinfo->{name}'";
 
     my $ssh = PVE::Cluster::ssh_info_to_command($target_sshinfo);
     local $ENV{RSYNC_RSH} = PVE::Tools::cmd2string($ssh);
@@ -597,11 +597,11 @@ sub storage_migrate {
 		    $cmd = ['/usr/bin/rsync', '--progress', '-X', '-A', '--numeric-ids',
 			    '-aH', '--delete', '--no-whole-file', '--inplace',
 			    '--one-file-system', @bwlimit,
-			    "$src/", "[root\@${target_host}]:$dst"];
+			    "$src/", "[root\@${target_ip}]:$dst"];
 		} else {
 		    $cmd = ['/usr/bin/rsync', '--progress', '--sparse', '--whole-file',
 			    @bwlimit,
-			    $src, "[root\@${target_host}]:$dst"];
+			    $src, "[root\@${target_ip}]:$dst"];
 		}
 
 		my $percent = -1;
