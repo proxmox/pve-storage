@@ -543,7 +543,8 @@ sub storage_migrate {
     my $errstr = "unable to migrate '$volid' to '${target_volid}' on host '$target_sshinfo->{name}'";
 
     my $ssh = PVE::Cluster::ssh_info_to_command($target_sshinfo);
-    local $ENV{RSYNC_RSH} = PVE::Tools::cmd2string($ssh);
+    my $ssh_base = PVE::Cluster::ssh_info_to_command_base($target_sshinfo);
+    local $ENV{RSYNC_RSH} = PVE::Tools::cmd2string($ssh_base);
 
     my $no_incremental = sub {
 	my ($type) = @_;
