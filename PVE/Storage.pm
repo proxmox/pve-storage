@@ -671,9 +671,8 @@ sub storage_migrate {
 		if ($insecure) {
 		    my $pid = open(my $info, '-|', @$recv)
 			or die "receive command failed: $!\n";
-		    my $ip = <$info> // die "no tunnel IP received\n";
-		    my $port = <$info> // die "no tunnel port received\n";
-		    chomp($ip, $port);
+		    my ($ip) = <$info> =~ /^($PVE::Tools::IPRE)$/ or die "no tunnel IP received\n";
+		    my ($port) = <$info> =~ /^(\d+)$/ or die "no tunnel port received\n";
 		    my $socket = IO::Socket::IP->new(PeerHost => $ip, PeerPort => $port, Type => SOCK_STREAM)
 			or die "failed to connect to tunnel at $ip:$port\n";
 		    run_command([$send, @cstream], output => '>&'.fileno($socket));
