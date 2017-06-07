@@ -495,7 +495,7 @@ sub volume_rollback_is_possible {
 }
 
 sub volume_snapshot_list {
-    my ($class, $scfg, $storeid, $volname, $prefix) = @_;
+    my ($class, $scfg, $storeid, $volname) = @_;
 
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
 
@@ -510,7 +510,7 @@ sub volume_snapshot_list {
     my $outfunc = sub {
 	my $line = shift;
 
-	if ($line =~ m/^\Q$zpath\E@(\Q$prefix\E.*)$/) {
+	if ($line =~ m/^\Q$zpath\E@(.*)$/) {
 	    push @$snaps, $1;
 	}
     };

@@ -363,7 +363,7 @@ sub volume_has_feature {
 }
 
 sub volume_snapshot_list {
-    my ($class, $scfg, $storeid, $volname, $prefix) = @_;
+    my ($class, $scfg, $storeid, $volname) = @_;
     # return an empty array if dataset does not exist.
     die "Volume_snapshot_list is not implemented for ZFS over iSCSI.\n";
 }
