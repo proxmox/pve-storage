@@ -277,7 +277,6 @@ sub volume_snapshot_list {
 	die "unable to parse volume ID '$volid'\n";
     }
     # return an empty array if dataset does not exist.
-    # youngest snap first
 }
 
 sub get_image_dir {

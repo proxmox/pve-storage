@@ -830,7 +830,7 @@ sub volume_snapshot_list {
     # implement in subclass
     die "Volume_snapshot_list is not implemented for $class";
 
-    # retrun an empty array if dataset does not exist.
+    # return an empty array if dataset does not exist.
 }
 
 sub activate_storage {
