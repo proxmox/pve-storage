@@ -501,7 +501,6 @@ sub volume_snapshot_list {
 
     my $zpath = "$scfg->{pool}/$name";
 
-    $prefix = '' if !defined($prefix);
     my $snaps = [];
 
     my $cmd = ['zfs', 'list', '-r', '-H', '-S', 'name', '-t', 'snap', '-o',
