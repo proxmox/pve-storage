@@ -13,7 +13,8 @@ BASHCOMPLDIR=${PREFIX}/share/bash-completion/completions/
 
 export PERLDIR=${PREFIX}/share/perl5
 
-#ARCH:=$(shell dpkg-architecture -qDEB_BUILD_ARCH)
+export SOURCE_DATE_EPOCH ?= $(shell dpkg-parsechangelog -STimestamp)
+
 ARCH=all
 GITVERSION:=$(shell cat .git/refs/heads/master)
 
@@ -23,7 +24,7 @@ DEB=${PACKAGE}_${VERSION}-${PKGREL}_${ARCH}.deb
 export NOVIEW=1
 include /usr/share/pve-doc-generator/pve-doc-generator.mk
 
-all: ${DEB}
+all:
 
 .PHONY: dinstall
 dinstall: deb
@@ -34,7 +35,7 @@ pvesm.bash-completion:
 	mv $@.tmp $@
 
 .PHONY: install
-install: pvesm.1 pvesm.bash-completion
+install: PVE pvesm.1 pvesm.bash-completion
 	install -d ${DESTDIR}${SBINDIR}
 	install -m 0755 pvesm ${DESTDIR}${SBINDIR}
 	make -C PVE install
@@ -45,30 +46,22 @@ install: pvesm.1 pvesm.bash-completion
 
 .PHONY: deb
 deb: ${DEB}
-${DEB}: check
-	rm -rf debian
-	mkdir debian
-	make DESTDIR=${CURDIR}/debian install
-	perl -I. -T -e "use PVE::CLI::pvesm; PVE::CLI::pvesm->verify_api();"
-	install -d -m 0755 debian/DEBIAN
-	sed -e s/@@VERSION@@/${VERSION}/ -e s/@@PKGRELEASE@@/${PKGREL}/ -e s/@@ARCH@@/${ARCH}/ <control.in >debian/DEBIAN/control
-	install -D -m 0644 copyright debian/${DOCDIR}/copyright
-	install -m 0644 changelog.Debian debian/${DOCDIR}/
-	install -m 0644 triggers debian/DEBIAN
-	gzip -9 -n debian/${DOCDIR}/changelog.Debian
-	echo "git clone git://git.proxmox.com/git/pve-storage.git\\ngit checkout ${GITVERSION}" > debian/${DOCDIR}/SOURCE
-	fakeroot dpkg-deb --build debian
-	mv debian.deb ${DEB}
-	rm -rf debian
+${DEB}:
+	rm -rf build
+	rsync -a * build
+	echo "git clone git://git.proxmox.com/git/pve-storage.git\\ngit checkout ${GITVERSION}" >build/debian/SOURCE
+	cd build; dpkg-buildpackage -rfakeroot -b -us -uc
 	lintian ${DEB}
 
-check:
+.PHONY: test
+test:
+	perl -I. -T -e "use PVE::CLI::pvesm; PVE::CLI::pvesm->verify_api();"
 	make -C test
 
 .PHONY: clean
 clean:
 	make cleanup-docgen
-	rm -rf debian *.deb ${PACKAGE}-*.tar.gz dist *.1 *.tmp pvesm.bash-completion
+	rm -rf build *.deb *.buildinfo *.changes
 	find . -name '*~' -exec rm {} ';'
 
 .PHONY: distclean
