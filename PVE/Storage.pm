@@ -1534,7 +1534,8 @@ sub volume_export_formats {
     my $scfg = storage_config($cfg, $storeid);
     my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
     return $plugin->volume_export_formats($scfg, $storeid, $volname,
-                                          $base_snapshot, $with_snapshots);
+                                          $snapshot, $base_snapshot,
+                                          $with_snapshots);
 }
 
 sub volume_import_formats {
