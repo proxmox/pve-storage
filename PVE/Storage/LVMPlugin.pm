@@ -503,4 +503,77 @@ sub volume_has_feature {
     return undef;
 }
 
+sub volume_export_formats {
+    my ($class, $scfg, $storeid, $volname, $snapshot, $base_snapshot, $with_snapshots) = @_;
+    return () if defined($snapshot); # lvm-thin only
+    return volume_import_formats($class, $scfg, $storeid, $volname, $base_snapshot, $with_snapshots);
+}
+
+sub volume_export {
+    my ($class, $scfg, $storeid, $fh, $volname, $format, $snapshot, $base_snapshot, $with_snapshots) = @_;
+    die "volume export format $format not available for $class\n"
+	if $format ne 'raw+size';
+    die "cannot export volumes together with their snapshots in $class\n"
+	if $with_snapshots;
+    die "cannot export a snapshot in $class\n" if defined($snapshot);
+    die "cannot export an incremental stream in $class\n" if defined($base_snapshot);
+    my $file = $class->path($scfg, $volname, $storeid);
+    my $size;
+    # should be faster than querying LVM, also checks for the device file's availability
+    run_command(['/sbin/blockdev', '--getsize64', $file], outfunc => sub {
+	my ($line) = @_;
+	die "unexpected output from /sbin/blockdev: $line\n" if $line !~ /^(\d+)$/;
+	$size = int($1);
+    });
+    PVE::Storage::Plugin::write_common_header($fh, $size);
+    run_command(['dd', "if=$file", "bs=64k"], output => '>&'.fileno($fh));
+}
+
+sub volume_import_formats {
+    my ($class, $scfg, $storeid, $volname, $base_snapshot, $with_snapshots) = @_;
+    return () if $with_snapshots; # not supported
+    return () if defined($base_snapshot); # not supported
+    return ('raw+size');
+}
+
+sub volume_import {
+    my ($class, $scfg, $storeid, $fh, $volname, $format, $base_snapshot, $with_snapshots) = @_;
+    die "volume import format $format not available for $class\n"
+	if $format ne 'raw+size';
+    die "cannot import volumes together with their snapshots in $class\n"
+	if $with_snapshots;
+    die "cannot import an incremental stream in $class\n" if defined($base_snapshot);
+
+    my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $file_format) =
+	$class->parse_volname($volname);
+    die "cannot import format $format into a file of format $file_format\n"
+	if $file_format ne 'raw';
+
+    my $vg = $scfg->{vgname};
+    my $lvs = lvm_list_volumes($vg);
+    die "volume $vg/$volname already exists\n"
+	if $lvs->{$vg}->{$volname};
+
+    my ($size) = PVE::Storage::Plugin::read_common_header($fh);
+    $size = int($size/1024);
+
+    eval {
+	my $allocname = $class->alloc_image($storeid, $scfg, $vmid, 'raw', $name, $size);
+	if ($allocname ne $volname) {
+	    my $oldname = $volname;
+	    $volname = $allocname; # Let the cleanup code know what to free
+	    die "internal error: unexpected allocated name: '$allocname' != '$oldname'\n";
+	}
+	my $file = $class->path($scfg, $volname, $storeid)
+	    or die "internal error: failed to get path to newly allocated volume $volname\n";
+	run_command(['dd', "of=$file", 'conv=sparse', 'bs=64k'],
+	            input => '<&'.fileno($fh));
+    };
+    if (my $err = $@) {
+	eval { $class->free_image($storeid, $scfg, $volname, 0) };
+	warn $@ if $@;
+	die $err;
+    }
+}
+
 1;
