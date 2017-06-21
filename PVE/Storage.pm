@@ -546,186 +546,77 @@ sub storage_migrate {
     my $ssh_base = PVE::Cluster::ssh_info_to_command_base($target_sshinfo);
     local $ENV{RSYNC_RSH} = PVE::Tools::cmd2string($ssh_base);
 
-    my $no_incremental = sub {
-	my ($type) = @_;
-	die "incremental migration not supported on storage type $type\n"
-	    if defined($base_snapshot);
-    };
-    my $no_snapshot = sub {
-	my ($type) = @_;
-	# $snapshot is currently only used by replication
-	die "replicating storage migration not supported on storage type $type\n"
-	    if defined($snapshot);
-    };
-
     my @cstream = ([ '/usr/bin/cstream', '-t', $ratelimit_bps ])
 	if defined($ratelimit_bps);
 
-    # only implemented for file system based storage
-    if ($scfg->{path}) {
-	$no_incremental->($scfg->{type});
-	$no_snapshot->($scfg->{type});
-
-	if ($tcfg->{path}) {
-	    my $src_plugin = PVE::Storage::Plugin->lookup($scfg->{type});
-	    my $dst_plugin = PVE::Storage::Plugin->lookup($tcfg->{type});
-	    my $src = $src_plugin->path($scfg, $volname, $storeid);
-	    my $dst = $dst_plugin->path($tcfg, $target_volname, $target_storeid);
-
-	    my $dirname = dirname($dst);
-
-	    if ($tcfg->{shared}) { # we can do a local copy
-
-		run_command(['/bin/mkdir', '-p', $dirname]);
-
-		run_command(['/bin/cp', $src, $dst]);
-
-	    } else {
-		run_command([@$ssh, '/bin/mkdir', '-p', $dirname]);
-
-		# we use rsync with --sparse, so we can't use --inplace,
-		# so we remove file on the target if it already exists to
-		# save space
-		my ($size, $format) = PVE::Storage::Plugin::file_size_info($src);
-		if ($format && ($format eq 'raw') && $size) {
-		    run_command([@$ssh, 'rm', '-f', $dst],
-				outfunc => sub {});
-		}
-
-		my $cmd;
-		my @bwlimit = ("--bwlimit=${ratelimit_bps}b") if defined($ratelimit_bps);
-		if ($format eq 'subvol') {
-		    $cmd = ['/usr/bin/rsync', '--progress', '-X', '-A', '--numeric-ids',
-			    '-aH', '--delete', '--no-whole-file', '--inplace',
-			    '--one-file-system', @bwlimit,
-			    "$src/", "[root\@${target_ip}]:$dst"];
-		} else {
-		    $cmd = ['/usr/bin/rsync', '--progress', '--sparse', '--whole-file',
-			    @bwlimit,
-			    $src, "[root\@${target_ip}]:$dst"];
-		}
-
-		my $percent = -1;
-
-		run_command($cmd, outfunc => sub {
-		    my $line = shift;
-
-		    if ($line =~ m/^\s*(\d+\s+(\d+)%\s.*)$/) {
-			if ($2 > $percent) {
-			    $percent = $2;
-			    print "rsync status: $1\n";
-			    *STDOUT->flush();
-			}
-		    } else {
-			print "$line\n";
-			*STDOUT->flush();
-		    }
-		});
-	    }
-	} else {
-	    die "$errstr - target type '$tcfg->{type}' not implemented\n";
+    my $migration_snapshot;
+    if (!defined($snapshot)) {
+	if ($scfg->{type} eq 'zfspool') {
+	    $migration_snapshot = 1;
+	    $snapshot = '__migration__';
 	}
-
-    } elsif ($scfg->{type} eq 'zfspool') {
-
-	if ($tcfg->{type} eq 'zfspool') {
-
-	    die "$errstr - pool on target does not have the same name as on source!"
-		if $tcfg->{pool} ne $scfg->{pool};
-
-	    my $migration_snapshot;
-	    if (!defined($snapshot)) {
-		$migration_snapshot = 1;
-		$snapshot = '__migration__';
-	    }
-
-	    my (undef, $volname) = parse_volname($cfg, $volid);
-	    my $zfspath = "$scfg->{pool}\/$volname";
-
-	    my @formats = volume_transfer_formats($cfg, $volid, $volid, $snapshot, $base_snapshot, 1);
-	    die "cannot migrate from storage type '$scfg->{type}' to '$tcfg->{type}'\n" if !@formats;
-	    my $format = $formats[0];
-
-	    my @insecurecmd;
-	    if ($insecure) {
-		@insecurecmd = ('pvecm', 'mtunnel', '-run-command', 1);
-		if (my $network = $target_sshinfo->{network}) {
-		    push @insecurecmd, '-migration_network', $network;
-		}
-	    }
-
-	    my $send = ['pvesm', 'export', $volid, $format, '-', '-snapshot', $snapshot, '-with-snapshots', '1'];
-	    my $recv = [@$ssh, @insecurecmd, '--', 'pvesm', 'import', $volid, $format, '-', '-with-snapshots', '1'];
-	    if ($migration_snapshot) {
-		push @$recv, '-delete-snapshot', $snapshot;
-	    }
-
-	    if (defined($base_snapshot)) {
-		# Check if the snapshot exists on the remote side:
-		push @$send, '-base', $base_snapshot;
-		push @$recv, '-base', $base_snapshot;
-	    }
-
-	    volume_snapshot($cfg, $volid, $snapshot) if $migration_snapshot;
-	    eval {
-		if ($insecure) {
-		    my $pid = open(my $info, '-|', @$recv)
-			or die "receive command failed: $!\n";
-		    my ($ip) = <$info> =~ /^($PVE::Tools::IPRE)$/ or die "no tunnel IP received\n";
-		    my ($port) = <$info> =~ /^(\d+)$/ or die "no tunnel port received\n";
-		    my $socket = IO::Socket::IP->new(PeerHost => $ip, PeerPort => $port, Type => SOCK_STREAM)
-			or die "failed to connect to tunnel at $ip:$port\n";
-		    run_command([$send, @cstream], output => '>&'.fileno($socket));
-		} else {
-		    run_command([$send, @cstream, $recv]);
-		}
-	    };
-	    my $err = $@;
-	    warn "send/receive failed, cleaning up snapshot(s)..\n" if $err;
-	    if ($migration_snapshot) {
-		eval { volume_snapshot_delete($cfg, $volid, $snapshot, 0) };
-		warn "could not remove source snapshot: $@\n" if $@;
-	    }
-	    die $err if $err;
- 	} else {
- 	    die "$errstr - target type $tcfg->{type} is not valid\n";
- 	}
-
-    } elsif ($scfg->{type} eq 'lvmthin' || $scfg->{type} eq 'lvm') {
-	$no_incremental->($scfg->{type});
-	$no_snapshot->($scfg->{type});
-
-	if (($scfg->{type} eq $tcfg->{type}) &&
-	    ($tcfg->{type} eq 'lvmthin' || $tcfg->{type} eq 'lvm')) {
-
-	    my (undef, $volname, $vmid) = parse_volname($cfg, $volid);
-	    my $size = volume_size_info($cfg, $volid, 5);
-	    my $src = path($cfg, $volid);
-	    my $dst = path($cfg, $target_volid);
-
-	    run_command([@$ssh, '--',
-			 'pvesm', 'alloc', $target_storeid, $vmid,
-			  $target_volname, int($size/1024)]);
-
-	    eval {
-		if ($tcfg->{type} eq 'lvmthin') {
-		    run_command([["dd", "if=$src", "bs=4k"], @cstream,
-			      [@$ssh, "dd", 'conv=sparse', "of=$dst", "bs=4k"]]);
-		} else {
-		    run_command([["dd", "if=$src", "bs=4k"], @cstream,
-			      [@$ssh, "dd", "of=$dst", "bs=4k"]]);
-		}
-	    };
-	    if (my $err = $@) {
-		run_command([@$ssh, 'pvesm', 'free', $target_volid]);
-		die $err;
-	    }
-	} else {
-	    die "$errstr - migrate from source type '$scfg->{type}' to '$tcfg->{type}' not implemented\n";
-	}
-    } else {
-	die "$errstr - source type '$scfg->{type}' not implemented\n";
     }
+
+    my @formats = volume_transfer_formats($cfg, $volid, $volid, $snapshot, $base_snapshot, 1);
+    die "cannot migrate from storage type '$scfg->{type}' to '$tcfg->{type}'\n" if !@formats;
+    my $format = $formats[0];
+
+    my @insecurecmd;
+    if ($insecure) {
+	@insecurecmd = ('pvecm', 'mtunnel', '-run-command', 1);
+	if (my $network = $target_sshinfo->{network}) {
+	    push @insecurecmd, '-migration_network', $network;
+	}
+    }
+
+    my $send = ['pvesm', 'export', $volid, $format, '-', '-with-snapshots', '1'];
+    my $recv = [@$ssh, @insecurecmd, '--', 'pvesm', 'import', $volid, $format, '-', '-with-snapshots', '1'];
+    if (defined($snapshot)) {
+	push @$send, '-snapshot', $snapshot
+    }
+    if ($migration_snapshot) {
+	push @$recv, '-delete-snapshot', $snapshot;
+    }
+
+    if (defined($base_snapshot)) {
+	# Check if the snapshot exists on the remote side:
+	push @$send, '-base', $base_snapshot;
+	push @$recv, '-base', $base_snapshot;
+    }
+
+    volume_snapshot($cfg, $volid, $snapshot) if $migration_snapshot;
+    eval {
+	if ($insecure) {
+	    open(my $info, '-|', @$recv)
+		or die "receive command failed: $!\n";
+	    my ($ip) = <$info> =~ /^($PVE::Tools::IPRE)$/ or die "no tunnel IP received\n";
+	    my ($port) = <$info> =~ /^(\d+)$/ or die "no tunnel port received\n";
+	    my $socket = IO::Socket::IP->new(PeerHost => $ip, PeerPort => $port, Type => SOCK_STREAM)
+		or die "failed to connect to tunnel at $ip:$port\n";
+	    # we won't be reading from the socket
+	    shutdown($socket, 0);
+	    run_command([$send, @cstream], output => '>&'.fileno($socket));
+	    # don't close the connection entirely otherwise the receiving end
+	    # might not get all buffered data (and fails with 'connection reset by peer')
+	    shutdown($socket, 1);
+	    1 while <$info>; # wait for the remote process to finish
+	    # now close the socket
+	    close($socket);
+	    if (!close($info)) { # does waitpid()
+		die "import failed: $!\n" if $!;
+		die "import failed: exit code ".($?>>8)."\n";
+	    }
+	} else {
+	    run_command([$send, @cstream, $recv]);
+	}
+    };
+    my $err = $@;
+    warn "send/receive failed, cleaning up snapshot(s)..\n" if $err;
+    if ($migration_snapshot) {
+	eval { volume_snapshot_delete($cfg, $volid, $snapshot, 0) };
+	warn "could not remove source snapshot: $@\n" if $@;
+    }
+    die $err if $err;
 }
 
 sub vdisk_clone {
