@@ -3,6 +3,7 @@ package PVE::CLI::pvesm;
 use strict;
 use warnings;
 
+use POSIX qw(O_RDONLY O_WRONLY O_CREAT O_TRUNC);
 use Fcntl ':flock';
 use File::Path;
 
@@ -21,7 +22,7 @@ use PVE::CLIHandler;
 
 use base qw(PVE::CLIHandler);
 
-my $KNOWN_EXPORT_FORMATS = ['zfs'];
+my $KNOWN_EXPORT_FORMATS = ['raw+size', 'tar+size', 'qcow2+size', 'vmdk+size', 'zfs'];
 
 my $nodename = PVE::INotify::nodename();
 
@@ -202,7 +203,7 @@ __PACKAGE__->register_method ({
 	if ($filename eq '-') {
 	    $outfh = \*STDOUT;
 	} else {
-	    open($outfh, '>', $filename)
+	    sysopen($outfh, $filename, O_CREAT|O_WRONLY|O_TRUNC)
 		or die "open($filename): $!\n";
 	}
 
@@ -277,7 +278,7 @@ __PACKAGE__->register_method ({
 	if ($filename eq '-') {
 	    $infh = \*STDIN;
 	} else {
-	    open($infh, '<', $filename)
+	    sysopen($infh, $filename, O_RDONLY)
 		or die "open($filename): $!\n";
 	}
 
