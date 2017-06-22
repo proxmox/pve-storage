@@ -1,3 +1,9 @@
+libpve-storage-perl (5.0-7) unstable; urgency=medium
+
+  * re-add changes to PVE/Storage/Plugin.pm (fixup previous commit)
+
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 22 Jun 2017 09:06:59 +0200
+
 libpve-storage-perl (5.0-6) unstable; urgency=medium
 
   * migrate: only use import/export
