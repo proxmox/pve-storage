@@ -12,6 +12,13 @@ use Data::Dumper;
 
 use base qw(PVE::SectionConfig);
 
+our @COMMON_TAR_FLAGS = qw(
+    --one-file-system
+    -p --sparse --numeric-owner --acls
+    --xattrs --xattrs-include=user.* --xattrs-include=security.capability
+    --warning=no-file-ignored --warning=no-xattr-write
+);
+
 cfs_register_file ('storage.cfg',
 		   sub { __PACKAGE__->parse_config(@_); },
 		   sub { __PACKAGE__->write_config(@_); });
@@ -955,7 +962,7 @@ sub volume_export {
 	} elsif ($format eq 'tar+size') {
 	    goto unsupported if $file_format ne 'subvol';
 	    write_common_header($fh, $size);
-	    run_command(['tar', '--xform=s,^\./,subvol/,S', '-cf', '-', '-C', $file, '.'],
+	    run_command(['tar', @COMMON_TAR_FLAGS, '--xform=s,^\./,subvol/,S', '-cf', '-', '-C', $file, '.'],
 	                output => '>&'.fileno($fh));
 	    return;
 	}
@@ -1023,7 +1030,7 @@ sub volume_import {
 	    run_command(['dd', "of=$file", 'conv=sparse', 'bs=64k'],
 	                input => '<&'.fileno($fh));
 	} elsif ($data_format eq 'tar') {
-	    run_command(['tar', '-C', $file, '--xform=s,^subvol/,./,S', '-xf', '-'],
+	    run_command(['tar', @COMMON_TAR_FLAGS, '-C', $file, '--xform=s,^subvol/,./,S', '-xf', '-'],
 	                input => '<&'.fileno($fh));
 	} else {
 	    die "volume import format '$format' not available for $class";
