@@ -525,7 +525,7 @@ sub abs_filesystem_path {
 }
 
 sub storage_migrate {
-    my ($cfg, $volid, $target_sshinfo, $target_storeid, $target_volname, $base_snapshot, $snapshot, $ratelimit_bps, $insecure) = @_;
+    my ($cfg, $volid, $target_sshinfo, $target_storeid, $target_volname, $base_snapshot, $snapshot, $ratelimit_bps, $insecure, $with_snapshots) = @_;
 
     my ($storeid, $volname) = parse_volume_id($volid);
     $target_volname = $volname if !$target_volname;
@@ -557,7 +557,7 @@ sub storage_migrate {
 	}
     }
 
-    my @formats = volume_transfer_formats($cfg, $volid, $volid, $snapshot, $base_snapshot, 1);
+    my @formats = volume_transfer_formats($cfg, $volid, $volid, $snapshot, $base_snapshot, $with_snapshots);
     die "cannot migrate from storage type '$scfg->{type}' to '$tcfg->{type}'\n" if !@formats;
     my $format = $formats[0];
 
@@ -569,8 +569,9 @@ sub storage_migrate {
 	}
     }
 
-    my $send = ['pvesm', 'export', $volid, $format, '-', '-with-snapshots', '1'];
-    my $recv = [@$ssh, @insecurecmd, '--', 'pvesm', 'import', $volid, $format, '-', '-with-snapshots', '1'];
+    $with_snapshots = $with_snapshots ? 1 : 0; # sanitize for passing as cli parameter
+    my $send = ['pvesm', 'export', $volid, $format, '-', '-with-snapshots', $with_snapshots];
+    my $recv = [@$ssh, @insecurecmd, '--', 'pvesm', 'import', $volid, $format, '-', '-with-snapshots', $with_snapshots];
     if (defined($snapshot)) {
 	push @$send, '-snapshot', $snapshot
     }
