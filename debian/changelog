@@ -1,3 +1,11 @@
+libpve-storage-perl (5.0-9) unstable; urgency=medium
+
+  * import/export: drop the 'subvol/' prefix from 'tar+size'
+
+  * Fix #1424: allow tar.xz templates upload
+
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 22 Jun 2017 17:35:57 +0200
+
 libpve-storage-perl (5.0-8) unstable; urgency=medium
 
   * import/export: use our standard tar flags
