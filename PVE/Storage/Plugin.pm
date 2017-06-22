@@ -916,8 +916,11 @@ sub check_connection {
 #     files which are already in qcow2 format, or via `qemu-img convert`.
 #     Note that these formats are only valid with $with_snapshots being true.
 #   tar+size: (subvolumes only)
-#     A GNU tar stream with the inner contents of the subvolume put into the
-#     'subvol/' directory.
+#     A GNU tar stream containing just the inner contents of the subvolume.
+#     This does not distinguish between the contents of a privileged or
+#     unprivileged container. In other words, this is from the root user
+#     namespace's point of view with no uid-mapping in effect.
+#     As produced via `tar -C vm-100-disk-1.subvol -cpf TheOutputFile.dat .`
 
 # Plugins may reuse these helpers. Changes to the header format should be
 # reflected by changes to the function prototypes.
@@ -962,7 +965,7 @@ sub volume_export {
 	} elsif ($format eq 'tar+size') {
 	    goto unsupported if $file_format ne 'subvol';
 	    write_common_header($fh, $size);
-	    run_command(['tar', @COMMON_TAR_FLAGS, '--xform=s,^\./,subvol/,S', '-cf', '-', '-C', $file, '.'],
+	    run_command(['tar', @COMMON_TAR_FLAGS, '-cf', '-', '-C', $file, '.'],
 	                output => '>&'.fileno($fh));
 	    return;
 	}
@@ -1030,7 +1033,7 @@ sub volume_import {
 	    run_command(['dd', "of=$file", 'conv=sparse', 'bs=64k'],
 	                input => '<&'.fileno($fh));
 	} elsif ($data_format eq 'tar') {
-	    run_command(['tar', @COMMON_TAR_FLAGS, '-C', $file, '--xform=s,^subvol/,./,S', '-xf', '-'],
+	    run_command(['tar', @COMMON_TAR_FLAGS, '-C', $file, '-xf', '-'],
 	                input => '<&'.fileno($fh));
 	} else {
 	    die "volume import format '$format' not available for $class";
