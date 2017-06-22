@@ -1,3 +1,33 @@
+libpve-storage-perl (5.0-6) unstable; urgency=medium
+
+  * migrate: only use import/export
+
+  * lvm: import/export: implement raw+size format
+
+  * import/export: new formats: raw, tar, qcow2, vmdk
+
+  * change from dpkg-deb to dpkg-buildpackage
+
+  * migrate: insecure: untaint the received ip/port
+
+  * migrate: don't include the hostname in rsync's rsh command
+
+  * migrate: use the correct IP with rsync
+
+  * PVE::Storage::volume_snapshot_list - remove $prefix parameter
+
+  * regression tests: exit with -1 in case of failures
+
+  * zfstest: skip tests if ZFS is not available, improve tests
+
+  * fix #1379: return size as number instead of string
+
+  * migrate: add insecure parameter
+
+  * migrate: implement rate limiting
+  
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 22 Jun 2017 08:35:48 +0200
+
 libpve-storage-perl (5.0-5) unstable; urgency=medium
 
   * api: add import/export format querying

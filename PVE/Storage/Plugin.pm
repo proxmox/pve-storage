@@ -888,166 +888,26 @@ sub check_connection {
     return 1;
 }
 
-# Import/Export interface:
-#   Any path based storage is assumed to support 'raw' and 'tar' streams, so
-#   the default implementations will return this if $scfg->{path} is set,
-#   mimicking the old PVE::Storage::storage_migrate() function.
-#
-# Plugins may fall back to PVE::Storage::Plugin::volume_{export,import}...
-#   functions in case the format doesn't match their specialized
-#   implementations to reuse the raw/tar code.
-#
-# Format specification:
-#   The following formats are all prefixed with image information in the form
-#   of a 64 bit little endian unsigned integer (pack('Q<')) in order to be able
-#   to preallocate the image on storages which require it.
-#
-#   raw+size: (image files only)
-#     A raw binary data stream such as produced via `dd if=TheImageFile`.
-#   qcow2+size, vmdk: (image files only)
-#     A raw qcow2/vmdk/... file such as produced via `dd if=some.qcow2` for
-#     files which are already in qcow2 format, or via `qemu-img convert`.
-#     Note that these formats are only valid with $with_snapshots being true.
-#   tar+size: (subvolumes only)
-#     A GNU tar stream with the inner contents of the subvolume put into the
-#     'subvol/' directory.
-
-# Plugins may reuse these helpers. Changes to the header format should be
-# reflected by changes to the function prototypes.
-sub write_common_header($$) {
-    my ($fh, $image_size_in_bytes) = @_;
-    syswrite($fh, pack("Q<", $image_size_in_bytes), 8);
-}
-
-sub read_common_header($) {
-    my ($fh) = @_;
-    sysread($fh, my $size, 8);
-    $size = unpack('Q<', $size);
-    die "got a bad size (not a multiple of 1K)\n" if ($size&1023);
-    # Size is in bytes!
-    return $size;
-}
-
 # Export a volume into a file handle as a stream of desired format.
 sub volume_export {
     my ($class, $scfg, $storeid, $fh, $volname, $format, $snapshot, $base_snapshot, $with_snapshots) = @_;
-    if ($scfg->{path} && !defined($snapshot) && !defined($base_snapshot)) {
-	my $file = $class->path($scfg, $volname, $storeid)
-	    or goto unsupported;
-	my ($size, $file_format) = file_size_info($file);
-
-	if ($format eq 'raw+size') {
-	    goto unsupported if $with_snapshots || $file_format eq 'subvol';
-	    write_common_header($fh, $size);
-	    if ($file_format eq 'raw') {
-		run_command(['dd', "if=$file", "bs=4k"], output => '>&'.fileno($fh));
-	    } else {
-		run_command(['qemu-img', 'convert', '-f', $file_format, '-O', 'raw', $file, '/dev/stdout'],
-		            output => '>&'.fileno($fh));
-	    }
-	    return;
-	} elsif ($format =~ /^(qcow2|vmdk)\+size$/) {
-	    my $data_format = $1;
-	    goto unsupported if !$with_snapshots || $file_format ne $data_format;
-	    write_common_header($fh, $size);
-	    run_command(['dd', "if=$file", "bs=4k"], output => '>&'.fileno($fh));
-	    return;
-	} elsif ($format eq 'tar+size') {
-	    goto unsupported if $file_format ne 'subvol';
-	    write_common_header($fh, $size);
-	    run_command(['tar', '--xform=s,^\./,subvol/,S', '-cf', '-', '-C', $file, '.'],
-	                output => '>&'.fileno($fh));
-	    return;
-	}
-    }
- unsupported:
-    die "volume export format $format not available for $class";
+    die "volume export not implemented for $class";
 }
 
 sub volume_export_formats {
     my ($class, $scfg, $storeid, $volname, $snapshot, $base_snapshot, $with_snapshots) = @_;
-    if ($scfg->{path} && !defined($snapshot) && !defined($base_snapshot)) {
-	my $file = $class->path($scfg, $volname, $storeid)
-	    or return;
-	my ($size, $format) = file_size_info($file);
-
-	if ($with_snapshots) {
-	    return ($format.'+size') if ($format eq 'qcow2' || $format eq 'vmdk');
-	    return ();
-	}
-	return ('tar+size') if $format eq 'subvol';
-	return ('raw+size');
-    }
-    return ();
+    die "volume export formats not implemented for $class";
 }
 
 # Import data from a stream, creating a new or replacing or adding to an existing volume.
 sub volume_import {
     my ($class, $scfg, $storeid, $fh, $volname, $format, $base_snapshot, $with_snapshots) = @_;
-
-    die "volume import format '$format' not available for $class\n"
-	if $format !~ /^(raw|tar|qcow2|vmdk)\+size$/;
-    my $data_format = $1;
-
-    die "format $format cannot be imported without snapshots\n"
-	if !$with_snapshots && ($data_format eq 'qcow2' || $data_format eq 'vmdk');
-    die "format $format cannot be imported with snapshots\n"
-	if $with_snapshots && ($data_format eq 'raw' || $data_format eq 'tar');
-
-    my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $file_format) =
-	$class->parse_volname($volname);
-
-    # XXX: Should we bother with conversion routines at this level? This won't
-    # happen without manual CLI usage, so for now we just error out...
-    die "cannot import format $format into a file of format $file_format\n"
-	if $data_format ne $file_format && !($data_format eq 'tar' && $file_format eq 'subvol');
-
-    # Check for an existing file first since interrupting alloc_image doesn't
-    # free it.
-    my $file = $class->path($scfg, $volname, $storeid);
-    die "file '$file' already exists\n" if -e $file;
-
-    my ($size) = read_common_header($fh);
-    $size = int($size/1024);
-
-    eval {
-	my $allocname = $class->alloc_image($storeid, $scfg, $vmid, $file_format, $name, $size);
-	if ($allocname ne $volname) {
-	    my $oldname = $volname;
-	    $volname = $allocname; # Let the cleanup code know what to free
-	    die "internal error: unexpected allocated name: '$allocname' != '$oldname'\n";
-	}
-	my $file = $class->path($scfg, $volname, $storeid)
-	    or die "internal error: failed to get path to newly allocated volume $volname\n";
-	if ($data_format eq 'raw' || $data_format eq 'qcow2' || $data_format eq 'vmdk') {
-	    run_command(['dd', "of=$file", 'conv=sparse', 'bs=64k'],
-	                input => '<&'.fileno($fh));
-	} elsif ($data_format eq 'tar') {
-	    run_command(['tar', '-C', $file, '--xform=s,^subvol/,./,S', '-xf', '-'],
-	                input => '<&'.fileno($fh));
-	} else {
-	    die "volume import format '$format' not available for $class";
-	}
-    };
-    if (my $err = $@) {
-	eval { $class->free_image($storeid, $scfg, $volname, 0, $file_format) };
-	warn $@ if $@;
-	die $err;
-    }
+    die "volume import not implemented for $class";
 }
 
 sub volume_import_formats {
     my ($class, $scfg, $storeid, $volname, $base_snapshot, $with_snapshots) = @_;
-    if ($scfg->{path} && !defined($base_snapshot)) {
-	my $format = ($class->parse_volname($volname))[6];
-	if ($with_snapshots) {
-	    return ($format.'+size') if ($format eq 'qcow2' || $format eq 'vmdk');
-	    return ();
-	}
-	return ('tar+size') if $format eq 'subvol';
-	return ('raw+size');
-    }
-    return ();
+    die "volume import formats not implemented for $class";
 }
 
 1;
