@@ -1,3 +1,9 @@
+libpve-storage-perl (5.0-10) unstable; urgency=medium
+
+  * PVE::Storage::storage_can_replicate - hew helper
+
+ -- Proxmox Support Team <support@proxmox.com>  Tue, 27 Jun 2017 06:19:00 +0200
+
 libpve-storage-perl (5.0-9) unstable; urgency=medium
 
   * import/export: drop the 'subvol/' prefix from 'tar+size'
