@@ -623,6 +623,14 @@ sub volume_resize {
     return $new_size;
 }
 
+sub storage_can_replicate {
+    my ($class, $scfg, $storeid, $format) = @_;
+
+    return 1 if $format eq 'raw' || $format eq 'subvol';
+
+    return 0;
+}
+
 sub volume_has_feature {
     my ($class, $scfg, $feature, $storeid, $volname, $snapname, $running) = @_;
 

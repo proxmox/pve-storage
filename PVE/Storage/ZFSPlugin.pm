@@ -336,6 +336,12 @@ sub volume_snapshot_rollback {
     $class->zfs_add_lun_mapping_entry($scfg, $volname);
 }
 
+sub storage_can_replicate {
+    my ($class, $scfg, $storeid, $format) = @_;
+
+    return 0;
+}
+
 sub volume_has_feature {
     my ($class, $scfg, $feature, $storeid, $volname, $snapname, $running) = @_;
 
