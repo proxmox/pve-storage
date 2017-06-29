@@ -853,8 +853,13 @@ sub activate_storage {
 
     die "storage definintion has no path\n" if !$path;
 
-    die "unable to activate storage '$storeid' - " .
-	"directory '$path' does not exist\n" if ! -d $path;
+    # this path test may hang indefinitely on unresponsive mounts
+    my $timeout = 2;
+    if (! PVE::Tools::run_fork_with_timeout($timeout, sub {-d $path})) {
+	die "unable to activate storage '$storeid' - " .
+	"directory '$path' does not exist or is unreachable\n";
+    }
+
 
     return if defined($scfg->{mkdir}) && !$scfg->{mkdir};
 
