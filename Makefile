@@ -1,6 +1,6 @@
 VERSION=5.0
 PACKAGE=libpve-storage-perl
-PKGREL=10
+PKGREL=11
 
 DESTDIR=
 PREFIX=/usr
