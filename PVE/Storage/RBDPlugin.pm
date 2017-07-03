@@ -116,7 +116,7 @@ my $krdb_feature_disable = sub {
 
 my $ceph_version_parser = sub {
     my $line = shift;
-    if ($line =~ m/^ceph version ((\d+)\.(\d+)\.(\d+))(?: \([a-fA-F0-9]+\))?$/) {
+    if ($line =~ m/^ceph version ((\d+)\.(\d+)\.(\d+))(?: \([a-fA-F0-9]+\))/) {
 	return ($2, $3, $4, $1);
     } else {
 	warn "Could not parse Ceph version: '$line'\n";
