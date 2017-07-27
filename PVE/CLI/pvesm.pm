@@ -135,15 +135,25 @@ my $print_status = sub {
     }
     $maxlen+=1;
 
+    printf "%-${maxlen}s %10s %10s %15s %15s %15s %8s\n", 'Name', 'Type',
+	'Status', 'Total', 'Used', 'Available', '%';
+
     foreach my $res (sort { $a->{storage} cmp $b->{storage} } @$res) {
 	my $storeid = $res->{storage};
 
-	my $sum = $res->{used} + $res->{avail};
-	my $per = $sum ? (0.5 + ($res->{used}*100)/$sum) : 100;
+	my $active = $res->{active} ? 'active' : 'inactive';
+	my ($per, $per_fmt) = (0, '% 7.2f%%');
+	$per = ($res->{used}*100)/$res->{total} if $res->{total} > 0;
 
-	printf "%-${maxlen}s %5s %1d %15d %15d %15d %.2f%%\n", $storeid,
-	$res->{type}, $res->{active},
-	$res->{total}/1024, $res->{used}/1024, $res->{avail}/1024, $per;
+	if (!$res->{enabled}) {
+	    $per = 'N/A ';
+	    $per_fmt = '% 8s';
+	    $active = 'disabled';
+	}
+
+	printf "%-${maxlen}s %10s %10s %15d %15d %15d $per_fmt\n", $storeid,
+	    $res->{type}, $active, $res->{total}/1024, $res->{used}/1024,
+	    $res->{avail}/1024, $per;
     }
 };
 
