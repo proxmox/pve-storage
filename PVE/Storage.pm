@@ -1012,8 +1012,6 @@ sub storage_info {
     my $slist = [];
     foreach my $storeid (keys %$ids) {
 
-	next if !storage_check_enabled($cfg, $storeid, undef, 1);
-
 	if (defined($content)) {
 	    my $want_ctype = 0;
 	    foreach my $ctype (@ctypes) {
@@ -1035,6 +1033,7 @@ sub storage_info {
 	    shared => $ids->{$storeid}->{shared} ? 1 : 0,
 	    content => PVE::Storage::Plugin::content_hash_to_string($ids->{$storeid}->{content}),
 	    active => 0,
+	    enabled => defined(storage_check_enabled($cfg, $storeid, undef, 1)) ? 1 : 0,
 	};
 
 	push @$slist, $storeid;
@@ -1043,6 +1042,8 @@ sub storage_info {
     my $cache = {};
 
     foreach my $storeid (keys %$ids) {
+	next if !$info->{$storeid}->{enabled};
+
 	my $scfg = $ids->{$storeid};
 	next if !$info->{$storeid};
 
