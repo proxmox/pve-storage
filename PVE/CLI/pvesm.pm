@@ -146,7 +146,7 @@ my $print_status = sub {
 	$per = ($res->{used}*100)/$res->{total} if $res->{total} > 0;
 
 	if (!$res->{enabled}) {
-	    $per = 'N/A ';
+	    $per = 'N/A';
 	    $per_fmt = '% 8s';
 	    $active = 'disabled';
 	}
