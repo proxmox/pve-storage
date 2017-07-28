@@ -36,9 +36,10 @@ sub properties {
 	},
 	is_mountpoint => {
 	    description =>
-		"Assume the directory is an externally managed mountpoint. " .
-		"If nothing is mounted the storage will be considered offline.",
-	    type => 'boolean',
+		"Assume the given path is an externally managed mountpoint " .
+		"and consider the storage offline if it is not mounted. ".
+		"Using a boolean (yes/no) value serves as a shortcut to using the target path in this field.",
+	    type => 'string',
 	    default => 'no',
 	},
     };
@@ -73,16 +74,24 @@ sub path_is_mounted {
     return undef;
 }
 
+sub parse_is_mountpoint {
+    my ($scfg) = @_;
+    my $is_mp = $scfg->{is_mountpoint};
+    return undef if !defined $is_mp;
+    if (defined(my $bool = PVE::JSONSchema::parse_boolean($is_mp))) {
+	return $bool ? $scfg->{path} : undef;
+    }
+    return $is_mp; # contains a path
+}
+
 sub status {
     my ($class, $storeid, $scfg, $cache) = @_;
 
-    if ($scfg->{is_mountpoint}) {
+    if (defined(my $mp = parse_is_mountpoint($scfg))) {
 	$cache->{mountdata} = PVE::ProcFSTools::parse_proc_mounts()
 	    if !$cache->{mountdata};
 
-	my $path = $scfg->{path};
-
-	return undef if !path_is_mounted($path, $cache->{mountdata});
+	return undef if !path_is_mounted($mp, $cache->{mountdata});
     }
 
     return $class->SUPER::status($storeid, $scfg, $cache);
@@ -97,9 +106,10 @@ sub activate_storage {
 	mkpath $path;
     }
 
-    if ($scfg->{is_mountpoint} && !path_is_mounted($path, $cache->{mountdata})) {
+    my $mp = parse_is_mountpoint($scfg);
+    if (defined($mp) && !path_is_mounted($mp, $cache->{mountdata})) {
 	die "unable to activate storage '$storeid' - " .
-	    "directory is expected to be a mount point but is not mounted: '$path'\n";
+	    "directory is expected to be a mount point but is not mounted: '$mp'\n";
     }
 
     $class->SUPER::activate_storage($storeid, $scfg, $cache);    
