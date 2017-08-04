@@ -10,7 +10,6 @@
 	"model" : "LOGICAL_VOLUME",
 	"size" : 5120,
 	"wwn" : "0x0000000000000000",
-	"journals" : 0,
 	"gpt" : 1,
 	"devpath" : "/dev/cciss/c0d0"
     }

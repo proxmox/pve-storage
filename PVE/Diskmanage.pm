@@ -209,11 +209,22 @@ sub get_ceph_journals {
     my $journalhash = {};
 
     my $journal_uuid = '45b0969e-9b03-4f30-b4c6-b4b80ceff106';
+    my $db_uuid = '30cd0809-c2b2-499c-8879-2d6b78529876';
+    my $wal_uuid = '5ce17fce-4087-4169-b7ff-056cc58473f9';
+    my $block_uuid = 'cafecafe-9b03-4f30-b4c6-b4b80ceff106';
 
-    dir_glob_foreach('/dev/disk/by-parttypeuuid', "$journal_uuid\..+", sub {
-	my ($entry) = @_;
+    dir_glob_foreach('/dev/disk/by-parttypeuuid', "($journal_uuid|$db_uuid|$wal_uuid|$block_uuid)\..+", sub {
+	my ($entry, $type) = @_;
 	my $real_dev = abs_path("/dev/disk/by-parttypeuuid/$entry");
-	$journalhash->{$real_dev} = 1;
+	if ($type eq $journal_uuid) {
+	    $journalhash->{$real_dev} = 1;
+	} elsif ($type eq $db_uuid) {
+	    $journalhash->{$real_dev} = 2;
+	} elsif ($type eq $wal_uuid) {
+	    $journalhash->{$real_dev} = 3;
+	} elsif ($type eq $block_uuid) {
+	    $journalhash->{$real_dev} = 4;
+	}
     });
 
     return $journalhash;
@@ -460,8 +471,11 @@ sub get_disks {
 	};
 
 	my $osdid = -1;
+	my $bluestore = 0;
 
 	my $journal_count = 0;
+	my $db_count = 0;
+	my $wal_count = 0;
 
 	my $found_partitions;
 	my $found_lvm;
@@ -495,7 +509,12 @@ sub get_disks {
 		$found_zfs = 1;
 	    }
 
-	    $journal_count++ if $journalhash->{"$partpath/$part"};
+	    if ($journalhash->{"$partpath/$part"}) {
+		$journal_count++ if $journalhash->{"$partpath/$part"} == 1;
+		$db_count++ if $journalhash->{"$partpath/$part"} == 2;
+		$wal_count++ if $journalhash->{"$partpath/$part"} == 3;
+		$bluestore = 1 if $journalhash->{"$partpath/$part"} == 4;
+	    }
 
 	    if (!dir_is_empty("$sysdir/$part/holders") && !$found_lvm)  {
 		$found_dm = 1;
@@ -515,7 +534,10 @@ sub get_disks {
 
 	$disklist->{$dev}->{used} = $used if $used;
 	$disklist->{$dev}->{osdid} = $osdid;
-	$disklist->{$dev}->{journals} = $journal_count;
+	$disklist->{$dev}->{journals} = $journal_count if $journal_count;
+	$disklist->{$dev}->{bluestore} = $bluestore if $osdid != -1;
+	$disklist->{$dev}->{db} = $db_count if $db_count;
+	$disklist->{$dev}->{wal} = $wal_count if $wal_count;
     });
 
     return $disklist;

@@ -3,7 +3,6 @@
 	"wearout" : "N/A",
 	"vendor" : "unknown",
 	"size" : 512000,
-	"journals" : 0,
 	"health" : "PASSED",
 	"serial" : "unknown",
 	"model" : "NVME MODEL 1",

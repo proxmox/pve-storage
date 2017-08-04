@@ -6,7 +6,6 @@
 	"model" : "MODEL1",
 	"health" : "UNKNOWN",
 	"osdid" : -1,
-	"journals" : 0,
 	"wwn" : "0x0000000000000000",
 	"vendor" : "VENDOR1",
 	"rpm" : -1,

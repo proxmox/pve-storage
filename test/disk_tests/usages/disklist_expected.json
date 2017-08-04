@@ -5,10 +5,10 @@
 	"size" : 1536000,
 	"type" : "hdd",
 	"osdid" : "444",
+	"bluestore" : "0",
 	"health" : "UNKNOWN",
 	"model" : "MODEL1",
 	"used" : "mounted",
-	"journals" : 0,
 	"wearout" : "N/A",
 	"wwn" : "0x0000000000000000",
 	"devpath" : "/dev/sdf",
@@ -28,7 +28,6 @@
 	"type" : "hdd",
 	"model" : "MODEL1",
 	"used" : "Device Mapper",
-	"journals" : 0,
 	"wearout" : "N/A"
     },
     "sdb" : {
@@ -38,7 +37,6 @@
 	"devpath" : "/dev/sdb",
 	"model" : "MODEL1",
 	"used" : "LVM",
-	"journals" : 0,
 	"wearout" : "N/A",
 	"health" : "UNKNOWN",
 	"gpt" : 1,
@@ -50,7 +48,6 @@
     "sda" : {
 	"model" : "MODEL1",
 	"used" : "mounted",
-	"journals" : 0,
 	"wearout" : "N/A",
 	"health" : "UNKNOWN",
 	"gpt" : 1,
@@ -69,7 +66,6 @@
 	"devpath" : "/dev/sdc",
 	"wwn" : "0x0000000000000000",
 	"used" : "ZFS",
-	"journals" : 0,
 	"wearout" : "N/A",
 	"model" : "MODEL1",
 	"health" : "UNKNOWN",
@@ -81,7 +77,6 @@
     },
     "sdd" : {
 	"model" : "MODEL1",
-	"journals" : 0,
 	"wearout" : "N/A",
 	"health" : "UNKNOWN",
 	"size" : 1536000,

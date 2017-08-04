@@ -10,7 +10,6 @@
 	"health" : "PASSED",
 	"type" : "hdd",
 	"wwn" : "0x0000000000000000",
-	"journals" : 0,
 	"wearout" : "N/A",
 	"serial" : "00000000"
     },
@@ -26,7 +25,6 @@
 	"vendor" : "ATA",
 	"serial" : "00000000",
 	"wearout" : "N/A",
-	"journals" : 0,
 	"wwn" : "0x0000000000000000"
     }
 }
