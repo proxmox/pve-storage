@@ -1,3 +1,11 @@
+libpve-storage-perl (5.0-14) unstable; urgency=medium
+
+  * Fix #1474: storage info: properly honor content filters again
+
+  * pvesm status: fix warnings no content-filtered output
+
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 10 Aug 2017 13:27:04 +0200
+
 libpve-storage-perl (5.0-13) unstable; urgency=medium
 
   * disks: add info about bluestore to list
