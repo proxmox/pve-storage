@@ -10,6 +10,8 @@ use PVE::JSONSchema qw(get_standard_option);
 
 use base qw(PVE::Storage::Plugin);
 
+my $pveceph_config = '/etc/pve/ceph.conf';
+
 my $rbd_unittobytes = {
     "k"  => 1024,
     "M"  => 1024*1024,
@@ -40,13 +42,18 @@ my $hostlist = sub {
 my $build_cmd = sub {
     my ($binary, $scfg, $storeid, $op, @options) = @_;
 
-    my $monhost = &$hostlist($scfg->{monhost}, ',');
-
     my $keyring = "/etc/pve/priv/ceph/${storeid}.keyring";
     my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
     my $username =  $scfg->{username} ? $scfg->{username} : 'admin';
 
-    my $cmd = [$binary, '-p', $pool, '-m', $monhost];
+    my $cmd = [$binary, '-p', $pool];
+    my $pveceph_managed = !defined($scfg->{monhost});
+
+    if ($pveceph_managed) {
+	push @$cmd, '-c', $pveceph_config;
+    } else {
+	push @$cmd, '-m', $hostlist->($scfg->{monhost}, ',');
+    }
 
     if (-e $keyring) {
 	push @$cmd, '-n', "client.$username";
@@ -59,7 +66,11 @@ my $build_cmd = sub {
     my $cephconfig = "/etc/pve/priv/ceph/${storeid}.conf";
 
     if (-e $cephconfig) {
-	push @$cmd, '-c', $cephconfig;
+	if ($pveceph_managed) {
+	    warn "ignoring custom ceph config for storage '$storeid', 'monhost' is not set (assuming pveceph managed cluster)!\n";
+	} else {
+	    push @$cmd, '-c', $cephconfig;
+	}
     }
 
     push @$cmd, $op;
@@ -293,12 +304,19 @@ sub path {
     my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
     return ("/dev/rbd/$pool/$name", $vmid, $vtype) if $scfg->{krbd};
 
-    my $monhost = &$hostlist($scfg->{monhost}, ';');
-    $monhost =~ s/:/\\:/g;
-
     my $username =  $scfg->{username} ? $scfg->{username} : 'admin';
 
-    my $path = "rbd:$pool/$name:mon_host=$monhost";
+    my $path = "rbd:$pool/$name";
+    my $pveceph_managed = !defined($scfg->{monhost});
+
+    if ($pveceph_managed) {
+	$path .= ":conf=$pveceph_config";
+    } else {
+	my $monhost = $hostlist->($scfg->{monhost}, ';');
+	$monhost =~ s/:/\\:/g;
+	$path .= ":mon_host=$monhost";
+    }
+
     my $keyring = "/etc/pve/priv/ceph/${storeid}.keyring";
 
     if (-e $keyring) {
@@ -310,7 +328,11 @@ sub path {
     my $cephconfig = "/etc/pve/priv/ceph/${storeid}.conf";
 
     if (-e $cephconfig) {
-	$path .= ":conf=$cephconfig";
+	if ($pveceph_managed) {
+	    warn "ignoring custom ceph config for storage '$storeid', 'monhost' is not set (assuming pveceph managed cluster)!\n";
+	} else {
+	    $path .= ":conf=$cephconfig";
+	}
     }
 
     return ($path, $vmid, $vtype);
