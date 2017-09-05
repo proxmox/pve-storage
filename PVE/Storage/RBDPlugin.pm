@@ -258,7 +258,7 @@ sub plugindata {
 sub properties {
     return {
 	monhost => {
-	    description => "Monitors daemon ips.",
+	    description => "IP addresses of monitors (for external clusters).",
 	    type => 'string', format => 'pve-storage-portal-dns-list',
 	},
 	pool => {
@@ -284,7 +284,7 @@ sub options {
     return {
 	nodes => { optional => 1 },
 	disable => { optional => 1 },
-	monhost => { fixed => 1 },
+	monhost => { optional => 1},
 	pool => { optional => 1 },
 	username => { optional => 1 },
 	content => { optional => 1 },
