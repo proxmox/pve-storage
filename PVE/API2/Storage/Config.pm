@@ -162,6 +162,20 @@ __PACKAGE__->register_method ({
 		    PVE::Storage::activate_storage($cfg, $baseid);
 
 		    PVE::Storage::LVMPlugin::lvm_create_volume_group($path, $opts->{vgname}, $opts->{shared});
+		} elsif ($type eq 'rbd' && !defined($opts->{monhost})) {
+		    my $ceph_admin_keyring = '/etc/pve/priv/ceph.client.admin.keyring';
+		    my $ceph_storage_keyring = "/etc/pve/priv/ceph/${storeid}.keyring";
+
+		    die "ceph authx keyring file for storage '$storeid' already exists!\n"
+			if -e $ceph_storage_keyring;
+
+		    eval {
+			PVE::Tools::file_copy($ceph_admin_keyring, $ceph_storage_keyring);
+		    };
+		    if (my $err = $@) {
+			unlink $ceph_storage_keyring;
+			die "failed to copy ceph authx keyring for storage '$storeid': $err\n";
+		    }
 		}
 
 		# try to activate if enabled on local node,
@@ -245,11 +259,17 @@ __PACKAGE__->register_method ({
 
 		my $cfg = PVE::Storage::config();
 
-		die "storage '$storeid' does not exist\n"
-		    if !($cfg->{ids}->{$storeid});
+		my $scfg = PVE::Storage::storage_config($cfg, $storeid);
 
 		die "can't remove storage - storage is used as base of another storage\n"
 		    if PVE::Storage::storage_is_used($cfg, $storeid);
+
+		if ($scfg->{type} eq 'rbd' && !defined($scfg->{monhost})) {
+		    my $ceph_storage_keyring = "/etc/pve/priv/ceph/${storeid}.keyring";
+		    if (-f $ceph_storage_keyring) {
+			unlink($ceph_storage_keyring) or warn "removing keyring of storage failed: $!\n";
+		    }
+		}
 
 		delete $cfg->{ids}->{$storeid};
 
