@@ -37,8 +37,8 @@ my $hostlist = sub {
     } @monhostlist);
 };
 
-my $rbd_cmd = sub {
-    my ($scfg, $storeid, $op, @options) = @_;
+my $build_cmd = sub {
+    my ($binary, $scfg, $storeid, $op, @options) = @_;
 
     my $monhost = &$hostlist($scfg->{monhost}, ',');
 
@@ -46,7 +46,7 @@ my $rbd_cmd = sub {
     my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
     my $username =  $scfg->{username} ? $scfg->{username} : 'admin';
 
-    my $cmd = ['/usr/bin/rbd', '-p', $pool, '-m', $monhost]; 
+    my $cmd = [$binary, '-p', $pool, '-m', $monhost];
 
     if (-e $keyring) {
 	push @$cmd, '-n', "client.$username";
@@ -69,36 +69,16 @@ my $rbd_cmd = sub {
     return $cmd;
 };
 
+my $rbd_cmd = sub {
+    my ($scfg, $storeid, $op, @options) = @_;
+
+    return $build_cmd->('/usr/bin/rbd', $scfg, $storeid, $op, @options);
+};
+
 my $rados_cmd = sub {
     my ($scfg, $storeid, $op, @options) = @_;
 
-    my $monhost = &$hostlist($scfg->{monhost}, ',');
-
-    my $keyring = "/etc/pve/priv/ceph/${storeid}.keyring";
-    my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
-    my $username =  $scfg->{username} ? $scfg->{username} : 'admin';
-
-    my $cmd = ['/usr/bin/rados', '-p', $pool, '-m', $monhost];
-
-    if (-e $keyring) {
-	push @$cmd, '-n', "client.$username";
-	push @$cmd, '--keyring', $keyring;
-	push @$cmd, '--auth_supported', 'cephx';
-    } else {
-	push @$cmd, '--auth_supported', 'none';
-    }
-
-    my $cephconfig = "/etc/pve/priv/ceph/${storeid}.conf";
-
-    if (-e $cephconfig) {
-	push @$cmd, '-c', $cephconfig;
-    }
-
-    push @$cmd, $op;
-
-    push @$cmd, @options if scalar(@options);
-
-    return $cmd;
+    return $build_cmd->('/usr/bin/rados', $scfg, $storeid, $op, @options);
 };
 
 # needed for volumes created using ceph jewel (or higher)
