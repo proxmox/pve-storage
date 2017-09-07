@@ -170,6 +170,7 @@ __PACKAGE__->register_method ({
 			if -e $ceph_storage_keyring;
 
 		    eval {
+			mkdir '/etc/pve/priv/ceph';
 			PVE::Tools::file_copy($ceph_admin_keyring, $ceph_storage_keyring);
 		    };
 		    if (my $err = $@) {
