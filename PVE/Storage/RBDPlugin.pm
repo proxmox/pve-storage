@@ -53,14 +53,12 @@ my $build_cmd = sub {
 	push @$cmd, '-c', $pveceph_config;
     } else {
 	push @$cmd, '-m', $hostlist->($scfg->{monhost}, ',');
+	push @$cmd, '--auth_supported', -e $keyring ? 'cephx' : 'none';
     }
 
     if (-e $keyring) {
 	push @$cmd, '-n', "client.$username";
 	push @$cmd, '--keyring', $keyring;
-	push @$cmd, '--auth_supported', 'cephx';
-    } else {
-	push @$cmd, '--auth_supported', 'none';
     }
 
     my $cephconfig = "/etc/pve/priv/ceph/${storeid}.conf";
@@ -308,6 +306,7 @@ sub path {
 
     my $path = "rbd:$pool/$name";
     my $pveceph_managed = !defined($scfg->{monhost});
+    my $keyring = "/etc/pve/priv/ceph/${storeid}.keyring";
 
     if ($pveceph_managed) {
 	$path .= ":conf=$pveceph_config";
@@ -315,15 +314,10 @@ sub path {
 	my $monhost = $hostlist->($scfg->{monhost}, ';');
 	$monhost =~ s/:/\\:/g;
 	$path .= ":mon_host=$monhost";
+	$path .= -e $keyring ? ":auth_supported=cephx" : ":auth_supported=none";
     }
 
-    my $keyring = "/etc/pve/priv/ceph/${storeid}.keyring";
-
-    if (-e $keyring) {
-        $path .= ":id=$username:auth_supported=cephx:keyring=$keyring";
-    } else {
-	$path .= ":auth_supported=none";
-    }
+    $path .= ":id=$username:keyring=$keyring" if -e $keyring;
 
     my $cephconfig = "/etc/pve/priv/ceph/${storeid}.conf";
 
