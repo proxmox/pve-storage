@@ -1,3 +1,17 @@
+libpve-storage-perl (5.0-15) unstable; urgency=medium
+
+  * dir: allow a path as is_mountpoint value
+
+  * rbd: make monhost option optional
+
+  * rbd: support auth=none if pveceph-managed
+
+  * rbd: manage keyring for pveceph storages
+
+  * rbd: create ceph keyring dir before copying
+
+ -- Proxmox Support Team <support@proxmox.com>  Tue, 12 Sep 2017 13:47:08 +0200
+
 libpve-storage-perl (5.0-14) unstable; urgency=medium
 
   * Fix #1474: storage info: properly honor content filters again
