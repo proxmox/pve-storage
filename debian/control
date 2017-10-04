@@ -4,25 +4,25 @@ Priority: extra
 Maintainer: Proxmox Support Team <support@proxmox.com>
 Build-Depends: debhelper (>= 7.0.50~),
                libpve-common-perl,
-               perl (>= 5.10.0-19),
                lintian,
-               pve-doc-generator
+               perl (>= 5.10.0-19),
+               pve-doc-generator,
 Standards-Version: 3.9.5
 Homepage: http://www.proxmox.com
 
 Package: libpve-storage-perl
 Architecture: all
-Depends: perl (>= 5.6.0-16),
-         nfs-common,
-         udev,
+Depends: cstream,
+         glusterfs-client (>= 3.4.0-2),
+         libfile-chdir-perl,
+         libnet-dbus-perl,
          libpve-common-perl (>= 5.0-17),
          lvm2,
-         thin-provisioning-tools,
-         libfile-chdir-perl,
-         glusterfs-client (>= 3.4.0-2),
-         cstream,
-         libnet-dbus-perl,
+         nfs-common,
+         perl (>= 5.6.0-16),
          smartmontools,
-         ${perl:Depends}
+         thin-provisioning-tools,
+         udev,
+         ${perl:Depends},
 Description: Proxmox VE storage management library
  This package contains the storage management library used by Proxmox VE.
