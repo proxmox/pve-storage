@@ -136,7 +136,7 @@ sub iscsi_session_rescan {
     }
 
     foreach my $session (@$session_list) {
-	my $cmd = [$ISCSIADM, '--mode', 'session', '-r', $session, '-R'];
+	my $cmd = [$ISCSIADM, '--mode', 'session', '--sid', $session, '--rescan'];
 	eval { run_command($cmd, outfunc => sub {}); };
 	warn $@ if $@;
     }
