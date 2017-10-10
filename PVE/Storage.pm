@@ -536,7 +536,7 @@ sub abs_filesystem_path {
 }
 
 sub storage_migrate {
-    my ($cfg, $volid, $target_sshinfo, $target_storeid, $target_volname, $base_snapshot, $snapshot, $ratelimit_bps, $insecure, $with_snapshots) = @_;
+    my ($cfg, $volid, $target_sshinfo, $target_storeid, $target_volname, $base_snapshot, $snapshot, $ratelimit_bps, $insecure, $with_snapshots, $logfunc) = @_;
 
     my ($storeid, $volname) = parse_volume_id($volid);
     $target_volname = $volname if !$target_volname;
@@ -619,7 +619,7 @@ sub storage_migrate {
 		die "import failed: exit code ".($?>>8)."\n";
 	    }
 	} else {
-	    run_command([$send, @cstream, $recv]);
+	    run_command([$send, @cstream, $recv], logfunc => $logfunc);
 	}
     };
     my $err = $@;
