@@ -1,5 +1,5 @@
 {
-    "cciss!c0d0" : {
+    "cciss/c0d0" : {
 	"wearout" : "N/A",
 	"vendor" : "HP",
 	"rpm" : -1,

@@ -456,6 +456,14 @@ sub get_disks {
 
 	$used = 'ZFS' if $zfslist->{$devpath};
 
+	# we replaced cciss/ with cciss! above
+	# but in the result we need cciss/ again
+	# because the caller might want to check the
+	# result again with the original parameter
+	if ($dev =~ m|^cciss!|) {
+	    $dev =~ s|^cciss!|cciss/|;
+	}
+
 	$disklist->{$dev} = {
 	    vendor => $sysdata->{vendor},
 	    model => $data->{model} || $sysdata->{model},
