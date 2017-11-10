@@ -1001,7 +1001,7 @@ sub deactivate_volumes {
 }
 
 sub storage_info {
-    my ($cfg, $content) = @_;
+    my ($cfg, $content, $includeformat) = @_;
 
     my $ids = $cfg->{ids};
 
@@ -1048,13 +1048,21 @@ sub storage_info {
 	next if !$info->{$storeid};
 	next if !$info->{$storeid}->{enabled};
 
+	my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
+	if ($includeformat) {
+	    my $pd = $plugin->plugindata();
+	    $info->{$storeid}->{format} = $pd->{format}
+		if $pd->{format};
+	    $info->{$storeid}->{select_existing} = $pd->{select_existing}
+		if $pd->{select_existing};
+	}
+
 	eval { activate_storage($cfg, $storeid, $cache); };
 	if (my $err = $@) {
 	    warn $err;
 	    next;
 	}
 
-	my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
 	my ($total, $avail, $used, $active);
 	eval { ($total, $avail, $used, $active) = $plugin->status($storeid, $scfg, $cache); };
 	warn $@ if $@;

@@ -63,6 +63,12 @@ __PACKAGE__->register_method ({
 		optional => 1,
 		completion => \&PVE::Cluster::get_nodelist,
 	    }),
+	    format => {
+		description => "Include information about formats",
+		type => 'boolean',
+		optional => 1,
+		default => 0,
+	    },
 	},
     },
     returns => {
@@ -87,7 +93,7 @@ __PACKAGE__->register_method ({
 	
 	my $cfg = PVE::Storage::config();
 
-	my $info = PVE::Storage::storage_info($cfg, $param->{content});
+	my $info = PVE::Storage::storage_info($cfg, $param->{content}, $param->{format});
 
 	raise_param_exc({ storage => "No such storage." })
 	    if $param->{storage} && !defined($info->{$param->{storage}});
