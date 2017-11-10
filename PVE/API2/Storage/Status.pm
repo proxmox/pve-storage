@@ -90,14 +90,14 @@ __PACKAGE__->register_method ({
 	my $target = $param->{target};
 
 	undef $target if $target && ($target eq $localnode || $target eq 'localhost');
-	
+
 	my $cfg = PVE::Storage::config();
 
 	my $info = PVE::Storage::storage_info($cfg, $param->{content}, $param->{format});
 
 	raise_param_exc({ storage => "No such storage." })
 	    if $param->{storage} && !defined($info->{$param->{storage}});
-	
+
 	my $res = {};
 	my @sids = PVE::Storage::storage_ids($cfg);
 	foreach my $storeid (@sids) {
@@ -109,7 +109,7 @@ __PACKAGE__->register_method ({
 	    my $scfg = PVE::Storage::storage_config($cfg, $storeid);
 
 	    next if $param->{enabled} && $scfg->{disable};
- 
+
 	    if ($target) {
 		# check if storage content is accessible on local node and specified target node
 		# we use this on the Clone GUI
