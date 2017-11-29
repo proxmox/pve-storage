@@ -1,3 +1,13 @@
+libpve-storage-perl (5.0-17) unstable; urgency=medium
+
+  * fix #1099: return disklist correctly
+
+  * add select_existing to plugindata for iscsi(direct)
+
+  * add 'format' parameter to storage list call
+
+ -- Proxmox Support Team <support@proxmox.com>  Wed, 29 Nov 2017 11:32:31 +0100
+
 libpve-storage-perl (5.0-16) unstable; urgency=medium
 
   * Add logfunc in storage_migrate
