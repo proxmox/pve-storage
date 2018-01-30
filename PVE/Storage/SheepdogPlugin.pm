@@ -115,6 +115,7 @@ sub options {
         disable => { optional => 1 },
 	portal => { fixed => 1 },
 	content => { optional => 1 },
+	bwlimit => { optional => 1 },
     };
 }
 

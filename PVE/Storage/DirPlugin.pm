@@ -42,6 +42,7 @@ sub properties {
 	    type => 'string',
 	    default => 'no',
 	},
+	bwlimit => get_standard_option('bwlimit'),
     };
 }
 
@@ -56,6 +57,7 @@ sub options {
 	format => { optional => 1 },
 	mkdir => { optional => 1 },
 	is_mountpoint => { optional => 1 },
+	bwlimit => { optional => 1 },
    };
 }
 

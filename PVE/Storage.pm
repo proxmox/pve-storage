@@ -1534,4 +1534,76 @@ sub complete_volume {
     return $res;
 }
 
+# Various io-heavy operations require io/bandwidth limits which can be
+# configured on multiple levels: The global defaults in datacenter.cfg, and
+# per-storage overrides. When we want to do a restore from storage A to storage
+# B, we should take the smaller limit defined for storages A and B, and if no
+# such limit was specified, use the one from datacenter.cfg.
+sub get_bandwidth_limit {
+    my ($operation, $storage_list, $override) = @_;
+
+    # called for each limit (global, per-storage) with the 'default' and the
+    # $operation limit and should udpate $override for every limit affecting
+    # us.
+    my $use_global_limits = 0;
+    my $apply_limit = sub {
+	my ($bwlimit) = @_;
+	if (defined($bwlimit)) {
+	    my $limits = PVE::JSONSchema::parse_property_string('bwlimit', $bwlimit);
+	    my $limit = $limits->{$operation} // $limits->{default};
+	    if (defined($limit)) {
+		if (!$override || $limit < $override) {
+		    $override = $limit;
+		}
+		return;
+	    }
+	}
+	# If there was no applicable limit, try to apply the global ones.
+	$use_global_limits = 1;
+    };
+
+    my $rpcenv = PVE::RPCEnvironment->get();
+    my $authuser = $rpcenv->get_user();
+
+    # Apply per-storage limits - if there are storages involved.
+    if (@$storage_list) {
+	my $config = config();
+
+	# The Datastore.Allocate permission allows us to modify the per-storage
+	# limits, therefore it also allows us to override them.
+	# Since we have most likely multiple storages to check, do a quick check on
+	# the general '/storage' path to see if we can skip the checks entirely:
+	return $override if $rpcenv->check($authuser, '/storage', ['Datastore.Allocate'], 1);
+
+	my %done;
+	foreach my $storage (@$storage_list) {
+	    # Avoid duplicate checks:
+	    next if $done{$storage};
+	    $done{$storage} = 1;
+
+	    # Otherwise we may still have individual /storage/$ID permissions:
+	    if (!$rpcenv->check($authuser, "/storage/$storage", ['Datastore.Allocate'], 1)) {
+		# And if not: apply the limits.
+		my $storecfg = storage_config($config, $storage);
+		$apply_limit->($storecfg->{bwlimit});
+	    }
+	}
+
+	# Storage limits take precedence over the datacenter defaults, so if
+	# a limit was applied:
+	return $override if !$use_global_limits;
+    }
+
+    # Sys.Modify on '/' means we can change datacenter.cfg which contains the
+    # global default limits.
+    if (!$rpcenv->check($authuser, '/', ['Sys.Modify'], 1)) {
+	# So if we cannot modify global limits, apply them to our currently
+	# requested override.
+	my $dc = cfs_read_file('datacenter.cfg');
+	$apply_limit->($dc->{bwlimit});
+    }
+
+    return $override;
+}
+
 1;

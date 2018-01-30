@@ -86,6 +86,7 @@ sub options {
 	content => { optional => 1 },
 	format => { optional => 1 },
 	mkdir => { optional => 1 },
+	bwlimit => { optional => 1 },
     };
 }
 

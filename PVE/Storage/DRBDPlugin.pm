@@ -45,6 +45,7 @@ sub options {
 	content => { optional => 1 },
         nodes => { optional => 1 },
 	disable => { optional => 1 },
+	bwlimit => { optional => 1 },
     };
 }
 

@@ -205,6 +205,7 @@ sub options {
 	comstar_hg => { optional => 1 },
 	comstar_tg => { optional => 1 },
 	content => { optional => 1 },
+	bwlimit => { optional => 1 },
     };
 }
 

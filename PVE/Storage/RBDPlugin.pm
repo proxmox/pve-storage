@@ -278,6 +278,7 @@ sub options {
 	username => { optional => 1 },
 	content => { optional => 1 },
 	krbd => { optional => 1 },
+	bwlimit => { optional => 1 },
     };
 }
 

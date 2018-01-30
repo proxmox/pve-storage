@@ -202,6 +202,7 @@ sub options {
 	content => { optional => 1 },
 	base => { fixed => 1, optional => 1 },
 	tagged_only => { optional => 1 },
+	bwlimit => { optional => 1 },
     };
 }
 
