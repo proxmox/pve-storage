@@ -1562,8 +1562,11 @@ sub get_bandwidth_limit {
 	$use_global_limits = 1;
     };
 
-    my $rpcenv = PVE::RPCEnvironment->get();
-    my $authuser = $rpcenv->get_user();
+    my ($rpcenv, $authuser);
+    if (defined($override)) {
+	$rpcenv = PVE::RPCEnvironment->get();
+	$authuser = $rpcenv->get_user();
+    }
 
     # Apply per-storage limits - if there are storages involved.
     if (@$storage_list) {
@@ -1573,7 +1576,7 @@ sub get_bandwidth_limit {
 	# limits, therefore it also allows us to override them.
 	# Since we have most likely multiple storages to check, do a quick check on
 	# the general '/storage' path to see if we can skip the checks entirely:
-	return $override if $rpcenv->check($authuser, '/storage', ['Datastore.Allocate'], 1);
+	return $override if $rpcenv && $rpcenv->check($authuser, '/storage', ['Datastore.Allocate'], 1);
 
 	my %done;
 	foreach my $storage (@$storage_list) {
@@ -1582,7 +1585,7 @@ sub get_bandwidth_limit {
 	    $done{$storage} = 1;
 
 	    # Otherwise we may still have individual /storage/$ID permissions:
-	    if (!$rpcenv->check($authuser, "/storage/$storage", ['Datastore.Allocate'], 1)) {
+	    if (!$rpcenv || !$rpcenv->check($authuser, "/storage/$storage", ['Datastore.Allocate'], 1)) {
 		# And if not: apply the limits.
 		my $storecfg = storage_config($config, $storage);
 		$apply_limit->($storecfg->{bwlimit});
@@ -1596,7 +1599,7 @@ sub get_bandwidth_limit {
 
     # Sys.Modify on '/' means we can change datacenter.cfg which contains the
     # global default limits.
-    if (!$rpcenv->check($authuser, '/', ['Sys.Modify'], 1)) {
+    if (!$rpcenv || !$rpcenv->check($authuser, '/', ['Sys.Modify'], 1)) {
 	# So if we cannot modify global limits, apply them to our currently
 	# requested override.
 	my $dc = cfs_read_file('datacenter.cfg');
