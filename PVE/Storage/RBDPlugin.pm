@@ -99,8 +99,16 @@ my $krdb_feature_disable = sub {
     my ($major, undef, undef, undef) = ceph_version();
     return 1 if $major < 10;
 
-    my $feature_cmd = &$rbd_cmd($scfg, $storeid, 'feature', 'disable', $name, 'deep-flatten,fast-diff,object-map,exclusive-lock');
-    run_rbd_command($feature_cmd, errmsg => "could not disable krbd-incompatible image features of rbd volume $name");
+    my $krbd_feature_blacklist = ['deep-flatten', 'fast-diff', 'object-map', 'exclusive-lock'];
+    my (undef, undef, undef, undef, $features) = rbd_volume_info($scfg, $storeid, $name);
+
+    my $active_features = { map { $_ => 1 } PVE::Tools::split_list($features)};
+    my $incompatible_features = join(',', grep { %$active_features{$_} } @$krbd_feature_blacklist);
+
+    if ($incompatible_features) {
+	my $feature_cmd = &$rbd_cmd($scfg, $storeid, 'feature', 'disable', $name, $incompatible_features);
+	run_rbd_command($feature_cmd, errmsg => "could not disable krbd-incompatible image features of rbd volume $name");
+    }
 };
 
 my $ceph_version_parser = sub {
@@ -211,6 +219,7 @@ sub rbd_volume_info {
     my $parent = undef;
     my $format = undef;
     my $protected = undef;
+    my $features = undef;
 
     my $parser = sub {
 	my $line = shift;
@@ -223,13 +232,15 @@ sub rbd_volume_info {
 	    $format = $1;
 	} elsif ($line =~ m/protected:\s(\S+)/) {
 	    $protected = 1 if $1 eq "True";
+	} elsif ($line =~ m/features:\s(.+)/) {
+	    $features = $1;
 	}
 
     };
 
     run_rbd_command($cmd, errmsg => "rbd error", errfunc => sub {}, outfunc => $parser);
 
-    return ($size, $parent, $format, $protected);
+    return ($size, $parent, $format, $protected, $features);
 }
 
 # Configuration
