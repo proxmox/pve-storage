@@ -91,7 +91,7 @@ my $rados_cmd = sub {
 };
 
 # needed for volumes created using ceph jewel (or higher)
-my $krdb_feature_disable = sub {
+my $krbd_feature_disable = sub {
     my ($scfg, $storeid, $name) = @_;
 
     return 1 if !$scfg->{krbd};
@@ -449,7 +449,7 @@ sub clone_image {
 
     run_rbd_command($cmd, errmsg => "rbd clone '$basename' error");
 
-    &$krdb_feature_disable($scfg, $storeid, $name);
+    &$krbd_feature_disable($scfg, $storeid, $name);
 
     return $newvol;
 }
@@ -466,7 +466,7 @@ sub alloc_image {
     my $cmd = &$rbd_cmd($scfg, $storeid, 'create', '--image-format' , 2, '--size', int(($size+1023)/1024), $name);
     run_rbd_command($cmd, errmsg => "rbd create $name' error");
 
-    &$krdb_feature_disable($scfg, $storeid, $name);
+    &$krbd_feature_disable($scfg, $storeid, $name);
 
     return $name;
 }
