@@ -2643,7 +2643,7 @@ sub setup_zpool {
 sub clean_up_zpool {
 
     eval {
-	run_command("zpool destroy $subvol");
+	run_command("zpool destroy -f $subvol");
     };
     if ($@) {
 	warn $@;}
