@@ -45,6 +45,7 @@ __PACKAGE__->register_method ({
 	    { method => 'glusterfs' },
 	    { method => 'usb' },
 	    { method => 'zfs' },
+	    { method => 'cifs' },
 	    ];
 
 	return $res;
@@ -118,6 +119,56 @@ __PACKAGE__->register_method ({
 	foreach my $k (keys %$res) {
 	    push @$data, { path => $k, options => $res->{$k} };
 	}
+	return $data;
+    }});
+
+__PACKAGE__->register_method ({
+    name => 'cifsscan',
+    path => 'cifs',
+    method => 'GET',
+    description => "Scan remote CIFS server.",
+    protected => 1,
+    proxyto => "node",
+    permissions => {
+	check => ['perm', '/storage', ['Datastore.Allocate']],
+    },
+    parameters => {
+	additionalProperties => 0,
+	properties => {
+	    node => get_standard_option('pve-node'),
+	    server => { type => 'string', format => 'pve-storage-server' },
+	    username => { type => 'string', optional => 1 },
+	    password => { type => 'string', optional => 1 },
+	    domain => { type => 'string', optional => 1 },
+	},
+    },
+    returns => {
+	type => 'array',
+	items => {
+	    type => "object",
+	    properties => {
+		share => { type => 'string'},
+		description => { type => 'string'},
+	    },
+	},
+    },
+    code => sub {
+	my ($param) = @_;
+
+	my $server = $param->{server};
+
+	my $username = $param->{username};
+	my $password = $param->{password};
+	my $domain = $param->{domain};
+
+	my $res = PVE::Storage::scan_cifs($server, $username, $password, $domain);
+
+	my $data = [];
+	foreach my $k (keys %$res) {
+	    next if $k =~ m/NT_STATUS_/;
+	    push @$data, { share => $k, description => $res->{$k} };
+	}
+
 	return $data;
     }});
 
