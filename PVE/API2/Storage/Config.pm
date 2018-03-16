@@ -295,6 +295,12 @@ __PACKAGE__->register_method ({
 		die "can't remove storage - storage is used as base of another storage\n"
 		    if PVE::Storage::storage_is_used($cfg, $storeid);
 
+		my $cred_file = '/etc/pve/priv/'.$storeid.'.cred';
+
+		unlink $cred_file
+		    if ($cfg->{ids}->{$storeid}->{type} eq 'cifs') &&
+		    (-e $cred_file);
+
 		if ($scfg->{type} eq 'rbd' && !defined($scfg->{monhost})) {
 		    my $ceph_storage_keyring = "/etc/pve/priv/ceph/${storeid}.keyring";
 		    if (-f $ceph_storage_keyring) {
