@@ -1116,6 +1116,41 @@ sub scan_nfs {
     return $res;
 }
 
+sub scan_cifs {
+    my ($server_in, $user, $password, $domain) = @_;
+
+    my $server;
+    if (!($server = resolv_server ($server_in))) {
+	die "unable to resolve address for server '${server_in}'\n";
+    }
+
+    # we support only Windows grater than 2012 cifsscan so use smb3
+    my $cmd = ['/usr/bin/smbclient', '-m', 'smb3', '-d', '0', '-L', $server];
+    if (defined($user)) {
+	die "password is required" if !defined($password);
+	push @$cmd, '-U', "$user\%$password";
+	push @$cmd, '-W', $domain if defined($domain);
+    } else {
+	push @$cmd, '-N';
+    }
+
+    my $res = {};
+    run_command($cmd,
+		outfunc => sub {
+		    my $line = shift;
+		    if ($line =~ m/(\S+)\s*Disk\s*(\S*)/) {
+			$res->{$1} = $2;
+		    } elsif ($line =~ m/(NT_STATUS_(\S*))/) {
+			$res->{$1} = '';
+		    }
+		},
+		errfunc => sub {},
+		noerr => 1
+    );
+
+    return $res;
+}
+
 sub scan_zfs {
 
     my $cmd = ['zfs',  'list', '-t', 'filesystem', '-H', '-o', 'name,avail,used'];
