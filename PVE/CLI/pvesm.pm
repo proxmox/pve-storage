@@ -331,6 +331,19 @@ our $cmddef = {
 			 printf "%-${maxlen}s %s\n", $rec->{path}, $rec->{options};
 		     }
 		 }],
+    cifsscan => [ "PVE::API2::Storage::Scan", 'cifsscan', ['server'],
+		 { node => $nodename }, sub  {
+		     my $res = shift;
+
+		     my $maxlen = 0;
+		     foreach my $rec (@$res) {
+			 my $len = length ($rec->{share});
+			 $maxlen = $len if $len > $maxlen;
+		     }
+		     foreach my $rec (@$res) {
+			 printf "%-${maxlen}s %s\n", $rec->{share}, $rec->{description};
+		     }
+		 }],
     glusterfsscan => [ "PVE::API2::Storage::Scan", 'glusterfsscan', ['server'],
 		 { node => $nodename }, sub  {
 		     my $res = shift;
