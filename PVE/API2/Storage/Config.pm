@@ -12,6 +12,7 @@ use HTTP::Status qw(:constants);
 use Storable qw(dclone);
 use PVE::JSONSchema qw(get_standard_option);
 use PVE::RPCEnvironment;
+use PVE::PTY;
 
 use PVE::RESTHandler;
 
@@ -139,6 +140,13 @@ __PACKAGE__->register_method ({
 	my $type = extract_param($param, 'type');
 	my $storeid = extract_param($param, 'storage');
 
+	# revent an empty nodelist.
+	# fix me in section config create never need an empty entity.
+	delete $param->{nodes} if !$param->{nodes};
+
+	my $password = extract_param($param, 'password')
+	    if $type eq 'cifs' && $param->{username};
+
 	if ($param->{portal}) {
 	    $param->{portal} = PVE::Storage::resolv_portal($param->{portal});
 	}
@@ -190,11 +198,21 @@ __PACKAGE__->register_method ({
 			die "failed to copy ceph authx keyring for storage '$storeid': $err\n";
 		    }
 		}
+		# create a password file in /etc/pve/priv,
+		# this file is used as a cert_file at mount time.
+		my $cred_file = &$set_cifs_credentials($password, $storeid)
+		    if defined($password);
 
-		# try to activate if enabled on local node,
-		# we only do this to detect errors/problems sooner
-		if (PVE::Storage::storage_check_enabled($cfg, $storeid, undef, 1)) {
-		    PVE::Storage::activate_storage($cfg, $storeid);
+		eval {
+		    # try to activate if enabled on local node,
+		    # we only do this to detect errors/problems sooner
+		    if (PVE::Storage::storage_check_enabled($cfg, $storeid, undef, 1)) {
+			PVE::Storage::activate_storage($cfg, $storeid);
+		    }
+		};
+		if(my $err = $@) {
+		    unlink $cred_file if defined($cred_file);
+		    die $err;
 		}
 
 		PVE::Storage::write_config($cfg);
