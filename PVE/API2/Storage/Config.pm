@@ -9,6 +9,7 @@ use PVE::Cluster qw(cfs_read_file cfs_write_file);
 use PVE::Storage;
 use PVE::Storage::Plugin;
 use PVE::Storage::LVMPlugin;
+use PVE::Storage::CIFSPlugin;
 use HTTP::Status qw(:constants);
 use Storable qw(dclone);
 use PVE::JSONSchema qw(get_standard_option);
@@ -35,22 +36,6 @@ my $api_storage_config = sub {
     }
 
     return $scfg;
-};
-
-my $cifs_cred_file_name = sub {
-    my ($storeid) = @_;
-
-    return "/etc/pve/priv/${storeid}.cred";
-};
-
-my $set_cifs_credentials = sub {
-    my ($password, $storeid) = @_;
-
-    my $cred_file = $cifs_cred_file_name->($storeid);
-
-    PVE::Tools::file_set_contents($cred_file, "password=$password\n");
-
-    return $cred_file;
 };
 
 __PACKAGE__->register_method ({
@@ -204,8 +189,8 @@ __PACKAGE__->register_method ({
 		}
 		# create a password file in /etc/pve/priv,
 		# this file is used as a cert_file at mount time.
-		my $cred_file = &$set_cifs_credentials($password, $storeid)
-		    if defined($password);
+		my $cred_file = PVE::Storage::cifs_set_credentials($password, $storeid)
+		    if $type eq 'cifs' && defined($password);
 
 		eval {
 		    # try to activate if enabled on local node,
@@ -300,7 +285,7 @@ __PACKAGE__->register_method ({
 		    if PVE::Storage::storage_is_used($cfg, $storeid);
 
 		if ($scfg->{type} eq 'cifs')  {
-		    my $cred_file = $cifs_cred_file_name->($storeid);
+		    my $cred_file = PVE::Storage::cifs_cred_file_name($storeid);
 		    if (-f $cred_file) {
 			unlink($cred_file) or warn "removing cifs credientials '$cred_file' failed: $!\n";
 		    }

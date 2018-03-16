@@ -28,15 +28,28 @@ sub cifs_is_mounted {
     return undef;
 }
 
+sub cifs_cred_file_name {
+    my ($storeid) = @_;
+
+    return "/etc/pve/priv/${storeid}.cred";
+}
+
+sub cifs_set_credentials {
+    my ($password, $storeid) = @_;
+
+    my $cred_file = cifs_cred_file_name($storeid);
+
+    PVE::Tools::file_set_contents($cred_file, "password=$password\n");
+
+    return $cred_file;
+}
+
 sub get_cred_file {
     my ($storeid) = @_;
 
-    my $cred_file = '/etc/pve/priv/'.$storeid.'.cred';
+    my $cred_file = cifs_cred_file_name($storeid);
 
-    if (-e $cred_file) {
-	return $cred_file;
-    }
-    return undef;
+    return -e $cred_file ? $cred_file : undef;
 }
 
 sub cifs_mount {
