@@ -19,6 +19,17 @@ our @COMMON_TAR_FLAGS = qw(
     --warning=no-file-ignored --warning=no-xattr-write
 );
 
+our @SHARED_STORAGE = (
+    'iscsi',
+    'nfs',
+    'cifs',
+    'rbd',
+    'sheepdog',
+    'iscsidirect',
+    'glusterfs',
+    'zfs',
+    'drbd');
+
 cfs_register_file ('storage.cfg',
 		   sub { __PACKAGE__->parse_config(@_); },
 		   sub { __PACKAGE__->write_config(@_); });
@@ -331,8 +342,7 @@ sub parse_config {
 	if ($def->{content}) {
 	    $d->{content} = $def->{content}->[1] if !$d->{content};
 	}
-
-	if ($type eq 'iscsi' || $type eq 'nfs' || $type eq 'rbd' || $type eq 'sheepdog' || $type eq 'iscsidirect' || $type eq 'glusterfs' || $type eq 'zfs' || $type eq 'drbd') {
+	if (grep { $_ eq $type }  @SHARED_STORAGE) {
 	    $d->{shared} = 1;
 	}
     }
