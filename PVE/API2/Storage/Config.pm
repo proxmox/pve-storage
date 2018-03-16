@@ -189,7 +189,7 @@ __PACKAGE__->register_method ({
 		}
 		# create a password file in /etc/pve/priv,
 		# this file is used as a cert_file at mount time.
-		my $cred_file = PVE::Storage::cifs_set_credentials($password, $storeid)
+		my $cred_file = PVE::Storage::CIFSPlugin::cifs_set_credentials($password, $storeid)
 		    if $type eq 'cifs' && defined($password);
 
 		eval {
@@ -285,7 +285,7 @@ __PACKAGE__->register_method ({
 		    if PVE::Storage::storage_is_used($cfg, $storeid);
 
 		if ($scfg->{type} eq 'cifs')  {
-		    my $cred_file = PVE::Storage::cifs_cred_file_name($storeid);
+		    my $cred_file = PVE::Storage::CIFSPlugin::cifs_cred_file_name($storeid);
 		    if (-f $cred_file) {
 			unlink($cred_file) or warn "removing cifs credientials '$cred_file' failed: $!\n";
 		    }
