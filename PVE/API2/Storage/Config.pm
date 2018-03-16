@@ -36,12 +36,16 @@ my $api_storage_config = sub {
     return $scfg;
 };
 
+my $cifs_cred_file_name = sub {
+    my ($storeid) = @_;
+
+    return "/etc/pve/priv/${storeid}.cred";
+};
+
 my $set_cifs_credentials = sub {
     my ($password, $storeid) = @_;
 
-    my $cred_path = '/etc/pve/priv/';
-
-    my $cred_file = $cred_path.$storeid.".cred";
+    my $cred_file = $cifs_cred_file_name->($storeid);
 
     PVE::Tools::file_set_contents($cred_file, "password=$password\n");
 
@@ -294,13 +298,12 @@ __PACKAGE__->register_method ({
 		die "can't remove storage - storage is used as base of another storage\n"
 		    if PVE::Storage::storage_is_used($cfg, $storeid);
 
-		my $cred_file = '/etc/pve/priv/'.$storeid.'.cred';
-
-		unlink $cred_file
-		    if ($cfg->{ids}->{$storeid}->{type} eq 'cifs') &&
-		    (-e $cred_file);
-
-		if ($scfg->{type} eq 'rbd' && !defined($scfg->{monhost})) {
+		if ($scfg->{type} eq 'cifs')  {
+		    my $cred_file = $cifs_cred_file_name->($storeid);
+		    if (-f $cred_file) {
+			unlink($cred_file) or warn "removing cifs credientials '$cred_file' failed: $!\n";
+		    }
+		} elsif ($scfg->{type} eq 'rbd' && !defined($scfg->{monhost})) {
 		    my $ceph_storage_keyring = "/etc/pve/priv/ceph/${storeid}.keyring";
 		    if (-f $ceph_storage_keyring) {
 			unlink($ceph_storage_keyring) or warn "removing keyring of storage failed: $!\n";
