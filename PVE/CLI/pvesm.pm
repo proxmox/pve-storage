@@ -17,6 +17,7 @@ use PVE::API2::Storage::Content;
 use PVE::API2::Storage::Status;
 use PVE::API2::Storage::Scan;
 use PVE::JSONSchema qw(get_standard_option);
+use PVE::PTY;
 
 use PVE::CLIHandler;
 
@@ -25,6 +26,10 @@ use base qw(PVE::CLIHandler);
 my $KNOWN_EXPORT_FORMATS = ['raw+size', 'tar+size', 'qcow2+size', 'vmdk+size', 'zfs'];
 
 my $nodename = PVE::INotify::nodename();
+
+sub read_password {
+    return PVE::PTY::read_password("Enter Password: ");
+}
 
 sub setup_environment {
     PVE::RPCEnvironment->setup_default_cli_env();
