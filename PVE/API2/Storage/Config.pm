@@ -36,6 +36,18 @@ my $api_storage_config = sub {
     return $scfg;
 };
 
+my $set_cifs_credentials = sub {
+    my ($password, $storeid) = @_;
+
+    my $cred_path = '/etc/pve/priv/';
+
+    my $cred_file = $cred_path.$storeid.".cred";
+
+    PVE::Tools::file_set_contents($cred_file, "password=$password\n");
+
+    return $cred_file;
+};
+
 __PACKAGE__->register_method ({
     name => 'index', 
     path => '',
