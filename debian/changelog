@@ -1,3 +1,13 @@
+libpve-storage-perl (5.0-18) unstable; urgency=medium
+
+  * add CIFS (SMB) storage plugin
+
+  * Fix #1574: could not disable krbd-incompatible image features
+
+  * add per-storage bandwidth limits
+
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 22 Mar 2018 08:59:33 +0100
+
 libpve-storage-perl (5.0-17) unstable; urgency=medium
 
   * fix #1099: return disklist correctly
