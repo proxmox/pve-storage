@@ -1065,8 +1065,7 @@ sub storage_info {
 	    next;
 	}
 
-	my ($total, $avail, $used, $active);
-	eval { ($total, $avail, $used, $active) = $plugin->status($storeid, $scfg, $cache); };
+	my ($total, $avail, $used, $active) = eval { $plugin->status($storeid, $scfg, $cache); };
 	warn $@ if $@;
 	next if !$active;
 	$info->{$storeid}->{total} = int($total);

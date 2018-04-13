@@ -7,6 +7,7 @@ use Net::IP;
 use PVE::Tools qw(run_command trim);
 use PVE::Storage::Plugin;
 use PVE::JSONSchema qw(get_standard_option);
+use PVE::RADOS;
 
 use base qw(PVE::Storage::Plugin);
 
@@ -88,6 +89,50 @@ my $rados_cmd = sub {
     my ($scfg, $storeid, $op, @options) = @_;
 
     return $build_cmd->('/usr/bin/rados', $scfg, $storeid, $op, @options);
+};
+
+my $ceph_connect_option = sub {
+    my ($scfg, $storeid, %options) = @_;
+
+    my $cmd_option = {};
+    my $ceph_storeid_conf = "/etc/pve/priv/ceph/${storeid}.conf";
+    my $keyring = "/etc/pve/priv/ceph/${storeid}.keyring";
+    my $pveceph_managed = !defined($scfg->{monhost});
+
+    $cmd_option->{ceph_conf} = $pveceph_config if (-e $pveceph_config);
+
+    if (-e $ceph_storeid_conf) {
+	if ($pveceph_managed) {
+	    warn "ignoring custom ceph config for storage '$storeid', 'monhost' is not set (assuming pveceph managed cluster)!\n";
+	} else {
+	    $cmd_option->{ceph_conf} = $ceph_storeid_conf;
+	}
+    }
+
+    $cmd_option->{keyring} = $keyring if (-e $keyring);
+    $cmd_option->{auth_supported} = (defined $cmd_option->{keyring}) ? 'cephx' : 'none';
+    $cmd_option->{userid} =  $scfg->{username} ? $scfg->{username} : 'admin';
+    $cmd_option->{mon_host} = $hostlist->($scfg->{monhost}, ',') if (defined($scfg->{monhost}));
+
+    if (%options) {
+	foreach my $k (keys %options) {
+	    $cmd_option->{$k} = $options{$k};
+	}
+    }
+
+
+    return $cmd_option;
+
+};
+
+my $librados_connect = sub {
+    my ($scfg, $storeid, $options) = @_;
+
+    my $librados_config = $ceph_connect_option->($scfg, $storeid);
+
+    my $rados = PVE::RADOS->new(%$librados_config);
+
+    return $rados;
 };
 
 # needed for volumes created using ceph jewel (or higher)
@@ -539,28 +584,17 @@ sub list_images {
 sub status {
     my ($class, $storeid, $scfg, $cache) = @_;
 
-    my $cmd = &$rados_cmd($scfg, $storeid, 'df');
 
-    my $stats = {};
+    my $rados = &$librados_connect($scfg, $storeid);
+    my $df = $rados->mon_command({ prefix => 'df', format => 'json' });
 
-    my $parser = sub {
-	my $line = shift;
-	if ($line =~ m/^\s*total(?:\s|_)(\S+)\s+(\d+)(k|M|G|T)?/) {
-	    $stats->{$1} = $2;
-	    # luminous has units here..
-	    if ($3) {
-		$stats->{$1} *= $rbd_unittobytes->{$3}/1024;
-	    }
-	}
-    };
+    my ($d) = grep { $_->{name} eq $scfg->{pool} } @{$df->{pools}};
 
-    eval {
-	run_rbd_command($cmd, errmsg => "rados error", errfunc => sub {}, outfunc => $parser);
-    };
-
-    my $total = $stats->{space} ? $stats->{space}*1024 : 0;
-    my $free = $stats->{avail} ? $stats->{avail}*1024 : 0;
-    my $used = $stats->{used} ? $stats->{used}*1024: 0;
+    # max_avail -> max available space for data w/o replication in the pool
+    # bytes_used -> data w/o replication in the pool
+    my $free = $d->{stats}->{max_avail};
+    my $used = $d->{stats}->{bytes_used};
+    my $total = $used + $free;
     my $active = 1;
 
     return ($total, $free, $used, $active);
