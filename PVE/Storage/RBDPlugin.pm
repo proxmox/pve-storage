@@ -11,8 +11,6 @@ use PVE::RADOS;
 
 use base qw(PVE::Storage::Plugin);
 
-my $pveceph_config = '/etc/pve/ceph.conf';
-
 my $rbd_unittobytes = {
     "k"  => 1024,
     "M"  => 1024*1024,
@@ -40,62 +38,12 @@ my $hostlist = sub {
     } @monhostlist);
 };
 
-my $build_cmd = sub {
-    my ($binary, $scfg, $storeid, $op, @options) = @_;
-
-    my $keyring = "/etc/pve/priv/ceph/${storeid}.keyring";
-    my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
-    my $username =  $scfg->{username} ? $scfg->{username} : 'admin';
-
-    my $cmd = [$binary, '-p', $pool];
-    my $pveceph_managed = !defined($scfg->{monhost});
-
-    if ($pveceph_managed) {
-	push @$cmd, '-c', $pveceph_config;
-    } else {
-	push @$cmd, '-m', $hostlist->($scfg->{monhost}, ',');
-	push @$cmd, '--auth_supported', -e $keyring ? 'cephx' : 'none';
-    }
-
-    if (-e $keyring) {
-	push @$cmd, '-n', "client.$username";
-	push @$cmd, '--keyring', $keyring;
-    }
-
-    my $cephconfig = "/etc/pve/priv/ceph/${storeid}.conf";
-
-    if (-e $cephconfig) {
-	if ($pveceph_managed) {
-	    warn "ignoring custom ceph config for storage '$storeid', 'monhost' is not set (assuming pveceph managed cluster)!\n";
-	} else {
-	    push @$cmd, '-c', $cephconfig;
-	}
-    }
-
-    push @$cmd, $op;
-
-    push @$cmd, @options if scalar(@options);
-
-    return $cmd;
-};
-
-my $rbd_cmd = sub {
-    my ($scfg, $storeid, $op, @options) = @_;
-
-    return $build_cmd->('/usr/bin/rbd', $scfg, $storeid, $op, @options);
-};
-
-my $rados_cmd = sub {
-    my ($scfg, $storeid, $op, @options) = @_;
-
-    return $build_cmd->('/usr/bin/rados', $scfg, $storeid, $op, @options);
-};
-
 my $ceph_connect_option = sub {
     my ($scfg, $storeid, %options) = @_;
 
     my $cmd_option = {};
     my $ceph_storeid_conf = "/etc/pve/priv/ceph/${storeid}.conf";
+    my $pveceph_config = '/etc/pve/ceph.conf';
     my $keyring = "/etc/pve/priv/ceph/${storeid}.keyring";
     my $pveceph_managed = !defined($scfg->{monhost});
 
@@ -120,9 +68,41 @@ my $ceph_connect_option = sub {
 	}
     }
 
-
     return $cmd_option;
 
+};
+
+my $build_cmd = sub {
+    my ($binary, $scfg, $storeid, $op, @options) = @_;
+
+    my $cmd_option = $ceph_connect_option->($scfg, $storeid);
+    my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
+
+    my $cmd = [$binary, '-p', $pool];
+
+    push @$cmd, '-c', $cmd_option->{ceph_conf} if ($cmd_option->{ceph_conf});
+    push @$cmd, '-m', $cmd_option->{mon_host} if ($cmd_option->{mon_host});
+    push @$cmd, '--auth_supported', $cmd_option->{auth_supported} if ($cmd_option->{auth_supported});
+    push @$cmd, '-n', "client.$cmd_option->{userid}" if ($cmd_option->{userid});
+    push @$cmd, '--keyring', $cmd_option->{keyring} if ($cmd_option->{keyring});
+
+    push @$cmd, $op;
+
+    push @$cmd, @options if scalar(@options);
+
+    return $cmd;
+};
+
+my $rbd_cmd = sub {
+    my ($scfg, $storeid, $op, @options) = @_;
+
+    return $build_cmd->('/usr/bin/rbd', $scfg, $storeid, $op, @options);
+};
+
+my $rados_cmd = sub {
+    my ($scfg, $storeid, $op, @options) = @_;
+
+    return $build_cmd->('/usr/bin/rados', $scfg, $storeid, $op, @options);
 };
 
 my $librados_connect = sub {
@@ -353,38 +333,25 @@ sub parse_volname {
 sub path {
     my ($class, $scfg, $volname, $storeid, $snapname) = @_;
 
+    my $cmd_option = $ceph_connect_option->($scfg, $storeid);
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
     $name .= '@'.$snapname if $snapname;
 
     my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
     return ("/dev/rbd/$pool/$name", $vmid, $vtype) if $scfg->{krbd};
 
-    my $username =  $scfg->{username} ? $scfg->{username} : 'admin';
-
     my $path = "rbd:$pool/$name";
-    my $pveceph_managed = !defined($scfg->{monhost});
-    my $keyring = "/etc/pve/priv/ceph/${storeid}.keyring";
 
-    if ($pveceph_managed) {
-	$path .= ":conf=$pveceph_config";
+    if ($cmd_option->{ceph_conf}) {
+	$path .= ":conf=$cmd_option->{ceph_conf}";
     } else {
-	my $monhost = $hostlist->($scfg->{monhost}, ';');
+	my $monhost = $cmd_option->{mon_host};
 	$monhost =~ s/:/\\:/g;
 	$path .= ":mon_host=$monhost";
-	$path .= -e $keyring ? ":auth_supported=cephx" : ":auth_supported=none";
+	$path .= ":auth_supported=$cmd_option->{auth_supported}";
     }
 
-    $path .= ":id=$username:keyring=$keyring" if -e $keyring;
-
-    my $cephconfig = "/etc/pve/priv/ceph/${storeid}.conf";
-
-    if (-e $cephconfig) {
-	if ($pveceph_managed) {
-	    warn "ignoring custom ceph config for storage '$storeid', 'monhost' is not set (assuming pveceph managed cluster)!\n";
-	} else {
-	    $path .= ":conf=$cephconfig";
-	}
-    }
+    $path .= ":id=$cmd_option->{userid}:keyring=$cmd_option->{keyring}" if ($cmd_option->{keyring});
 
     return ($path, $vmid, $vtype);
 }
