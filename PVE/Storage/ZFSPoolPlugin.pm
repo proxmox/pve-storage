@@ -211,9 +211,14 @@ sub alloc_image {
 	$class->zfs_create_zvol($scfg, $volname, $size);
 	my $devname = "/dev/zvol/$scfg->{pool}/$volname";
 
-	run_command("udevadm trigger --subsystem-match block");
-	system('udevadm', 'settle', '--timeout', '10', "--exit-if-exists=${devname}");
+	my $timeout = 10;
+	for (my $i = 1; $i <= $timeout; $i++) {
+	    last if -b $devname;
+	    die "Timeout: no zvol after $timeout sec found.\n"
+		if $i == $timeout;
 
+	    sleep(1);
+	}
     } elsif ( $fmt eq 'subvol') {
 
 	die "illegal name '$volname' - sould be 'subvol-$vmid-*'\n"
