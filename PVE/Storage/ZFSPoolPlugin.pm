@@ -211,7 +211,7 @@ sub alloc_image {
 	$class->zfs_create_zvol($scfg, $volname, $size);
 	my $devname = "/dev/zvol/$scfg->{pool}/$volname";
 
-	my $timeout = 10;
+	my $timeout = PVE::RPCEnvironment->is_worker() ? 60*5 : 10;
 	for (my $i = 1; $i <= $timeout; $i++) {
 	    last if -b $devname;
 	    die "Timeout: no zvol after $timeout sec found.\n"
