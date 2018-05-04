@@ -1,3 +1,9 @@
+libpve-storage-perl (5.0-20) unstable; urgency=medium
+
+  * fix #1750: correctly join monhost list for external RBD storages
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 04 May 2018 15:32:26 +0200
+
 libpve-storage-perl (5.0-19) unstable; urgency=medium
 
   * RBDPlugin: Fix #1542 - show storage utilization per pool
