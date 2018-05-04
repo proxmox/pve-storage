@@ -345,7 +345,7 @@ sub path {
     if ($cmd_option->{ceph_conf}) {
 	$path .= ":conf=$cmd_option->{ceph_conf}";
     } else {
-	my $monhost = $cmd_option->{mon_host};
+	my $monhost = $hostlist->($scfg->{monhost}, ';');
 	$monhost =~ s/:/\\:/g;
 	$path .= ":mon_host=$monhost";
 	$path .= ":auth_supported=$cmd_option->{auth_supported}";
