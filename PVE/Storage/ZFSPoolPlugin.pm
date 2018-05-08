@@ -203,7 +203,7 @@ sub alloc_image {
     
     if ($fmt eq 'raw') {
 
-	die "illegal name '$volname' - sould be 'vm-$vmid-*'\n"
+	die "illegal name '$volname' - should be 'vm-$vmid-*'\n"
 	    if $volname && $volname !~ m/^vm-$vmid-/;
 	$volname = $class->zfs_find_free_diskname($storeid, $scfg, $vmid, $fmt) 
 	    if !$volname;
@@ -221,12 +221,12 @@ sub alloc_image {
 	}
     } elsif ( $fmt eq 'subvol') {
 
-	die "illegal name '$volname' - sould be 'subvol-$vmid-*'\n"
+	die "illegal name '$volname' - should be 'subvol-$vmid-*'\n"
 	    if $volname && $volname !~ m/^subvol-$vmid-/;
 	$volname = $class->zfs_find_free_diskname($storeid, $scfg, $vmid, $fmt) 
 	    if !$volname;
 
-	die "illegal name '$volname' - sould be 'subvol-$vmid-*'\n"
+	die "illegal name '$volname' - should be 'subvol-$vmid-*'\n"
 	    if $volname !~ m/^subvol-$vmid-/;
 
 	$class->zfs_create_subvol($scfg, $volname, $size);	
