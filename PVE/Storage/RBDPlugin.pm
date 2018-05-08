@@ -47,7 +47,7 @@ my $ceph_connect_option = sub {
     my $keyring = "/etc/pve/priv/ceph/${storeid}.keyring";
     my $pveceph_managed = !defined($scfg->{monhost});
 
-    $cmd_option->{ceph_conf} = $pveceph_config if (-e $pveceph_config);
+    $cmd_option->{ceph_conf} = $pveceph_config if $pveceph_managed;
 
     if (-e $ceph_storeid_conf) {
 	if ($pveceph_managed) {
@@ -342,9 +342,8 @@ sub path {
 
     my $path = "rbd:$pool/$name";
 
-    if ($cmd_option->{ceph_conf}) {
-	$path .= ":conf=$cmd_option->{ceph_conf}";
-    } else {
+    $path .= ":conf=$cmd_option->{ceph_conf}" if $cmd_option->{ceph_conf};
+    if (defined($scfg->{monhost})) {
 	my $monhost = $hostlist->($scfg->{monhost}, ';');
 	$monhost =~ s/:/\\:/g;
 	$path .= ":mon_host=$monhost";
