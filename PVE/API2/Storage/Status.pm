@@ -334,7 +334,7 @@ __PACKAGE__->register_method ({
 	my $node = $param->{node};
 	my $scfg = PVE::Storage::storage_check_enabled($cfg, $param->{storage}, $node);
 
-	die "can't upload to storage type '$scfg->{type}'\n" 
+	die "can't upload to storage type '$scfg->{type}'\n"
 	    if !defined($scfg->{path});
 
 	my $content = $param->{content};
@@ -367,7 +367,7 @@ __PACKAGE__->register_method ({
 	    raise_param_exc({ content => "upload content type '$content' not allowed" });
 	}
 
-	die "storage '$param->{storage}' does not support '$content' content\n" 
+	die "storage '$param->{storage}' does not support '$content' content\n"
 	    if !$scfg->{content}->{$content};
 
 	my $dest = "$path/$filename";
