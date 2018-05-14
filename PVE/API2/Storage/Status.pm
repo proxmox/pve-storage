@@ -334,7 +334,7 @@ __PACKAGE__->register_method ({
 	my $node = $param->{node};
 	my $scfg = PVE::Storage::storage_check_enabled($cfg, $param->{storage}, $node);
 
-	die "cant upload to storage type '$scfg->{type}'\n" 
+	die "can't upload to storage type '$scfg->{type}'\n" 
 	    if !defined($scfg->{path});
 
 	my $content = $param->{content};
