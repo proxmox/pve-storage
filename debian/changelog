@@ -1,3 +1,9 @@
+libpve-storage-perl (5.0-23) unstable; urgency=medium
+
+  * cifs: fix uninitialized warning in check_connection
+
+ -- Proxmox Support Team <support@proxmox.com>  Wed, 16 May 2018 10:06:14 +0200
+
 libpve-storage-perl (5.0-22) unstable; urgency=medium
 
   * allow ISO uploads to CIFS storages
