@@ -198,9 +198,9 @@ sub deactivate_storage {
 sub check_connection {
     my ($class, $storeid, $scfg) = @_;
 
-    my $server = $scfg->{server};
+    my $servicename = '//'.$scfg->{server}.'/'.$scfg->{share};
 
-    my $cmd = ['/usr/bin/smbclient', '-L', $server, '-d', '0', '-m'];
+    my $cmd = ['/usr/bin/smbclient', $servicename, '-d', '0', '-m'];
 
     push @$cmd, $scfg->{smbversion} ? "smb".int($scfg->{smbversion}) : 'smb3';
 
@@ -210,6 +210,8 @@ sub check_connection {
     } else {
 	push @$cmd, '-U', 'Guest','-N';
     }
+
+    push @$cmd, '-c', 'echo 1 0';
 
     my $out_str;
     eval {
