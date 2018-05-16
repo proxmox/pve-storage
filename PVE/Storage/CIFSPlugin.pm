@@ -218,7 +218,8 @@ sub check_connection {
     };
 
     if (my $err = $@) {
-	die "$out_str\n" if ($out_str =~ m/NT_STATUS_ACCESS_DENIED/);
+	die "$out_str\n" if defined($out_str) &&
+	    ($out_str =~ m/NT_STATUS_ACCESS_DENIED/);
 	return 0;
     }
 
