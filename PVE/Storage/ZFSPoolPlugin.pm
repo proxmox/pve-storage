@@ -674,6 +674,8 @@ sub volume_export {
     die "$class storage can only export snapshots\n"
 	if !defined($snapshot);
 
+    my $dataset = ($class->parse_volname($volname))[1];
+
     my $fd = fileno($fh);
     die "internal error: invalid file handle for volume_export\n"
 	if !defined($fd);
@@ -687,7 +689,7 @@ sub volume_export {
 	my $arg = $with_snapshots ? '-I' : '-i';
 	push @$cmd, $arg, $base_snapshot;
     }
-    push @$cmd, '--', "$scfg->{pool}/$volname\@$snapshot";
+    push @$cmd, '--', "$scfg->{pool}/$dataset\@$snapshot";
 
     run_command($cmd, output => $fd);
 
@@ -714,7 +716,8 @@ sub volume_import {
     die "internal error: invalid file handle for volume_import\n"
 	if !defined($fd);
 
-    my $zfspath = "$scfg->{pool}/$volname";
+    my $dataset = ($class->parse_volname($volname))[1];
+    my $zfspath = "$scfg->{pool}/$dataset";
     my $suffix = defined($base_snapshot) ? "\@$base_snapshot" : '';
     my $exists = 0 == run_command(['zfs', 'get', '-H', 'name', $zfspath.$suffix],
 			     noerr => 1, errfunc => sub {});
