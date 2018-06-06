@@ -104,8 +104,9 @@ sub properties {
 	    maxLength => 256,
 	},
 	smbversion => {
-	    description => "",
+	    description => "SMB protokoll version",
 	    type => 'string',
+	    enum => ['2.0', '2.1', '3.0'],
 	    optional => 1,
 	},
     };
