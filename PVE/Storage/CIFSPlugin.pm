@@ -126,6 +126,7 @@ sub options {
 	password => { optional => 1},
 	domain => { optional => 1},
 	smbversion => { optional => 1},
+	mkdir => { optional => 1 },
     };
 }
 
@@ -168,7 +169,7 @@ sub activate_storage {
 
     if (!cifs_is_mounted($server, $share, $path, $cache->{mountdata})) {
 
-	mkpath $path;
+	mkpath $path if !(defined($scfg->{mkdir}) && !$scfg->{mkdir});
 
 	die "unable to activate storage '$storeid' - " .
 	    "directory '$path' does not exist\n" if ! -d $path;
