@@ -27,8 +27,21 @@ my $KNOWN_EXPORT_FORMATS = ['raw+size', 'tar+size', 'qcow2+size', 'vmdk+size', '
 
 my $nodename = PVE::INotify::nodename();
 
-sub read_password {
-    return PVE::PTY::read_password("Enter Password: ");
+sub param_mapping {
+    my ($name) = @_;
+
+    my $password_map = PVE::CLIHandler::get_standard_mapping('pve-password', {
+	func => sub {
+	    my ($value) = @_;
+	    return $value if $value;
+	    return PVE::PTY::read_password("Enter Password: ");
+	},
+    });
+    my $mapping = {
+	'cifsscan' => [ $password_map ],
+	'create' => [ $password_map ],
+    };
+    return $mapping->{$name};
 }
 
 sub setup_environment {
