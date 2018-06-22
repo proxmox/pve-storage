@@ -103,7 +103,7 @@ __PACKAGE__->register_method ({
 	    storage => get_standard_option('pve-storage-id'),
 	},
     },
-    returns => {},
+    returns => { type => 'object' },
     code => sub {
 	my ($param) = @_;
 
