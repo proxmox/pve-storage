@@ -154,6 +154,8 @@ __PACKAGE__->register_method ({
 
 		$cfg->{ids}->{$storeid} = $opts;
 
+		my $cred_file = undef;
+
 		if ($type eq 'lvm' && $opts->{base}) {
 
 		    my ($baseid, $volname) = PVE::Storage::parse_volume_id($opts->{base});
@@ -186,11 +188,11 @@ __PACKAGE__->register_method ({
 			unlink $ceph_storage_keyring;
 			die "failed to copy ceph authx keyring for storage '$storeid': $err\n";
 		    }
+		} elsif ($type eq 'cifs' && defined($password)) {
+		    # create a password file in /etc/pve/priv,
+		    # this file is used as a cert_file at mount time.
+		    $cred_file = PVE::Storage::CIFSPlugin::cifs_set_credentials($password, $storeid);
 		}
-		# create a password file in /etc/pve/priv,
-		# this file is used as a cert_file at mount time.
-		my $cred_file = PVE::Storage::CIFSPlugin::cifs_set_credentials($password, $storeid)
-		    if $type eq 'cifs' && defined($password);
 
 		eval {
 		    # try to activate if enabled on local node,
