@@ -133,8 +133,15 @@ __PACKAGE__->register_method ({
 	# fix me in section config create never need an empty entity.
 	delete $param->{nodes} if !$param->{nodes};
 
-	my $password = extract_param($param, 'password')
-	    if $type eq 'cifs' && $param->{username};
+	my $password;
+	# always extract pw, else it gets written to the www-data readable scfg
+	if (my $tmp_pw = extract_param($param, 'password')) {
+	    if ($type eq 'cifs' && $param->{username}) {
+		$password = $tmp_pw;
+	    } else {
+		warn "ignore password parameter\n";
+	    }
+	}
 
 	if ($param->{portal}) {
 	    $param->{portal} = PVE::Storage::resolv_portal($param->{portal});
