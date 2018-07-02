@@ -208,6 +208,28 @@ sub options {
 
 # Storage implementation
 
+sub on_add_hook {
+    my ($class, $storeid, $scfg, %param) = @_;
+
+    if (my $base = $scfg->{base}) {
+	my ($baseid, $volname) = PVE::Storage::parse_volume_id($base);
+
+	my $cfg = PVE::Storage::config();
+	my $basecfg = PVE::Storage::storage_config ($cfg, $baseid, 1);
+	die "base storage ID '$baseid' does not exist\n" if !$basecfg;
+
+	# we only support iscsi for now
+	die "unsupported base type '$basecfg->{type}'"
+	    if $basecfg->{type} ne 'iscsi';
+
+	my $path = PVE::Storage::path($cfg, $base);
+
+	PVE::Storage::activate_storage($cfg, $baseid);
+
+	lvm_create_volume_group($path, $scfg->{vgname}, $scfg->{shared});
+    }
+}
+
 sub parse_volname {
     my ($class, $volname) = @_;
 

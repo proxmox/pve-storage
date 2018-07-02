@@ -165,25 +165,6 @@ __PACKAGE__->register_method ({
 
 		my $cred_file = undef;
 
-		if ($type eq 'lvm' && $opts->{base}) {
-
-		    my ($baseid, $volname) = PVE::Storage::parse_volume_id($opts->{base});
-
-		    my $basecfg = PVE::Storage::storage_config ($cfg, $baseid, 1);
-		    die "base storage ID '$baseid' does not exist\n" if !$basecfg;
-       
-		    # we only support iscsi for now
-		    if (!($basecfg->{type} eq 'iscsi')) {
-			die "unsupported base type '$basecfg->{type}'";
-		    }
-
-		    my $path = PVE::Storage::path($cfg, $opts->{base});
-
-		    PVE::Storage::activate_storage($cfg, $baseid);
-
-		    PVE::Storage::LVMPlugin::lvm_create_volume_group($path, $opts->{vgname}, $opts->{shared});
-		}
-
 		eval {
 		    # try to activate if enabled on local node,
 		    # we only do this to detect errors/problems sooner
