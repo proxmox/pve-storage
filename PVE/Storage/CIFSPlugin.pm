@@ -141,6 +141,23 @@ sub check_config {
 
 # Storage implementation
 
+sub on_add_hook {
+    my ($class, $storeid, $scfg, %param) = @_;
+
+    if (my $password = $param{password}) {
+	cifs_set_credentials($password, $storeid);
+    }
+}
+
+sub on_delete_hook {
+    my ($class, $storeid, $scfg) = @_;
+
+    my $cred_file = cifs_cred_file_name($storeid);
+    if (-f $cred_file) {
+	unlink($cred_file) or warn "removing cifs credientials '$cred_file' failed: $!\n";
+    }
+}
+
 sub status {
     my ($class, $storeid, $scfg, $cache) = @_;
 

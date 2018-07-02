@@ -197,10 +197,6 @@ __PACKAGE__->register_method ({
 			unlink $ceph_storage_keyring;
 			die "failed to copy ceph authx keyring for storage '$storeid': $err\n";
 		    }
-		} elsif ($type eq 'cifs' && defined($password)) {
-		    # create a password file in /etc/pve/priv,
-		    # this file is used as a cert_file at mount time.
-		    $cred_file = PVE::Storage::CIFSPlugin::cifs_set_credentials($password, $storeid);
 		}
 
 		eval {
@@ -301,12 +297,7 @@ __PACKAGE__->register_method ({
 
 		$plugin->on_delete_hook($storeid, $scfg);
 
-		if ($scfg->{type} eq 'cifs')  {
-		    my $cred_file = PVE::Storage::CIFSPlugin::cifs_cred_file_name($storeid);
-		    if (-f $cred_file) {
-			unlink($cred_file) or warn "removing cifs credientials '$cred_file' failed: $!\n";
-		    }
-		} elsif ($scfg->{type} eq 'rbd' && !defined($scfg->{monhost})) {
+		if ($scfg->{type} eq 'rbd' && !defined($scfg->{monhost})) {
 		    my $ceph_storage_keyring = "/etc/pve/priv/ceph/${storeid}.keyring";
 		    if (-f $ceph_storage_keyring) {
 			unlink($ceph_storage_keyring) or warn "removing keyring of storage failed: $!\n";
