@@ -352,6 +352,26 @@ sub parse_config {
 
 # Storage implementation
 
+# called during addition of storage (before the new storage config got written)
+# die to abort additon if there are (grave) problems
+# NOTE: runs in a storage config *locked* context
+sub on_add_hook {
+    my ($class, $storeid, $scfg, %param) = @_;
+
+    # do nothing by default
+}
+
+# called during deletion of storage (before the new storage config got written)
+# and if the activate check on addition fails, to cleanup all storage traces
+# which on_add_hook may have created.
+# die to abort deletion if there are (very grave) problems
+# NOTE: runs in a storage config *locked* context
+sub on_delete_hook {
+    my ($class, $storeid, $scfg) = @_;
+
+    # do nothing by default
+}
+
 sub cluster_lock_storage {
     my ($class, $storeid, $shared, $timeout, $func, @param) = @_;
 

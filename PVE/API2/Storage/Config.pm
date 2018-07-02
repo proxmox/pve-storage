@@ -161,6 +161,8 @@ __PACKAGE__->register_method ({
 
 		$cfg->{ids}->{$storeid} = $opts;
 
+		$plugin->on_add_hook($storeid, $opts, password => $password);
+
 		my $cred_file = undef;
 
 		if ($type eq 'lvm' && $opts->{base}) {
@@ -209,6 +211,8 @@ __PACKAGE__->register_method ({
 		    }
 		};
 		if(my $err = $@) {
+		    eval { $plugin->on_delete_hook($storeid, $opts) };
+		    warn "$@\n" if $@;
 		    unlink $cred_file if defined($cred_file);
 		    die $err;
 		}
@@ -292,6 +296,10 @@ __PACKAGE__->register_method ({
 
 		die "can't remove storage - storage is used as base of another storage\n"
 		    if PVE::Storage::storage_is_used($cfg, $storeid);
+
+		my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
+
+		$plugin->on_delete_hook($storeid, $scfg);
 
 		if ($scfg->{type} eq 'cifs')  {
 		    my $cred_file = PVE::Storage::CIFSPlugin::cifs_cred_file_name($storeid);
