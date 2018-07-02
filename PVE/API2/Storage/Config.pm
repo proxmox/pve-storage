@@ -163,8 +163,6 @@ __PACKAGE__->register_method ({
 
 		$plugin->on_add_hook($storeid, $opts, password => $password);
 
-		my $cred_file = undef;
-
 		eval {
 		    # try to activate if enabled on local node,
 		    # we only do this to detect errors/problems sooner
@@ -175,7 +173,6 @@ __PACKAGE__->register_method ({
 		if(my $err = $@) {
 		    eval { $plugin->on_delete_hook($storeid, $opts) };
 		    warn "$@\n" if $@;
-		    unlink $cred_file if defined($cred_file);
 		    die $err;
 		}
 
