@@ -5,35 +5,6 @@ use warnings;
 use Net::IP;
 use PVE::Tools qw(run_command);
 
-my $ceph_check_keyfile = sub {
-    my ($filename, $scfg) = @_;
-
-    if (-f $filename) {
-	my $content = PVE::Tools::file_get_contents($filename);
-	my @lines = split /\n/, $content;
-
-	my $section;
-
-	foreach my $line (@lines) {
-	    next if !$line;
-
-	    $section = $1 if $line =~ m/^\[(\S+)\]$/;
-
-	    if ($scfg->{type} eq 'rbd') {
-		if ((!$section) && (!$section =~ m/^$/)) {
-		    warn "Not a proper $scfg->{type} authentication file: $filename\n";
-		}
-	    } elsif ($scfg->{type} eq 'cephfs') {
-		if ($section || ($line =~ s/^\s+//)) {
-		    warn "Not a proper $scfg->{type} authentication file: $filename\n";
-		}
-	    }
-	}
-    }
-
-    return undef;
-};
-
 my $parse_ceph_file = sub {
     my ($filename) = @_;
 
@@ -104,6 +75,26 @@ sub hostlist {
     } @monhostlist);
 }
 
+my $ceph_check_keyfile = sub {
+    my ($filename, $type) = @_;
+
+    return if ! -f $filename;
+
+    my $content = PVE::Tools::file_get_contents($filename);
+    eval {
+	die if !$content;
+
+	if ($type eq 'rbd') {
+	    die if $content !~ /\s*\[\S+\]\s*key\s*=\s*\S+==\s*$/m;
+	} elsif ($type eq 'cephfs') {
+	    die if $content !~ /\S+==\s*$/;
+	}
+    };
+    die "Not a proper $type authentication file: $filename\n" if $@;
+
+    return undef;
+};
+
 sub ceph_connect_option {
     my ($scfg, $storeid, %options) = @_;
 
@@ -116,9 +107,7 @@ sub ceph_connect_option {
 
     $cmd_option->{ceph_conf} = $pveceph_config if $pveceph_managed;
 
-    if (-e $keyfile) {
-	$ceph_check_keyfile->($keyfile, $scfg);
-    }
+    $ceph_check_keyfile->($keyfile, $scfg->{type});
 
     if (-e $ceph_storeid_conf) {
 	if ($pveceph_managed) {
