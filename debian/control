@@ -28,6 +28,7 @@ Depends: cstream,
          udev,
          smbclient,
          ceph-common,
+         ceph-fuse,
          cifs-utils,
          ${perl:Depends},
 Description: Proxmox VE storage management library

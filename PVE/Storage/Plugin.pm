@@ -24,6 +24,7 @@ our @SHARED_STORAGE = (
     'nfs',
     'cifs',
     'rbd',
+    'cephfs',
     'sheepdog',
     'iscsidirect',
     'glusterfs',

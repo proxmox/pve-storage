@@ -34,6 +34,64 @@ my $ceph_check_keyfile = sub {
     return undef;
 };
 
+my $parse_ceph_file = sub {
+    my ($filename) = @_;
+
+    my $cfg = {};
+
+    return $cfg if ! -f $filename;
+
+    my $content = PVE::Tools::file_get_contents($filename);
+    my @lines = split /\n/, $content;
+
+    my $section;
+
+    foreach my $line (@lines) {
+	$line =~ s/[;#].*$//;
+	$line =~ s/^\s+//;
+	$line =~ s/\s+$//;
+	next if !$line;
+
+	$section = $1 if $line =~ m/^\[(\S+)\]$/;
+	if (!$section) {
+	    warn "no section - skip: $line\n";
+	    next;
+	}
+
+	if ($line =~ m/^(.*?\S)\s*=\s*(\S.*)$/) {
+	    $cfg->{$section}->{$1} = $2;
+	}
+
+    }
+
+    return $cfg;
+};
+
+my $ceph_get_key = sub {
+    my ($keyfile, $username) = @_;
+
+    my $key = $parse_ceph_file->($keyfile);
+    my $secret = $key->{"client.$username"}->{key};
+
+    return $secret;
+};
+
+sub get_monaddr_list {
+    my ($configfile) = shift;
+
+    my $server;
+
+    if (!defined($configfile)) {
+	warn "No ceph config specified\n";
+	return;
+    }
+
+    my $config = $parse_ceph_file->($configfile);
+    @$server = sort map { $config->{$_}->{'mon addr'} } grep {/mon/} %{$config};
+
+    return join(',', @$server);
+};
+
 sub hostlist {
     my ($list_text, $separator) = @_;
 
@@ -83,6 +141,50 @@ sub ceph_connect_option {
 
     return $cmd_option;
 
+}
+
+sub ceph_create_keyfile {
+    my ($type, $storeid) = @_;
+
+    my $extension = 'keyring';
+    $extension = 'secret' if ($type eq 'cephfs');
+
+    my $ceph_admin_keyring = '/etc/pve/priv/ceph.client.admin.keyring';
+    my $ceph_storage_keyring = "/etc/pve/priv/ceph/${storeid}.$extension";
+
+    die "ceph authx keyring file for storage '$storeid' already exists!\n"
+	if -e $ceph_storage_keyring;
+
+    if (-e $ceph_admin_keyring) {
+	eval {
+	    if ($type eq 'rbd') {
+		mkdir '/etc/pve/priv/ceph';
+		PVE::Tools::file_copy($ceph_admin_keyring, $ceph_storage_keyring);
+	    } elsif ($type eq 'cephfs') {
+		my $secret = $ceph_get_key->($ceph_admin_keyring, 'admin');
+		mkdir '/etc/pve/priv/ceph';
+		PVE::Tools::file_set_contents($ceph_storage_keyring, $secret, 0400);
+	   }
+	};
+	if (my $err = $@) {
+	   unlink $ceph_storage_keyring;
+	   die "failed to copy ceph authx $extension for storage '$storeid': $err\n";
+	}
+    } else {
+	warn "$ceph_admin_keyring not found, authentication is disabled.\n";
+    }
+}
+
+sub ceph_remove_keyfile {
+    my ($type, $storeid) = @_;
+
+    my $extension = 'keyring';
+    $extension = 'secret' if ($type eq 'cephfs');
+    my $ceph_storage_keyring = "/etc/pve/priv/ceph/${storeid}.$extension";
+
+    if (-f $ceph_storage_keyring) {
+	unlink($ceph_storage_keyring) or warn "removing keyring of storage failed: $!\n";
+    }
 }
 
 1;
