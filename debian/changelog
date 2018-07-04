@@ -1,3 +1,15 @@
+libpve-storage-perl (5.0-24) unstable; urgency=medium
+
+  * fix #1770: allow ex/import linked clones.
+
+  * CIFS: add mkdir option allowing to switch off path creation
+
+  * storage plugin api: add on_add and on_delete hooks
+
+  * add CephFS storage plugin
+
+ -- Proxmox Support Team <support@proxmox.com>  Wed, 04 Jul 2018 17:02:48 +0200
+
 libpve-storage-perl (5.0-23) unstable; urgency=medium
 
   * cifs: fix uninitialized warning in check_connection
