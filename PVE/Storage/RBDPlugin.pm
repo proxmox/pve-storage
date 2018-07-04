@@ -8,6 +8,7 @@ use PVE::Tools qw(run_command trim);
 use PVE::Storage::Plugin;
 use PVE::JSONSchema qw(get_standard_option);
 use PVE::RADOS;
+use PVE::Storage::CephTools;
 
 use base qw(PVE::Storage::Plugin);
 
@@ -26,56 +27,10 @@ my $add_pool_to_disk = sub {
     return "$pool/$disk";
 };
 
-my $hostlist = sub {
-    my ($list_text, $separator) = @_;
-
-    my @monhostlist = PVE::Tools::split_list($list_text);
-    return join($separator, map {
-	my ($host, $port) = PVE::Tools::parse_host_and_port($_);
-	$port = defined($port) ? ":$port" : '';
-	$host = "[$host]" if Net::IP::ip_is_ipv6($host);
-	"${host}${port}"
-    } @monhostlist);
-};
-
-my $ceph_connect_option = sub {
-    my ($scfg, $storeid, %options) = @_;
-
-    my $cmd_option = {};
-    my $ceph_storeid_conf = "/etc/pve/priv/ceph/${storeid}.conf";
-    my $pveceph_config = '/etc/pve/ceph.conf';
-    my $keyring = "/etc/pve/priv/ceph/${storeid}.keyring";
-    my $pveceph_managed = !defined($scfg->{monhost});
-
-    $cmd_option->{ceph_conf} = $pveceph_config if $pveceph_managed;
-
-    if (-e $ceph_storeid_conf) {
-	if ($pveceph_managed) {
-	    warn "ignoring custom ceph config for storage '$storeid', 'monhost' is not set (assuming pveceph managed cluster)!\n";
-	} else {
-	    $cmd_option->{ceph_conf} = $ceph_storeid_conf;
-	}
-    }
-
-    $cmd_option->{keyring} = $keyring if (-e $keyring);
-    $cmd_option->{auth_supported} = (defined $cmd_option->{keyring}) ? 'cephx' : 'none';
-    $cmd_option->{userid} =  $scfg->{username} ? $scfg->{username} : 'admin';
-    $cmd_option->{mon_host} = $hostlist->($scfg->{monhost}, ',') if (defined($scfg->{monhost}));
-
-    if (%options) {
-	foreach my $k (keys %options) {
-	    $cmd_option->{$k} = $options{$k};
-	}
-    }
-
-    return $cmd_option;
-
-};
-
 my $build_cmd = sub {
     my ($binary, $scfg, $storeid, $op, @options) = @_;
 
-    my $cmd_option = $ceph_connect_option->($scfg, $storeid);
+    my $cmd_option = PVE::Storage::CephTools::ceph_connect_option($scfg, $storeid);
     my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
 
     my $cmd = [$binary, '-p', $pool];
@@ -108,7 +63,7 @@ my $rados_cmd = sub {
 my $librados_connect = sub {
     my ($scfg, $storeid, $options) = @_;
 
-    my $librados_config = $ceph_connect_option->($scfg, $storeid);
+    my $librados_config = PVE::Storage::CephTools::ceph_connect_option($scfg, $storeid);
 
     my $rados = PVE::RADOS->new(%$librados_config);
 
@@ -367,7 +322,7 @@ sub parse_volname {
 sub path {
     my ($class, $scfg, $volname, $storeid, $snapname) = @_;
 
-    my $cmd_option = $ceph_connect_option->($scfg, $storeid);
+    my $cmd_option = PVE::Storage::CephTools::ceph_connect_option($scfg, $storeid);
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
     $name .= '@'.$snapname if $snapname;
 
@@ -378,7 +333,7 @@ sub path {
 
     $path .= ":conf=$cmd_option->{ceph_conf}" if $cmd_option->{ceph_conf};
     if (defined($scfg->{monhost})) {
-	my $monhost = $hostlist->($scfg->{monhost}, ';');
+	my $monhost = PVE::Storage::CephTools::hostlist($scfg->{monhost}, ';');
 	$monhost =~ s/:/\\:/g;
 	$path .= ":mon_host=$monhost";
 	$path .= ":auth_supported=$cmd_option->{auth_supported}";
