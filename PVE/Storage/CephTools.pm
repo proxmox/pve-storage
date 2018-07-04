@@ -5,6 +5,35 @@ use warnings;
 use Net::IP;
 use PVE::Tools qw(run_command);
 
+my $ceph_check_keyfile = sub {
+    my ($filename, $scfg) = @_;
+
+    if (-f $filename) {
+	my $content = PVE::Tools::file_get_contents($filename);
+	my @lines = split /\n/, $content;
+
+	my $section;
+
+	foreach my $line (@lines) {
+	    next if !$line;
+
+	    $section = $1 if $line =~ m/^\[(\S+)\]$/;
+
+	    if ($scfg->{type} eq 'rbd') {
+		if ((!$section) && (!$section =~ m/^$/)) {
+		    warn "Not a proper $scfg->{type} authentication file: $filename\n";
+		}
+	    } elsif ($scfg->{type} eq 'cephfs') {
+		if ($section || ($line =~ s/^\s+//)) {
+		    warn "Not a proper $scfg->{type} authentication file: $filename\n";
+		}
+	    }
+	}
+    }
+
+    return undef;
+};
+
 sub hostlist {
     my ($list_text, $separator) = @_;
 
@@ -28,6 +57,10 @@ sub ceph_connect_option {
     my $pveceph_managed = !defined($scfg->{monhost});
 
     $cmd_option->{ceph_conf} = $pveceph_config if $pveceph_managed;
+
+    if (-e $keyfile) {
+	$ceph_check_keyfile->($keyfile, $scfg);
+    }
 
     if (-e $ceph_storeid_conf) {
 	if ($pveceph_managed) {
