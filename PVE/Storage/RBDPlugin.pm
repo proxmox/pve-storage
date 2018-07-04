@@ -280,21 +280,7 @@ sub on_add_hook {
 
     return if defined($scfg->{monhost}); # nothing to do if not pve managed ceph
 
-    my $ceph_admin_keyring = '/etc/pve/priv/ceph.client.admin.keyring';
-    my $ceph_storage_keyring = "/etc/pve/priv/ceph/${storeid}.keyring";
-
-    die "ceph authx keyring file for storage '$storeid' already exists!\n"
-	if -e $ceph_storage_keyring;
-
-    eval {
-	mkdir '/etc/pve/priv/ceph';
-	PVE::Tools::file_copy($ceph_admin_keyring, $ceph_storage_keyring);
-    };
-    if (my $err = $@) {
-	unlink $ceph_storage_keyring;
-	die "failed to copy ceph authx keyring for storage '$storeid': $err\n";
-    }
-
+    PVE::Storage::CephTools::ceph_create_keyfile($scfg->{type}, $storeid);
 }
 
 sub on_delete_hook {
@@ -302,11 +288,7 @@ sub on_delete_hook {
 
     return if defined($scfg->{monhost}); # nothing to do if not pve managed ceph
 
-    my $ceph_storage_keyring = "/etc/pve/priv/ceph/${storeid}.keyring";
-    if (-f $ceph_storage_keyring) {
-	unlink($ceph_storage_keyring) or warn "removing keyring of storage failed: $!\n";
-    }
-
+    PVE::Storage::CephTools::ceph_remove_keyfile($scfg->{type}, $storeid);
 }
 
 sub parse_volname {
