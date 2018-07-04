@@ -2,9 +2,11 @@ package PVE::Storage::CephFSPlugin;
 
 use strict;
 use warnings;
+
 use IO::File;
 use Net::IP;
 use File::Path;
+
 use PVE::Tools qw(run_command);
 use PVE::ProcFSTools;
 use PVE::Storage::Plugin;
@@ -59,7 +61,7 @@ sub cephfs_mount {
 	    push @$cmd, '-r', $subdir if !($subdir =~ m|^/$|);
 	    push @$cmd, $mountpoint;
 	    push @$cmd, '--conf', $configfile if defined($configfile);
-    }else {
+    } else {
 	my $source = "$server:$subdir";
 	$cmd = ['/bin/mount', '-t', 'ceph', $source, $mountpoint, '-o', "name=$cmd_option->{userid}"];
 	push @$cmd, '-o', "secretfile=$secretfile" if defined($secretfile);
@@ -139,14 +141,12 @@ sub on_delete_hook {
     return if defined($scfg->{monhost}); # nothing to do if not pve managed ceph
 
     PVE::Storage::CephTools::ceph_remove_keyfile($scfg->{type}, $storeid);
-
 }
 
 sub status {
     my ($class, $storeid, $scfg, $cache) = @_;
 
-    $cache->{mountdata} = PVE::ProcFSTools::parse_proc_mounts()
-	if !$cache->{mountdata};
+    $cache->{mountdata} //= PVE::ProcFSTools::parse_proc_mounts();
 
     return undef if !cephfs_is_mounted($scfg, $storeid, $cache->{mountdata});
 
@@ -156,15 +156,11 @@ sub status {
 sub activate_storage {
     my ($class, $storeid, $scfg, $cache) = @_;
 
-    $cache->{mountdata} = PVE::ProcFSTools::parse_proc_mounts()
-	if !$cache->{mountdata};
+    $cache->{mountdata} //= PVE::ProcFSTools::parse_proc_mounts();
 
-    my $path = $scfg->{path};
-
+    # NOTE: mkpath may hang if storage is mounted but not reachable
     if (!cephfs_is_mounted($scfg, $storeid, $cache->{mountdata})) {
-
-	# NOTE: only call mkpath when not mounted (avoid hang
-	# when cephfs is offline
+	my $path = $scfg->{path};
 
 	mkpath $path if !(defined($scfg->{mkdir}) && !$scfg->{mkdir});
 
@@ -180,14 +176,12 @@ sub activate_storage {
 sub deactivate_storage {
     my ($class, $storeid, $scfg, $cache) = @_;
 
-    $cache->{mountdata} = PVE::ProcFSTools::parse_proc_mounts()
-	if !$cache->{mountdata};
+    $cache->{mountdata} //= PVE::ProcFSTools::parse_proc_mounts();
 
     my $path = $scfg->{path};
 
     if (cephfs_is_mounted($scfg, $storeid, $cache->{mountdata})) {
-	my $cmd = ['/bin/umount', $path];
-	run_command($cmd, errmsg => 'umount error');
+	run_command(['/bin/umount', $path], errmsg => 'umount error');
     }
 }
 
