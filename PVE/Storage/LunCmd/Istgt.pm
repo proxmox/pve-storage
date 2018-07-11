@@ -6,8 +6,8 @@ package PVE::Storage::LunCmd::Istgt;
 
 use strict;
 use warnings;
+
 use PVE::Tools qw(run_command file_read_firstline trim dir_glob_regex dir_glob_foreach);
-use Data::Dumper;
 
 my @CONFIG_FILES = (
     '/usr/local/etc/istgt/istgt.conf',  # FreeBSD, FreeNAS

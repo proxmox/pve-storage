@@ -2,9 +2,9 @@ package PVE::Storage::DRBDPlugin;
 
 use strict;
 use warnings;
+
 use IO::File;
 use Net::DBus;
-use Data::Dumper;
 
 use PVE::Tools qw(run_command trim);
 use PVE::INotify;

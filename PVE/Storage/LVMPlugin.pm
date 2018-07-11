@@ -2,8 +2,9 @@ package PVE::Storage::LVMPlugin;
 
 use strict;
 use warnings;
-use Data::Dumper;
+
 use IO::File;
+
 use PVE::Tools qw(run_command trim);
 use PVE::Storage::Plugin;
 use PVE::JSONSchema qw(get_standard_option);

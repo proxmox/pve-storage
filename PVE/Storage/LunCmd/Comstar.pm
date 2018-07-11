@@ -2,9 +2,9 @@ package PVE::Storage::LunCmd::Comstar;
 
 use strict;
 use warnings;
+
 use Digest::MD5 qw(md5_hex);
 use PVE::Tools qw(run_command file_read_firstline trim dir_glob_regex dir_glob_foreach);
-use Data::Dumper;
 
 my @ssh_opts = ('-o', 'BatchMode=yes');
 my @ssh_cmd = ('/usr/bin/ssh', @ssh_opts);

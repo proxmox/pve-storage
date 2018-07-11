@@ -2,8 +2,9 @@ package PVE::Storage::LvmThinPlugin;
 
 use strict;
 use warnings;
-use Data::Dumper;
+
 use IO::File;
+
 use PVE::Tools qw(run_command trim);
 use PVE::Storage::Plugin;
 use PVE::Storage::LVMPlugin;

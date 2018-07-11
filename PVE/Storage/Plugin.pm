@@ -2,13 +2,13 @@ package PVE::Storage::Plugin;
 
 use strict;
 use warnings;
+
 use File::chdir;
 use File::Path;
+
 use PVE::Tools qw(run_command);
 use PVE::JSONSchema qw(get_standard_option);
 use PVE::Cluster qw(cfs_register_file);
-
-use Data::Dumper;
 
 use base qw(PVE::SectionConfig);
 
