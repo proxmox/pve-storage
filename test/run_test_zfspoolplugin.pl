@@ -2658,6 +2658,11 @@ sub volume_is_base {
     return $isBase;
 }
 
+if ($> != 0) { #EUID
+    warn "not root, skipping zfs tests\n";
+    exit 0;
+}
+
 eval { run_command("zpool status"); };
 if ($@) {
     warn "zpool status failed, not running tests: $@\n";
