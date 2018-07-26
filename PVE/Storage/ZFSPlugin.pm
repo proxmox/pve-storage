@@ -12,6 +12,7 @@ use base qw(PVE::Storage::ZFSPoolPlugin);
 use PVE::Storage::LunCmd::Comstar;
 use PVE::Storage::LunCmd::Istgt;
 use PVE::Storage::LunCmd::Iet;
+use PVE::Storage::LunCmd::LIO;
 
 
 my @ssh_opts = ('-o', 'BatchMode=yes');
@@ -31,7 +32,7 @@ my $lun_cmds = {
 my $zfs_unknown_scsi_provider = sub {
     my ($provider) = @_;
 
-    die "$provider: unknown iscsi provider. Available [comstar, istgt, iet]";
+    die "$provider: unknown iscsi provider. Available [comstar, istgt, iet, LIO]";
 };
 
 my $zfs_get_base = sub {
@@ -43,6 +44,8 @@ my $zfs_get_base = sub {
         return PVE::Storage::LunCmd::Istgt::get_base;
     } elsif ($scfg->{iscsiprovider} eq 'iet') {
         return PVE::Storage::LunCmd::Iet::get_base;
+    } elsif ($scfg->{iscsiprovider} eq 'LIO') {
+        return PVE::Storage::LunCmd::LIO::get_base;
     } else {
         $zfs_unknown_scsi_provider->($scfg->{iscsiprovider});
     }
@@ -63,6 +66,8 @@ sub zfs_request {
             $msg = PVE::Storage::LunCmd::Istgt::run_lun_command($scfg, $timeout, $method, @params);
         } elsif ($scfg->{iscsiprovider} eq 'iet') {
             $msg = PVE::Storage::LunCmd::Iet::run_lun_command($scfg, $timeout, $method, @params);
+        } elsif ($scfg->{iscsiprovider} eq 'LIO') {
+            $msg = PVE::Storage::LunCmd::LIO::run_lun_command($scfg, $timeout, $method, @params);
         } else {
             $zfs_unknown_scsi_provider->($scfg->{iscsiprovider});
         }
@@ -188,6 +193,10 @@ sub properties {
 	    description => "host group for comstar views",
 	    type => 'string',
 	},
+	lio_tpg => {
+	    description => "target portal group for Linux LIO targets",
+	    type => 'string',
+	},
     };
 }
 
@@ -204,6 +213,7 @@ sub options {
 	sparse => { optional => 1 },
 	comstar_hg => { optional => 1 },
 	comstar_tg => { optional => 1 },
+	lio_tpg => { optional => 1 },
 	content => { optional => 1 },
 	bwlimit => { optional => 1 },
     };
