@@ -67,6 +67,18 @@ __PACKAGE__->register_method ({
 	additionalProperties => 0,
 	properties => {
 	    node => get_standard_option('pve-node'),
+	    skipsmart => {
+		description => "Skip smart checks.",
+		type => 'boolean',
+		optional => 1,
+		default => 0,
+	    },
+	    type => {
+		description => "Only list specific types of disks.",
+		type => 'string',
+		enum => ['unused', 'journal_disks'],
+		optional => 1,
+	    },
 	},
     },
     returns => {
@@ -93,12 +105,23 @@ __PACKAGE__->register_method ({
     code => sub {
 	my ($param) = @_;
 
-	my $disks = PVE::Diskmanage::get_disks();
+	my $skipsmart = $param->{skipsmart} // 0;
 
+	my $disks = PVE::Diskmanage::get_disks(undef, $skipsmart);
+
+	my $type = $param->{type} // '';
 	my $result = [];
 
 	foreach my $disk (sort keys %$disks) {
 	    my $entry = $disks->{$disk};
+	    if ($type eq 'journal_disks') {
+		next if $entry->{osdid} >= 0;
+		next if !$entry->{gpt};
+	    } elsif ($type eq 'unused') {
+		next if $entry->{used};
+	    } elsif ($type ne '') {
+		die "internal error"; # should not happen
+	    }
 	    push @$result, $entry;
 	}
 	return $result;
