@@ -10,6 +10,7 @@ use PVE::JSONSchema qw(get_standard_option);
 
 use PVE::API2::Disks::LVM;
 use PVE::API2::Disks::LVMThin;
+use PVE::API2::Disks::Directory;
 
 use PVE::RESTHandler;
 
@@ -23,6 +24,11 @@ __PACKAGE__->register_method ({
 __PACKAGE__->register_method ({
    subclass => "PVE::API2::Disks::LVMThin",
    path => 'lvmthin',
+});
+
+__PACKAGE__->register_method ({
+   subclass => "PVE::API2::Disks::Directory",
+   path => 'directory',
 });
 
 __PACKAGE__->register_method ({
@@ -55,6 +61,7 @@ __PACKAGE__->register_method ({
 	    { name => 'smart' },
 	    { name => 'lvm' },
 	    { name => 'lvmthin' },
+	    { name => 'directory' },
 	    ];
 
 	return $result;

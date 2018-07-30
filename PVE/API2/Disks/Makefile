@@ -1,6 +1,7 @@
 
 SOURCES= LVM.pm\
-	 LVMThin.pm
+	 LVMThin.pm\
+	 Directory.pm
 
 .PHONY: install
 install:
