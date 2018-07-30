@@ -180,9 +180,13 @@ sub list_thinpools {
     my $lvs = PVE::Storage::LVMPlugin::lvm_list_volumes($vg);
     my $thinpools = [];
 
-    foreach my $lvname (keys %{$lvs->{$vg}}) {
-	next if $lvs->{$vg}->{$lvname}->{lv_type} ne 't';
-	push @$thinpools, { lv => $lvname };
+    foreach my $vg (keys %$lvs) {
+	foreach my $lvname (keys %{$lvs->{$vg}}) {
+	    next if $lvs->{$vg}->{$lvname}->{lv_type} ne 't';
+	    my $lv = $lvs->{$vg}->{$lvname};
+	    $lv->{lv} = $lvname;
+	    push @$thinpools, $lv;
+	}
     }
 
     return $thinpools;
