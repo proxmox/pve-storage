@@ -137,7 +137,7 @@ sub lvm_list_volumes {
 
     my $cmd = ['/sbin/lvs', '--separator', ':', '--noheadings', '--units', 'b',
 	       '--unbuffered', '--nosuffix', '--options',
-	       'vg_name,lv_name,lv_size,lv_attr,pool_lv,data_percent,metadata_percent,snap_percent,uuid,tags'];
+	       'vg_name,lv_name,lv_size,lv_attr,pool_lv,data_percent,metadata_percent,snap_percent,uuid,tags,metadata_size'];
 
     push @$cmd, $vgname if $vgname;
 
@@ -147,7 +147,7 @@ sub lvm_list_volumes {
 
 	$line = trim($line);
 
-	my ($vg_name, $lv_name, $lv_size, $lv_attr, $pool_lv, $data_percent, $meta_percent, $snap_percent, $uuid, $tags) = split(':', $line);
+	my ($vg_name, $lv_name, $lv_size, $lv_attr, $pool_lv, $data_percent, $meta_percent, $snap_percent, $uuid, $tags, $meta_size) = split(':', $line);
 	return if !$vg_name;
 	return if !$lv_name;
 
@@ -164,6 +164,8 @@ sub lvm_list_volumes {
 	    $data_percent ||= 0;
 	    $meta_percent ||= 0;
 	    $snap_percent ||= 0;
+	    $d->{metadata_size} = int($meta_size);
+	    $d->{metadata_used} = int(($meta_percent * $meta_size)/100);
 	    $d->{used} = int(($data_percent * $lv_size)/100);
 	}
 	$lvs->{$vg_name}->{$lv_name} = $d;
