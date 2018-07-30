@@ -89,10 +89,18 @@ sub lvm_create_volume_group {
 }
 
 sub lvm_vgs {
+    my ($includepvs) = @_;
 
     my $cmd = ['/sbin/vgs', '--separator', ':', '--noheadings', '--units', 'b',
-	       '--unbuffered', '--nosuffix', '--options',
-	       'vg_name,vg_size,vg_free'];
+	       '--unbuffered', '--nosuffix', '--options'];
+
+    my $cols = [qw(vg_name vg_size vg_free lv_count)];
+
+    if ($includepvs) {
+	push @$cols, qw(pv_name pv_size pv_free);
+    }
+
+    push @$cmd, join(',', @$cols);
 
     my $vgs = {};
     eval {
@@ -101,9 +109,18 @@ sub lvm_vgs {
 
 	    $line = trim($line);
 
-	    my ($name, $size, $free) = split (':', $line);
+	    my ($name, $size, $free, $lvcount, $pvname, $pvsize, $pvfree) = split (':', $line);
 
-	    $vgs->{$name} = { size => int ($size), free => int ($free) };
+	    $vgs->{$name} = { size => int ($size), free => int ($free), lvcount => int($lvcount) }
+		if !$vgs->{$name};
+
+	    if (defined($pvname) && defined($pvsize) && defined($pvfree)) {
+		push @{$vgs->{$name}->{pvs}}, {
+		    name => $pvname,
+		    size => int($pvsize),
+		    free => int($pvfree),
+		};
+	    }
         });
     };
     my $err = $@;
