@@ -8,11 +8,16 @@ use PVE::Diskmanage;
 use HTTP::Status qw(:constants);
 use PVE::JSONSchema qw(get_standard_option);
 
+use PVE::API2::Disks::LVM;
+
 use PVE::RESTHandler;
 
 use base qw(PVE::RESTHandler);
 
-use Data::Dumper;
+__PACKAGE__->register_method ({
+   subclass => "PVE::API2::Disks::LVM",
+   path => 'lvm',
+});
 
 __PACKAGE__->register_method ({
     name => 'index',
@@ -42,6 +47,7 @@ __PACKAGE__->register_method ({
 	    { name => 'list' },
 	    { name => 'initgpt' },
 	    { name => 'smart' },
+	    { name => 'lvm' },
 	    ];
 
 	return $result;
