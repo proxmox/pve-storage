@@ -1,6 +1,6 @@
 package PVE::Storage::LunCmd::LIO;
 
-# lightly based on code from Iet.pm 
+# lightly based on code from Iet.pm
 #
 # additional changes:
 # -----------------------------------------------------------------
@@ -10,12 +10,12 @@ package PVE::Storage::LunCmd::LIO;
 # This software is released under the terms of the
 #
 #            "GNU Affero General Public License"
-# 
+#
 # and may only be distributed and used under the terms of the
 # mentioned license. You should have received a copy of the license
 # along with this software product, if not you can download it from
 # https://www.gnu.org/licenses/agpl-3.0.en.html
-# 
+#
 # Author: udo.rader@bestsolution.at
 # -----------------------------------------------------------------
 
@@ -29,7 +29,7 @@ sub get_base;
 # targetcli constants
 # config file location differs from distro to distro
 my @CONFIG_FILES = (
-	'/etc/rtslib-fb-target/saveconfig.json',	# Debian 9.x et al	
+	'/etc/rtslib-fb-target/saveconfig.json',	# Debian 9.x et al
 	'/etc/target/saveconfig.json' ,			# ArchLinux, CentOS
 );
 my $BACKSTORE = '/backstores/block';
@@ -187,7 +187,7 @@ my $free_lu_name = sub {
     $SETTINGS->{target}->{luns} = $new;
 };
 
-# locally registers a new lun 
+# locally registers a new lun
 my $register_lun = sub {
     my ($scfg, $idx, $volname) = @_;
 
@@ -283,7 +283,7 @@ my $create_lun = sub {
 
     $register_lun->($scfg, $lun_idx, $volname);
 
-    # step 3: unfortunately, targetcli doesn't always save changes, no matter 
+    # step 3: unfortunately, targetcli doesn't always save changes, no matter
     #         if auto_save_on_exit is true or not. So saving to be safe ...
     $execute_remote_command->($scfg, $timeout, $targetcli, 'saveconfig');
 
