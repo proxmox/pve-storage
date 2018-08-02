@@ -68,18 +68,18 @@ my $execute_remote_command = sub {
     $cmd = [@ssh_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", $target, '--', $remote_command, @params];
 
     eval {
-        run_command($cmd, outfunc => $output, errfunc => $errfunc, timeout => $timeout);
+	run_command($cmd, outfunc => $output, errfunc => $errfunc, timeout => $timeout);
     };
     if ($@) {
-        $res = {
-            result => 0,
-            msg => $err,
-        }
+	$res = {
+	    result => 0,
+	    msg => $err,
+	}
     } else {
-        $res = {
-            result => 1,
-            msg => $msg,
-        }
+	$res = {
+	    result => 1,
+	    msg => $msg,
+	}
     }
 
     return $res;
@@ -110,14 +110,14 @@ my $read_config = sub {
     $target = 'root@' . $scfg->{portal};
 
     foreach my $oneFile (@CONFIG_FILES) {
-        my $cmd = [@ssh_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", $target, $luncmd, $oneFile];
-        eval {
-            run_command($cmd, outfunc => $output, errfunc => $errfunc, timeout => $timeout);
-        };
-        if ($@) {
-            die $err if ($err !~ /No such file or directory/);
-        }
-        return $msg if $msg ne '';
+	my $cmd = [@ssh_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", $target, $luncmd, $oneFile];
+	eval {
+	    run_command($cmd, outfunc => $output, errfunc => $errfunc, timeout => $timeout);
+	};
+	if ($@) {
+	    die $err if ($err !~ /No such file or directory/);
+	}
+	return $msg if $msg ne '';
     }
 
     die "No configuration found. Install targetcli on $scfg->{portal}\n" if $msg eq '';
@@ -179,9 +179,9 @@ my $free_lu_name = sub {
     my $new;
 
     foreach my $lun (@{$SETTINGS->{target}->{luns}}) {
-        if ($lun->{storage_object} ne "$BACKSTORE/$lu_name") {
-            push @$new, $lun;
-        }
+	if ($lun->{storage_object} ne "$BACKSTORE/$lu_name") {
+	    push @$new, $lun;
+	}
     }
 
     $SETTINGS->{target}->{luns} = $new;
@@ -192,9 +192,9 @@ my $register_lun = sub {
     my ($scfg, $idx, $volname) = @_;
 
     my $conf = {
-        index => $idx,
-        storage_object => "$BACKSTORE/$volname",
-        is_new => 1,
+	index => $idx,
+	storage_object => "$BACKSTORE/$volname",
+	is_new => 1,
     };
     push @{$SETTINGS->{target}->{luns}}, $conf;
 
@@ -223,9 +223,9 @@ my $list_view = sub {
     my $volname = $extract_volname->($scfg, $params[0]);
 
     foreach my $lun (@{$SETTINGS->{target}->{luns}}) {
-        if ($lun->{storage_object} eq "$BACKSTORE/$volname") {
-            return $lun->{index};
-        }
+	if ($lun->{storage_object} eq "$BACKSTORE/$volname") {
+	    return $lun->{index};
+	}
     }
 
     return $lun;
@@ -240,9 +240,9 @@ my $list_lun = sub {
     my $volname = $extract_volname->($scfg, $params[0]);
 
     foreach my $lun (@{$SETTINGS->{target}->{luns}}) {
-        if ($lun->{storage_object} eq "$BACKSTORE/$volname") {
-            return $object;
-        }
+	if ($lun->{storage_object} eq "$BACKSTORE/$volname") {
+	    return $object;
+	}
     }
 
     return $name;
@@ -253,7 +253,7 @@ my $create_lun = sub {
     my ($scfg, $timeout, $method, @params) = @_;
 
     if ($list_lun->($scfg, $timeout, $method, @params)) {
-        die "$params[0]: LUN already exists!";
+	die "$params[0]: LUN already exists!";
     }
 
     my $device = $params[0];
@@ -276,9 +276,9 @@ my $create_lun = sub {
     # changed without our knowledge, so relying on the number that targetcli returns
     my $lun_idx;
     if ($res->{msg} =~ /LUN (\d+)/) {
-        $lun_idx = $1;
+	$lun_idx = $1;
     } else {
-        die "unable to determine new LUN index: $res->{msg}";
+	die "unable to determine new LUN index: $res->{msg}";
     }
 
     $register_lun->($scfg, $lun_idx, $volname);
@@ -341,7 +341,7 @@ my $modify_lun = sub {
 
     $msg = $delete_lun->($scfg, $timeout, $method, @params);
     if ($msg) {
-        $msg = $create_lun->($scfg, $timeout, $method, @params);
+	$msg = $create_lun->($scfg, $timeout, $method, @params);
     }
 
     return $msg;
@@ -369,9 +369,9 @@ sub run_lun_command {
     # fetch configuration from target if we haven't yet
     # or if our configuration is stale
     my $timediff = time - $SETTINGS_TIMESTAMP;
-    if ( ! $SETTINGS || $timediff > $SETTINGS_MAXAGE ) {
-        $SETTINGS_TIMESTAMP = time;
-        $parser->($scfg);
+    if (!$SETTINGS || $timediff > $SETTINGS_MAXAGE) {
+	$SETTINGS_TIMESTAMP = time;
+	$parser->($scfg);
     }
 
     die "unknown command '$method'" unless exists $lun_cmd_map{$method};
