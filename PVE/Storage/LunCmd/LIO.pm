@@ -139,16 +139,15 @@ my $parser = sub {
     my $jsonconfig = JSON->new->utf8->decode($config);
 
     my $haveTarget = 0;
-    foreach my $oneTarget (@{$jsonconfig->{targets}}) {
+    foreach my $target (@{$jsonconfig->{targets}}) {
 	# only interested in iSCSI targets
-        if ($oneTarget->{fabric} eq 'iscsi' && $oneTarget->{wwn} eq $scfg->{target}) {
-	    # find correct TPG
-	    foreach my $oneTpg (@{$oneTarget->{tpgs}}) {
-                if ($oneTpg->{tag} == $tpg_tag) {
-                    $SETTINGS->{target} = $oneTpg;
-                    $haveTarget = 1;
-                    last;
-		}
+	next if !($target->{fabric} eq 'iscsi' && $target->{wwn} eq $scfg->{target});
+	# find correct TPG
+	foreach my $tpg (@{$target->{tpgs}}) {
+	    if ($tpg->{tag} == $tpg_tag) {
+		$SETTINGS->{target} = $tpg;
+		$haveTarget = 1;
+		last;
 	    }
 	}
     }
@@ -162,8 +161,8 @@ my $parser = sub {
 # removes the given lu_name from the local list of luns
 my $free_lu_name = sub {
     my ($lu_name) = @_;
-    my $new;
 
+    my $new = [];
     foreach my $lun (@{$SETTINGS->{target}->{luns}}) {
 	if ($lun->{storage_object} ne "$BACKSTORE/$lu_name") {
 	    push @$new, $lun;
@@ -286,29 +285,29 @@ my $delete_lun = sub {
     my $volname = $extract_volname->($scfg, $params[0]);
 
     foreach my $lun (@{$SETTINGS->{target}->{luns}}) {
-        if ($lun->{storage_object} eq "$BACKSTORE/$volname") {
-            # step 1: delete the lun
-            my @cliparams = ("/iscsi/$scfg->{target}/$tpg/luns/", 'delete', "lun$lun->{index}" );
-            my $res = $execute_remote_command->($scfg, $timeout, $targetcli, @cliparams);
-            do {
-                die $res->{msg};
-            } unless $res->{result};
+	next if $lun->{storage_object} ne "$BACKSTORE/$volname";
 
-            # step 2: delete the backstore
-            @cliparams = ($BACKSTORE, 'delete', $volname);
-            $res = $execute_remote_command->($scfg, $timeout, $targetcli, @cliparams);
-            do {
-                die $res->{msg};
-            } unless $res->{result};
+	# step 1: delete the lun
+	my @cliparams = ("/iscsi/$scfg->{target}/$tpg/luns/", 'delete', "lun$lun->{index}" );
+	my $res = $execute_remote_command->($scfg, $timeout, $targetcli, @cliparams);
+	do {
+	    die $res->{msg};
+	} unless $res->{result};
 
-            # step 3: save to be safe ...
-            $execute_remote_command->($scfg, $timeout, $targetcli, 'saveconfig');
+	# step 2: delete the backstore
+	@cliparams = ($BACKSTORE, 'delete', $volname);
+	$res = $execute_remote_command->($scfg, $timeout, $targetcli, @cliparams);
+	do {
+	    die $res->{msg};
+	} unless $res->{result};
 
-            # update interal cache
-            $free_lu_name->($volname);
+	# step 3: save to be safe ...
+	$execute_remote_command->($scfg, $timeout, $targetcli, 'saveconfig');
 
-            last;
-        }
+	# update interal cache
+	$free_lu_name->($volname);
+
+	last;
     }
 
     return $res->{msg};
@@ -352,8 +351,7 @@ my %lun_cmd_map = (
 sub run_lun_command {
     my ($scfg, $timeout, $method, @params) = @_;
 
-    # fetch configuration from target if we haven't yet
-    # or if our configuration is stale
+    # fetch configuration from target if we haven't yet or if it is stale
     my $timediff = time - $SETTINGS_TIMESTAMP;
     if (!$SETTINGS || $timediff > $SETTINGS_MAXAGE) {
 	$SETTINGS_TIMESTAMP = time;
