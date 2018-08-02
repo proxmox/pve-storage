@@ -169,7 +169,7 @@ __PACKAGE__->register_method ({
 		}
 	    });
 
-	    die "$@" if $@;
+	    die $@ if $@;
 	};
 
 	return $rpcenv->fork_worker('lvmcreate', $name, $user, $worker);
