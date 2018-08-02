@@ -54,15 +54,8 @@ my $execute_remote_command = sub {
 
     $timeout = 10 if !$timeout;
 
-    my $output = sub {
-        my $line = shift;
-        $msg .= "$line\n";
-    };
-
-    my $errfunc = sub {
-        my $line = shift;
-        $err .= "$line";
-    };
+    my $output = sub { $msg .= "$_[0]\n" };
+    my $errfunc = sub { $err .= "$_[0]\n" };
 
     $target = 'root@' . $scfg->{portal};
     $cmd = [@ssh_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", $target, '--', $remote_command, @params];
@@ -97,15 +90,8 @@ my $read_config = sub {
 
     $timeout = 10 if !$timeout;
 
-    my $output = sub {
-        my $line = shift;
-        $msg .= "$line\n";
-    };
-
-    my $errfunc = sub {
-        my $line = shift;
-        $err .= "$line";
-    };
+    my $output = sub { $msg .= "$_[0]\n" };
+    my $errfunc = sub { $err .= "$_[0]\n" };
 
     $target = 'root@' . $scfg->{portal};
 
