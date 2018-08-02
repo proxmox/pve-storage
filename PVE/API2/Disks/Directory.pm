@@ -110,7 +110,7 @@ __PACKAGE__->register_method ({
 	    properties => {
 		unitfile => {
 		    type => 'string',
-		    description => 'The path of the mount unit'.,
+		    description => 'The path of the mount unit.',
 		},
 		path => {
 		    type => 'string',
