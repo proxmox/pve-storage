@@ -293,18 +293,21 @@ sub lvm_find_free_diskname {
 
     my $name;
 
-    for (my $i = 1; $i < 100; $i++) {
-	my $tn = "vm-$vmid-disk-$i";
-	if (!defined ($lvs->{$vg}->{$tn})) {
-	    $name = $tn;
-	    last;
+    my $disk_ids = {};
+    my @vols = keys(%{$lvs->{$vg}});
+
+    foreach my $vol (@vols) {
+	if ($vol =~ m/(vm|base)-\Q$vmid\E-disk-(\d+)/){
+	    $disk_ids->{$2} = 1;
 	}
     }
 
-    die "unable to allocate an image name for ID $vmid in storage '$storeid'\n"
-	if !$name;
+    for (my $i = 1; $i < 100; $i++) {
+	return "vm-$vmid-disk-$i" if !$disk_ids->{$i};
+    }
 
-    return $name;
+    die "unable to allocate an image name for ID $vmid in storage '$storeid'\n";
+
 }
 
 sub alloc_image {
