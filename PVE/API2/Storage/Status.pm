@@ -63,7 +63,7 @@ __PACKAGE__->register_method ({
 		optional => 1,
 		completion => \&PVE::Cluster::get_nodelist,
 	    }),
-	    format => {
+	    'format' => {
 		description => "Include information about formats",
 		type => 'boolean',
 		optional => 1,
@@ -75,7 +75,56 @@ __PACKAGE__->register_method ({
 	type => 'array',
 	items => {
 	    type => "object",
-	    properties => { storage => { type => 'string' } },
+	    properties => {
+		storage => get_standard_option('pve-storage-id'),
+		type => {
+		    description => "Storage type.",
+		    type => 'string',
+		},
+		content => {
+		    description => "Allowed storage content types.",
+		    type => 'string', format => 'pve-storage-content-list',
+		},
+		enabled => {
+		    description => "Set when storage is enabled (not disabled).",
+		    type => 'boolean',
+		    optional => 1,
+		},
+		active => {
+		    description => "Set when storage is accessible.",
+		    type => 'boolean',
+		    optional => 1,
+		},
+		shared => {
+		    description => "Shared flag from storage configuration.",
+		    type => 'boolean',
+		    optional => 1,
+		},
+		total => {
+		    description => "Total storage space in bytes.",
+		    type => 'integer',
+		    renderer => 'bytes',
+		    optional => 1,
+		},
+		used => {
+		    description => "Used storage space in bytes.",
+		    type => 'integer',
+		    renderer => 'bytes',
+		    optional => 1,
+		},
+		avail => {
+		    description => "Available storage space in bytes.",
+		    type => 'integer',
+		    renderer => 'bytes',
+		    optional => 1,
+		},
+		used_fraction => {
+		    description => "Used fraction (used/total).",
+		    type => 'number',
+		    renderer => 'fraction_as_percentage',
+		    optional => 1,
+		},
+	    },
 	},
 	links => [ { rel => 'child', href => "{storage}" } ],
     },
@@ -101,7 +150,8 @@ __PACKAGE__->register_method ({
 	my $res = {};
 	my @sids = PVE::Storage::storage_ids($cfg);
 	foreach my $storeid (@sids) {
-	    next if !$info->{$storeid};
+	    my $data = $info->{$storeid};
+	    next if !$data;
 	    my $privs = [ 'Datastore.Audit', 'Datastore.AllocateSpace' ];
 	    next if !$rpcenv->check_any($authuser, "/storage/$storeid", $privs, 1);
 	    next if $param->{storage} && $param->{storage} ne $storeid;
@@ -119,7 +169,11 @@ __PACKAGE__->register_method ({
 		next if !PVE::Storage::storage_check_node($cfg, $storeid, $target, 1);
 	    }
 
-	    $res->{$storeid} = $info->{$storeid};
+	    if ($data->{total}) {
+		$data->{used_fraction} = ($data->{used} // 0) / $data->{total};
+	    }
+
+	    $res->{$storeid} = $data;
 	}
 
 	return PVE::RESTHandler::hash_to_array($res, 'storage');
