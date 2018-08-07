@@ -135,7 +135,7 @@ __PACKAGE__->register_method ({
 	    die $@ if $@;
 	};
 
-	return $rpcenv->fork_worker('lvmcreate', $name, $user, $worker);
+	return $rpcenv->fork_worker('lvmthincreate', $name, $user, $worker);
     }});
 
 1;
