@@ -1,6 +1,7 @@
 
 SOURCES= LVM.pm\
 	 LVMThin.pm\
+	 ZFS.pm\
 	 Directory.pm
 
 .PHONY: install

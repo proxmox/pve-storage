@@ -11,6 +11,7 @@ use PVE::JSONSchema qw(get_standard_option);
 use PVE::API2::Disks::LVM;
 use PVE::API2::Disks::LVMThin;
 use PVE::API2::Disks::Directory;
+use PVE::API2::Disks::ZFS;
 
 use PVE::RESTHandler;
 
@@ -29,6 +30,11 @@ __PACKAGE__->register_method ({
 __PACKAGE__->register_method ({
    subclass => "PVE::API2::Disks::Directory",
    path => 'directory',
+});
+
+__PACKAGE__->register_method ({
+   subclass => "PVE::API2::Disks::ZFS",
+   path => 'zfs',
 });
 
 __PACKAGE__->register_method ({
@@ -62,6 +68,7 @@ __PACKAGE__->register_method ({
 	    { name => 'lvm' },
 	    { name => 'lvmthin' },
 	    { name => 'directory' },
+	    { name => 'zfs' },
 	    ];
 
 	return $result;
