@@ -237,8 +237,8 @@ __PACKAGE__->register_method ({
 	    name => get_standard_option('pve-storage-id'),
 	    raidlevel => {
 		type => 'string',
-		description => 'The RAID level to use, for single disk, use mirror.',
-		enum => ['mirror', 'raid10', 'raidz', 'raidz2', 'raidz3'],
+		description => 'The RAID level to use.',
+		enum => ['single', 'mirror', 'raid10', 'raidz', 'raidz2', 'raidz3'],
 	    },
 	    devices => {
 		type => 'string', format => 'string-list',
@@ -294,7 +294,8 @@ __PACKAGE__->register_method ({
 
 	my $numdisks = scalar(@$devs);
 	my $mindisks = {
-	    mirror => 1,
+	    single => 1,
+	    mirror => 2,
 	    raid10 => 4,
 	    raidz => 3,
 	    raidz2 => 4,
@@ -304,6 +305,9 @@ __PACKAGE__->register_method ({
 	# sanity checks
 	die "raid10 needs an even number of disks\n"
 	    if $raidlevel eq 'raid10' && $numdisks % 2 != 0;
+
+	die "please give only one disk for single disk mode\n"
+	    if $raidlevel eq 'single' && $numdisks > 1;
 
 	die "$raidlevel needs at least $mindisks->{$raidlevel} disks\n"
 	    if $numdisks < $mindisks->{$raidlevel};
@@ -318,6 +322,8 @@ __PACKAGE__->register_method ({
 		    for (my $i = 0; $i < @$devs; $i+=2) {
 			push @$cmd, 'mirror', $devs->[$i], $devs->[$i+1];
 		    }
+		} elsif ($raidlevel eq 'single') {
+		    push @$cmd, $devs->[0];
 		} else {
 		    push @$cmd, $raidlevel, @$devs;
 		}
