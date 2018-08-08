@@ -276,7 +276,7 @@ __PACKAGE__->register_method ({
 
 	my $name = $param->{name};
 	my $devs = [PVE::Tools::split_list($param->{devices})];
-	my $raidlvl = $param->{raidlevel};
+	my $raidlevel = $param->{raidlevel};
 	my $node = $param->{node};
 	my $ashift = $param->{ashift} // 12;
 	my $compression = $param->{compression} // 'on';
@@ -303,10 +303,10 @@ __PACKAGE__->register_method ({
 
 	# sanity checks
 	die "raid10 needs an even number of disks\n"
-	    if $raidlvl eq 'raid10' && $numdisks % 2 != 0;
+	    if $raidlevel eq 'raid10' && $numdisks % 2 != 0;
 
-	die "$raidlvl needs at least $mindisks->{$raidlvl} disks\n"
-	    if $numdisks < $mindisks->{$raidlvl};
+	die "$raidlevel needs at least $mindisks->{$raidlevel} disks\n"
+	    if $numdisks < $mindisks->{$raidlevel};
 
 	my $worker = sub {
 	    lock_file('/run/lock/pve-diskmanage.lck', 10, sub {
@@ -314,12 +314,12 @@ __PACKAGE__->register_method ({
 
 		my $cmd = [$ZPOOL, 'create', '-o', "ashift=$ashift", $name];
 
-		if ($raidlvl eq 'raid10') {
+		if ($raidlevel eq 'raid10') {
 		    for (my $i = 0; $i < @$devs; $i+=2) {
 			push @$cmd, 'mirror', $devs->[$i], $devs->[$i+1];
 		    }
 		} else {
-		    push @$cmd, $raidlvl, @$devs;
+		    push @$cmd, $raidlevel, @$devs;
 		}
 
 		print "# ", join(' ', @$cmd), "\n";
