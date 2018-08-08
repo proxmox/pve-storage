@@ -171,7 +171,7 @@ __PACKAGE__->register_method ({
 	    name => get_standard_option('pve-storage-id'),
 	    device => {
 		type => 'string',
-		description => 'The block device you want to create the thinpool on.',
+		description => 'The block device you want to create the filesystem on.',
 	    },
 	    add_storage => {
 		description => "Configure storage using the directory.",

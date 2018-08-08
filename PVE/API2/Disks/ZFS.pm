@@ -229,7 +229,7 @@ __PACKAGE__->register_method ({
     permissions => {
 	check => ['perm', '/', ['Sys.Modify', 'Datastore.Allocate']],
     },
-    description => "Create an LVM thinpool.",
+    description => "Create a ZFS pool.",
     parameters => {
 	additionalProperties => 0,
 	properties => {
@@ -242,7 +242,7 @@ __PACKAGE__->register_method ({
 	    },
 	    devices => {
 		type => 'string', format => 'string-list',
-		description => 'The block device you want to create the thinpool on.',
+		description => 'The block devices you want to create the zpool on.',
 	    },
 	    ashift => {
 		type => 'integer',
@@ -260,7 +260,7 @@ __PACKAGE__->register_method ({
 		default => 'on',
 	    },
 	    add_storage => {
-		description => "Configure storage using the thinpool.",
+		description => "Configure storage using the zpool.",
 		type => 'boolean',
 		optional => 1,
 		default => 0,
