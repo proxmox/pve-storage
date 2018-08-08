@@ -152,7 +152,7 @@ __PACKAGE__->register_method ({
 	die "device $dev is already in use\n" if PVE::Diskmanage::disk_is_used($dev);
 
 	my $worker = sub {
-	    my $res = lock_file('/run/lock/pve-diskmanage.lck', undef, sub {
+	    PVE::Diskmanage::locked_disk_action(sub {
 		PVE::Storage::LVMPlugin::lvm_create_volume_group($dev, $name);
 
 		if ($param->{add_storage}) {
@@ -168,8 +168,6 @@ __PACKAGE__->register_method ({
 		    PVE::API2::Storage::Config->create($storage_params);
 		}
 	    });
-
-	    die $@ if $@;
 	};
 
 	return $rpcenv->fork_worker('lvmcreate', $name, $user, $worker);

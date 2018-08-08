@@ -595,4 +595,11 @@ sub get_blockdev {
     return $block_dev;
 }
 
+sub locked_disk_action {
+    my ($sub) = @_;
+    my $res = PVE::Tools::lock_file('/run/lock/pve-diskmanage.lck', undef, $sub);
+    die $@ if $@;
+    return $res;
+}
+
 1;

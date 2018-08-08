@@ -214,7 +214,7 @@ __PACKAGE__->register_method ({
 	    my $mountunitname = "mnt-pve-$name.mount";
 	    my $mountunitpath = "/etc/systemd/system/$mountunitname";
 
-	    lock_file('/run/lock/pve-diskmanage.lck', undef, sub {
+	    PVE::Diskmanage::locked_disk_action(sub {
 		# create partition
 		my $cmd = [$SGDISK, '-n1', '-t1:8300', $dev];
 		print "# ", join(' ', @$cmd), "\n";
@@ -279,10 +279,7 @@ __PACKAGE__->register_method ({
 		    PVE::API2::Storage::Config->create($storage_params);
 		}
 	    });
-
-	    die $@ if $@;
 	};
-
 
 	return $rpcenv->fork_worker('dircreate', $name, $user, $worker);
     }});

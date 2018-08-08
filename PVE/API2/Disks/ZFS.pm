@@ -313,7 +313,7 @@ __PACKAGE__->register_method ({
 	    if $numdisks < $mindisks->{$raidlevel};
 
 	my $worker = sub {
-	    lock_file('/run/lock/pve-diskmanage.lck', 10, sub {
+	    PVE::Diskmanage::locked_disk_action(sub {
 		# create zpool with desired raidlevel
 
 		my $cmd = [$ZPOOL, 'create', '-o', "ashift=$ashift", $name];
@@ -347,9 +347,7 @@ __PACKAGE__->register_method ({
 		    PVE::API2::Storage::Config->create($storage_params);
 		}
 	    });
-	    die $@ if $@;
 	};
-
 
 	return $rpcenv->fork_worker('zfscreate', $name, $user, $worker);
     }});

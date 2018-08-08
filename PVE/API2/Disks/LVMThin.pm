@@ -112,7 +112,7 @@ __PACKAGE__->register_method ({
 	}
 
 	my $worker = sub {
-	    lock_file('/run/lock/pve-diskmanage.lck', undef, sub {
+	    PVE::Diskmanage::locked_disk_action(sub {
 		PVE::Storage::LVMPlugin::lvm_create_volume_group($dev, $name);
 
 		# create thinpool with size 100%, let lvm handle the metadata size
@@ -131,8 +131,6 @@ __PACKAGE__->register_method ({
 		    PVE::API2::Storage::Config->create($storage_params);
 		}
 	    });
-
-	    die $@ if $@;
 	};
 
 	return $rpcenv->fork_worker('lvmthincreate', $name, $user, $worker);
