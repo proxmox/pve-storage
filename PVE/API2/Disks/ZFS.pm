@@ -141,7 +141,65 @@ __PACKAGE__->register_method ({
 	},
     },
     returns => {
-	type => 'object'
+	type => 'object',
+	properties => {
+	    name => {
+		type => 'string',
+		description => 'The name of the zpool.',
+	    },
+	    state => {
+		type => 'string',
+		description => 'The state of the zpool.',
+	    },
+	    status => {
+		optional => 1,
+		type => 'string',
+		description => 'Information about the state of the zpool.',
+	    },
+	    action => {
+		optional => 1,
+		type => 'string',
+		description => 'Information about the recommended action to fix the state.',
+	    },
+	    scan => {
+		type => 'string',
+		description => 'Information about the last/current scrub.',
+	    },
+	    scan => {
+		type => 'string',
+		description => 'Information about the errors on the zpool.',
+	    },
+	    children => {
+		type => 'array',
+		description => "The tree of the vdevs. Depending on the configuration of the zpool, they can be nested.",
+		items => {
+		    type => 'object',
+		    properties => {
+			name => {
+			    type => 'string',
+			    description => 'The name of the vdev.',
+			},
+			state => {
+			    type => 'string',
+			    description => 'The state of the vdev.',
+			},
+			read => {
+			    type => 'number',
+			},
+			write => {
+			    type => 'number',
+			},
+			cksum => {
+			    type => 'number',
+			},
+			msg => {
+			    type => 'string',
+			    description => 'An optional message about the vdev.'
+			}
+		    },
+		},
+	    },
+	},
     },
     code => sub {
 	my ($param) = @_;
