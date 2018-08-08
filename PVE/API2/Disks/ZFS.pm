@@ -241,7 +241,7 @@ __PACKAGE__->register_method ({
 		enum => ['mirror', 'raid10', 'raidz', 'raidz2', 'raidz3'],
 	    },
 	    devices => {
-		type => 'string-list',
+		type => 'string', format => 'string-list',
 		description => 'The block device you want to create the thinpool on',
 	    },
 	    ashift => {
