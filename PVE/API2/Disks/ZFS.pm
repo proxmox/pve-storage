@@ -229,7 +229,7 @@ __PACKAGE__->register_method ({
     permissions => {
 	check => ['perm', '/', ['Sys.Modify', 'Datastore.Allocate']],
     },
-    description => "Create an LVM thinpool",
+    description => "Create an LVM thinpool.",
     parameters => {
 	additionalProperties => 0,
 	properties => {
@@ -242,7 +242,7 @@ __PACKAGE__->register_method ({
 	    },
 	    devices => {
 		type => 'string', format => 'string-list',
-		description => 'The block device you want to create the thinpool on',
+		description => 'The block device you want to create the thinpool on.',
 	    },
 	    ashift => {
 		type => 'integer',
@@ -250,7 +250,7 @@ __PACKAGE__->register_method ({
 		maximum => 16,
 		optional => 1,
 		default => 12,
-		description => 'Pool sector size exponent. '
+		description => 'Pool sector size exponent.',
 	    },
 	    compression => {
 		type => 'string',
@@ -260,7 +260,7 @@ __PACKAGE__->register_method ({
 		default => 'on',
 	    },
 	    add_storage => {
-		description => "Configure storage using the thinpool",
+		description => "Configure storage using the thinpool.",
 		type => 'boolean',
 		optional => 1,
 		default => 0,
