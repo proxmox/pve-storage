@@ -72,7 +72,10 @@ __PACKAGE__->register_method ({
 	items => {
 	    type => "object",
 	    properties => { 
-		pool => { type => 'string'},
+		pool => {
+		    description => "ZFS pool name.",
+		    type => 'string',
+		},
 	    },
 	},
     },
@@ -104,8 +107,14 @@ __PACKAGE__->register_method ({
 	items => {
 	    type => "object",
 	    properties => { 
-		path => { type => 'string'},
-		options => { type => 'string'},
+		path => {
+		    description => "The exported path.",
+		    type => 'string',
+		},
+		options => {
+		    description => "NFS export options.",
+		    type => 'string',
+		},
 	    },
 	},
     },
@@ -147,8 +156,14 @@ __PACKAGE__->register_method ({
 	items => {
 	    type => "object",
 	    properties => {
-		share => { type => 'string'},
-		description => { type => 'string'},
+		share => {
+		    description => "The cifs share name.",
+		    type => 'string',
+		},
+		description => {
+		    description => "Descriptive text from server.",
+		    type => 'string',
+		},
 	    },
 	},
     },
@@ -198,7 +213,10 @@ __PACKAGE__->register_method ({
 	items => {
 	    type => "object",
 	    properties => { 
-		volname => { type => 'string'},
+		volname => {
+		    description => "The volume name.",
+		    type => 'string',
+		},
 	    },
 	},
     },
@@ -239,8 +257,14 @@ __PACKAGE__->register_method ({
 	items => {
 	    type => "object",
 	    properties => { 
-		target => { type => 'string'},
-		portal => { type => 'string'},
+		target => {
+		    description => "The iSCSI target name.",
+		    type => 'string',
+		},
+		portal => {
+		    description => "The iSCSI portal name.",
+		    type => 'string',
+		},
 	    },
 	},
     },
@@ -277,8 +301,11 @@ __PACKAGE__->register_method ({
 	type => 'array',
 	items => {
 	    type => "object",
-	    properties => { 
-		vg => { type => 'string'},
+	    properties => {
+		vg => {
+		    description => "The LVM logical volume group name.",
+		    type => 'string',
+		},
 	    },
 	},
     },
@@ -315,7 +342,10 @@ __PACKAGE__->register_method ({
 	items => {
 	    type => "object",
 	    properties => {
-		lv => { type => 'string'},
+		lv => {
+		    description => "The LVM Thin Pool name (LVM logical volume).",
+		    type => 'string',
+		},
 	    },
 	},
     },
