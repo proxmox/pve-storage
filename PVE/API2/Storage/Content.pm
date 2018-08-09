@@ -50,9 +50,36 @@ __PACKAGE__->register_method ({
 	items => {
 	    type => "object",
 	    properties => { 
-		volid => { 
-		    type => 'string' 
-		} 
+		volid => {
+		    description => "Volume identifier.",
+		    type => 'string',
+		},
+		vmid => {
+		    description => "Associated Owner VMID.",
+		    type => 'integer',
+		    optional => 1,
+		},
+		parent => {
+		    description => "Volume identifier of parent (for linked cloned).",
+		    type => 'string',
+		    optional => 1,
+		},
+		'format' => {
+		    description => "Format identifier ('raw', 'qcow2', 'subvol', 'iso', 'tgz' ...)",
+		    type => 'string',
+		},
+		size => {
+		    description => "Volume size in bytes.",
+		    type => 'integer',
+		    renderer => 'bytes',
+		},
+		used => {
+		    description => "Used space. Please note that most storage plugins " .
+			"does not report anything useful here.",
+		    type => 'integer',
+		    renderer => 'bytes',
+		    optional => 1,
+		},
 	    },
 	},
 	links => [ { rel => 'child', href => "{volid}" } ],
