@@ -99,7 +99,10 @@ __PACKAGE__->register_method ({
     	additionalProperties => 0,
 	properties => {
 	    node => get_standard_option('pve-node'),
-	    server => { type => 'string', format => 'pve-storage-server' },
+	    server => {
+		description => "The server address (name or IP).",
+		type => 'string', format => 'pve-storage-server',
+	    },
 	},
     },
     returns => {
@@ -145,10 +148,25 @@ __PACKAGE__->register_method ({
 	additionalProperties => 0,
 	properties => {
 	    node => get_standard_option('pve-node'),
-	    server => { type => 'string', format => 'pve-storage-server' },
-	    username => { type => 'string', optional => 1 },
-	    password => { type => 'string', optional => 1 },
-	    domain => { type => 'string', optional => 1 },
+	    server => {
+		description => "The server address (name or IP).",
+		type => 'string', format => 'pve-storage-server',
+	    },
+	    username => {
+		description => "User name.",
+		type => 'string',
+		optional => 1,
+	    },
+	    password => {
+		description => "User password.",
+		type => 'string',
+		optional => 1,
+	    },
+	    domain => {
+		description => "SMB domain (Workgroup).",
+		type => 'string',
+		optional => 1,
+	    },
 	},
     },
     returns => {
@@ -205,7 +223,10 @@ __PACKAGE__->register_method ({
     	additionalProperties => 0,
 	properties => {
 	    node => get_standard_option('pve-node'),
-	    server => { type => 'string', format => 'pve-storage-server' },
+	    server => {
+		description => "The server address (name or IP).",
+		type => 'string', format => 'pve-storage-server',
+	    },
 	},
     },
     returns => {
@@ -249,7 +270,10 @@ __PACKAGE__->register_method ({
     	additionalProperties => 0,
 	properties => {
 	    node => get_standard_option('pve-node'),
-	    portal => { type => 'string', format => 'pve-storage-portal-dns' },
+	    portal => {
+		description => "The iSCSI portal (IP or DNS name with optional port).",
+		type => 'string', format => 'pve-storage-portal-dns',
+	    },
 	},
     },
     returns => {
