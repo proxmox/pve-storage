@@ -1,3 +1,15 @@
+libpve-storage-perl (5.0-25) unstable; urgency=medium
+
+  * add API for LVM, LVMThin, Directory storages and ZFS management
+
+  * add 'type' and 'skipsmart' options to /nodes/<NODE>/disks/list API call
+
+  * add Linux LIO/targetcli support
+
+  * Fix #1858: lvm_find_free_diskname check for base
+
+ -- Proxmox Support Team <support@proxmox.com>  Mon, 20 Aug 2018 14:41:28 +0200
+
 libpve-storage-perl (5.0-24) unstable; urgency=medium
 
   * fix #1770: allow ex/import linked clones.
