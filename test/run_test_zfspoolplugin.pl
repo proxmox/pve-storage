@@ -1,7 +1,10 @@
 #!/usr/bin/perl
 
+use lib '..';
+
 use strict;
 use warnings;
+
 use Data::Dumper qw(Dumper);
 use PVE::Storage;
 use PVE::Cluster;
