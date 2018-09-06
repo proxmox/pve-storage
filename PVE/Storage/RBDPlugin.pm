@@ -13,13 +13,6 @@ use JSON;
 
 use base qw(PVE::Storage::Plugin);
 
-my $rbd_unittobytes = {
-    "k"  => 1024,
-    "M"  => 1024*1024,
-    "G"  => 1024*1024*1024,
-    "T"  => 1024*1024*1024*1024,
-};
-
 my $get_parent_image_name = sub {
     my ($parent) = @_;
     return undef if !$parent;
