@@ -9,6 +9,7 @@ use PVE::Storage::Plugin;
 use PVE::JSONSchema qw(get_standard_option);
 use PVE::RADOS;
 use PVE::Storage::CephTools;
+use JSON;
 
 use base qw(PVE::Storage::Plugin);
 
@@ -17,6 +18,12 @@ my $rbd_unittobytes = {
     "M"  => 1024*1024,
     "G"  => 1024*1024*1024,
     "T"  => 1024*1024*1024*1024,
+};
+
+my $get_parent_image_name = sub {
+    my ($parent) = @_;
+    return undef if !$parent;
+    return $parent->{image} . "@" . $parent->{snapshot};
 };
 
 my $add_pool_to_disk = sub {
@@ -82,7 +89,7 @@ my $krbd_feature_disable = sub {
     my $krbd_feature_blacklist = ['deep-flatten', 'fast-diff', 'object-map', 'exclusive-lock'];
     my (undef, undef, undef, undef, $features) = rbd_volume_info($scfg, $storeid, $name);
 
-    my $active_features = { map { $_ => 1 } PVE::Tools::split_list($features)};
+    my $active_features = { map { $_ => 1 } $features };
     my $incompatible_features = join(',', grep { %$active_features{$_} } @$krbd_feature_blacklist);
 
     if ($incompatible_features) {
@@ -153,25 +160,13 @@ sub run_rbd_command {
 sub rbd_ls {
     my ($scfg, $storeid) = @_;
 
-    my $cmd = &$rbd_cmd($scfg, $storeid, 'ls', '-l');
+    my $cmd = &$rbd_cmd($scfg, $storeid, 'ls', '-l', '--format', 'json');
     my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
 
-    my $list = {};
+    my $raw = '';
 
     my $parser = sub {
-	my $line = shift;
-
-	if ($line =~  m/^((vm|base)-(\d+)-\S+)\s+(\d+)(k|M|G|T)\s((\S+)\/((vm|base)-\d+-\S+@\S+))?/) {
-	    my ($image, $owner, $size, $unit, $parent) = ($1, $3, $4, $5, $8);
-	    return if $image =~ /@/; #skip snapshots
-
-	    $list->{$pool}->{$image} = {
-		name => $image,
-		size => $size*$rbd_unittobytes->{$unit},
-		parent => $parent,
-		vmid => $owner
-	    };
-	}
+	$raw .= shift;
     };
 
     eval {
@@ -180,7 +175,26 @@ sub rbd_ls {
     my $err = $@;
 
     die $err if $err && $err !~ m/doesn't contain rbd images/ ;
-  
+
+    my $result = $raw ne '' ? JSON::decode_json($raw) : [];
+
+    my $list = {};
+
+    foreach my $el (@$result) {
+	next if defined($el->{snapshot});
+
+	my $image = $el->{image};
+
+	my ($owner) = $image =~ m/^(?:vm|base)-(\d+)-/;
+
+	$list->{$pool}->{$image} = {
+	    name => $image,
+	    size => $el->{size},
+	    parent => $get_parent_image_name->($el->{parent}),
+	    vmid => $owner
+	};
+    }
+
     return $list;
 }
 
@@ -189,11 +203,12 @@ sub rbd_volume_info {
 
     my $cmd = undef;
 
+    my @options = ('info', $volname, '--format', 'json');
     if($snap){
-       $cmd = &$rbd_cmd($scfg, $storeid, 'info', $volname, '--snap', $snap);
-    }else{
-       $cmd = &$rbd_cmd($scfg, $storeid, 'info', $volname);
+	push @options, '--snap', $snap;
     }
+
+    $cmd = &$rbd_cmd($scfg, $storeid, @options);
 
     my $size = undef;
     my $parent = undef;
@@ -201,26 +216,19 @@ sub rbd_volume_info {
     my $protected = undef;
     my $features = undef;
 
+    my $raw = '';
     my $parser = sub {
-	my $line = shift;
-
-	if ($line =~ m/size (\d+) (k|M|G|T)B in (\d+) objects/) {
-	    $size = $1 * $rbd_unittobytes->{$2} if ($1);
-	} elsif ($line =~ m/parent:\s(\S+)\/(\S+)/) {
-	    $parent = $2;
-	} elsif ($line =~ m/format:\s(\d+)/) {
-	    $format = $1;
-	} elsif ($line =~ m/protected:\s(\S+)/) {
-	    $protected = 1 if $1 eq "True";
-	} elsif ($line =~ m/features:\s(.+)/) {
-	    $features = $1;
-	}
-
+	$raw .= shift;
     };
 
     run_rbd_command($cmd, errmsg => "rbd error", errfunc => sub {}, outfunc => $parser);
+    my $volume = $raw ne '' ? JSON::decode_json($raw) : {};
+    $volume->{parent} = $get_parent_image_name->($volume->{parent});
+    if (defined($volume->{protected})) {
+	$volume->{protected} = $volume->{protected} eq "true" ? 1 : undef;
+    }
 
-    return ($size, $parent, $format, $protected, $features);
+    return $volume->@{qw(size parent format protected features)};
 }
 
 # Configuration
