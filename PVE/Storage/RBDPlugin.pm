@@ -157,10 +157,7 @@ sub rbd_ls {
     my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
 
     my $raw = '';
-
-    my $parser = sub {
-	$raw .= shift;
-    };
+    my $parser = sub { $raw .= shift };
 
     eval {
 	run_rbd_command($cmd, errmsg => "rbd error", errfunc => sub {}, outfunc => $parser);
@@ -197,29 +194,21 @@ sub rbd_volume_info {
     my $cmd = undef;
 
     my @options = ('info', $volname, '--format', 'json');
-    if($snap){
+    if ($snap) {
 	push @options, '--snap', $snap;
     }
 
     $cmd = &$rbd_cmd($scfg, $storeid, @options);
 
-    my $size = undef;
-    my $parent = undef;
-    my $format = undef;
-    my $protected = undef;
-    my $features = undef;
-
     my $raw = '';
-    my $parser = sub {
-	$raw .= shift;
-    };
+    my $parser = sub { $raw .= shift };
 
     run_rbd_command($cmd, errmsg => "rbd error", errfunc => sub {}, outfunc => $parser);
+
     my $volume = $raw ne '' ? JSON::decode_json($raw) : {};
+
     $volume->{parent} = $get_parent_image_name->($volume->{parent});
-    if (defined($volume->{protected})) {
-	$volume->{protected} = $volume->{protected} eq "true" ? 1 : undef;
-    }
+    $volume->{protected} = defined($volume->{protected}) && $volume->{protected} eq "true" ? 1 : undef;
 
     return $volume->@{qw(size parent format protected features)};
 }
