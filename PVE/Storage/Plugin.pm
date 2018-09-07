@@ -523,6 +523,49 @@ sub create_base {
     return $newvolname;
 }
 
+sub is_valid_vm_diskname {
+    my ($disk_name, $scfg, $vmid, $fmt, $add_fmt_suffix) = @_;
+
+    $vmid = qr/\d+/ if !defined($vmid);
+
+    my $suffix = (defined($fmt) && $add_fmt_suffix) ? ".$fmt" : '';
+
+    my $type = $scfg->{type};
+    my $def = $defaultData->{plugindata}->{$type};
+    my $valid_formats = $def->{format}[0];
+
+    my $disk_regex = qr/(vm|base)-$vmid-disk-(\d+)$suffix/;
+    $disk_regex = qr/(vm|base|subvol|basevol)-$vmid-disk-(\d+)/
+	if $valid_formats->{subvol};
+
+    if($disk_name =~ m/$disk_regex/){
+	return wantarray ? (1, $2) : 1;
+    }
+}
+
+sub get_next_vm_diskname {
+    my ($disk_list, $storeid, $vmid, $fmt, $scfg, $add_fmt_suffix) = @_;
+
+    my $disk_ids = {};
+    my ($match, $disknum);
+    foreach my $disk (@$disk_list) {
+	($match, $disknum) = is_valid_vm_diskname($disk,  $scfg, $vmid, $fmt, $add_fmt_suffix);
+	$disk_ids->{$disknum} = 1 if $match;
+    }
+
+    $fmt //= '';
+    my $prefix = ($fmt eq 'subvol') ? 'subvol' : 'vm';
+    my $suffix = $add_fmt_suffix ? ".$fmt" : '';
+
+    for (my $i = 1; $i < 100; $i++) {
+	if (!$disk_ids->{$i}) {
+	    return "$prefix-$vmid-disk-$i$suffix";
+	}
+    }
+
+    die "unable to allocate an image name for VM $vmid in storage '$storeid'\n"
+}
+
 my $find_free_diskname = sub {
     my ($imgdir, $vmid, $fmt) = @_;
 
