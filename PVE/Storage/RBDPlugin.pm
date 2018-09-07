@@ -176,6 +176,7 @@ sub rbd_ls {
 	my $image = $el->{image};
 
 	my ($owner) = $image =~ m/^(?:vm|base)-(\d+)-/;
+	next if !defined($owner);
 
 	$list->{$pool}->{$image} = {
 	    name => $image,
