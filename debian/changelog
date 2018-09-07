@@ -1,3 +1,10 @@
+libpve-storage-perl (5.0-26) unstable; urgency=medium
+
+  * fix #1895: add compatibility with ceph 12.2.8 by switching over to more
+    robust json output format for for 'rbd ls -l' and 'rbd info'
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 07 Sep 2018 13:56:36 +0200
+
 libpve-storage-perl (5.0-25) unstable; urgency=medium
 
   * add API for LVM, LVMThin, Directory storages and ZFS management
