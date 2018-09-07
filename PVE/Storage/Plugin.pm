@@ -31,6 +31,8 @@ our @SHARED_STORAGE = (
     'zfs',
     'drbd');
 
+our $MAX_VOLUMES_PER_GUEST = 1024;
+
 cfs_register_file ('storage.cfg',
 		   sub { __PACKAGE__->parse_config(@_); },
 		   sub { __PACKAGE__->write_config(@_); });
@@ -557,7 +559,7 @@ sub get_next_vm_diskname {
     my $prefix = ($fmt eq 'subvol') ? 'subvol' : 'vm';
     my $suffix = $add_fmt_suffix ? ".$fmt" : '';
 
-    for (my $i = 1; $i < 100; $i++) {
+    for (my $i = 1; $i < $MAX_VOLUMES_PER_GUEST; $i++) {
 	if (!$disk_ids->{$i}) {
 	    return "$prefix-$vmid-disk-$i$suffix";
 	}
