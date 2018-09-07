@@ -321,14 +321,11 @@ my $find_free_diskname = sub {
     my ($storeid, $scfg, $vmid) = @_;
 
     my $cmd = &$rbd_cmd($scfg, $storeid, 'ls');
-    my $disk_ids = {};
+    my $disk_list = [];
 
     my $parser = sub {
 	my $line = shift;
-
-	if ($line =~  m/^(vm|base)-\Q$vmid\E+-disk-(\d+)$/) {
-	    $disk_ids->{$2} = 1;
-	}
+	push @$disk_list, $line;
     };
 
     eval {
@@ -338,14 +335,7 @@ my $find_free_diskname = sub {
 
     die $err if $err && $err !~ m/doesn't contain rbd images/;
 
-    #fix: can we search in $rbd hash key with a regex to find (vm|base) ?
-    for (my $i = 1; $i < 100; $i++) {
-        if (!$disk_ids->{$i}) {
-            return "vm-$vmid-disk-$i";
-        }
-    }
-
-    die "unable to allocate an image name for VM $vmid in storage '$storeid'\n";
+    return PVE::Storage::Plugin::get_next_vm_diskname($disk_list, $storeid, $vmid, undef, $scfg);
 };
 
 sub create_base {
@@ -401,7 +391,7 @@ sub clone_image {
     die "$volname is not a base image and snapname is not provided\n" 
 	if !$isBase && !length($snapname);
 
-    my $name = &$find_free_diskname($storeid, $scfg, $vmid);
+    my $name = $find_free_diskname->($storeid, $scfg, $vmid);
 
     warn "clone $volname: $basename snapname $snap to $name\n";
 
@@ -434,7 +424,7 @@ sub alloc_image {
     die "illegal name '$name' - should be 'vm-$vmid-*'\n"
 	if  $name && $name !~ m/^vm-$vmid-/;
 
-    $name = &$find_free_diskname($storeid, $scfg, $vmid) if !$name;
+    $name = $find_free_diskname->($storeid, $scfg, $vmid) if !$name;
 
     my $cmd = &$rbd_cmd($scfg, $storeid, 'create', '--image-format' , 2, '--size', int(($size+1023)/1024), $name);
     run_rbd_command($cmd, errmsg => "rbd create $name' error");

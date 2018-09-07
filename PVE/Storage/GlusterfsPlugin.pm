@@ -162,23 +162,14 @@ sub parse_name_dir {
 }
 
 my $find_free_diskname = sub {
-    my ($imgdir, $vmid, $fmt) = @_;
+    my ($imgdir, $vmid, $fmt, $scfg) = @_;
 
-    my $disk_ids = {};
-    PVE::Tools::dir_glob_foreach($imgdir,
-                                 qr!(vm|base)-$vmid-disk-(\d+)\..*!,
-                                 sub {
-                                     my ($fn, $type, $disk) = @_;
-                                     $disk_ids->{$disk} = 1;
-                                 });
+    my $disk_list = [];
 
-    for (my $i = 1; $i < 100; $i++) {
-        if (!$disk_ids->{$i}) {
-            return "vm-$vmid-disk-$i.$fmt";
-        }
-    }
+    my $dh = IO::Dir->new ($imgdir);
+    @$disk_list = $dh->read() if defined($dh);
 
-    die "unable to allocate a new image name for VM $vmid in '$imgdir'\n";
+    return PVE::Storage::Plugin::get_next_vm_diskname($disk_list, $imgdir, $vmid, $fmt, $scfg, 1);
 };
 
 sub path {
@@ -235,7 +226,7 @@ sub clone_image {
 
     mkpath $imagedir;
 
-    my $name = &$find_free_diskname($imagedir, $vmid, "qcow2");
+    my $name = $find_free_diskname->($imagedir, $vmid, "qcow2", $scfg);
 
     warn "clone $volname: $vtype, $name, $vmid to $name (base=../$basevmid/$basename)\n";
 
@@ -263,7 +254,7 @@ sub alloc_image {
 
     mkpath $imagedir;
 
-    $name = &$find_free_diskname($imagedir, $vmid, $fmt) if !$name;
+    $name = $find_free_diskname->($imagedir, $vmid, $fmt, $scfg) if !$name;
 
     my (undef, $tmpfmt) = parse_name_dir($name);
 

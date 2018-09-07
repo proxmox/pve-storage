@@ -151,22 +151,9 @@ my $find_free_diskname = sub {
 
     my $sheepdog = sheepdog_ls($scfg, $storeid);
     my $dat = $sheepdog->{$storeid};
-    my $disk_ids = {};
+    my $disk_list = [ keys %$dat ];
 
-    foreach my $image (keys %$dat) {
-	my $volname = $dat->{$image}->{name};
-	if ($volname =~ m/(vm|base)-$vmid-disk-(\d+)/){
-	    $disk_ids->{$2} = 1;
-	}
-    }
-
-    for (my $i = 1; $i < 100; $i++) {
-	if (!$disk_ids->{$i}) {
-	    return "vm-$vmid-disk-$i";
-	}
-    }
-
-    die "unable to allocate an image name for VM $vmid in storage '$storeid'\n";
+    return PVE::Storage::Plugin::get_next_vm_diskname($disk_list, $storeid, $vmid, undef, $scfg);
 };
 
 sub create_base {
@@ -225,7 +212,7 @@ sub clone_image {
 
     die "clone_image only works on base images\n" if !$isBase;
 
-    my $name = &$find_free_diskname($storeid, $scfg, $vmid);
+    my $name = $find_free_diskname->($storeid, $scfg, $vmid);
 
     warn "clone $volname: $basename to $name\n";
 
@@ -243,7 +230,7 @@ sub alloc_image {
     die "illegal name '$name' - sould be 'vm-$vmid-*'\n"
 	if  $name && $name !~ m/^vm-$vmid-/;
 
-    $name = &$find_free_diskname($storeid, $scfg, $vmid) if !$name;
+    $name = $find_free_diskname->($storeid, $scfg, $vmid) if !$name;
 
     my $cmd = &$collie_cmd($scfg, 'vdi', 'create', $name , "${size}k");
 

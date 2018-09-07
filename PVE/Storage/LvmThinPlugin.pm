@@ -97,7 +97,7 @@ sub alloc_image {
 
     my $lvs = PVE::Storage::LVMPlugin::lvm_list_volumes($vg);
 
-    $name = PVE::Storage::LVMPlugin::lvm_find_free_diskname($lvs, $vg, $storeid, $vmid)
+    $name = PVE::Storage::LVMPlugin::lvm_find_free_diskname($lvs, $vg, $storeid, $vmid, $scfg)
 	if !$name;
 
     my $cmd = ['/sbin/lvcreate', '-aly', '-V', "${size}k", '--name', $name,
@@ -270,7 +270,7 @@ sub clone_image {
 
     my $lvs = PVE::Storage::LVMPlugin::lvm_list_volumes($vg);
 
-    my $name =  PVE::Storage::LVMPlugin::lvm_find_free_diskname($lvs, $vg, $storeid, $vmid);
+    my $name =  PVE::Storage::LVMPlugin::lvm_find_free_diskname($lvs, $vg, $storeid, $vmid, $scfg);
 
     my $cmd = ['/sbin/lvcreate', '-n', $name, '-prw', '-kn', '-s', $lv];
     run_command($cmd, errmsg => "clone image '$lv' error");

@@ -388,26 +388,11 @@ sub zfs_list_zvol {
 sub zfs_find_free_diskname {
     my ($class, $storeid, $scfg, $vmid, $format) = @_;
 
-    my $name = undef;
     my $volumes = $class->zfs_list_zvol($scfg);
-
-    my $disk_ids = {};
     my $dat = $volumes->{$scfg->{pool}};
 
-    foreach my $image (keys %$dat) {
-        my $volname = $dat->{$image}->{name};
-        if ($volname =~ m/(vm|base|subvol|basevol)-$vmid-disk-(\d+)/){
-            $disk_ids->{$2} = 1;
-        }
-    }
-
-    for (my $i = 1; $i < 100; $i++) {
-        if (!$disk_ids->{$i}) {
-            return $format eq 'subvol' ? "subvol-$vmid-disk-$i" : "vm-$vmid-disk-$i";
-        }
-    }
-
-    die "unable to allocate an image name for VM $vmid in storage '$storeid'\n";
+    my $disk_list = [ keys %$dat ];
+    return PVE::Storage::Plugin::get_next_vm_diskname($disk_list, $storeid, $vmid, $format, $scfg);
 }
 
 sub zfs_get_latest_snapshot {

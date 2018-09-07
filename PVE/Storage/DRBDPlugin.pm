@@ -177,21 +177,10 @@ sub alloc_image {
 
     my $hdl = connect_drbdmanage_service();
     my $volumes = drbd_list_volumes($hdl);
+    my $disk_list = [ keys %$volumes ];
 
     die "volume '$name' already exists\n" if defined($name) && $volumes->{$name};
-    
-    if (!defined($name)) {	
-	for (my $i = 1; $i < 100; $i++) {
-	    my $tn = "vm-$vmid-disk-$i";
-	    if (!defined ($volumes->{$tn})) {
-		$name = $tn;
-		last;
-	    }
-	}
-    }
-
-    die "unable to allocate an image name for VM $vmid in storage '$storeid'\n"
-	if !defined($name);
+    $name //= PVE::Storage::Plugin::get_next_vm_diskname($disk_list, $storeid, $vmid, undef, $scfg);
 
     my ($rc, $res) = $hdl->create_resource($name, {});
     check_drbd_res($rc);
