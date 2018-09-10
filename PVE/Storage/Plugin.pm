@@ -525,12 +525,8 @@ sub create_base {
     return $newvolname;
 }
 
-sub is_valid_vm_diskname {
-    my ($disk_name, $scfg, $vmid, $fmt, $add_fmt_suffix) = @_;
-
-    $vmid = qr/\d+/ if !defined($vmid);
-
-    my $suffix = (defined($fmt) && $add_fmt_suffix) ? ".$fmt" : '';
+my $get_vm_disk_number = sub {
+    my ($disk_name, $scfg, $vmid, $suffix) = @_;
 
     my $type = $scfg->{type};
     my $def = $defaultData->{plugindata}->{$type};
@@ -540,24 +536,25 @@ sub is_valid_vm_diskname {
     $disk_regex = qr/(vm|base|subvol|basevol)-$vmid-disk-(\d+)/
 	if $valid_formats->{subvol};
 
-    if($disk_name =~ m/$disk_regex/){
-	return wantarray ? (1, $2) : 1;
+    if ($disk_name =~ m/$disk_regex/) {
+	return $2;
     }
-}
+
+    return undef;
+};
 
 sub get_next_vm_diskname {
     my ($disk_list, $storeid, $vmid, $fmt, $scfg, $add_fmt_suffix) = @_;
 
-    my $disk_ids = {};
-    my ($match, $disknum);
-    foreach my $disk (@$disk_list) {
-	($match, $disknum) = is_valid_vm_diskname($disk,  $scfg, $vmid, $fmt, $add_fmt_suffix);
-	$disk_ids->{$disknum} = 1 if $match;
-    }
-
     $fmt //= '';
     my $prefix = ($fmt eq 'subvol') ? 'subvol' : 'vm';
     my $suffix = $add_fmt_suffix ? ".$fmt" : '';
+
+    my $disk_ids = {};
+    foreach my $disk (@$disk_list) {
+	my $disknum = $get_vm_disk_number->($disk, $scfg, $vmid, $suffix);
+	$disk_ids->{$disknum} = 1 if defined($disknum);
+    }
 
     for (my $i = 0; $i < $MAX_VOLUMES_PER_GUEST; $i++) {
 	if (!$disk_ids->{$i}) {
