@@ -566,13 +566,13 @@ my $test13 = sub {
     eval {
 	my $tmp_volid = PVE::Storage::vdisk_alloc($cfg, $storagename, "112", "raw", undef ,1024 * 1024);
 
-	if ($tmp_volid ne "$storagename:vm-112-disk-1") {
+	if ($tmp_volid ne "$storagename:vm-112-disk-0") {
 	    die "volname:$tmp_volid don't match\n";
 	}
 	eval {
-	    run_command("zfs get -H volsize $zpath\/vm-112-disk-1", outfunc =>
+	    run_command("zfs get -H volsize $zpath\/vm-112-disk-0", outfunc =>
 			sub { my $tmp = shift;
-			      if ($tmp !~ m/^$zpath\/vm-112-disk-1.*volsize.*1G.*$/) {
+			      if ($tmp !~ m/^$zpath\/vm-112-disk-0.*volsize.*1G.*$/) {
 				  die "size don't match\n";
 			      }
 			});
@@ -590,13 +590,13 @@ my $test13 = sub {
     eval {
 	my $tmp_volid = PVE::Storage::vdisk_alloc($cfg, $storagename, "112", "raw", undef ,2048 * 1024);
 
-	if ($tmp_volid ne "$storagename:vm-112-disk-2") {
+	if ($tmp_volid ne "$storagename:vm-112-disk-1") {
 	    die "volname:$tmp_volid don't match\n";
 	}
 	eval {
-	    run_command("zfs get -H volsize $zpath\/vm-112-disk-2", outfunc =>
+	    run_command("zfs get -H volsize $zpath\/vm-112-disk-1", outfunc =>
 			sub { my $tmp = shift;
-			      if ($tmp !~ m/^$zpath\/vm-112-disk-2.*volsize.*2G.*$/) {
+			      if ($tmp !~ m/^$zpath\/vm-112-disk-1.*volsize.*2G.*$/) {
 				  die "size don't match\n";
 			      }
 			});
@@ -614,13 +614,13 @@ my $test13 = sub {
     eval {
 	my $tmp_volid = PVE::Storage::vdisk_alloc($cfg, $storagename, "113", "subvol", undef ,1024 * 1024);
 
-	if ($tmp_volid ne "$storagename:subvol-113-disk-1") {
+	if ($tmp_volid ne "$storagename:subvol-113-disk-0") {
 	    die "volname:$tmp_volid  don't match\n";
 	}
 	eval {
-	    run_command("zfs get -H refquota $zpath\/subvol-113-disk-1", outfunc =>
+	    run_command("zfs get -H refquota $zpath\/subvol-113-disk-0", outfunc =>
 			sub { my $tmp = shift;
-			      if ($tmp !~ m/^$zpath\/subvol-113-disk-1.*refquota.*1G.*$/) {
+			      if ($tmp !~ m/^$zpath\/subvol-113-disk-0.*refquota.*1G.*$/) {
 				  die "size don't match\n";
 			      }
 			});
@@ -638,13 +638,13 @@ my $test13 = sub {
     eval {
 	my $tmp_volid = PVE::Storage::vdisk_alloc($cfg, $storagename, "113", "subvol", undef ,2048 * 1024);
 
-	if ($tmp_volid ne "$storagename:subvol-113-disk-2") {
+	if ($tmp_volid ne "$storagename:subvol-113-disk-1") {
 	    die "volname:$tmp_volid  don't match\n";
 	}
 	eval {
-	    run_command("zfs get -H refquota $zpath\/subvol-113-disk-2", outfunc =>
+	    run_command("zfs get -H refquota $zpath\/subvol-113-disk-1", outfunc =>
 			sub { my $tmp = shift;
-			      if ($tmp !~ m/^$zpath\/subvol-113-disk-2.*refquota.*G.*$/) {
+			      if ($tmp !~ m/^$zpath\/subvol-113-disk-1.*refquota.*G.*$/) {
 				  die "size don't match\n";
 			      }
 			});
@@ -756,12 +756,12 @@ my $test11 = sub {
     }
 
     eval {
-	if ("$storagename:$vmbase\/vm-110-disk-1" ne
+	if ("$storagename:$vmbase\/vm-110-disk-0" ne
 	    PVE::Storage::vdisk_clone($cfg, "$storagename:$vmbase", 110, '__base__')){
 	    $count++;
 	    warn  "Test11 b";
 	}
-	run_command("zfs list -H -o volsize $zpath\/vm-110-disk-1", outfunc => sub {
+	run_command("zfs list -H -o volsize $zpath\/vm-110-disk-0", outfunc => sub {
 	    my $line = shift;
 
 	    chomp($line);
@@ -790,12 +790,12 @@ my $test11 = sub {
     }
 
     eval {
-	if ( "$storagename:$ctbase\/subvol-210-disk-1" ne
+	if ( "$storagename:$ctbase\/subvol-210-disk-0" ne
 	     PVE::Storage::vdisk_clone($cfg, "$storagename:$ctbase", 210, '__base__')){
 	    $count++;
 	    warn  "Test11 e";
 	}
-	run_command("zfs list -H -o refquota $zpath\/subvol-210-disk-1", outfunc => sub {
+	run_command("zfs list -H -o refquota $zpath\/subvol-210-disk-0", outfunc => sub {
 	    my $line = shift;
 
 	    chomp($line);

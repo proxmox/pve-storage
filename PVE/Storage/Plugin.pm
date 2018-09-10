@@ -559,7 +559,7 @@ sub get_next_vm_diskname {
     my $prefix = ($fmt eq 'subvol') ? 'subvol' : 'vm';
     my $suffix = $add_fmt_suffix ? ".$fmt" : '';
 
-    for (my $i = 1; $i < $MAX_VOLUMES_PER_GUEST; $i++) {
+    for (my $i = 0; $i < $MAX_VOLUMES_PER_GUEST; $i++) {
 	if (!$disk_ids->{$i}) {
 	    return "$prefix-$vmid-disk-$i$suffix";
 	}
