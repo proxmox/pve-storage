@@ -1,3 +1,11 @@
+libpve-storage-perl (5.0-27) unstable; urgency=medium
+
+  * rbd: krbd_feature_disable was not disabling features
+
+  * allow up to 1024 disks per guest
+
+ -- Proxmox Support Team <support@proxmox.com>  Wed, 12 Sep 2018 15:00:05 +0200
+
 libpve-storage-perl (5.0-26) unstable; urgency=medium
 
   * fix #1895: add compatibility with ceph 12.2.8 by switching over to more
