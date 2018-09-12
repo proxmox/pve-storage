@@ -82,7 +82,7 @@ my $krbd_feature_disable = sub {
     my $krbd_feature_blacklist = ['deep-flatten', 'fast-diff', 'object-map', 'exclusive-lock'];
     my (undef, undef, undef, undef, $features) = rbd_volume_info($scfg, $storeid, $name);
 
-    my $active_features = { map { $_ => 1 } $features };
+    my $active_features = { map { $_ => 1 } @$features };
     my $incompatible_features = join(',', grep { %$active_features{$_} } @$krbd_feature_blacklist);
 
     if ($incompatible_features) {
