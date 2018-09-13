@@ -529,7 +529,7 @@ my $get_vm_disk_number = sub {
     my ($disk_name, $scfg, $vmid, $suffix) = @_;
 
     my $type = $scfg->{type};
-    my $def = $defaultData->{plugindata}->{$type};
+    my $def = { %{$defaultData->{plugindata}->{$type}} };
     my $valid_formats = $def->{format}[0];
 
     my $disk_regex = qr/(vm|base)-$vmid-disk-(\d+)$suffix/;
