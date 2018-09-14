@@ -220,7 +220,12 @@ __PACKAGE__->register_method ({
 		print "# ", join(' ', @$cmd), "\n";
 		run_command($cmd);
 
-		my $part = "${dev}1";
+		my ($devname) = $dev =~ m|^/dev/(.*)$|;
+		my $part = "/dev/";
+		dir_glob_foreach("/sys/block/$devname", qr/\Q$devname\E.+/, sub {
+		    my ($partition) = @_;
+		    $part .= $partition;
+		});
 
 		# create filesystem
 		$cmd = [$MKFS, '-t', $type, $part];
