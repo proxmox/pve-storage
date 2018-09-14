@@ -1,3 +1,13 @@
+libpve-storage-perl (5.0-28) unstable; urgency=medium
+
+  * fix #1912: api/disks: find the partition instead of guessing it when
+    creating a filesystem on unused disks
+
+  * fix #1913: get_vm_disk_number: clone plugindata to avoid side
+    effects
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 14 Sep 2018 11:37:36 +0200
+
 libpve-storage-perl (5.0-27) unstable; urgency=medium
 
   * rbd: krbd_feature_disable was not disabling features
