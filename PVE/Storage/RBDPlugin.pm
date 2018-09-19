@@ -339,7 +339,7 @@ my $find_free_diskname = sub {
 
     my $parser = sub {
 	my $line = shift;
-	if ($line = m/^(.*)$/) { # untaint
+	if ($line =~ m/^(.*)$/) { # untaint
 	    push @$disk_list, $1;
 	}
     };
