@@ -166,7 +166,14 @@ sub rbd_ls {
 
     die $err if $err && $err !~ m/doesn't contain rbd images/ ;
 
-    my $result = $raw ne '' ? JSON::decode_json($raw) : [];
+    my $result;
+    if ($raw eq '') {
+	$result = [];
+    } elsif ($raw =~ m/^(\[.*\])$/s) { # untaint
+	$result = JSON::decode_json($1);
+    } else {
+	die "got unexpected data from rbd ls: '$raw'\n";
+    }
 
     my $list = {};
 
@@ -206,7 +213,14 @@ sub rbd_volume_info {
 
     run_rbd_command($cmd, errmsg => "rbd error", errfunc => sub {}, outfunc => $parser);
 
-    my $volume = $raw ne '' ? JSON::decode_json($raw) : {};
+    my $volume;
+    if ($raw eq '') {
+	$volume = {};
+    } elsif ($raw =~ m/^(\{.*\})$/s) { # untaint
+	$volume = JSON::decode_json($1);
+    } else {
+	die "got unexpected data from rbd info: '$raw'\n";
+    }
 
     $volume->{parent} = $get_parent_image_name->($volume->{parent});
     $volume->{protected} = defined($volume->{protected}) && $volume->{protected} eq "true" ? 1 : undef;
@@ -325,7 +339,9 @@ my $find_free_diskname = sub {
 
     my $parser = sub {
 	my $line = shift;
-	push @$disk_list, $line;
+	if ($line = m/^(.*)$/) { # untaint
+	    push @$disk_list, $1;
+	}
     };
 
     eval {
