@@ -103,13 +103,8 @@ __PACKAGE__->register_method ({
 	my $node = $param->{node};
 
 	$dev = PVE::Diskmanage::verify_blockdev_path($dev);
-	die "device $dev is already in use\n" if PVE::Diskmanage::disk_is_used($dev);
-
-	my $cfg = PVE::Storage::config();
-
-	if (my $scfg = PVE::Storage::storage_config($cfg, $name, 1)) {
-	    die "storage ID '$name' already defined\n";
-	}
+	PVE::Diskmanage::check_unused($dev);
+	PVE::Storage::check_available($name);
 
 	my $worker = sub {
 	    PVE::Diskmanage::locked_disk_action(sub {

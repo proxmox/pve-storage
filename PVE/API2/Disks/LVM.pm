@@ -149,7 +149,7 @@ __PACKAGE__->register_method ({
 	my $node = $param->{node};
 
 	$dev = PVE::Diskmanage::verify_blockdev_path($dev);
-	die "device $dev is already in use\n" if PVE::Diskmanage::disk_is_used($dev);
+	PVE::Diskmanage::check_unused($dev);
 
 	my $worker = sub {
 	    PVE::Diskmanage::locked_disk_action(sub {

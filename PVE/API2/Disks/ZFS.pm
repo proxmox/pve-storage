@@ -341,14 +341,10 @@ __PACKAGE__->register_method ({
 
 	foreach my $dev (@$devs) {
 	    $dev = PVE::Diskmanage::verify_blockdev_path($dev);
-	    die "device $dev is already in use\n" if PVE::Diskmanage::disk_is_used($dev);
+	    PVE::Diskmanage::check_unused($dev);
 	}
 
-	my $cfg = PVE::Storage::config();
-
-	if (my $scfg = PVE::Storage::storage_config($cfg, $name, 1)) {
-	    die "storage ID '$name' already defined\n";
-	}
+	PVE::Storage::check_available($name);
 
 	my $numdisks = scalar(@$devs);
 	my $mindisks = {

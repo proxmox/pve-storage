@@ -602,4 +602,12 @@ sub locked_disk_action {
     return $res;
 }
 
+sub check_unused {
+    my ($dev) = @_;
+
+    die "device $dev is already in use\n" if disk_is_used($dev);
+
+    return undef;
+}
+
 1;
