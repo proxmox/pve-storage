@@ -150,6 +150,7 @@ __PACKAGE__->register_method ({
 
 	$dev = PVE::Diskmanage::verify_blockdev_path($dev);
 	PVE::Diskmanage::check_unused($dev);
+	PVE::Storage::check_available($name);
 
 	my $worker = sub {
 	    PVE::Diskmanage::locked_disk_action(sub {
