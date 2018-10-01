@@ -370,7 +370,7 @@ our $cmddef = {
 			 printf "%s\n", $rec->{volname};
 		     }
 		 }],
-    iscsiscan => [ "PVE::API2::Storage::Scan", 'iscsiscan', ['server'],
+    iscsiscan => [ "PVE::API2::Storage::Scan", 'iscsiscan', ['portal'],
 		   { node => $nodename }, sub  {
 		       my $res = shift;
 
