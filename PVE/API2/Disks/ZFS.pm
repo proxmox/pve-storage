@@ -344,7 +344,7 @@ __PACKAGE__->register_method ({
 	    PVE::Diskmanage::check_unused($dev);
 	}
 
-	PVE::Storage::check_available($name) if $param->{add_storage};
+	PVE::Storage::assert_sid_unused($name) if $param->{add_storage};
 
 	my $numdisks = scalar(@$devs);
 	my $mindisks = {

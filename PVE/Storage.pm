@@ -1648,12 +1648,12 @@ sub get_bandwidth_limit {
 }
 
 # checks if the storage id is available and dies if not
-sub check_available {
-    my ($id) = @_;
+sub assert_sid_unused {
+    my ($sid) = @_;
 
     my $cfg = config();
-    if (my $scfg = storage_config($cfg, $id, 1)) {
-	die "storage ID '$id' already defined\n";
+    if (my $scfg = storage_config($cfg, $sid, 1)) {
+	die "storage ID '$sid' already defined\n";
     }
 
     return undef;
