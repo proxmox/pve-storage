@@ -149,7 +149,7 @@ __PACKAGE__->register_method ({
 	my $node = $param->{node};
 
 	$dev = PVE::Diskmanage::verify_blockdev_path($dev);
-	PVE::Diskmanage::check_unused($dev);
+	PVE::Diskmanage::assert_disk_unused($dev);
 	PVE::Storage::assert_sid_unused($name) if $param->{add_storage};
 
 	my $worker = sub {

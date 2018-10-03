@@ -341,7 +341,7 @@ __PACKAGE__->register_method ({
 
 	foreach my $dev (@$devs) {
 	    $dev = PVE::Diskmanage::verify_blockdev_path($dev);
-	    PVE::Diskmanage::check_unused($dev);
+	    PVE::Diskmanage::assert_disk_unused($dev);
 	}
 
 	PVE::Storage::assert_sid_unused($name) if $param->{add_storage};
