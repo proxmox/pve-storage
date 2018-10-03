@@ -1,3 +1,11 @@
+libpve-storage-perl (5.0-30) unstable; urgency=medium
+
+  * fix #1936: pvesm iscsiscan: fix cli parameters
+
+  * fix #1929: only check storage if user want to create one
+
+ -- Proxmox Support Team <support@proxmox.com>  Wed, 03 Oct 2018 17:02:46 +0200
+
 libpve-storage-perl (5.0-29) unstable; urgency=medium
 
   * fix #1925: untaint rbd JSON output
