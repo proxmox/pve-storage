@@ -165,7 +165,7 @@ __PACKAGE__->register_method ({
 		type => 'string',
 		description => 'Information about the last/current scrub.',
 	    },
-	    scan => {
+	    errors => {
 		type => 'string',
 		description => 'Information about the errors on the zpool.',
 	    },
