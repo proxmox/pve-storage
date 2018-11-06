@@ -233,39 +233,37 @@ __PACKAGE__->register_method ({
 		$pool->{$curfield} .= " " . $1;
 	    } elsif (!$config && $line =~ m/^\s*config:/) {
 		$config = 1;
-	    } elsif ($config && $line =~ m/^(\s+)(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s*(.*)$/) {
+	    } elsif ($config && $line =~ m/^(\s+)(\S+)\s*(\S+)?(?:\s+(\S+)\s+(\S+)\s+(\S+))?\s*(.*)$/) {
 		my ($space, $name, $state, $read, $write, $cksum, $msg) = ($1, $2, $3, $4, $5, $6, $7);
-		if ($space  =~ m/^\t(\s+)$/) {
-		    my $lvl= length($1)/2; # two spaces per level
+		if ($name ne "NAME" and $name ne $param->{name}) {
+		    my $lvl= int(length($space)/2); # two spaces per level
 		    my $vdev = {
 			name => $name,
-			state => $state,
-			read => $read + 0,
-			write => $write + 0,
-			cksum => $cksum + 0,
 			msg => $msg,
 			lvl => $lvl,
 		    };
-
+		    
+		    $vdev->{state} = $state if defined($state);
+		    $vdev->{read} = $read + 0 if defined($read);
+		    $vdev->{write} = $write + 0 if defined($write);
+		    $vdev->{cksum} = $cksum + 0 if defined($cksum);
+		    
 		    my $cur = pop @$stack;
 
 		    if ($lvl > $curlvl) {
 			$cur->{children} = [ $vdev ];
-			push @$stack, $cur;
-			push @$stack, $vdev;
 		    } elsif ($lvl == $curlvl) {
 			$cur = pop @$stack;
 			push @{$cur->{children}}, $vdev;
-			push @$stack, $cur;
-			push @$stack, $vdev;
 		    } else {
-			while ($lvl <= $cur->{lvl}) {
+			while ($lvl <= $cur->{lvl} and $cur->{lvl} != 0) {
 			    $cur = pop @$stack;
 			}
 			push @{$cur->{children}}, $vdev;
-			push @$stack, $cur;
-			push @$stack, $vdev;
 		    }
+		    
+		    push @$stack, $cur;
+		    push @$stack, $vdev;
 		    $curlvl = $lvl;
 		}
 	    }
