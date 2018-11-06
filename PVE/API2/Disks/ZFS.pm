@@ -217,7 +217,6 @@ __PACKAGE__->register_method ({
 	my $pool = {
 	    lvl => 0,
 	};
-	my $vdevs = [];
 
 	my $curfield;
 	my $config = 0;
