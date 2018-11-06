@@ -171,25 +171,29 @@ __PACKAGE__->register_method ({
 	    },
 	    children => {
 		type => 'array',
-		description => "The tree of the vdevs. Depending on the configuration of the zpool, they can be nested.",
+		description => "The pool configuration information, including the vdevs for each section (e.g. spares, cache), may be nested.",
 		items => {
 		    type => 'object',
 		    properties => {
 			name => {
 			    type => 'string',
-			    description => 'The name of the vdev.',
+			    description => 'The name of the vdev or section.',
 			},
 			state => {
+			    optional => 1,
 			    type => 'string',
 			    description => 'The state of the vdev.',
 			},
 			read => {
+			    optional => 1,
 			    type => 'number',
 			},
 			write => {
+			    optional => 1,
 			    type => 'number',
 			},
 			cksum => {
+			    optional => 1,
 			    type => 'number',
 			},
 			msg => {
