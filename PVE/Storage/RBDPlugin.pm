@@ -74,8 +74,6 @@ my $librados_connect = sub {
 my $krbd_feature_disable = sub {
     my ($scfg, $storeid, $name) = @_;
 
-    return 1 if !$scfg->{krbd};
-
     my ($major, undef, undef, undef) = ceph_version();
     return 1 if $major < 10;
 
@@ -259,7 +257,7 @@ sub properties {
 	    type => 'string',
 	},
 	krbd => {
-	    description => "Access rbd through krbd kernel module.",
+	    description => "Always access rbd through krbd kernel module.",
 	    type => 'boolean',
 	},
     };
@@ -428,8 +426,6 @@ sub clone_image {
 
     run_rbd_command($cmd, errmsg => "rbd clone '$basename' error");
 
-    &$krbd_feature_disable($scfg, $storeid, $name);
-
     return $newvol;
 }
 
@@ -444,8 +440,6 @@ sub alloc_image {
 
     my $cmd = &$rbd_cmd($scfg, $storeid, 'create', '--image-format' , 2, '--size', int(($size+1023)/1024), $name);
     run_rbd_command($cmd, errmsg => "rbd create $name' error");
-
-    &$krbd_feature_disable($scfg, $storeid, $name);
 
     return $name;
 }
@@ -544,21 +538,54 @@ sub deactivate_storage {
     return 1;
 }
 
+my $get_kernel_device_name = sub {
+    my ($pool, $name) = @_;
+
+    return "/dev/rbd/$pool/$name";
+};
+
+sub map_volume {
+    my ($class, $storeid, $scfg, $volname, $snapname) = @_;
+
+    my ($vtype, $name, $vmid) = $class->parse_volname($volname);
+    $name .= '@'.$snapname if $snapname;
+
+    my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
+
+    my $kerneldev = $get_kernel_device_name->($pool, $name);
+
+    return $kerneldev if -b $kerneldev; # already mapped
+
+    &$krbd_feature_disable($scfg, $storeid, $name);
+
+    my $cmd = &$rbd_cmd($scfg, $storeid, 'map', $name);
+    run_rbd_command($cmd, errmsg => "can't map rbd volume $name");
+
+    return $kerneldev;
+}
+
+sub unmap_volume {
+    my ($class, $storeid, $scfg, $volname, $snapname) = @_;
+
+    my ($vtype, $name, $vmid) = $class->parse_volname($volname);
+    $name .= '@'.$snapname if $snapname;
+
+    my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
+
+    my $kerneldev = $get_kernel_device_name->($pool, $name);
+
+    if (-b $kerneldev) {
+	my $cmd = &$rbd_cmd($scfg, $storeid, 'unmap', $kerneldev);
+	run_rbd_command($cmd, errmsg => "can't unmap rbd device $kerneldev");
+    }
+
+    return 1;
+}
+
 sub activate_volume {
     my ($class, $storeid, $scfg, $volname, $snapname, $cache) = @_;
 
-    return 1 if !$scfg->{krbd};
-
-    my ($vtype, $name, $vmid) = $class->parse_volname($volname);
-    my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
-
-    my $path = "/dev/rbd/$pool/$name";
-    $path .= '@'.$snapname if $snapname;
-    return if -b $path;
-
-    $name .= '@'.$snapname if $snapname;
-    my $cmd = &$rbd_cmd($scfg, $storeid, 'map', $name);
-    run_rbd_command($cmd, errmsg => "can't mount rbd volume $name");
+    $class->map_volume($storeid, $scfg, $volname, $snapname) if $scfg->{krbd};
 
     return 1;
 }
@@ -566,17 +593,7 @@ sub activate_volume {
 sub deactivate_volume {
     my ($class, $storeid, $scfg, $volname, $snapname, $cache) = @_;
 
-    return 1 if !$scfg->{krbd};
-
-    my ($vtype, $name, $vmid) = $class->parse_volname($volname);
-    my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
-
-    my $path = "/dev/rbd/$pool/$name";
-    $path .= '@'.$snapname if $snapname;
-    return if ! -b $path;
-
-    my $cmd = &$rbd_cmd($scfg, $storeid, 'unmap', $path);
-    run_rbd_command($cmd, errmsg => "can't unmap rbd volume $name");
+    $class->unmap_volume($storeid, $scfg, $volname, $snapname);
 
     return 1;
 }
@@ -592,7 +609,7 @@ sub volume_size_info {
 sub volume_resize {
     my ($class, $scfg, $storeid, $volname, $size, $running) = @_;
 
-    return 1 if $running && !$scfg->{krbd};
+    return 1 if $running && !$scfg->{krbd}; # FIXME???
 
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
 
@@ -623,7 +640,7 @@ sub volume_snapshot_rollback {
 sub volume_snapshot_delete {
     my ($class, $scfg, $storeid, $volname, $snap, $running) = @_;
 
-    return 1 if $running && !$scfg->{krbd};
+    return 1 if $running && !$scfg->{krbd}; # FIXME: ????
 
     $class->deactivate_volume($storeid, $scfg, $volname, $snap, {});
 

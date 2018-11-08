@@ -37,7 +37,7 @@ use PVE::Storage::ZFSPlugin;
 use PVE::Storage::DRBDPlugin;
 
 # Storage API version. Icrement it on changes in storage API interface.
-use constant APIVER => 1;
+use constant APIVER => 2;
 
 # load standard plugins
 PVE::Storage::DirPlugin->register();
@@ -669,6 +669,30 @@ sub vdisk_create_base {
 	my $volname = $plugin->create_base($storeid, $scfg, $volname);
 	return "$storeid:$volname";
     });
+}
+
+sub map_volume {
+    my ($cfg, $volid, $snapname) = @_;
+
+    my ($storeid, $volname) = parse_volume_id($volid);
+
+    my $scfg = storage_config($cfg, $storeid);
+
+    my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
+
+    return $plugin->map_volume($storeid, $scfg, $volname, $snapname);
+}
+
+sub unmap_volume {
+    my ($cfg, $volid, $snapname) = @_;
+
+    my ($storeid, $volname) = parse_volume_id($volid);
+
+    my $scfg = storage_config($cfg, $storeid);
+
+    my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
+
+    return $plugin->unmap_volume($storeid, $scfg, $volname, $snapname);
 }
 
 sub vdisk_alloc {

@@ -949,6 +949,18 @@ sub deactivate_storage {
     # do nothing by default
 }
 
+sub map_volume {
+    my ($class, $storeid, $scfg, $volname, $snapname) = @_;
+
+    return undef;
+}
+
+sub unmap_volume {
+    my ($class, $storeid, $scfg, $volname, $snapname) = @_;
+
+    return 1;
+}
+
 sub activate_volume {
     my ($class, $storeid, $scfg, $volname, $snapname, $cache) = @_;
 
