@@ -1,3 +1,15 @@
+libpve-storage-perl (5.0-31) unstable; urgency=medium
+
+  * Fix: api zfs: changed return value name to errors
+
+  * fix #1949: storage zfs: changed zpool command parser
+
+  * implement map_volume and unmap_volume
+
+  * bump storage ABI version for new map/unmap methods
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 09 Nov 2018 16:27:40 +0100
+
 libpve-storage-perl (5.0-30) unstable; urgency=medium
 
   * fix #1936: pvesm iscsiscan: fix cli parameters
