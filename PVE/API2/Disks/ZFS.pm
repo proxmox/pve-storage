@@ -245,12 +245,12 @@ __PACKAGE__->register_method ({
 			msg => $msg,
 			lvl => $lvl,
 		    };
-		    
+
 		    $vdev->{state} = $state if defined($state);
 		    $vdev->{read} = $read + 0 if defined($read);
 		    $vdev->{write} = $write + 0 if defined($write);
 		    $vdev->{cksum} = $cksum + 0 if defined($cksum);
-		    
+
 		    my $cur = pop @$stack;
 
 		    if ($lvl > $curlvl) {
@@ -259,12 +259,12 @@ __PACKAGE__->register_method ({
 			$cur = pop @$stack;
 			push @{$cur->{children}}, $vdev;
 		    } else {
-			while ($lvl <= $cur->{lvl} and $cur->{lvl} != 0) {
+			while ($lvl <= $cur->{lvl} && $cur->{lvl} != 0) {
 			    $cur = pop @$stack;
 			}
 			push @{$cur->{children}}, $vdev;
 		    }
-		    
+
 		    push @$stack, $cur;
 		    push @$stack, $vdev;
 		    $curlvl = $lvl;
