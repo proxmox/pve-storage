@@ -491,7 +491,10 @@ sub volume_resize {
 
     my $path = $class->path($scfg, $volname);
     my $cmd = ['/sbin/lvextend', '-L', $size, $path];
-    run_command($cmd, errmsg => "error resizing volume '$path'");
+
+    $class->cluster_lock_storage($storeid, $scfg->{shared}, undef, sub {
+	run_command($cmd, errmsg => "error resizing volume '$path'");
+    });
 
     return 1;
 }
