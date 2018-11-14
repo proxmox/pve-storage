@@ -143,10 +143,6 @@ __PACKAGE__->register_method ({
 	    }
 	}
 
-	if ($param->{portal}) {
-	    $param->{portal} = PVE::Storage::resolv_portal($param->{portal});
-	}
-
 	my $plugin = PVE::Storage::Plugin->lookup($type);
 	my $opts = $plugin->check_config($storeid, $param, 1, 1);
 
