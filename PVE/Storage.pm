@@ -38,6 +38,10 @@ use PVE::Storage::DRBDPlugin;
 
 # Storage API version. Icrement it on changes in storage API interface.
 use constant APIVER => 2;
+# Age is the number of versions we're backward compatible with.
+# This is like having 'current=APIVER' and age='APIAGE' in libtool,
+# see https://www.gnu.org/software/libtool/manual/html_node/Libtool-versioning.html
+use constant APIAGE => 1;
 
 # load standard plugins
 PVE::Storage::DirPlugin->register();
@@ -65,18 +69,28 @@ if ( -d '/usr/share/perl5/PVE/Storage/Custom' ) {
 
 	eval {
 	    require $file;
+
+	    # Check perl interface:
+	    die "not derived from PVE::Storage::Plugin\n"
+		if !$modname->isa('PVE::Storage::Plugin');
+	    die "does not provide an api() method\n"
+		if !$modname->can('api');
+	    # Check storage API version and that file is really storage plugin.
+	    my $version = $modname->api();
+	    die "implements an API version newer than current\n"
+		if $version > APIVER;
+	    die "API version too old, pluse update the plugin\n"
+		if $version < (APIVER-APIAGE);
+	    import $file;
+	    $modname->register();
+
+	    # If we got this far and the API version is not the same, make some
+	    # noise:
+	    warn "Plugin \"$modname\" is implementing an older storage API, an upgrade is recommended\n"
+		if $version != APIVER;
 	};
 	if ($@) {
-	    warn $@;
-	# Check storage API version and that file is really storage plugin.
-	} elsif ($modname->isa('PVE::Storage::Plugin') && $modname->can('api') && $modname->api() == APIVER) {
-            eval {
-	        import $file;
-	        $modname->register();
-            };
-            warn $@ if $@;
-	} else {
-	    warn "Error loading storage plugin \"$modname\" because of API version mismatch. Please, update it.\n"
+	    warn "Error loading storage plugin \"$modname\": $@";
 	}
     });
 }
