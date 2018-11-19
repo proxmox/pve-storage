@@ -1,3 +1,17 @@
+libpve-storage-perl (5.0-32) unstable; urgency=medium
+
+  * fix #862: do not resolve portal address on storage add
+
+  * LVM: lock on volume_resize
+
+  * plugin loader: add an APIAGE
+
+  * move usb scan code to pve-common
+
+  * move API storage scan calls to pve-manager
+
+ -- Proxmox Support Team <support@proxmox.com>  Mon, 19 Nov 2018 15:27:22 +0100
+
 libpve-storage-perl (5.0-31) unstable; urgency=medium
 
   * Fix: api zfs: changed return value name to errors
