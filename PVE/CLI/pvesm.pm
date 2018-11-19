@@ -663,75 +663,77 @@ our $cmddef = {
 	       }],
     free => [ "PVE::API2::Storage::Content", 'delete', ['volume'],
 	      { node => $nodename } ],
-    nfsscan => [ __PACKAGE__, 'nfsscan', ['server'],
-		 { node => $nodename }, sub  {
-		     my $res = shift;
+    scan => {
+	nfs => [ __PACKAGE__, 'nfsscan', ['server'], { node => $nodename }, sub  {
+	    my $res = shift;
 
-		     my $maxlen = 0;
-		     foreach my $rec (@$res) {
-			 my $len = length ($rec->{path});
-			 $maxlen = $len if $len > $maxlen;
-		     }
-		     foreach my $rec (@$res) {
-			 printf "%-${maxlen}s %s\n", $rec->{path}, $rec->{options};
-		     }
-		 }],
-    cifsscan => [ __PACKAGE__, 'cifsscan', ['server'],
-		 { node => $nodename }, sub  {
-		     my $res = shift;
+	    my $maxlen = 0;
+	    foreach my $rec (@$res) {
+		my $len = length ($rec->{path});
+		$maxlen = $len if $len > $maxlen;
+	    }
+	    foreach my $rec (@$res) {
+		printf "%-${maxlen}s %s\n", $rec->{path}, $rec->{options};
+	    }
+	}],
+	cifs => [ __PACKAGE__, 'cifsscan', ['server'], { node => $nodename }, sub  {
+	    my $res = shift;
 
-		     my $maxlen = 0;
-		     foreach my $rec (@$res) {
-			 my $len = length ($rec->{share});
-			 $maxlen = $len if $len > $maxlen;
-		     }
-		     foreach my $rec (@$res) {
-			 printf "%-${maxlen}s %s\n", $rec->{share}, $rec->{description};
-		     }
-		 }],
-    glusterfsscan => [ __PACKAGE__, 'glusterfsscan', ['server'],
-		 { node => $nodename }, sub  {
-		     my $res = shift;
+	    my $maxlen = 0;
+	    foreach my $rec (@$res) {
+		my $len = length ($rec->{share});
+		$maxlen = $len if $len > $maxlen;
+	    }
+	    foreach my $rec (@$res) {
+		printf "%-${maxlen}s %s\n", $rec->{share}, $rec->{description};
+	    }
+	}],
+	glusterfs => [ __PACKAGE__, 'glusterfsscan', ['server'], { node => $nodename }, sub  {
+	    my $res = shift;
 
-		     foreach my $rec (@$res) {
-			 printf "%s\n", $rec->{volname};
-		     }
-		 }],
-    iscsiscan => [ __PACKAGE__, 'iscsiscan', ['portal'],
-		   { node => $nodename }, sub  {
-		       my $res = shift;
+	    foreach my $rec (@$res) {
+		printf "%s\n", $rec->{volname};
+	    }
+	}],
+	iscsi => [ __PACKAGE__, 'iscsiscan', ['portal'], { node => $nodename }, sub  {
+	    my $res = shift;
 
-		       my $maxlen = 0;
-		       foreach my $rec (@$res) {
-			   my $len = length ($rec->{target});
-			   $maxlen = $len if $len > $maxlen;
-		       }
-		       foreach my $rec (@$res) {
-			   printf "%-${maxlen}s %s\n", $rec->{target}, $rec->{portal};
-		       }
-		   }],
-    lvmscan => [ __PACKAGE__, 'lvmscan', [],
-		 { node => $nodename }, sub  {
-		     my $res = shift;
-		     foreach my $rec (@$res) {
-			 printf "$rec->{vg}\n";
-		     }
-		 }],
-    lvmthinscan => [ __PACKAGE__, 'lvmthinscan', ['vg'],
-		 { node => $nodename }, sub  {
-		     my $res = shift;
-		     foreach my $rec (@$res) {
-			 printf "$rec->{lv}\n";
-		     }
-		 }],
-    zfsscan => [ __PACKAGE__, 'zfsscan', [],
-		 { node => $nodename }, sub  {
-		     my $res = shift;
+	    my $maxlen = 0;
+	    foreach my $rec (@$res) {
+		my $len = length ($rec->{target});
+		$maxlen = $len if $len > $maxlen;
+	    }
+	    foreach my $rec (@$res) {
+		printf "%-${maxlen}s %s\n", $rec->{target}, $rec->{portal};
+	    }
+	}],
+	lvm => [ __PACKAGE__, 'lvmscan', [], { node => $nodename }, sub  {
+	    my $res = shift;
+	    foreach my $rec (@$res) {
+		printf "$rec->{vg}\n";
+	    }
+	}],
+	lvmthin => [ __PACKAGE__, 'lvmthinscan', ['vg'], { node => $nodename }, sub  {
+	    my $res = shift;
+	    foreach my $rec (@$res) {
+		printf "$rec->{lv}\n";
+	    }
+	}],
+	zfs => [ __PACKAGE__, 'zfsscan', [], { node => $nodename }, sub  {
+	    my $res = shift;
 
-		     foreach my $rec (@$res) {
-			 printf "$rec->{pool}\n";
-		     }
-		 }],
+	    foreach my $rec (@$res) {
+		 printf "$rec->{pool}\n";
+	    }
+	}],
+    },
+    nfsscan => { alias => 'scan nfs' },
+    cifsscan => { alias => 'scan cifs' },
+    glusterfsscan => { alias => 'scan glusterfs' },
+    iscsiscan => { alias => 'scan iscsi' },
+    lvmscan => { alias => 'scan lvm' },
+    lvmthinscan => { alias => 'scan lvmthin' },
+    zfsscan => { alias => 'scan zfs' },
     path => [ __PACKAGE__, 'path', ['volume']],
     extractconfig => [__PACKAGE__, 'extractconfig', ['volume']],
     export => [ __PACKAGE__, 'export', ['volume', 'format', 'filename']],
