@@ -77,10 +77,11 @@ if ( -d '/usr/share/perl5/PVE/Storage/Custom' ) {
 		if !$modname->can('api');
 	    # Check storage API version and that file is really storage plugin.
 	    my $version = $modname->api();
-	    die "implements an API version newer than current\n"
+	    die "implements an API version newer than current ($version > " . APIVER . ")\n"
 		if $version > APIVER;
-	    die "API version too old, pluse update the plugin\n"
-		if $version < (APIVER-APIAGE);
+	    my $min_version = (APIVER - APIAGE);
+	    die "API version too old, please update the plugin ($version < $min_version)\n"
+		if $version < $min_version;
 	    import $file;
 	    $modname->register();
 
