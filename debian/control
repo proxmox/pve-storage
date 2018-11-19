@@ -3,7 +3,7 @@ Section: perl
 Priority: extra
 Maintainer: Proxmox Support Team <support@proxmox.com>
 Build-Depends: debhelper (>= 7.0.50~),
-               libpve-common-perl (>= 5.0-28),
+               libpve-common-perl (>= 5.0-42),
                libtest-mockmodule-perl,
                librados2-perl,
                lintian,
@@ -15,11 +15,12 @@ Homepage: http://www.proxmox.com
 
 Package: libpve-storage-perl
 Architecture: all
+Breaks: pve-manager (<< 5.2-12)
 Depends: cstream,
          glusterfs-client (>= 3.4.0-2),
          libfile-chdir-perl,
          libnet-dbus-perl,
-         libpve-common-perl (>= 5.0-35),
+         libpve-common-perl (>= 5.0-42),
          librados2-perl,
          lvm2,
          nfs-common,
