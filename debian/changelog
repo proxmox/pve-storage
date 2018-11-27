@@ -1,3 +1,11 @@
+libpve-storage-perl (5.0-33) unstable; urgency=medium
+
+  * pvesm: add scan subcommands
+
+  * cephfs: tell systemd that mount mount requires network
+
+ -- Proxmox Support Team <support@proxmox.com>  Tue, 27 Nov 2018 13:23:15 +0100
+
 libpve-storage-perl (5.0-32) unstable; urgency=medium
 
   * fix #862: do not resolve portal address on storage add
