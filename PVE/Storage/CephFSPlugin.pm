@@ -118,6 +118,7 @@ sub options {
 	mkdir => { optional => 1 },
 	fuse => { optional => 1 },
 	bwlimit => { optional => 1 },
+	maxfiles => { optional => 1 },
     };
 }
 
