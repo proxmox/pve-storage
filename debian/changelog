@@ -1,3 +1,11 @@
+libpve-storage-perl (5.0-34) unstable; urgency=medium
+
+  * Fix #2020: use /sys to map nvmeXnY to nvmeX
+
+  * Fix #2019: CephFS storage misses maxfiles
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 14 Dec 2018 12:21:48 +0100
+
 libpve-storage-perl (5.0-33) unstable; urgency=medium
 
   * pvesm: add scan subcommands
