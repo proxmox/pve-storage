@@ -4,16 +4,18 @@ use strict;
 use warnings;
 use Net::IP;
 use PVE::Tools qw(run_command);
+use PVE::Cluster qw(cfs_register_file);
 
-my $parse_ceph_file = sub {
-    my ($filename) = @_;
+cfs_register_file('ceph.conf',
+		  \&parse_ceph_config,
+		  \&write_ceph_config);
+
+sub parse_ceph_config {
+    my ($filename, $raw) = @_;
 
     my $cfg = {};
 
-    return $cfg if ! -f $filename;
-
-    my $content = PVE::Tools::file_get_contents($filename);
-    my @lines = split /\n/, $content;
+    my @lines = split /\n/, $raw;
 
     my $section;
 
@@ -36,7 +38,53 @@ my $parse_ceph_file = sub {
     }
 
     return $cfg;
+}
+
+my $parse_ceph_file = sub {
+    my ($filename) = @_;
+
+    my $cfg = {};
+
+    return $cfg if ! -f $filename;
+
+    my $content = PVE::Tools::file_get_contents($filename);
+
+    return parse_ceph_config($filename, $content);
 };
+
+sub write_ceph_config {
+    my ($filename, $cfg) = @_;
+
+    my $out = '';
+
+    my $cond_write_sec = sub {
+	my $re = shift;
+
+	foreach my $section (keys %$cfg) {
+	    next if $section !~ m/^$re$/;
+	    $out .= "[$section]\n";
+	    foreach my $key (sort keys %{$cfg->{$section}}) {
+		$out .= "\t $key = $cfg->{$section}->{$key}\n";
+	    }
+	    $out .= "\n";
+	}
+    };
+
+    &$cond_write_sec('global');
+    &$cond_write_sec('client');
+
+    &$cond_write_sec('mds');
+    &$cond_write_sec('mon');
+    &$cond_write_sec('osd');
+    &$cond_write_sec('mgr');
+
+    &$cond_write_sec('mds\..*');
+    &$cond_write_sec('mon\..*');
+    &$cond_write_sec('osd\..*');
+    &$cond_write_sec('mgr\..*');
+
+    return $out;
+}
 
 my $ceph_get_key = sub {
     my ($keyfile, $username) = @_;
