@@ -11,16 +11,16 @@ use PVE::Tools qw(run_command);
 use PVE::ProcFSTools;
 use PVE::Storage::Plugin;
 use PVE::JSONSchema qw(get_standard_option);
-use PVE::Storage::CephTools;
+use PVE::CephConfig;
 
 use base qw(PVE::Storage::Plugin);
 
 sub cephfs_is_mounted {
     my ($scfg, $storeid, $mountdata) = @_;
 
-    my $cmd_option = PVE::Storage::CephTools::ceph_connect_option($scfg, $storeid);
+    my $cmd_option = PVE::CephConfig::ceph_connect_option($scfg, $storeid);
     my $configfile = $cmd_option->{ceph_conf};
-    my $server = $cmd_option->{mon_host} // PVE::Storage::CephTools::get_monaddr_list($configfile);
+    my $server = $cmd_option->{mon_host} // PVE::CephConfig::get_monaddr_list($configfile);
 
     my $subdir = $scfg->{subdir} // '/';
     my $mountpoint = $scfg->{path};
@@ -46,10 +46,10 @@ sub cephfs_mount {
     my $mountpoint = $scfg->{path};
     my $subdir = $scfg->{subdir} // '/';
 
-    my $cmd_option = PVE::Storage::CephTools::ceph_connect_option($scfg, $storeid);
+    my $cmd_option = PVE::CephConfig::ceph_connect_option($scfg, $storeid);
     my $configfile = $cmd_option->{ceph_conf};
     my $secretfile = $cmd_option->{keyring};
-    my $server = $cmd_option->{mon_host} // PVE::Storage::CephTools::get_monaddr_list($configfile);
+    my $server = $cmd_option->{mon_host} // PVE::CephConfig::get_monaddr_list($configfile);
 
     # fuse -> client-enforced quotas (kernel doesn't), updates w/ ceph-fuse pkg
     # kernel -> better performance, less frequent updates
@@ -137,7 +137,7 @@ sub on_add_hook {
 
     return if defined($scfg->{monhost}); # nothing to do if not pve managed ceph
 
-    PVE::Storage::CephTools::ceph_create_keyfile($scfg->{type}, $storeid);
+    PVE::CephConfig::ceph_create_keyfile($scfg->{type}, $storeid);
 }
 
 sub on_delete_hook {
@@ -145,7 +145,7 @@ sub on_delete_hook {
 
     return if defined($scfg->{monhost}); # nothing to do if not pve managed ceph
 
-    PVE::Storage::CephTools::ceph_remove_keyfile($scfg->{type}, $storeid);
+    PVE::CephConfig::ceph_remove_keyfile($scfg->{type}, $storeid);
 }
 
 sub status {

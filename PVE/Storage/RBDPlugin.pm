@@ -8,7 +8,7 @@ use PVE::Tools qw(run_command trim);
 use PVE::Storage::Plugin;
 use PVE::JSONSchema qw(get_standard_option);
 use PVE::RADOS;
-use PVE::Storage::CephTools;
+use PVE::CephConfig;
 use JSON;
 
 use base qw(PVE::Storage::Plugin);
@@ -30,7 +30,7 @@ my $add_pool_to_disk = sub {
 my $build_cmd = sub {
     my ($binary, $scfg, $storeid, $op, @options) = @_;
 
-    my $cmd_option = PVE::Storage::CephTools::ceph_connect_option($scfg, $storeid);
+    my $cmd_option = PVE::CephConfig::ceph_connect_option($scfg, $storeid);
     my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
 
     my $cmd = [$binary, '-p', $pool];
@@ -63,7 +63,7 @@ my $rados_cmd = sub {
 my $librados_connect = sub {
     my ($scfg, $storeid, $options) = @_;
 
-    my $librados_config = PVE::Storage::CephTools::ceph_connect_option($scfg, $storeid);
+    my $librados_config = PVE::CephConfig::ceph_connect_option($scfg, $storeid);
 
     my $rados = PVE::RADOS->new(%$librados_config);
 
@@ -283,7 +283,7 @@ sub on_add_hook {
 
     return if defined($scfg->{monhost}); # nothing to do if not pve managed ceph
 
-    PVE::Storage::CephTools::ceph_create_keyfile($scfg->{type}, $storeid);
+    PVE::CephConfig::ceph_create_keyfile($scfg->{type}, $storeid);
 }
 
 sub on_delete_hook {
@@ -291,7 +291,7 @@ sub on_delete_hook {
 
     return if defined($scfg->{monhost}); # nothing to do if not pve managed ceph
 
-    PVE::Storage::CephTools::ceph_remove_keyfile($scfg->{type}, $storeid);
+    PVE::CephConfig::ceph_remove_keyfile($scfg->{type}, $storeid);
 }
 
 sub parse_volname {
@@ -307,7 +307,7 @@ sub parse_volname {
 sub path {
     my ($class, $scfg, $volname, $storeid, $snapname) = @_;
 
-    my $cmd_option = PVE::Storage::CephTools::ceph_connect_option($scfg, $storeid);
+    my $cmd_option = PVE::CephConfig::ceph_connect_option($scfg, $storeid);
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
     $name .= '@'.$snapname if $snapname;
 
@@ -318,7 +318,7 @@ sub path {
 
     $path .= ":conf=$cmd_option->{ceph_conf}" if $cmd_option->{ceph_conf};
     if (defined($scfg->{monhost})) {
-	my $monhost = PVE::Storage::CephTools::hostlist($scfg->{monhost}, ';');
+	my $monhost = PVE::CephConfig::hostlist($scfg->{monhost}, ';');
 	$monhost =~ s/:/\\:/g;
 	$path .= ":mon_host=$monhost";
 	$path .= ":auth_supported=$cmd_option->{auth_supported}";

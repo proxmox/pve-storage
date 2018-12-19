@@ -1,4 +1,4 @@
-package PVE::Storage::CephTools;
+package PVE::CephConfig;
 
 use strict;
 use warnings;
