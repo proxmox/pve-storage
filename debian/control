@@ -8,7 +8,7 @@ Build-Depends: debhelper (>= 7.0.50~),
                librados2-perl,
                lintian,
                perl (>= 5.10.0-19),
-               pve-cluster (>= 5.0-21),
+               pve-cluster (>= 5.0-32),
                pve-doc-generator,
 Standards-Version: 3.9.5
 Homepage: http://www.proxmox.com
@@ -32,7 +32,7 @@ Depends: cstream,
          ceph-common,
          ceph-fuse,
          cifs-utils,
-         pve-cluster,
+         pve-cluster (>= 5.0-32),
          ${perl:Depends},
 Description: Proxmox VE storage management library
  This package contains the storage management library used by Proxmox VE.
