@@ -14,6 +14,7 @@ sub parse_ceph_config {
     my ($filename, $raw) = @_;
 
     my $cfg = {};
+    return $cfg if !defined($raw);
 
     my @lines = split /\n/, $raw;
 
