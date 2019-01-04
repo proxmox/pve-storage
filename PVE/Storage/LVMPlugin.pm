@@ -362,6 +362,8 @@ sub free_image {
 
     my $cmd = ['/sbin/lvchange', '-aly', "$vg/$volname"];
     run_command($cmd, errmsg => "can't activate LV '$vg/$volname' to zero-out its data");
+    $cmd = ['/sbin/lvchange', '--refresh', "$vg/$volname"];
+    run_command($cmd, errmsg => "can't refresh LV '$vg/$volname' to zero-out its data");
 
     if ($scfg->{saferemove}) {
 	# avoid long running task, so we only rename here
@@ -472,6 +474,8 @@ sub activate_volume {
 
     my $cmd = ['/sbin/lvchange', "-a$lvm_activate_mode", $path];
     run_command($cmd, errmsg => "can't activate LV '$path'");
+    $cmd = ['/sbin/lvchange', '--refresh', $path];
+    run_command($cmd, errmsg => "can't refresh LV '$path' for activation");
 }
 
 sub deactivate_volume {
