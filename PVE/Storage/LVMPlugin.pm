@@ -499,6 +499,21 @@ sub volume_resize {
     return 1;
 }
 
+sub volume_size_info {
+    my ($class, $scfg, $storeid, $volname, $timeout) = @_;
+    my $path = $class->filesystem_path($scfg, $volname);
+
+    my $cmd = ['/sbin/lvs', '--separator', ':', '--noheadings', '--units', 'b',
+	       '--unbuffered', '--nosuffix', '--options', 'lv_size', $path];
+
+    my $size;
+    run_command($cmd, timeout => $timeout, errmsg => "can't get size of '$path'",
+	outfunc => sub {
+	    $size = int(shift);
+    });
+    return wantarray ? ($size, 'raw', 0, undef) : $size;
+}
+
 sub volume_snapshot {
     my ($class, $scfg, $storeid, $volname, $snap) = @_;
 
