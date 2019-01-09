@@ -107,7 +107,7 @@ sub get_monaddr_list {
     }
 
     my $config = $parse_ceph_file->($configfile);
-    @$server = sort map { $config->{$_}->{'mon addr'} } grep {/mon/} %{$config};
+    @$server = sort map { $config->{$_}->{'mon addr'} } grep {/mon\./} %{$config};
 
     return join(',', @$server);
 };
