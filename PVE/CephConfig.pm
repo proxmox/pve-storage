@@ -99,17 +99,16 @@ my $ceph_get_key = sub {
 sub get_monaddr_list {
     my ($configfile) = shift;
 
-    my $server;
-
     if (!defined($configfile)) {
 	warn "No ceph config specified\n";
 	return;
     }
 
     my $config = $parse_ceph_file->($configfile);
-    @$server = sort map { $config->{$_}->{'mon addr'} } grep {/mon\./} %{$config};
 
-    return join(',', @$server);
+    my @monids = grep { /mon\./ && defined($config->{$_}->{'mon addr'}) } %{$config};
+
+    return join(',', sort map { $config->{$_}->{'mon addr'} } @monids);
 };
 
 sub hostlist {
