@@ -1,3 +1,15 @@
+libpve-storage-perl (5.0-36) unstable; urgency=medium
+
+  * ceph: exclude general monitor section when assembling monitor addresses
+
+  * fix #2046: add volume_size_info to LVMPlugin
+
+  * ceph: improve parse_ceph_config
+
+  * LVM: Add '--refresh' when activating volumes
+
+ -- Proxmox Support Team <support@proxmox.com>  Tue, 15 Jan 2019 13:16:45 +0100
+
 libpve-storage-perl (5.0-35) unstable; urgency=medium
 
   * refactor ceph tools and provide a cfs backed ceph.conf parser
