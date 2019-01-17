@@ -620,14 +620,20 @@ sub volume_import {
 	}
 	my $file = $class->path($scfg, $volname, $storeid)
 	    or die "internal error: failed to get path to newly allocated volume $volname\n";
-	run_command(['dd', "of=$file", 'conv=sparse', 'bs=64k'],
-	            input => '<&'.fileno($fh));
+
+	$class->volume_import_write($fh, $file);
     };
     if (my $err = $@) {
 	eval { $class->free_image($storeid, $scfg, $volname, 0) };
 	warn $@ if $@;
 	die $err;
     }
+}
+
+sub volume_import_write {
+    my ($class, $input_fh, $output_file) = @_;
+    run_command(['dd', "of=$output_file", 'bs=64k'],
+	input => '<&'.fileno($input_fh));
 }
 
 1;
