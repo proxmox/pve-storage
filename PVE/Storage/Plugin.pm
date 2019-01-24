@@ -5,6 +5,7 @@ use warnings;
 
 use File::chdir;
 use File::Path;
+use File::Basename;
 
 use PVE::Tools qw(run_command);
 use PVE::JSONSchema qw(get_standard_option);
@@ -689,6 +690,11 @@ sub free_image {
 
 	unlink($path) || die "unlink '$path' failed - $!\n";
     }
+
+    # try to cleanup directory to not clutter storage with empty $vmid dirs if
+    # all images from a guest got deleted
+    my $dir = dirname($path);
+    rmdir($dir);
     
     return undef;
 }
