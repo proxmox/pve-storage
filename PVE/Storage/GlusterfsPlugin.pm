@@ -39,9 +39,8 @@ my $get_active_server = sub {
 	my $status = 0;
 
 	if ($server && $server ne 'localhost' && $server ne '127.0.0.1' && $server ne '::1') {
-
-	    # ping the echo port (7) without service check
-	    $status = PVE::Network::tcp_ping($server, undef, 2);
+	    # ping the gluster daemon default port (24007) as heuristic
+	    $status = PVE::Network::tcp_ping($server, 24007, 2);
 
 	} else {
 
