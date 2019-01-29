@@ -270,7 +270,7 @@ __PACKAGE__->register_method ({
 		    my $storage_params = {
 			type => 'dir',
 			storage => $name,
-			content => 'rootdir,images,iso,backup,vztmpl',
+			content => 'rootdir,images,iso,backup,vztmpl,snippets',
 			is_mountpoint => 1,
 			path => $path,
 			nodes => $node,
