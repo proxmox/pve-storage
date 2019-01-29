@@ -428,6 +428,8 @@ sub parse_volname {
 	    return ('backup', $fn, $2);
 	}
 	return ('backup', $fn);
+    } elsif ($volname =~ m!^snippets/([^/]+)$!) {
+	return ('snippets', $1);
     }
 
     die "unable to parse directory volume name '$volname'\n";
@@ -439,6 +441,7 @@ my $vtype_subdirs = {
     iso => 'template/iso',
     vztmpl => 'template/cache',
     backup => 'dump',
+    snippets => 'snippets',
 };
 
 sub get_subdir {

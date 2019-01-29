@@ -772,6 +772,48 @@ sub vdisk_free {
     $rpcenv->fork_worker('imgdel', undef, $authuser, $cleanup_worker);
 }
 
+# lists all files in the snippets directory
+sub snippets_list {
+    my ($cfg, $storeid) = @_;
+
+    my $ids = $cfg->{ids};
+
+    storage_check_enabled($cfg, $storeid) if ($storeid);
+
+    my $res = {};
+
+    foreach my $sid (keys %$ids) {
+	next if $storeid && $storeid ne $sid;
+	next if !storage_check_enabled($cfg, $sid, undef, 1);
+
+	my $scfg = $ids->{$sid};
+	next if !$scfg->{content}->{snippets};
+
+	activate_storage($cfg, $sid);
+
+	if ($scfg->{path}) {
+	    my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
+	    my $path = $plugin->get_subdir($scfg, 'snippets');
+
+	    foreach my $fn (<$path/*>) {
+		next if -d $fn;
+
+		push @{$res->{$sid}}, {
+		    volid => "$sid:snippets/". basename($fn),
+		    format => 'snippet',
+		    size => -s $fn,
+		};
+	    }
+	}
+
+	if ($res->{$sid}) {
+	    @{$res->{$sid}} = sort {$a->{volid} cmp $b->{volid} } @{$res->{$sid}};
+	}
+    }
+
+    return $res;
+}
+
 #list iso or openvz template ($tt = <iso|vztmpl|backup>)
 sub template_list {
     my ($cfg, $storeid, $tt) = @_;
@@ -887,7 +929,7 @@ sub vdisk_list {
 sub volume_list {
     my ($cfg, $storeid, $vmid, $content) = @_;
 
-    my @ctypes = qw(images vztmpl iso backup);
+    my @ctypes = qw(images vztmpl iso backup snippets);
 
     my $cts = $content ? [ $content ] : [ @ctypes ];
 
@@ -909,6 +951,8 @@ sub volume_list {
 		    @{$data->{$storeid}} = grep { $_->{volid} =~ m/\S+-$vmid-\S+/ } @{$data->{$storeid}};
 		}
 	    }
+	} elsif ($ct eq 'snippets') {
+	    $data = snippets_list($cfg, $storeid);
 	}
 
 	next if !$data || !$data->{$storeid};
@@ -1518,7 +1562,7 @@ sub complete_storage_enabled {
 sub complete_content_type {
     my ($cmdname, $pname, $cvalue) = @_;
 
-    return [qw(rootdir images vztmpl iso backup)];
+    return [qw(rootdir images vztmpl iso backup snippets)];
 }
 
 sub complete_volume {
