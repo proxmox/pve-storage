@@ -327,7 +327,7 @@ sub parse_config {
 	    priority => 0, # force first entry
 	    path => '/var/lib/vz',
 	    maxfiles => 0,
-	    content => { images => 1, rootdir => 1, vztmpl => 1, iso => 1},
+	    content => { images => 1, rootdir => 1, vztmpl => 1, iso => 1, snippets => 1},
 	};
     }
 

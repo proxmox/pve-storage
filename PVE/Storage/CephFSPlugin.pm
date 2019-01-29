@@ -86,7 +86,7 @@ sub type {
 
 sub plugindata {
     return {
-	content => [ { vztmpl => 1, iso => 1, backup => 1},
+	content => [ { vztmpl => 1, iso => 1, backup => 1, snippets => 1},
 		     { backup => 1 }],
     };
 }
