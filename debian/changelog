@@ -1,3 +1,15 @@
+libpve-storage-perl (5.0-37) unstable; urgency=medium
+
+  * fix #2050: only provide 'conv=sparse' for LvmThin
+
+  * fix #1941: remove empty directories when freeing image on FS based storages
+
+  * fix #1598: use glusterfs daemon default port for online check
+
+  * add new 'snippets' content type
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 01 Feb 2019 12:32:44 +0100
+
 libpve-storage-perl (5.0-36) unstable; urgency=medium
 
   * ceph: exclude general monitor section when assembling monitor addresses
