@@ -566,8 +566,8 @@ sub get_partnum {
     my ($mode, $rdev) = (stat($part_path))[2,6];
 
     next if !$mode || !S_ISBLK($mode) || !$rdev;
-    my $major = int($rdev / 0x100);
-    my $minor = $rdev % 0x100;
+    my $major = PVE::Tools::dev_t_major($rdev);
+    my $minor = PVE::Tools::dev_t_minor($rdev);
     my $partnum_path = "/sys/dev/block/$major:$minor/";
 
     my $partnum;
