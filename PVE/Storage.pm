@@ -399,7 +399,8 @@ sub check_volume_access {
     if ($sid) {
 	my ($vtype, undef, $ownervm) = parse_volname($cfg, $volid);
 	if ($vtype eq 'iso' || $vtype eq 'vztmpl') {
-	    # we simply allow access
+	    # at least read access to storage
+	    $rpcenv->check_any($user, "/storage/$sid", ['Datastore.AllocateSpace', 'Datastore.Audit']);
 	} elsif (defined($ownervm) && defined($vmid) && ($ownervm == $vmid)) {
 	    # we are owner - allow access
 	} elsif ($vtype eq 'backup' && $ownervm) {
