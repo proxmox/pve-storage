@@ -1,3 +1,12 @@
+libpve-storage-perl (5.0-38) unstable; urgency=medium
+
+  * diskmanage: fix device encoding handling
+
+  * tighten volume access checks for iso and vztmpl content type, require read
+    permissions
+
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 07 Feb 2019 15:14:12 +0100
+
 libpve-storage-perl (5.0-37) unstable; urgency=medium
 
   * fix #2050: only provide 'conv=sparse' for LvmThin
