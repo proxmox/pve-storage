@@ -90,6 +90,8 @@ my $write_ini = sub {
 sub systemd_escape {
     my ($val) = @_;
 
+    # NOTE: this is not complete, but enough for our needs. normally all
+    # characters which are not alpha-numerical, '.' or '_' would need escaping
     $val =~ s/\-/\\x2d/g;
 
     return $val;
