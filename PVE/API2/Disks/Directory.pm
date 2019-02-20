@@ -87,6 +87,22 @@ my $write_ini = sub {
     file_set_contents($filename, $content);
 };
 
+sub systemd_escape {
+    my ($val) = @_;
+
+    $val =~ s/\-/\\x2d/g;
+
+    return $val;
+}
+
+sub systemd_unescape {
+    my ($val) = @_;
+
+    $val =~ s/\\x([a-fA-F0-9]{2})/chr(hex($1))/eg;
+
+    return $val;
+}
+
 __PACKAGE__->register_method ({
     name => 'index',
     path => '',
@@ -138,6 +154,7 @@ __PACKAGE__->register_method ({
 
 	dir_glob_foreach('/etc/systemd/system', '^mnt-pve-(.+)\.mount$', sub {
 	    my ($filename, $storid) = @_;
+	    $storid = systemd_unescape($storid);
 
 	    my $unitfile = "/etc/systemd/system/$filename";
 	    my $unit = $read_ini->($unitfile);
@@ -206,7 +223,7 @@ __PACKAGE__->register_method ({
 
 	my $worker = sub {
 	    my $path = "/mnt/pve/$name";
-	    my $mountunitname = "mnt-pve-$name.mount";
+	    my $mountunitname = "mnt-pve-".systemd_escape($name).".mount";
 	    my $mountunitpath = "/etc/systemd/system/$mountunitname";
 
 	    PVE::Diskmanage::locked_disk_action(sub {
