@@ -88,11 +88,17 @@ my $write_ini = sub {
 };
 
 sub systemd_escape {
-    my ($val) = @_;
+    my ($val, $is_path) = @_;
 
     # NOTE: this is not complete, but enough for our needs. normally all
     # characters which are not alpha-numerical, '.' or '_' would need escaping
     $val =~ s/\-/\\x2d/g;
+
+    if ($is_path) {
+	$val =~ s/^\///g;
+	$val =~ s/\/$//g;
+    }
+    $val =~ s/\//-/g;
 
     return $val;
 }
@@ -100,6 +106,7 @@ sub systemd_escape {
 sub systemd_unescape {
     my ($val) = @_;
 
+    $val =~ s/-/\//g;
     $val =~ s/\\x([a-fA-F0-9]{2})/chr(hex($1))/eg;
 
     return $val;
@@ -225,7 +232,7 @@ __PACKAGE__->register_method ({
 
 	my $worker = sub {
 	    my $path = "/mnt/pve/$name";
-	    my $mountunitname = "mnt-pve-".systemd_escape($name).".mount";
+	    my $mountunitname = systemd_escape($path, 1) . ".mount";
 	    my $mountunitpath = "/etc/systemd/system/$mountunitname";
 
 	    PVE::Diskmanage::locked_disk_action(sub {
