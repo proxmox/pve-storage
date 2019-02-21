@@ -10,6 +10,7 @@ MANDIR=${PREFIX}/share/man
 DOCDIR=${PREFIX}/share/doc/${PACKAGE}
 MAN1DIR=${MANDIR}/man1/
 BASHCOMPLDIR=${PREFIX}/share/bash-completion/completions/
+ZSHCOMPLDIR=${PREFIX}/share/zsh/vendor-completions/
 
 export PERLDIR=${PREFIX}/share/perl5
 
@@ -34,8 +35,12 @@ pvesm.bash-completion:
 	perl -I. -T -e "use PVE::CLI::pvesm; PVE::CLI::pvesm->generate_bash_completions();" >$@.tmp
 	mv $@.tmp $@
 
+pvesm.zsh-completion:
+	perl -I. -T -e "use PVE::CLI::pvesm; PVE::CLI::pvesm->generate_zsh_completions();" >$@.tmp
+	mv $@.tmp $@
+
 .PHONY: install
-install: PVE pvesm.1 pvesm.bash-completion
+install: PVE pvesm.1 pvesm.bash-completion pvesm.zsh-completion
 	install -d ${DESTDIR}${SBINDIR}
 	install -m 0755 pvesm ${DESTDIR}${SBINDIR}
 	make -C PVE install
@@ -43,6 +48,7 @@ install: PVE pvesm.1 pvesm.bash-completion
 	install -m 0644 pvesm.1 ${DESTDIR}/usr/share/man/man1/
 	gzip -9 -n ${DESTDIR}/usr/share/man/man1/pvesm.1
 	install -m 0644 -D pvesm.bash-completion ${DESTDIR}${BASHCOMPLDIR}/pvesm
+	install -m 0644 -D pvesm.zsh-completion ${DESTDIR}${ZSHCOMPLDIR}/_pvesm
 
 .PHONY: deb
 deb: ${DEB}
