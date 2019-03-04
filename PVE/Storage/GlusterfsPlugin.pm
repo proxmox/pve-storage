@@ -274,7 +274,12 @@ sub alloc_image {
 
     push @$cmd, '-f', $fmt, $volumepath, "${size}K";
 
-    run_command($cmd, errmsg => "unable to create image");
+    eval { run_command($cmd, errmsg => "unable to create image"); };
+    if ($@) {
+	unlink $path;
+	rmdir $imagedir;
+	die "$@";
+    }
 
     return "$vmid/$name";
 }
