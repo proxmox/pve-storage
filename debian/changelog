@@ -1,3 +1,14 @@
+libpve-storage-perl (5.0-39) unstable; urgency=medium
+
+  * fix #585: remove leftover disks and empty directory if image allocation
+    failed
+
+  * fix #1891: Add zsh command completion for pvesm
+
+  * fix #2099: escape systemd path names in mount unit
+
+ -- Proxmox Support Team <support@proxmox.com>  Wed, 06 Mar 2019 10:31:47 +0100
+
 libpve-storage-perl (5.0-38) unstable; urgency=medium
 
   * diskmanage: fix device encoding handling
