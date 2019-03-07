@@ -36,6 +36,7 @@ sub iscsi_ls {
 	            $list->{$storeid}->{$image} = {
 	                name => $image,
 	                size => $size * $unittobytes{$unit},
+			format => 'raw',
 	            };
 	        }
 	    });
