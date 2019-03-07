@@ -7,7 +7,9 @@ libpve-storage-perl (5.0-39) unstable; urgency=medium
 
   * fix #2099: escape systemd path names in mount unit
 
- -- Proxmox Support Team <support@proxmox.com>  Wed, 06 Mar 2019 10:31:47 +0100
+  * fix content listing for user mode iscsi plugin
+
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 07 Mar 2019 12:12:46 +0100
 
 libpve-storage-perl (5.0-38) unstable; urgency=medium
 
