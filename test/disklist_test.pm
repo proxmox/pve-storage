@@ -80,6 +80,10 @@ sub mocked_get_sysdir_info {
     return &$originalsub($param);
 }
 
+sub mocked_is_iscsi {
+    return 0;
+}
+
 sub mocked_dir_glob_foreach {
     my ($dir, $regex, $sub) = @_;
 
@@ -186,6 +190,8 @@ $diskmanage_module->mock('dir_glob_foreach' => \&mocked_dir_glob_foreach);
 print("\tMocked dir_glob_foreach\n");
 $diskmanage_module->mock('get_sysdir_info' => \&mocked_get_sysdir_info);
 print("\tMocked get_sysdir_info\n");
+$diskmanage_module->mock('is_iscsi' => \&mocked_is_iscsi);
+print("\tMocked is_iscsi\n");
 $diskmanage_module->mock('assert_blockdev' => sub { return 1; });
 print("\tMocked assert_blockdev\n");
 $diskmanage_module->mock('dir_is_empty' => sub {

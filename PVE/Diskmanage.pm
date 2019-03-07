@@ -371,6 +371,16 @@ sub dir_is_empty {
     return 1;
 }
 
+sub is_iscsi {
+    my ($sysdir) = @_;
+
+    if (-l $sysdir && readlink($sysdir) =~ m|host[^/]*/session[^/]*|) {
+	return 1;
+    }
+
+    return 0;
+}
+
 sub get_disks {
     my ($disk, $nosmart) = @_;
     my $disklist = {};
@@ -421,7 +431,7 @@ sub get_disks {
 	my $sysdir = "/sys/block/$dev";
 
 	# we do not want iscsi devices
-	return if -l $sysdir && readlink($sysdir) =~ m|host[^/]*/session[^/]*|;
+	return if is_iscsi($sysdir);
 
 	my $sysdata = get_sysdir_info($sysdir);
 	return if !defined($sysdata);
