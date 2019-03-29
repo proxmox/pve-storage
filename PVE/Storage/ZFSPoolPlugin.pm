@@ -309,7 +309,12 @@ sub zfs_get_pool_stats {
 
 sub zfs_create_zvol {
     my ($class, $scfg, $zvol, $size) = @_;
-    
+
+    # always align size to 1M as workaround until
+    # https://github.com/zfsonlinux/zfs/issues/8541 is solved
+    my $padding = (1024 - $size % 1024) % 1024;
+    $size = $size + $padding;
+
     my $cmd = ['create'];
 
     push @$cmd, '-s' if $scfg->{sparse};
