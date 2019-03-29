@@ -1635,7 +1635,7 @@ sub get_bandwidth_limit {
     }
 
     # Apply per-storage limits - if there are storages involved.
-    if (@$storage_list) {
+    if (defined($storage_list) && @$storage_list) {
 	my $config = config();
 
 	# The Datastore.Allocate permission allows us to modify the per-storage
