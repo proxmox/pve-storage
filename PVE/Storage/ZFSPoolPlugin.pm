@@ -531,7 +531,7 @@ sub activate_storage {
 
     if ($@ || !defined($res) || $res !~ $pool) {
 	eval {
-	    @param = ('-d', '/dev/disk/by-id/', "$pool");
+	    @param = ('-d', '/dev/disk/by-id/', '-o', 'cachefile=none', "$pool");
 	    $class->zfs_request($scfg, undef, 'zpool_import', @param);
 	};
 	die "could not activate storage '$storeid', $@\n" if $@;
