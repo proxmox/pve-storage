@@ -107,6 +107,8 @@ my @tests = (
     [ ['unknown', ['d50m40r30'],     0],   0, 'root / storage default limit' ],
     [ ['move',    ['d50m40r30'],     0],   0, 'root / specific storage limit (move)' ],
     [ ['restore', ['d50m40r30'],     0],   0, 'root / specific storage limit (restore)' ],
+    [ ['migrate', undef,           100], 100, 'root / undef storage (migrate)' ],
+    [ ['migrate', [],              100], 100, 'root / no storage (migrate)' ],
 
     [ user => 'user1@test' ],
     [ ['unknown', ['nolimit'],      undef], 100, 'generic default limit' ],
@@ -186,6 +188,7 @@ my @tests = (
     [ ['move',    ['nolimit', 'd20m40r30'],   undef],     40, 'multiple storages specific limit with privileges on one of them (default limited) (move)' ],
     [ ['restore', ['nolimit', 'd20m40r30'],   undef],     30, 'multiple storages specific limit with privileges on one of them (default limited) (restore)' ],
     [ ['restore', ['d20m40r30', 'm50'],         200],     60, 'multiple storages specific limit with privileges on one of them (global default limited) (restore)' ],
+    [ ['move',    ['nolimit', undef ],          40] ,     40, 'multiple storages one undefined, passing 100 (move)' ],
 );
 
 foreach my $t (@tests) {
