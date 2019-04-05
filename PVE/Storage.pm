@@ -1646,6 +1646,7 @@ sub get_bandwidth_limit {
 
 	my %done;
 	foreach my $storage (@$storage_list) {
+	    next if !defined($storage);
 	    # Avoid duplicate checks:
 	    next if $done{$storage};
 	    $done{$storage} = 1;
