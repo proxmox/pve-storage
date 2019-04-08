@@ -152,7 +152,7 @@ sub get_smart_data {
 sub get_zfs_devices {
     my $list = {};
 
-    return {} if !(-x $ZPOOL);
+    return {} if ! -x $ZPOOL;
 
     # use zpool and parttype uuid,
     # because log and cache do not have
