@@ -1,3 +1,12 @@
+libpve-storage-perl (5.0-41) unstable; urgency=medium
+
+  * ignore undef as storage when calculating bandwith limits and add some more
+    tests
+
+  * Diskmanage: do not run zpool if not present
+
+ -- Proxmox Support Team <support@proxmox.com>  Mon, 08 Apr 2019 17:53:10 +0200
+
 libpve-storage-perl (5.0-40) unstable; urgency=medium
 
   * workaround zfs create -V error for unaligned sizes
