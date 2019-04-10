@@ -307,12 +307,12 @@ __PACKAGE__->register_method ({
 	}
 
 	PVE::Storage::vdisk_free ($cfg, $volid);
-	if ($vtype eq 'backup' && $path =~
-	    /(.*\/vzdump-\w+-\d+-\d{4}_\d{2}_\d{2}-\d{2}_\d{2}_\d{2})[^\/]+$/) {
+
+	if ($vtype eq 'backup'
+	    && $path =~ /(.*\/vzdump-\w+-\d+-\d{4}_\d{2}_\d{2}-\d{2}_\d{2}_\d{2})[^\/]+$/) {
 	    my $logpath = "$1.log";
-	    if (-e $logpath) {
-		unlink($logpath);
-	    }
+	    # try to cleanup our backup log file too, if still exisiting, #318
+	    unlink($logpath) if -e $logpath;
 	}
 
 	return undef;
