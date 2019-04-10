@@ -442,7 +442,7 @@ __PACKAGE__->register_method ({
 		PVE::Tools::run_command([@remcmd, '/usr/sbin/pvesm', 'status', 
 					 '--storage', $param->{storage}]); 
 	    };
-	    die "can't activate storage '$param->{storage}' on node '$node'\n" if $@;
+	    die "can't activate storage '$param->{storage}' on node '$node': $@\n" if $@;
 
 	    PVE::Tools::run_command([@remcmd, '/bin/mkdir', '-p', '--', PVE::Tools::shell_quote($dirname)],
 				    errmsg => "mkdir failed");
