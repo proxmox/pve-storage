@@ -528,13 +528,16 @@ sub activate_storage {
     eval {
 	$res = $class->zfs_request($scfg, undef, 'zpool_list', @param);
     };
-
-    if ($@ || !defined($res) || $res !~ $pool) {
+    my $err = $@;
+    if ($err || !defined($res) || $res !~ $pool) {
 	eval {
 	    @param = ('-d', '/dev/disk/by-id/', '-o', 'cachefile=none', "$pool");
 	    $class->zfs_request($scfg, undef, 'zpool_import', @param);
 	};
-	die "could not activate storage '$storeid', $@\n" if $@;
+	if ($@) {
+	    warn "$err\n";
+	    die "could not activate storage '$storeid', $@\n";
+	}
     }
     return 1;
 }
