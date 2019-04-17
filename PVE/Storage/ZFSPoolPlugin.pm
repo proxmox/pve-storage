@@ -173,7 +173,7 @@ sub zfs_request {
 	push @$cmd, 'zpool', 'list';
     } elsif ($method eq 'zpool_import') {
 	push @$cmd, 'zpool', 'import';
-	$default_timeout = 15 if $default_timeout < 15;
+	$timeout = 15 if !$timeout || $timeout < 15;
     } else {
 	push @$cmd, 'zfs', $method;
     }
