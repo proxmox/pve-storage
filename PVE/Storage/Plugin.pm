@@ -966,7 +966,8 @@ sub deactivate_storage {
 sub map_volume {
     my ($class, $storeid, $scfg, $volname, $snapname) = @_;
 
-    return undef;
+    my ($path) = $class->path($scfg, $volname, $storeid, $snapname);
+    return $path;
 }
 
 sub unmap_volume {
