@@ -1,3 +1,15 @@
+libpve-storage-perl (5.0-42) unstable; urgency=medium
+
+  * Fix #318: Delete vzdump log when deleting a backup
+
+  * ZFS Pool: improve error output from activate_storage
+
+  * ZFS Pool: handle race with other zpool imports
+
+  * plugin map_volume: fall back to path in base implementation
+
+ -- Proxmox Support Team <support@proxmox.com>  Tue, 30 Apr 2019 13:54:55 +0000
+
 libpve-storage-perl (5.0-41) unstable; urgency=medium
 
   * ignore undef as storage when calculating bandwith limits and add some more
