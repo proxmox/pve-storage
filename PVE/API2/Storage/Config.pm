@@ -195,6 +195,7 @@ __PACKAGE__->register_method ({
 
 	my $storeid = extract_param($param, 'storage');
 	my $digest = extract_param($param, 'digest');
+	my $delete = extract_param($param, 'delete');
 
         PVE::Storage::lock_storage_config(
 	 sub {
@@ -207,6 +208,20 @@ __PACKAGE__->register_method ({
 
 	    my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
 	    my $opts = $plugin->check_config($storeid, $param, 0, 1);
+
+	    if ($delete) {
+		my $options = $plugin->private()->{options}->{$scfg->{type}};
+		foreach my $k (PVE::Tools::split_list($delete)) {
+		    my $d = $options->{$k} || die "no such option '$k'\n";
+		    die "unable to delete required option '$k'\n" if !$d->{optional};
+		    die "unable to delete fixed option '$k'\n" if $d->{fixed};
+		    die "cannot set and delete property '$k' at the same time!\n"
+			if defined($opts->{$k});
+
+		    delete $scfg->{$k};
+		}
+	    }
+
 
 	    foreach my $k (%$opts) {
 		$scfg->{$k} = $opts->{$k};
