@@ -39,20 +39,20 @@ my $api_storage_config = sub {
 };
 
 __PACKAGE__->register_method ({
-    name => 'index', 
+    name => 'index',
     path => '',
     method => 'GET',
     description => "Storage index.",
-    permissions => { 
+    permissions => {
 	description => "Only list entries where you have 'Datastore.Audit' or 'Datastore.AllocateSpace' permissions on '/storage/<storage>'",
 	user => 'all',
     },
     parameters => {
-    	additionalProperties => 0,
+	additionalProperties => 0,
 	properties => {
-	    type => { 
+	    type => {
 		description => "Only list storage of specific type",
-		type => 'string', 
+		type => 'string',
 		enum => $storage_type_enum,
 		optional => 1,
 	    },
@@ -90,15 +90,15 @@ __PACKAGE__->register_method ({
     }});
 
 __PACKAGE__->register_method ({
-    name => 'read', 
+    name => 'read',
     path => '{storage}',
     method => 'GET',
     description => "Read storage configuration.",
-    permissions => { 
+    permissions => {
 	check => ['perm', '/storage/{storage}', ['Datastore.Allocate']],
     },
     parameters => {
-    	additionalProperties => 0,
+	additionalProperties => 0,
 	properties => {
 	    storage => get_standard_option('pve-storage-id'),
 	},
@@ -115,10 +115,10 @@ __PACKAGE__->register_method ({
 __PACKAGE__->register_method ({
     name => 'create',
     protected => 1,
-    path => '', 
+    path => '',
     method => 'POST',
     description => "Create a new storage.",
-    permissions => { 
+    permissions => {
 	check => ['perm', '/storage', ['Datastore.Allocate']],
     },
     parameters => PVE::Storage::Plugin->createSchema(),
@@ -173,7 +173,7 @@ __PACKAGE__->register_method ({
 		}
 
 		PVE::Storage::write_config($cfg);
-	    
+
 	    }, "create storage failed");
 
 	return undef;
@@ -185,7 +185,7 @@ __PACKAGE__->register_method ({
     path => '{storage}',
     method => 'PUT',
     description => "Update storage configuration.",
-    permissions => { 
+    permissions => {
 	check => ['perm', '/storage', ['Datastore.Allocate']],
     },
     parameters => PVE::Storage::Plugin->updateSchema(),
@@ -197,8 +197,7 @@ __PACKAGE__->register_method ({
 	my $digest = extract_param($param, 'digest');
 	my $delete = extract_param($param, 'delete');
 
-        PVE::Storage::lock_storage_config(
-	 sub {
+        PVE::Storage::lock_storage_config(sub {
 
 	    my $cfg = PVE::Storage::config();
 
@@ -228,7 +227,7 @@ __PACKAGE__->register_method ({
 
 	    PVE::Storage::write_config($cfg);
 
-	    }, "update storage failed");
+	}, "update storage failed");
 
 	return undef;
     }});
@@ -239,12 +238,12 @@ __PACKAGE__->register_method ({
     path => '{storage}', # /storage/config/{storage}
     method => 'DELETE',
     description => "Delete storage configuration.",
-    permissions => { 
+    permissions => {
 	check => ['perm', '/storage', ['Datastore.Allocate']],
     },
     parameters => {
-    	additionalProperties => 0,
-	properties => { 
+	additionalProperties => 0,
+	properties => {
 	    storage => get_standard_option('pve-storage-id', {
                 completion => \&PVE::Storage::complete_storage,
             }),
