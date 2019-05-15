@@ -1,3 +1,11 @@
+libpve-storage-perl (5.0-43) unstable; urgency=medium
+
+  * handle deletion of properties of a single storage config entry
+
+  * api/config update: only iterate over hash keys, not values
+
+ -- Proxmox Support Team <support@proxmox.com>  Wed, 15 May 2019 16:13:49 +0200
+
 libpve-storage-perl (5.0-42) unstable; urgency=medium
 
   * Fix #318: Delete vzdump log when deleting a backup
