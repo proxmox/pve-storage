@@ -222,8 +222,7 @@ __PACKAGE__->register_method ({
 		}
 	    }
 
-
-	    foreach my $k (%$opts) {
+	    for my $k (keys %$opts) {
 		$scfg->{$k} = $opts->{$k};
 	    }
 
