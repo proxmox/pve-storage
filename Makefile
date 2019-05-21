@@ -1,5 +1,4 @@
 include /usr/share/dpkg/pkg-info.mk
-include /usr/share/dpkg/architecture.mk
 
 PACKAGE=libpve-storage-perl
 
