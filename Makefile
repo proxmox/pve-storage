@@ -1,6 +1,7 @@
-VERSION=5.0
+include /usr/share/dpkg/pkg-info.mk
+include /usr/share/dpkg/architecture.mk
+
 PACKAGE=libpve-storage-perl
-PKGREL=43
 
 DESTDIR=
 PREFIX=/usr
@@ -14,12 +15,9 @@ ZSHCOMPLDIR=${PREFIX}/share/zsh/vendor-completions/
 
 export PERLDIR=${PREFIX}/share/perl5
 
-export SOURCE_DATE_EPOCH ?= $(shell dpkg-parsechangelog -STimestamp)
-
-ARCH=all
 GITVERSION:=$(shell git rev-parse HEAD)
 
-DEB=${PACKAGE}_${VERSION}-${PKGREL}_${ARCH}.deb
+DEB=${PACKAGE}_${DEB_VERSION_UPSTREAM_REVISION}_all.deb
 
 # this require package pve-doc-generator
 export NOVIEW=1
