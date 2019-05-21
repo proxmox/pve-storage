@@ -1,3 +1,9 @@
+libpve-storage-perl (6.0-0+1) pve; urgency=medium
+
+  * Re-build for Debian Buster / PVE 6.0
+
+ -- Proxmox Support Team <support@proxmox.com>  Tue, 21 May 2019 20:53:52 +0200
+
 libpve-storage-perl (5.0-43) unstable; urgency=medium
 
   * handle deletion of properties of a single storage config entry
