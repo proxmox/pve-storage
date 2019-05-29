@@ -137,7 +137,7 @@ __PACKAGE__->register_method ({
 	    my $entry = $disks->{$disk};
 	    if ($type eq 'journal_disks') {
 		next if $entry->{osdid} >= 0;
-		next if !$entry->{gpt};
+		next if !$entry->{gpt} && $entry->{used} ne 'LVM';
 	    } elsif ($type eq 'unused') {
 		next if $entry->{used};
 	    } elsif ($type ne '') {
