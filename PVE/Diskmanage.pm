@@ -13,6 +13,7 @@ my $SMARTCTL = "/usr/sbin/smartctl";
 my $ZPOOL = "/sbin/zpool";
 my $SGDISK = "/sbin/sgdisk";
 my $PVS = "/sbin/pvs";
+my $LVS = "/sbin/lvs";
 my $UDEVADM = "/bin/udevadm";
 
 sub verify_blockdev_path {
@@ -235,6 +236,39 @@ sub get_ceph_journals {
     return $journalhash;
 }
 
+# reads the lv_tags and matches them with the devices
+sub get_ceph_volume_infos {
+    my $result = {};
+
+    my $cmd = [$LVS, '-S', 'lv_name=~^osd-','-o','devices,lv_name,lv_tags',
+	       '--noheadings', '--readonly', '--separator', ';'];
+
+    run_command($cmd, outfunc => sub {
+	my $line = shift;
+	$line =~ s/(?:^\s+)|(?:\s+$)//g; # trim
+	my $fields = [split(';', $line)];
+
+	# lvs syntax is /dev/sdX(Y) where Y is the start (which we do not need)
+	my ($dev) = $fields->[0] =~ m|^(/dev/[a-z]+)|;
+	if ($fields->[1] =~ m|^osd-([^-]+)-|) {
+	    my $type = $1;
+	    # we use autovivification here to not concern us with
+	    # creation of empty hashes
+	    if (($type eq 'block' || $type eq 'data') &&
+		$fields->[2] =~ m/ceph.osd_id=([^,])/)
+	    {
+		$result->{$dev}->{osdid} = $1;
+		$result->{$dev}->{bluestore} = ($type eq 'block');
+	    } else {
+		# if $foo is undef $foo++ results in '1' (and is well defined)
+		$result->{$dev}->{$type}++;
+	    }
+	}
+    });
+
+    return $result;
+}
+
 sub get_udev_info {
     my ($dev) = @_;
 
@@ -402,6 +436,7 @@ sub get_disks {
     };
 
     my $journalhash = get_ceph_journals();
+    my $ceph_volume_infos = get_ceph_volume_infos();
 
     my $zfslist = get_zfs_devices();
 
@@ -548,6 +583,16 @@ sub get_disks {
 		$found_dm = 1;
 	    }
 	});
+
+	if ($ceph_volume_infos->{$devpath}) {
+	    $journal_count += $ceph_volume_infos->{$devpath}->{journal} // 0;
+	    $db_count += $ceph_volume_infos->{$devpath}->{db} // 0;
+	    $wal_count += $ceph_volume_infos->{$devpath}->{wal} // 0;
+	    if ($ceph_volume_infos->{$devpath}->{osdid}) {
+		$osdid = $ceph_volume_infos->{$devpath}->{osdid};
+		$bluestore = 1 if $ceph_volume_infos->{$devpath}->{bluestore};
+	    }
+	}
 
 	$used = 'mounted' if $found_mountpoints && !$used;
 	$used = 'LVM' if $found_lvm && !$used;

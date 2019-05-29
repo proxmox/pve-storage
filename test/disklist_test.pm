@@ -52,6 +52,8 @@ sub mocked_run_command {
 	} elsif ($cmd->[0] =~ m/pvs/i) {
 	    # simulate lvs output
 	    @$outputlines = split(/\n/, read_test_file('pvs'));
+	} elsif ($cmd->[0] =~ m/lvs/i) {
+	    @$outputlines = split(/\n/, read_test_file('lvs'));
 	} else {
 	    print "unexpected run_command call: '@$cmd', aborting\n";
 	    die;
