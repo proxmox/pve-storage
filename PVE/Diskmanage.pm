@@ -570,11 +570,11 @@ sub get_disks {
 		$found_zfs = 1;
 	    }
 
-	    if ($journalhash->{"$partpath/$part"}) {
-		$journal_count++ if $journalhash->{"$partpath/$part"} == 1;
-		$db_count++ if $journalhash->{"$partpath/$part"} == 2;
-		$wal_count++ if $journalhash->{"$partpath/$part"} == 3;
-		$bluestore = 1 if $journalhash->{"$partpath/$part"} == 4;
+	    if (my $journal_part = $journalhash->{"$partpath/$part"}) {
+		$journal_count++ if $journal_part == 1;
+		$db_count++ if $journal_part == 2;
+		$wal_count++ if $journal_part == 3;
+		$bluestore = 1 if $journal_part == 4;
 	    }
 
 	    if (!dir_is_empty("$sysdir/$part/holders") && !$found_lvm)  {
@@ -582,13 +582,13 @@ sub get_disks {
 	    }
 	});
 
-	if ($ceph_volume_infos->{$devpath}) {
-	    $journal_count += $ceph_volume_infos->{$devpath}->{journal} // 0;
-	    $db_count += $ceph_volume_infos->{$devpath}->{db} // 0;
-	    $wal_count += $ceph_volume_infos->{$devpath}->{wal} // 0;
-	    if ($ceph_volume_infos->{$devpath}->{osdid}) {
-		$osdid = $ceph_volume_infos->{$devpath}->{osdid};
-		$bluestore = 1 if $ceph_volume_infos->{$devpath}->{bluestore};
+	if (my $ceph_volume = $ceph_volume_infos->{$devpath}) {
+	    $journal_count += $ceph_volume->{journal} // 0;
+	    $db_count += $ceph_volume->{db} // 0;
+	    $wal_count += $ceph_volume->{wal} // 0;
+	    if ($ceph_volume->{osdid}) {
+		$osdid = $ceph_volume->{osdid};
+		$bluestore = 1 if $ceph_volume->{bluestore};
 	    }
 	}
 
