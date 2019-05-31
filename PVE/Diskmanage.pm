@@ -240,27 +240,25 @@ sub get_ceph_journals {
 sub get_ceph_volume_infos {
     my $result = {};
 
-    my $cmd = [$LVS, '-S', 'lv_name=~^osd-','-o','devices,lv_name,lv_tags',
-	       '--noheadings', '--readonly', '--separator', ';'];
+    my $cmd = [ $LVS, '-S', 'lv_name=~^osd-', '-o', 'devices,lv_name,lv_tags',
+	       '--noheadings', '--readonly', '--separator', ';' ];
 
     run_command($cmd, outfunc => sub {
 	my $line = shift;
-	$line =~ s/(?:^\s+)|(?:\s+$)//g; # trim
-	my $fields = [split(';', $line)];
+	$line =~ s/(?:^\s+)|(?:\s+$)//g; # trim whitespaces
+
+	my $fields = [ split(';', $line) ];
 
 	# lvs syntax is /dev/sdX(Y) where Y is the start (which we do not need)
 	my ($dev) = $fields->[0] =~ m|^(/dev/[a-z]+)|;
 	if ($fields->[1] =~ m|^osd-([^-]+)-|) {
 	    my $type = $1;
-	    # we use autovivification here to not concern us with
-	    # creation of empty hashes
-	    if (($type eq 'block' || $type eq 'data') &&
-		$fields->[2] =~ m/ceph.osd_id=([^,])/)
-	    {
+	    # $result autovivification is wanted, to not creating empty hashes
+	    if (($type eq 'block' || $type eq 'data') && $fields->[2] =~ m/ceph.osd_id=([^,])/) {
 		$result->{$dev}->{osdid} = $1;
 		$result->{$dev}->{bluestore} = ($type eq 'block');
 	    } else {
-		# if $foo is undef $foo++ results in '1' (and is well defined)
+		# undef++ becomes '1' (see `perldoc perlop`: Auto-increment)
 		$result->{$dev}->{$type}++;
 	    }
 	}
