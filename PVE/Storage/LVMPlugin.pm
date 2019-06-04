@@ -296,6 +296,22 @@ sub lvm_find_free_diskname {
     return PVE::Storage::Plugin::get_next_vm_diskname($disk_list, $storeid, $vmid, undef, $scfg);
 }
 
+sub lvcreate {
+    my ($vg, $name, $size, $tags) = @_;
+
+    if ($size =~ m/\d$/) { # no unit is given
+	$size .= "k"; # default to kilobytes
+    }
+
+    my $cmd = ['/sbin/lvcreate', '-aly', '--size', $size, '--name', $name];
+    for my $tag (@$tags) {
+	push @$cmd, '--addtag', $tag;
+    }
+    push @$cmd, $vg;
+
+    run_command($cmd, errmsg => "lvcreate '$vg/$name' error");
+}
+
 sub alloc_image {
     my ($class, $storeid, $scfg, $vmid, $fmt, $name, $size) = @_;
 
@@ -317,9 +333,7 @@ sub alloc_image {
     $name = lvm_find_free_diskname(lvm_list_volumes($vg), $vg, $storeid, $vmid, $scfg)
 	if !$name;
 
-    my $cmd = ['/sbin/lvcreate', '-aly', '--addtag', "pve-vm-$vmid", '--size', "${size}k", '--name', $name, $vg];
-
-    run_command($cmd, errmsg => "lvcreate '$vg/pve-vm-$vmid' error");
+    lvcreate($vg, $name, $size, ["pve-vm-$vmid"]);
 
     return $name;
 }
