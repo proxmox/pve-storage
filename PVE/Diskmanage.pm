@@ -416,7 +416,7 @@ sub is_iscsi {
 }
 
 sub get_disks {
-    my ($disk, $nosmart) = @_;
+    my ($disks, $nosmart) = @_;
     my $disklist = {};
 
     my $mounted = {};
@@ -440,14 +440,21 @@ sub get_disks {
 
     my $lvmlist = get_lvm_devices();
 
-    # we get cciss/c0d0 but need cciss!c0d0
-    if (defined($disk) && $disk =~ m|^cciss/|) {
-	$disk =~ s|cciss/|cciss!|;
+    my $disk_regex = ".*";
+    if (defined($disks)) {
+	if (!ref($disks)) {
+	    $disks = [ $disks ];
+	} elsif (ref($disks) ne 'ARRAY') {
+	    die "disks is not a string or array reference\n";
+	}
+	# we get cciss/c0d0 but need cciss!c0d0
+	map { s|cciss/|cciss!| } @$disks;
+
+	$disk_regex = "(?:" . join('|', @$disks) . ")";
     }
 
-    dir_glob_foreach('/sys/block', '.*', sub {
+    dir_glob_foreach('/sys/block', $disk_regex, sub {
 	my ($dev) = @_;
-	return if defined($disk) && $disk ne $dev;
 	# whitelisting following devices
 	# hdX: ide block device
 	# sdX: sd block device
