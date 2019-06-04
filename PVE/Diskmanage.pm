@@ -471,7 +471,7 @@ sub get_disks {
 
 		if ($type eq 'ssd') {
 		    # if we have an ssd we try to get the wearout indicator
-		    my $wearval = get_wear_leveling_info($smartdata, $data->{model} || $sysdir->{model});
+		    my $wearval = get_wear_leveling_info($smartdata, $data->{model} || $sysdata->{model});
 		    $wearout = $wearval if $wearval;
 		}
 	    };
