@@ -130,6 +130,10 @@ sub get_smart_data {
 	    } elsif (defined($type) && $type eq 'text') {
 		$smartdata->{text} = '' if !defined $smartdata->{text};
 		$smartdata->{text} .= "$line\n";
+		# extract wearout from nvme text, allow for decimal values
+		if ($line =~ m/Percentage Used:.*(\d+(?:\.\d+)?)\%/i) {
+		    $smartdata->{wearout} = 100 - $1;
+		}
 	    } elsif ($line =~ m/SMART Disabled/) {
 		$smartdata->{health} = "SMART Disabled";
 	    }
@@ -320,7 +324,12 @@ sub get_sysdir_info {
 }
 
 sub get_wear_leveling_info {
-    my ($attributes, $model) = @_;
+    my ($smartdata, $model) = @_;
+    my $attributes = $smartdata->{attributes};
+
+    if (defined($smartdata->{wearout})) {
+	return $smartdata->{wearout};
+    }
 
     my $wearout;
 
@@ -462,7 +471,7 @@ sub get_disks {
 
 		if ($type eq 'ssd') {
 		    # if we have an ssd we try to get the wearout indicator
-		    my $wearval = get_wear_leveling_info($smartdata->{attributes}, $data->{model} || $sysdir->{model});
+		    my $wearval = get_wear_leveling_info($smartdata, $data->{model} || $sysdir->{model});
 		    $wearout = $wearval if $wearval;
 		}
 	    };
