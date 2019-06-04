@@ -172,7 +172,29 @@ sub test_disk_list {
 		$testcount++;
 		ok(0,  "could not parse expected smart for '$disk'\n");
 	    }
+	    my $disk_tmp = {};
+
+	    # test single disk parameter
+	    $disk_tmp = PVE::Diskmanage::get_disks($disk);
+	    warn $@ if $@;
+	    $testcount++;
+	    print Dumper $disk_tmp if $print;
+	    is_deeply($disk_tmp->{$disk}, $expected_disk_list->{$disk}, "disk $disk should be the same");
+
+
+	    # test wrong parameter
+	    eval {
+		PVE::Diskmanage::get_disks( { test => 1 } );
+	    };
+	    my $err = $@;
+	    $testcount++;
+	    is_deeply($err, "disks is not a string or array reference\n", "error message should be the same");
+
 	}
+	    # test multi disk parameter
+	    $disks = PVE::Diskmanage::get_disks( [ keys %$disks ] );
+	    $testcount++;
+	    is_deeply($disks, $expected_disk_list, 'disk list should be the same');
 
 	done_testing($testcount);
     };
