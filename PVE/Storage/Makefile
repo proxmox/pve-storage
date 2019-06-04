@@ -1,4 +1,19 @@
-SOURCES=Plugin.pm DirPlugin.pm LVMPlugin.pm NFSPlugin.pm CIFSPlugin.pm ISCSIPlugin.pm CephFSPlugin.pm RBDPlugin.pm SheepdogPlugin.pm ISCSIDirectPlugin.pm GlusterfsPlugin.pm ZFSPoolPlugin.pm ZFSPlugin.pm DRBDPlugin.pm LvmThinPlugin.pm
+SOURCES= \
+	Plugin.pm \
+	DirPlugin.pm \
+	LVMPlugin.pm \
+	NFSPlugin.pm \
+	CIFSPlugin.pm \
+	ISCSIPlugin.pm \
+	CephFSPlugin.pm \
+	RBDPlugin.pm \
+	SheepdogPlugin.pm \
+	ISCSIDirectPlugin.pm \
+	GlusterfsPlugin.pm \
+	ZFSPoolPlugin.pm \
+	ZFSPlugin.pm \
+	DRBDPlugin.pm \
+	LvmThinPlugin.pm
 
 .PHONY: install
 install:
