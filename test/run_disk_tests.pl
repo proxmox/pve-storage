@@ -8,5 +8,5 @@ use TAP::Harness;
 my $harness = TAP::Harness->new( { verbosity => -2 });
 my $res = $harness->runtests( "disklist_test.pm" );
 
-exit -1 if $res->{failed};
+exit -1 if !$res || $res->{failed} || $res->{parse_errors};
 
