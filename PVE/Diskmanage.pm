@@ -680,4 +680,37 @@ sub assert_disk_unused {
     return undef;
 }
 
+sub append_partition {
+    my ($dev, $size) = @_;
+
+    my $devname = $dev;
+    $devname =~ s|^/dev/||;
+
+    my $newpartid = 1;
+    dir_glob_foreach("/sys/block/$devname", qr/\Q$devname\E.*?(\d+)/, sub {
+	my ($part, $partid) = @_;
+
+	if ($partid >= $newpartid) {
+	    $newpartid = $partid + 1;
+	}
+    });
+
+    $size = PVE::Tools::convert_size($size, 'b' => 'mb');
+
+    run_command([ $SGDISK, '-n', "$newpartid:0:+${size}M", $dev ],
+		errmsg => "error creating partition '$newpartid' on '$dev'");
+
+    my $partition;
+
+    # loop again to detect the real partiton device which does not always follow
+    # a strict $devname$partition scheme like /dev/nvme0n1 -> /dev/nvme0n1p1
+    dir_glob_foreach("/sys/block/$devname", qr/\Q$devname\E.*$newpartid/, sub {
+	my ($part) = @_;
+
+	$partition = "/dev/$part";
+    });
+
+    return $partition;
+}
+
 1;
