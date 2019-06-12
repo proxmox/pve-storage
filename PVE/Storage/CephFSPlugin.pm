@@ -65,11 +65,12 @@ sub cephfs_mount {
 	my $source = "$server:$subdir";
 	$cmd = ['/bin/mount', '-t', 'ceph', $source, $mountpoint, '-o', "name=$cmd_option->{userid}"];
 	push @$cmd, '-o', "secretfile=$secretfile" if defined($secretfile);
+
+	# tell systemd that we're network dependent, else it umounts us to late
+	# on shutdown, when we couldn't connect to the active MDS and thus
+	# unmount hangs and delays shutdown/reboot (man systemd.mount).
+	push @$cmd, '-o', '_netdev';
     }
-    # tell systemd that we're network dependent, else it umounts us to late on
-    # shutdown, when we couldn't connect to the active MDS and thus unmount
-    # hangs and delays shutdown/reboot (man systemd.mount)
-    push @$cmd, '-o', '_netdev';
 
     if ($scfg->{options}) {
 	push @$cmd, '-o', $scfg->{options};
