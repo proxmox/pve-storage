@@ -369,7 +369,7 @@ __PACKAGE__->register_method ({
 		type => 'string',
 	    },
 	    tmpfilename => { 
-		description => "The source file name. This parameter is usually set by the REST handler. You can only overwrite it when connecting to the trustet port on localhost.",
+		description => "The source file name. This parameter is usually set by the REST handler. You can only overwrite it when connecting to the trusted port on localhost.",
 		type => 'string',
 		optional => 1,
 	    },
@@ -427,7 +427,10 @@ __PACKAGE__->register_method ({
 	my $dest = "$path/$filename";
 	my $dirname = dirname($dest);
 
-	# we simply overwrite when destination when file already exists
+	# best effort to match apl_download behaviour
+	chmod 0644, $tmpfilename;
+
+	# we simply overwrite when destination file already exists
 
 	my $cmd;
 	if ($node ne 'localhost' && $node ne PVE::INotify::nodename()) {
@@ -447,7 +450,7 @@ __PACKAGE__->register_method ({
 	    PVE::Tools::run_command([@remcmd, '/bin/mkdir', '-p', '--', PVE::Tools::shell_quote($dirname)],
 				    errmsg => "mkdir failed");
  
-	    $cmd = ['/usr/bin/scp', @ssh_options, '--', $tmpfilename, "[$remip]:" . PVE::Tools::shell_quote($dest)];
+	    $cmd = ['/usr/bin/scp', @ssh_options, '-p', '--', $tmpfilename, "[$remip]:" . PVE::Tools::shell_quote($dest)];
 	} else {
 	    PVE::Storage::activate_storage($cfg, $param->{storage});
 	    File::Path::make_path($dirname);
