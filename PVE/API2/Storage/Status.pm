@@ -430,7 +430,7 @@ __PACKAGE__->register_method ({
 	# best effort to match apl_download behaviour
 	chmod 0644, $tmpfilename;
 
-	# we simply overwrite when destination file already exists
+	# we simply overwrite the destination file if it already exists
 
 	my $cmd;
 	if ($node ne 'localhost' && $node ne PVE::INotify::nodename()) {
