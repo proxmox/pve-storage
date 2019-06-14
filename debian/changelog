@@ -1,3 +1,13 @@
+libpve-storage-perl (6.0-1) pve; urgency=medium
+
+  * Diskmanage: extract nvme wearout from smartctl text
+
+  * fix #1427: Set file mode on uploaded templates/ISOs
+
+  * cephfs: Exclude _netdev when mounting with fuse
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 14 Jun 2019 20:32:24 +0200
+
 libpve-storage-perl (6.0-0+1) pve; urgency=medium
 
   * Re-build for Debian Buster / PVE 6.0
