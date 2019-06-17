@@ -689,8 +689,7 @@ sub free_image {
     if (defined($format) && ($format eq 'subvol')) {
 	File::Path::remove_tree($path);
     } else {
-
-	if (! (-f $path || -l $path)) {
+	if (! -e $path) {
 	    warn "disk image '$path' does not exists\n";
 	    return undef;
 	}
