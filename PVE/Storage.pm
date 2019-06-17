@@ -800,7 +800,7 @@ sub snippets_list {
 		push @{$res->{$sid}}, {
 		    volid => "$sid:snippets/". basename($fn),
 		    format => 'snippet',
-		    size => -s $fn,
+		    size => -s $fn // 0,
 		};
 	    }
 	}
@@ -867,7 +867,7 @@ sub template_list {
 		    $info = { volid => "$sid:backup/$1", format => $2 };
 		}
 
-		$info->{size} = -s $fn;
+		$info->{size} = -s $fn // 0;
 
 		push @{$res->{$sid}}, $info;
 	    }
