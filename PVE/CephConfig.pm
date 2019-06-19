@@ -34,8 +34,7 @@ sub parse_ceph_config {
 
 	if ($line =~ m/^(.*?\S)\s*=\s*(\S.*)$/) {
 	    my ($key, $val) = ($1, $2);
-	    # ceph treats ' ', '_' and '-' in keys the same, so we
-	    # map it to '_' to get a consistent hash
+	    # ceph treats ' ', '_' and '-' in keys the same, so lets do too
 	    $key =~ s/[-\ ]/_/g;
 	    $cfg->{$section}->{$key} = $val;
 	}
