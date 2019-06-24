@@ -1,3 +1,12 @@
+libpve-storage-perl (6.0-2) pve; urgency=medium
+
+  * fix #2226: ignore broken symlinks in content list helpers and
+    allow broken symlinks to be deleted via API
+
+  * CephConfig: map special config key characters to _
+
+ -- Proxmox Support Team <support@proxmox.com>  Mon, 24 Jun 2019 18:46:38 +0200
+
 libpve-storage-perl (6.0-1) pve; urgency=medium
 
   * Diskmanage: extract nvme wearout from smartctl text
