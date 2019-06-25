@@ -1,3 +1,14 @@
+libpve-storage-perl (5.0-44) unstable; urgency=medium
+
+  * Diskmanage: extract nvme wearout from smartctl text and improve wearout in
+    general
+
+  * fix #1427: Set file mode on uploaded templates/ISOs
+
+  * cephfs: Exclude _netdev when mounting with fuse
+
+ -- Proxmox Support Team <support@proxmox.com>  Tue, 25 Jun 2019 12:54:50 +0200
+
 libpve-storage-perl (5.0-43) unstable; urgency=medium
 
   * handle deletion of properties of a single storage config entry
