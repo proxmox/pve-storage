@@ -1,3 +1,11 @@
+libpve-storage-perl (6.0-3) pve; urgency=medium
+
+  * CephConfig: do not always interpret
+
+  * CephConfig: read monitor addresses also from mon_host key for cephfs
+
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 27 Jun 2019 16:17:41 +0200
+
 libpve-storage-perl (6.0-2) pve; urgency=medium
 
   * fix #2226: ignore broken symlinks in content list helpers and
