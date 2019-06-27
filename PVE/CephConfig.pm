@@ -121,10 +121,31 @@ sub get_monaddr_list {
 
     my $config = $parse_ceph_file->($configfile);
 
-    my @monids = grep { /mon\./ && defined($config->{$_}->{'mon addr'}) } %{$config};
+    my $monhostlist = {};
 
-    return join(',', sort map { $config->{$_}->{'mon addr'} } @monids);
-};
+    # get all ip adresses from mon_host
+    my $monhosts = [ split (/[ ,;]+/, $config->{global}->{mon_host} // "") ];
+
+    foreach my $monhost (@$monhosts) {
+	$monhost =~ s/^\[?v\d\://; # remove beginning of vector
+	$monhost =~ s|/\d+\]?||; # remove end of vector
+	my $host = $get_host->($monhost);
+	if ($host ne "") {
+	    $monhostlist->{$host} = 1;
+	}
+    }
+
+    # then get all addrs from mon. sections
+    for my $section ( keys %$config ) {
+	next if $section !~ m/^mon\./;
+
+	if (my $addr = $config->{$section}->{mon_addr}) {
+	    $monhostlist->{$addr} = 1;
+	}
+    }
+
+    return join(',', sort keys %$monhostlist);
+}
 
 sub hostlist {
     my ($list_text, $separator) = @_;
