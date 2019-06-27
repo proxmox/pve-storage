@@ -100,6 +100,17 @@ my $ceph_get_key = sub {
     return $secret;
 };
 
+my $get_host = sub {
+    my ($hostport) = @_;
+    my ($host, $port) = PVE::Tools::parse_host_and_port($hostport);
+    if (!defined($host)) {
+	return "";
+    }
+    $port = defined($port) ? ":$port" : '';
+    $host = "[$host]" if Net::IP::ip_is_ipv6($host);
+    return "${host}${port}";
+};
+
 sub get_monaddr_list {
     my ($configfile) = shift;
 
@@ -119,12 +130,7 @@ sub hostlist {
     my ($list_text, $separator) = @_;
 
     my @monhostlist = PVE::Tools::split_list($list_text);
-    return join($separator, map {
-	my ($host, $port) = PVE::Tools::parse_host_and_port($_);
-	$port = defined($port) ? ":$port" : '';
-	$host = "[$host]" if Net::IP::ip_is_ipv6($host);
-	"${host}${port}"
-    } @monhostlist);
+    return join($separator, map { $get_host->($_) } @monhostlist);
 }
 
 my $ceph_check_keyfile = sub {
