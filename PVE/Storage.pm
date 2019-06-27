@@ -590,17 +590,15 @@ sub storage_migrate {
     die "cannot migrate from storage type '$scfg->{type}' to '$tcfg->{type}'\n" if !@formats;
     my $format = $formats[0];
 
-    my @insecurecmd;
+    my $import_fn = '-'; # let pvesm import read from stdin per default
     if ($insecure) {
-	@insecurecmd = ('pvecm', 'mtunnel', '-run-command', 1);
-	if (my $network = $target_sshinfo->{network}) {
-	    push @insecurecmd, '-migration_network', $network;
-	}
+	my $net = $target_sshinfo->{network} // $target_sshinfo->{ip};
+	$import_fn = "tcp://$net";
     }
 
     $with_snapshots = $with_snapshots ? 1 : 0; # sanitize for passing as cli parameter
     my $send = ['pvesm', 'export', $volid, $format, '-', '-with-snapshots', $with_snapshots];
-    my $recv = [@$ssh, @insecurecmd, '--', 'pvesm', 'import', $volid, $format, '-', '-with-snapshots', $with_snapshots];
+    my $recv = [@$ssh, '--', 'pvesm', 'import', $volid, $format, $import_fn, '-with-snapshots', $with_snapshots];
     if (defined($snapshot)) {
 	push @$send, '-snapshot', $snapshot
     }

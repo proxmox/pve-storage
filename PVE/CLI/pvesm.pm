@@ -269,7 +269,9 @@ __PACKAGE__->register_method ({
 		enum => $KNOWN_EXPORT_FORMATS,
 	    },
 	    filename => {
-		description => "Source file name",
+		description => "Source file name. For '-' stdin is used, the " .
+		  "tcp://<IP-or-CIDR> format allows to use a TCP connection as input. " .
+		  "Else, the file is treated as common file.",
 		type => 'string',
 	    },
 	    base => {
@@ -304,6 +306,36 @@ __PACKAGE__->register_method ({
 	my $infh;
 	if ($filename eq '-') {
 	    $infh = \*STDIN;
+	} elsif ($filename =~ m!^tcp://(([^/]+)(/\d+)?)$!) {
+	    my ($cidr, $ip, $subnet) = ($1, $2, $3);
+	    if ($subnet) { # got real CIDR notation, not just IP
+		$ip = PVE::Cluster::get_local_migration_ip($cidr);
+	    }
+	    my $family = PVE::Tools::get_host_address_family($ip);
+	    my $port = PVE::Tools::next_migrate_port($family, $ip);
+
+	    my $sock_params = {
+		Listen => 1,
+		ReuseAddr => 1,
+		Proto => &Socket::IPPROTO_TCP,
+		GetAddrInfoFlags => 0,
+		LocalAddr => $ip,
+		LocalPort => $port,
+	    };
+	    my $socket = IO::Socket::IP->new(%$sock_params)
+	        or die "failed to open socket: $!\n";
+
+	    print "$ip\n$port\n"; # tell remote where to connect
+	    *STDOUT->flush();
+
+	    my $prev_alarm = alarm 0;
+	    local $SIG{ALRM} = sub { die "timed out waiting for client\n" };
+	    alarm 30;
+	    my $client = $socket->accept; # Wait for a client
+	    alarm $prev_alarm;
+	    close($socket);
+
+	    $infh = \*$client;
 	} else {
 	    sysopen($infh, $filename, O_RDONLY)
 		or die "open($filename): $!\n";
