@@ -21,8 +21,9 @@ sub parse_ceph_config {
     my $section;
 
     foreach my $line (@lines) {
-	$line =~ s/[;#].*$//;
+	$line =~ s/#.*$//;
 	$line =~ s/^\s+//;
+	$line =~ s/^;.*$//;
 	$line =~ s/\s+$//;
 	next if !$line;
 
