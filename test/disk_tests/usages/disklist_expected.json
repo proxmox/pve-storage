@@ -151,6 +151,6 @@
 	"rpm" : 0,
 	"bluestore": 0,
 	"type" : "hdd",
-	"osdid" : 2
+	"osdid" : 0
     }
 }

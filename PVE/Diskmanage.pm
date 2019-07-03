@@ -602,7 +602,7 @@ sub get_disks {
 	    $journal_count += $ceph_volume->{journal} // 0;
 	    $db_count += $ceph_volume->{db} // 0;
 	    $wal_count += $ceph_volume->{wal} // 0;
-	    if ($ceph_volume->{osdid}) {
+	    if (defined($ceph_volume->{osdid})) {
 		$osdid = $ceph_volume->{osdid};
 		$bluestore = 1 if $ceph_volume->{bluestore};
 	    }

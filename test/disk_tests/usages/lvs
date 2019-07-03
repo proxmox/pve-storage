@@ -1,4 +1,4 @@
 /dev/sdg(0);osd-block-01234;ceph.osd_id=1
 /dev/sdh(0);osd-journal-01234;ceph.osd_id=1
 /dev/sdi(0);osd-db-01234;ceph.osd_id=1
-/dev/sdj(0);osd-data-01234;ceph.osd_id=2
+/dev/sdj(0);osd-data-01234;ceph.osd_id=0
