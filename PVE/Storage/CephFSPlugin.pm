@@ -20,16 +20,14 @@ sub cephfs_is_mounted {
 
     my $cmd_option = PVE::CephConfig::ceph_connect_option($scfg, $storeid);
     my $configfile = $cmd_option->{ceph_conf};
-    my $server = $cmd_option->{mon_host} // PVE::CephConfig::get_monaddr_list($configfile);
 
     my $subdir = $scfg->{subdir} // '/';
     my $mountpoint = $scfg->{path};
-    my $source = "$server:$subdir";
 
     $mountdata = PVE::ProcFSTools::parse_proc_mounts() if !$mountdata;
     return $mountpoint if grep {
 	$_->[2] =~ m#^ceph|fuse\.ceph-fuse# &&
-	$_->[0] =~ m#^\Q$source\E|ceph-fuse$# &&
+	$_->[0] =~ m#\Q:$subdir\E$|^ceph-fuse$# &&
 	$_->[1] eq $mountpoint
     } @$mountdata;
 
