@@ -1,3 +1,11 @@
+libpve-storage-perl (6.0-4) pve; urgency=medium
+
+  * cephfs: make is_mounted check less strict
+
+  * fix missing osd info for osd 0
+
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 04 Jul 2019 16:00:35 +0200
+
 libpve-storage-perl (6.0-3) pve; urgency=medium
 
   * CephConfig: do not always interpret
