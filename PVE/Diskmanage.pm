@@ -258,7 +258,7 @@ sub get_ceph_volume_infos {
 	if ($fields->[1] =~ m|^osd-([^-]+)-|) {
 	    my $type = $1;
 	    # $result autovivification is wanted, to not creating empty hashes
-	    if (($type eq 'block' || $type eq 'data') && $fields->[2] =~ m/ceph.osd_id=([^,])/) {
+	    if (($type eq 'block' || $type eq 'data') && $fields->[2] =~ m/ceph.osd_id=([^,]+)/) {
 		$result->{$dev}->{osdid} = $1;
 		$result->{$dev}->{bluestore} = ($type eq 'block');
 	    } else {

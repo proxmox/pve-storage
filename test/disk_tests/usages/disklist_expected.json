@@ -152,5 +152,36 @@
 	"bluestore": 0,
 	"type" : "hdd",
 	"osdid" : 0
+    },
+    "sdk" : {
+	"serial" : "SERIAL1",
+	"vendor" : "ATA",
+	"wwn" : "0x0000000000000000",
+	"devpath" : "/dev/sdk",
+	"model" : "MODEL1",
+	"used" : "LVM",
+	"wearout" : "N/A",
+	"health" : "UNKNOWN",
+	"gpt" : 1,
+	"size" : 1536000,
+	"rpm" : 0,
+	"bluestore": 0,
+	"type" : "hdd",
+	"osdid" : 230
+    },
+    "sdl" : {
+	"serial" : "SERIAL1",
+	"vendor" : "ATA",
+	"wwn" : "0x0000000000000000",
+	"devpath" : "/dev/sdl",
+	"model" : "MODEL1",
+	"used" : "LVM",
+	"wearout" : "N/A",
+	"health" : "UNKNOWN",
+	"gpt" : 1,
+	"size" : 1536000,
+	"rpm" : 0,
+	"type" : "hdd",
+	"osdid" : -1
     }
 }
