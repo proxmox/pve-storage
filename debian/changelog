@@ -1,3 +1,13 @@
+libpve-storage-perl (6.0-5) pve; urgency=medium
+
+  * fix missing osd info for osd 0
+
+  * fix #2266: Diskmanage: get correct osd id
+
+  * pvesm import: allow to pass a tcp://<IP> as file
+
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 11 Jul 2019 19:37:19 +0200
+
 libpve-storage-perl (6.0-4) pve; urgency=medium
 
   * cephfs: make is_mounted check less strict
