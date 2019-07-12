@@ -1,0 +1,7 @@
+{
+   "blockdevices": [
+      {"path":"/dev/sdm", "parttype":null},
+      {"path":"/dev/sdm1", "parttype":"6a898cc3-1dd2-11b2-99a6-080020736631"},
+      {"path":"/dev/sdm9", "parttype":"6a945a3b-1dd2-11b2-99a6-080020736631"}
+   ]
+}
