@@ -85,6 +85,7 @@
 	"type" : "hdd",
 	"osdid" : -1,
 	"serial" : "SERIAL1",
+	"used": "ZFS",
 	"vendor" : "ATA",
 	"wwn" : "0x0000000000000000",
 	"devpath" : "/dev/sdd"
