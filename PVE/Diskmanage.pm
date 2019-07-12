@@ -292,6 +292,9 @@ sub get_ceph_volume_infos {
 	    if (($type eq 'block' || $type eq 'data') && $fields->[2] =~ m/ceph.osd_id=([^,]+)/) {
 		$result->{$dev}->{osdid} = $1;
 		$result->{$dev}->{bluestore} = ($type eq 'block');
+		if ($fields->[2] =~ m/ceph\.encrypted=1/) {
+		    $result->{$dev}->{encrypted} = 1;
+		}
 	    } else {
 		# undef++ becomes '1' (see `perldoc perlop`: Auto-increment)
 		$result->{$dev}->{$type}++;
@@ -582,6 +585,7 @@ sub get_disks {
 
 	my $osdid = -1;
 	my $bluestore = 0;
+	my $osdencrypted = 0;
 
 	my $journal_count = 0;
 	my $db_count = 0;
@@ -638,6 +642,7 @@ sub get_disks {
 	    if (defined($ceph_volume->{osdid})) {
 		$osdid = $ceph_volume->{osdid};
 		$bluestore = 1 if $ceph_volume->{bluestore};
+		$osdencrypted = 1 if $ceph_volume->{encrypted};
 	    }
 	}
 
@@ -656,6 +661,7 @@ sub get_disks {
 	$disklist->{$dev}->{osdid} = $osdid;
 	$disklist->{$dev}->{journals} = $journal_count if $journal_count;
 	$disklist->{$dev}->{bluestore} = $bluestore if $osdid != -1;
+	$disklist->{$dev}->{osdencrypted} = $osdencrypted if $osdid != -1;
 	$disklist->{$dev}->{db} = $db_count if $db_count;
 	$disklist->{$dev}->{wal} = $wal_count if $wal_count;
     });

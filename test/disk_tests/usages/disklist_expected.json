@@ -4,6 +4,7 @@
 	"rpm" : 0,
 	"size" : 1536000,
 	"type" : "hdd",
+	"osdencrypted": 0,
 	"osdid" : "444",
 	"bluestore" : "0",
 	"health" : "UNKNOWN",
@@ -104,6 +105,7 @@
 	"rpm" : 0,
 	"type" : "hdd",
 	"bluestore": 1,
+	"osdencrypted": 0,
 	"osdid" : 1
     },
     "sdh" : {
@@ -152,6 +154,7 @@
 	"rpm" : 0,
 	"bluestore": 0,
 	"type" : "hdd",
+	"osdencrypted": 1,
 	"osdid" : 0
     },
     "sdk" : {
@@ -168,6 +171,7 @@
 	"rpm" : 0,
 	"bluestore": 0,
 	"type" : "hdd",
+	"osdencrypted": 0,
 	"osdid" : 230
     },
     "sdl" : {

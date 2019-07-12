@@ -1,6 +1,6 @@
 /dev/sdg(0);osd-block-01234;ceph.osd_id=1
 /dev/sdh(0);osd-journal-01234;ceph.osd_id=1
 /dev/sdi(0);osd-db-01234;ceph.osd_id=1,dasdf
-/dev/sdj(0);osd-data-01234;ceph.osd_id=0,asfd
+/dev/sdj(0);osd-data-01234;ceph.osd_id=0,asfd,ceph.encrypted=1
 /dev/sdk(0);osd-data-231231;ceph.osd_id=230,ceph.fsid=test
 /dev/sdl(0);osd-data-234132;ceph.osd_id=,bar
