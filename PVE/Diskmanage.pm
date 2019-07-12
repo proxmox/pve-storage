@@ -6,6 +6,7 @@ use PVE::ProcFSTools;
 use Data::Dumper;
 use Cwd qw(abs_path);
 use Fcntl ':mode';
+use JSON;
 
 use PVE::Tools qw(extract_param run_command file_get_contents file_read_firstline dir_glob_regex dir_glob_foreach trim);
 
@@ -15,6 +16,7 @@ my $SGDISK = "/sbin/sgdisk";
 my $PVS = "/sbin/pvs";
 my $LVS = "/sbin/lvs";
 my $UDEVADM = "/bin/udevadm";
+my $LSBLK = "/bin/lsblk";
 
 sub verify_blockdev_path {
     my ($rel_path) = @_;
@@ -154,8 +156,48 @@ sub get_smart_data {
     return $smartdata;
 }
 
+sub get_parttype_info() {
+    my $cmd = [$LSBLK, '--json', '-o', 'path,parttype'];
+    my $output = "";
+    my $res = {};
+    eval {
+	run_command($cmd, outfunc => sub {
+	    my ($line) = @_;
+	    $output .= "$line\n";
+	});
+    };
+    warn "$@\n" if $@;
+    return $res if $output eq '';
+
+    my $parsed = eval { decode_json($output) };
+    warn "$@\n" if $@;
+    my $list = $parsed->{blockdevices} // [];
+
+    foreach my $dev (@$list) {
+	next if !($dev->{parttype});
+	my $type = $dev->{parttype};
+	$res->{$type} = [] if !defined($res->{$type});
+	push @{$res->{$type}}, $dev->{path};
+    }
+
+    return $res;
+}
+
+my $get_devices_by_partuuid = sub {
+    my ($parttype_map, $uuids, $res) = @_;
+
+    $res = {} if !defined($res);
+
+    foreach my $uuid (sort keys %$uuids) {
+       map { $res->{$_} = $uuids->{$uuid} } @{$parttype_map->{$uuid}};
+    }
+
+    return $res;
+};
+
 sub get_zfs_devices {
-    my $list = {};
+    my ($parttype_map) = @_;
+    my $res = {};
 
     return {} if ! -x $ZPOOL;
 
@@ -167,7 +209,7 @@ sub get_zfs_devices {
 	     my ($line) = @_;
 
 	     if ($line =~ m|^\t([^\t]+)\t|) {
-		$list->{$1} = 1;
+		$res->{$1} = 1;
 	     }
 	});
     };
@@ -176,26 +218,26 @@ sub get_zfs_devices {
     # because maybe zfs tools are not installed
     warn "$@\n" if $@;
 
-    my $applezfsuuid = "6a898cc3-1dd2-11b2-99a6-080020736631";
-    my $bsdzfsuuid = "516e7cba-6ecf-11d6-8ff8-00022d09712b";
+    my $uuids = {
+	"6a898cc3-1dd2-11b2-99a6-080020736631" => 1, # apple
+	"516e7cba-6ecf-11d6-8ff8-00022d09712b" => 1, # bsd
+    };
 
-    dir_glob_foreach('/dev/disk/by-parttypeuuid', "($applezfsuuid|$bsdzfsuuid)\..+", sub {
-	my ($entry) = @_;
-	my $real_dev = abs_path("/dev/disk/by-parttypeuuid/$entry");
-	$list->{$real_dev} = 1;
-    });
 
-    return $list;
+    $res = $get_devices_by_partuuid->($parttype_map, $uuids, $res);
+
+    return $res;
 }
 
 sub get_lvm_devices {
-    my $list = {};
+    my ($parttype_map) = @_;
+    my $res = {};
     eval {
 	run_command([$PVS, '--noheadings', '--readonly', '-o', 'pv_name'], outfunc => sub{
 	    my ($line) = @_;
 	    $line = trim($line);
 	    if ($line =~ m|^/dev/|) {
-		$list->{$line} = 1;
+		$res->{$line} = 1;
 	    }
 	});
     };
@@ -204,40 +246,29 @@ sub get_lvm_devices {
     # to give up, but indicate an error has occured
     warn "$@\n" if $@;
 
-    my $lvmuuid = "e6d6d379-f507-44c2-a23c-238f2a3df928";
+    my $uuids = {
+	"e6d6d379-f507-44c2-a23c-238f2a3df928" => 1,
+    };
 
-    dir_glob_foreach('/dev/disk/by-parttypeuuid', "$lvmuuid\..+", sub {
-	my ($entry) = @_;
-	my $real_dev = abs_path("/dev/disk/by-parttypeuuid/$entry");
-	$list->{$real_dev} = 1;
-    });
+    $res = $get_devices_by_partuuid->($parttype_map, $uuids, $res);
 
-    return $list;
+    return $res;
 }
 
 sub get_ceph_journals {
-    my $journalhash = {};
+    my ($parttype_map) = @_;
+    my $res = {};
 
-    my $journal_uuid = '45b0969e-9b03-4f30-b4c6-b4b80ceff106';
-    my $db_uuid = '30cd0809-c2b2-499c-8879-2d6b78529876';
-    my $wal_uuid = '5ce17fce-4087-4169-b7ff-056cc58473f9';
-    my $block_uuid = 'cafecafe-9b03-4f30-b4c6-b4b80ceff106';
+    my $uuids = {
+	'45b0969e-9b03-4f30-b4c6-b4b80ceff106' => 1, # journal
+	'30cd0809-c2b2-499c-8879-2d6b78529876' => 2, # db
+	'5ce17fce-4087-4169-b7ff-056cc58473f9' => 3, # wal
+	'cafecafe-9b03-4f30-b4c6-b4b80ceff106' => 4, # block
+    };
 
-    dir_glob_foreach('/dev/disk/by-parttypeuuid', "($journal_uuid|$db_uuid|$wal_uuid|$block_uuid)\..+", sub {
-	my ($entry, $type) = @_;
-	my $real_dev = abs_path("/dev/disk/by-parttypeuuid/$entry");
-	if ($type eq $journal_uuid) {
-	    $journalhash->{$real_dev} = 1;
-	} elsif ($type eq $db_uuid) {
-	    $journalhash->{$real_dev} = 2;
-	} elsif ($type eq $wal_uuid) {
-	    $journalhash->{$real_dev} = 3;
-	} elsif ($type eq $block_uuid) {
-	    $journalhash->{$real_dev} = 4;
-	}
-    });
+    $res = $get_devices_by_partuuid->($parttype_map, $uuids, $res);
 
-    return $journalhash;
+    return $res;
 }
 
 # reads the lv_tags and matches them with the devices
@@ -442,12 +473,14 @@ sub get_disks {
 	return $mounted->{$dev};
     };
 
-    my $journalhash = get_ceph_journals();
+    my $parttype_map = get_parttype_info();
+
+    my $journalhash = get_ceph_journals($parttype_map);
     my $ceph_volume_infos = get_ceph_volume_infos();
 
-    my $zfslist = get_zfs_devices();
+    my $zfshash = get_zfs_devices($parttype_map);
 
-    my $lvmlist = get_lvm_devices();
+    my $lvmhash = get_lvm_devices($parttype_map);
 
     my $disk_regex = ".*";
     if (defined($disks)) {
@@ -519,11 +552,11 @@ sub get_disks {
 
 	my $used;
 
-	$used = 'LVM' if $lvmlist->{$devpath};
+	$used = 'LVM' if $lvmhash->{$devpath};
 
 	$used = 'mounted' if &$dev_is_mounted($devpath);
 
-	$used = 'ZFS' if $zfslist->{$devpath};
+	$used = 'ZFS' if $zfshash->{$devpath};
 
 	# we replaced cciss/ with cciss! above
 	# but in the result we need cciss/ again
@@ -578,11 +611,11 @@ sub get_disks {
 		}
 	    }
 
-	    if ($lvmlist->{"$partpath/$part"}) {
+	    if ($lvmhash->{"$partpath/$part"}) {
 		$found_lvm = 1;
 	    }
 
-	    if ($zfslist->{"$partpath/$part"}) {
+	    if ($zfshash->{"$partpath/$part"}) {
 		$found_zfs = 1;
 	    }
 

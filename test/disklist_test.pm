@@ -54,9 +54,14 @@ sub mocked_run_command {
 	    @$outputlines = split(/\n/, read_test_file('pvs'));
 	} elsif ($cmd->[0] =~ m/lvs/i) {
 	    @$outputlines = split(/\n/, read_test_file('lvs'));
+	} elsif ($cmd->[0] =~ m/lsblk/i) {
+	    my $content = read_test_file('lsblk');
+	    if ($content eq '') {
+		$content = '{}';
+	    }
+	    @$outputlines = split(/\n/, $content);
 	} else {
-	    print "unexpected run_command call: '@$cmd', aborting\n";
-	    die;
+	    die "unexpected run_command call: '@$cmd', aborting\n";
 	}
     } else {
 	print "unexpected run_command call: '@$cmd', aborting\n";
