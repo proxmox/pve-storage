@@ -285,9 +285,16 @@ __PACKAGE__->register_method ({
 		type => 'string',
 		completion => \&PVE::Storage::complete_volume,
 	    },
+	    delay => {
+		type => 'integer',
+		description => "Time to wait for the task to finish. We return 'null' if the task finish within that time.",
+		minimum => 1,
+		maximum => 30,
+		optional => 1,
+	    },
 	},
     },
-    returns => { type => 'null' },
+    returns => { type => 'string', optional => 1, },
     code => sub {
 	my ($param) = @_;
 
@@ -306,16 +313,36 @@ __PACKAGE__->register_method ({
 	    $rpcenv->check($authuser, "/storage/$storeid", ['Datastore.Allocate']);
 	}
 
-	PVE::Storage::vdisk_free ($cfg, $volid);
+	my $worker = sub {
+	    PVE::Storage::vdisk_free ($cfg, $volid);
+	    print "Removed volume '$volid'\n";
+	    if ($vtype eq 'backup'
+		&& $path =~ /(.*\/vzdump-\w+-\d+-\d{4}_\d{2}_\d{2}-\d{2}_\d{2}_\d{2})[^\/]+$/) {
+		my $logpath = "$1.log";
+		# try to cleanup our backup log file too, if still exisiting, #318
+		unlink($logpath) if -e $logpath;
+	    }
+	};
 
-	if ($vtype eq 'backup'
-	    && $path =~ /(.*\/vzdump-\w+-\d+-\d{4}_\d{2}_\d{2}-\d{2}_\d{2}_\d{2})[^\/]+$/) {
-	    my $logpath = "$1.log";
-	    # try to cleanup our backup log file too, if still exisiting, #318
-	    unlink($logpath) if -e $logpath;
+	my $id = (defined $ownervm ? "$ownervm@" : '') . $storeid;
+	my $upid = $rpcenv->fork_worker('imgdel', $id, $authuser, $worker);
+	my $background_delay = $param->{delay};
+	if ($background_delay) {
+	    my $end_time = time() + $background_delay;
+	    my $currently_deleting; # not necessarily true, e.g. sequential api call from cli
+	    do {
+		my $task = PVE::Tools::upid_decode($upid);
+		$currently_deleting = PVE::ProcFSTools::check_process_running($task->{pid}, $task->{pstart});
+		sleep 1 if $currently_deleting;
+	    } while (time() < $end_time && $currently_deleting);
+
+	    if (!$currently_deleting) {
+		my $status = PVE::Tools::upid_read_status($upid);
+		return undef if $status eq 'OK';
+		die $status;
+	    }
 	}
-
-	return undef;
+	return $upid;
     }});
 
 __PACKAGE__->register_method ({
