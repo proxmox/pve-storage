@@ -902,6 +902,83 @@ sub list_images {
     return $res;
 }
 
+# list templates ($tt = <iso|vztmpl|backup|snippets>)
+my $get_subdir_files = sub {
+    my ($sid, $path, $tt, $vmid) = @_;
+
+    my $res = [];
+
+    foreach my $fn (<$path/*>) {
+
+	next if -d $fn;
+
+	my $info;
+
+	if ($tt eq 'iso') {
+	    next if $fn !~ m!/([^/]+\.iso)$!i;
+
+	    $info = { volid => "$sid:iso/$1", format => 'iso' };
+
+	} elsif ($tt eq 'vztmpl') {
+	    next if $fn !~ m!/([^/]+\.tar\.([gx]z))$!;
+
+	    $info = { volid => "$sid:vztmpl/$1", format => "t$2" };
+
+	} elsif ($tt eq 'backup') {
+	    next if $fn !~ m!/([^/]+\.(tar|tar\.gz|tar\.lzo|tgz|vma|vma\.gz|vma\.lzo))$!;
+	    next if defined($vmid) && $fn !~  m/\S+-$vmid-\S+/;
+
+	    $info = { volid => "$sid:backup/$1", format => $2 };
+
+	} elsif ($tt eq 'snippets') {
+
+	    $info = {
+		volid => "$sid:snippets/". basename($fn),
+		format => 'snippet',
+	    };
+	}
+
+	$info->{size} = -s $fn // 0;
+
+	push @$res, $info;
+    }
+
+    return $res;
+};
+
+sub list_volumes {
+    my ($class, $storeid, $scfg, $vmid, $content_types) = @_;
+
+    my $res = [];
+
+    foreach my $ct (@$content_types) {
+	my $data;
+
+	my $path = $class->get_subdir($scfg, $ct);
+
+	if ($ct eq 'images') {
+	    $data = $class->list_images($storeid, $scfg, $vmid);
+	} elsif ($ct eq 'iso' && !defined($vmid)) {
+	    $data = $get_subdir_files->($storeid, $path, 'iso');
+	} elsif ($ct eq 'vztmpl'&& !defined($vmid)) {
+	    $data = $get_subdir_files->($storeid, $path, 'vztmpl');
+	} elsif ($ct eq 'backup') {
+	    $data = $get_subdir_files->($storeid, $path, 'backup', $vmid);
+	} elsif ($ct eq 'snippets') {
+	    $data = $get_subdir_files->($storeid, $path, 'snippets');
+	}
+
+	next if !$data;
+
+	foreach my $item (@$data) {
+	    $item->{content} = $ct;
+	    push @$res, $item;
+	}
+    }
+
+    return $res;
+}
+
 sub status {
     my ($class, $storeid, $scfg, $cache) = @_;
 

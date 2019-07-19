@@ -21,7 +21,7 @@ sub plugindata {
 		     { images => 1,  rootdir => 1 }],
 	format => [ { raw => 1, qcow2 => 1, vmdk => 1, subvol => 1 } , 'raw' ],
     };
-}   
+}
 
 sub properties {
     return {
@@ -114,7 +114,7 @@ sub activate_storage {
 	    "directory is expected to be a mount point but is not mounted: '$mp'\n";
     }
 
-    $class->SUPER::activate_storage($storeid, $scfg, $cache);    
+    $class->SUPER::activate_storage($storeid, $scfg, $cache);
 }
 
 sub check_config {

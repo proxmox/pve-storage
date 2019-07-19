@@ -36,11 +36,11 @@ use PVE::Storage::ZFSPlugin;
 use PVE::Storage::DRBDPlugin;
 
 # Storage API version. Icrement it on changes in storage API interface.
-use constant APIVER => 2;
+use constant APIVER => 3;
 # Age is the number of versions we're backward compatible with.
 # This is like having 'current=APIVER' and age='APIAGE' in libtool,
 # see https://www.gnu.org/software/libtool/manual/html_node/Libtool-versioning.html
-use constant APIAGE => 1;
+use constant APIAGE => 2;
 
 # load standard plugins
 PVE::Storage::DirPlugin->register();
@@ -769,116 +769,6 @@ sub vdisk_free {
     $rpcenv->fork_worker('imgdel', undef, $authuser, $cleanup_worker);
 }
 
-# lists all files in the snippets directory
-sub snippets_list {
-    my ($cfg, $storeid) = @_;
-
-    my $ids = $cfg->{ids};
-
-    storage_check_enabled($cfg, $storeid) if ($storeid);
-
-    my $res = {};
-
-    foreach my $sid (keys %$ids) {
-	next if $storeid && $storeid ne $sid;
-	next if !storage_check_enabled($cfg, $sid, undef, 1);
-
-	my $scfg = $ids->{$sid};
-	next if !$scfg->{content}->{snippets};
-
-	activate_storage($cfg, $sid);
-
-	if ($scfg->{path}) {
-	    my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
-	    my $path = $plugin->get_subdir($scfg, 'snippets');
-
-	    foreach my $fn (<$path/*>) {
-		next if -d $fn;
-
-		push @{$res->{$sid}}, {
-		    volid => "$sid:snippets/". basename($fn),
-		    format => 'snippet',
-		    size => -s $fn // 0,
-		};
-	    }
-	}
-
-	if ($res->{$sid}) {
-	    @{$res->{$sid}} = sort {$a->{volid} cmp $b->{volid} } @{$res->{$sid}};
-	}
-    }
-
-    return $res;
-}
-
-#list iso or openvz template ($tt = <iso|vztmpl|backup>)
-sub template_list {
-    my ($cfg, $storeid, $tt) = @_;
-
-    die "unknown template type '$tt'\n"
-	if !($tt eq 'iso' || $tt eq 'vztmpl' || $tt eq 'backup');
-
-    my $ids = $cfg->{ids};
-
-    storage_check_enabled($cfg, $storeid) if ($storeid);
-
-    my $res = {};
-
-    # query the storage
-
-    foreach my $sid (keys %$ids) {
-	next if $storeid && $storeid ne $sid;
-
-	my $scfg = $ids->{$sid};
-	my $type = $scfg->{type};
-
-	next if !storage_check_enabled($cfg, $sid, undef, 1);
-
-	next if $tt eq 'iso' && !$scfg->{content}->{iso};
-	next if $tt eq 'vztmpl' && !$scfg->{content}->{vztmpl};
-	next if $tt eq 'backup' && !$scfg->{content}->{backup};
-
-	activate_storage($cfg, $sid);
-
-	if ($scfg->{path}) {
-	    my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
-
-	    my $path = $plugin->get_subdir($scfg, $tt);
-
-	    foreach my $fn (<$path/*>) {
-
-		my $info;
-
-		if ($tt eq 'iso') {
-		    next if $fn !~ m!/([^/]+\.[Ii][Ss][Oo])$!;
-
-		    $info = { volid => "$sid:iso/$1", format => 'iso' };
-
-		} elsif ($tt eq 'vztmpl') {
-		    next if $fn !~ m!/([^/]+\.tar\.([gx]z))$!;
-
-		    $info = { volid => "$sid:vztmpl/$1", format => "t$2" };
-
-		} elsif ($tt eq 'backup') {
-		    next if $fn !~ m!/([^/]+\.(tar|tar\.gz|tar\.lzo|tgz|vma|vma\.gz|vma\.lzo))$!;
-
-		    $info = { volid => "$sid:backup/$1", format => $2 };
-		}
-
-		$info->{size} = -s $fn // 0;
-
-		push @{$res->{$sid}}, $info;
-	    }
-
-	}
-
-	@{$res->{$sid}} = sort {lc($a->{volid}) cmp lc ($b->{volid}) } @{$res->{$sid}} if $res->{$sid};
-    }
-
-    return $res;
-}
-
-
 sub vdisk_list {
     my ($cfg, $storeid, $vmid, $vollist) = @_;
 
@@ -923,6 +813,35 @@ sub vdisk_list {
     return $res;
 }
 
+sub template_list {
+    my ($cfg, $storeid, $tt) = @_;
+
+    die "unknown template type '$tt'\n"
+	if !($tt eq 'iso' || $tt eq 'vztmpl' || $tt eq 'backup' || $tt eq 'snippets');
+
+    my $ids = $cfg->{ids};
+
+    storage_check_enabled($cfg, $storeid) if ($storeid);
+
+    my $res = {};
+
+    # query the storage
+    foreach my $sid (keys %$ids) {
+	next if $storeid && $storeid ne $sid;
+
+	my $scfg = $ids->{$sid};
+	my $type = $scfg->{type};
+
+	next if !$scfg->{content}->{$tt};
+
+	next if !storage_check_enabled($cfg, $sid, undef, 1);
+
+	$res->{$sid} = volume_list($cfg, $sid, undef, $tt);
+    }
+
+    return $res;
+}
+
 sub volume_list {
     my ($cfg, $storeid, $vmid, $content) = @_;
 
@@ -932,33 +851,15 @@ sub volume_list {
 
     my $scfg = PVE::Storage::storage_config($cfg, $storeid);
 
-    my $res = [];
-    foreach my $ct (@$cts) {
-	my $data;
-	if ($ct eq 'images') {
-	    $data = vdisk_list($cfg, $storeid, $vmid);
-	} elsif ($ct eq 'iso' && !defined($vmid)) {
-	    $data = template_list($cfg, $storeid, 'iso');
-	} elsif ($ct eq 'vztmpl'&& !defined($vmid)) {
-	    $data = template_list ($cfg, $storeid, 'vztmpl');
-	} elsif ($ct eq 'backup') {
-	    $data = template_list ($cfg, $storeid, 'backup');
-	    foreach my $item (@{$data->{$storeid}}) {
-		if (defined($vmid)) {
-		    @{$data->{$storeid}} = grep { $_->{volid} =~ m/\S+-$vmid-\S+/ } @{$data->{$storeid}};
-		}
-	    }
-	} elsif ($ct eq 'snippets') {
-	    $data = snippets_list($cfg, $storeid);
-	}
+    $cts = [ grep { defined($scfg->{content}->{$_}) } @$cts ];
 
-	next if !$data || !$data->{$storeid};
+    my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
 
-	foreach my $item (@{$data->{$storeid}}) {
-	    $item->{content} = $ct;
-	    push @$res, $item;
-	}
-    }
+    activate_storage($cfg, $storeid);
+
+    my $res = $plugin->list_volumes($storeid, $scfg, $vmid, $cts);
+
+    @$res = sort {lc($a->{volid}) cmp lc ($b->{volid}) } @$res;
 
     return $res;
 }
