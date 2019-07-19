@@ -954,18 +954,20 @@ sub list_volumes {
     foreach my $ct (@$content_types) {
 	my $data;
 
-	my $path = $class->get_subdir($scfg, $ct);
-
 	if ($ct eq 'images') {
 	    $data = $class->list_images($storeid, $scfg, $vmid);
-	} elsif ($ct eq 'iso' && !defined($vmid)) {
-	    $data = $get_subdir_files->($storeid, $path, 'iso');
-	} elsif ($ct eq 'vztmpl'&& !defined($vmid)) {
-	    $data = $get_subdir_files->($storeid, $path, 'vztmpl');
-	} elsif ($ct eq 'backup') {
-	    $data = $get_subdir_files->($storeid, $path, 'backup', $vmid);
-	} elsif ($ct eq 'snippets') {
-	    $data = $get_subdir_files->($storeid, $path, 'snippets');
+	} elsif ($scfg->{path}) {
+	    my $path = $class->get_subdir($scfg, $ct);
+
+	    if ($ct eq 'iso' && !defined($vmid)) {
+		$data = $get_subdir_files->($storeid, $path, 'iso');
+	    } elsif ($ct eq 'vztmpl'&& !defined($vmid)) {
+		$data = $get_subdir_files->($storeid, $path, 'vztmpl');
+	    } elsif ($ct eq 'backup') {
+		$data = $get_subdir_files->($storeid, $path, 'backup', $vmid);
+	    } elsif ($ct eq 'snippets') {
+		$data = $get_subdir_files->($storeid, $path, 'snippets');
+	    }
 	}
 
 	next if !$data;
