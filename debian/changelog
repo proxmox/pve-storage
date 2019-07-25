@@ -1,3 +1,14 @@
+libpve-storage-perl (6.0-6) pve; urgency=medium
+
+  * fix #582: Add move-to-background delay logic when deleting volumes
+    or images
+
+  * storage plugin: new list_volumes plugin method
+
+  * Diskmanage: add flag for encrypted osds
+
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 25 Jul 2019 13:34:52 +0200
+
 libpve-storage-perl (6.0-5) pve; urgency=medium
 
   * fix missing osd info for osd 0
