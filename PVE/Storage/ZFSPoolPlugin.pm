@@ -189,6 +189,23 @@ sub zfs_request {
     return $msg;
 }
 
+sub zfs_wait_for_zvol_link {
+    my ($class, $scfg, $volname, $timeout) = @_;
+
+    my $default_timeout = PVE::RPCEnvironment->is_worker() ? 60*5 : 10;
+    $timeout = $default_timeout if !defined($timeout);
+
+    my ($devname, undef, undef) = $class->path($scfg, $volname);
+
+    for (my $i = 1; $i <= $timeout; $i++) {
+	last if -b $devname;
+	die "timeout: no zvol device link for '$volname' found after $timeout sec found.\n"
+	    if $i == $timeout;
+
+	sleep(1);
+    }
+}
+
 sub alloc_image {
     my ($class, $storeid, $scfg, $vmid, $fmt, $name, $size) = @_;
 
@@ -202,16 +219,8 @@ sub alloc_image {
 	    if !$volname;
 
 	$class->zfs_create_zvol($scfg, $volname, $size);
-	my $devname = "/dev/zvol/$scfg->{pool}/$volname";
+	$class->zfs_wait_for_zvol_link($scfg, $volname);
 
-	my $timeout = PVE::RPCEnvironment->is_worker() ? 60*5 : 10;
-	for (my $i = 1; $i <= $timeout; $i++) {
-	    last if -b $devname;
-	    die "Timeout: no zvol after $timeout sec found.\n"
-		if $i == $timeout;
-
-	    sleep(1);
-	}
     } elsif ( $fmt eq 'subvol') {
 
 	die "illegal name '$volname' - should be 'subvol-$vmid-*'\n"
@@ -545,6 +554,15 @@ sub deactivate_storage {
 
 sub activate_volume {
     my ($class, $storeid, $scfg, $volname, $snapname, $cache) = @_;
+
+    return 1 if defined($snapname);
+
+    my (undef, undef, undef, undef, undef, undef, $format) = $class->parse_volname($volname);
+
+    return 1 if $format ne 'raw';
+
+    $class->zfs_wait_for_zvol_link($scfg, $volname);
+
     return 1;
 }
 

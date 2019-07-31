@@ -1096,6 +1096,7 @@ my $test7 = sub {
     };
 
     eval {
+	PVE::Storage::activate_volumes($cfg, ["$storagename:$vmdisk"]);
 	run_command("sgdisk --randomize-guids \/dev\/zvol\/$zpath\/$vmdisk", outfunc => $parse_guid);
 	run_command("sgdisk -p \/dev\/zvol\/$zpath\/$vmdisk", outfunc => $parse_guid);
 
@@ -1105,6 +1106,7 @@ my $test7 = sub {
 	run_command("sgdisk --randomize-guids \/dev\/zvol\/$zpath\/$vmdisk", outfunc => $parse_guid);
 	eval {
 	    PVE::Storage::volume_snapshot_rollback($cfg, "$storagename:$vmdisk", 'snap1');
+	    PVE::Storage::activate_volumes($cfg, ["$storagename:$vmdisk"]);
 	    $tmp_guid = undef;
 	    run_command("sgdisk -p \/dev\/zvol\/$zpath\/$vmdisk", outfunc => $parse_guid);
 	    if ($old_guid ne $tmp_guid) {
@@ -1124,6 +1126,7 @@ my $test7 = sub {
     $tmp_guid = undef;
 
     eval {
+	PVE::Storage::activate_volumes($cfg, ["$storagename:$vmbase"]);
 	run_command("sgdisk --randomize-guids \/dev\/zvol\/$zpath\/$vmbase", outfunc => $parse_guid);
 	run_command("sgdisk -p \/dev\/zvol\/$zpath\/$vmbase", outfunc => $parse_guid);
 
@@ -1133,6 +1136,7 @@ my $test7 = sub {
 	run_command("sgdisk --randomize-guids \/dev\/zvol\/$zpath\/$vmbase", outfunc => $parse_guid);
 	eval {
 	    PVE::Storage::volume_snapshot_rollback($cfg, "$storagename:$vmbase", 'snap1');
+	    PVE::Storage::activate_volumes($cfg, ["$storagename:$vmbase"]);
 	    $tmp_guid = undef;
 	    run_command("sgdisk -p \/dev\/zvol\/$zpath\/$vmbase", outfunc => $parse_guid);
 	    if ($old_guid ne $tmp_guid) {
@@ -1152,6 +1156,7 @@ my $test7 = sub {
     $tmp_guid = undef;
 
     eval {
+	PVE::Storage::activate_volumes($cfg, ["$storagename:$vmbase/$vmlinked"]);
 	run_command("sgdisk --randomize-guids \/dev\/zvol\/$zpath\/$vmlinked", outfunc => $parse_guid);
 	run_command("sgdisk -p \/dev\/zvol\/$zpath\/$vmlinked", outfunc => $parse_guid);
 
@@ -1161,6 +1166,7 @@ my $test7 = sub {
 	run_command("sgdisk --randomize-guids \/dev\/zvol\/$zpath\/$vmlinked", outfunc => $parse_guid);
 	eval {
 	    PVE::Storage::volume_snapshot_rollback($cfg, "$storagename:$vmbase\/$vmlinked", 'snap1');
+	    PVE::Storage::activate_volumes($cfg, ["$storagename:$vmbase/$vmlinked"]);
 	    $tmp_guid = undef;
 	    run_command("sgdisk -p \/dev\/zvol\/$zpath\/$vmlinked", outfunc => $parse_guid);
 	    if ($old_guid ne $tmp_guid) {
@@ -2585,7 +2591,6 @@ my $test1 = sub {
 $tests->{1} = $test1;
 
 sub setup_zfs {
-
     #create VM zvol
     print "create zvol $vmdisk\n" if $verbose;
     run_command("zfs create -V${volsize}G $zpath\/$vmdisk");
@@ -2601,14 +2606,23 @@ sub setup_zfs {
     print "create subvol $ctdisk\n" if $verbose;
     run_command("zfs create -o refquota=${volsize}G $zpath\/$ctdisk");
 
-    print "create subvol $vmbase\n" if $verbose;
+    print "create subvol $ctbase\n" if $verbose;
     run_command("zfs create -o refquota=${volsize}G $zpath\/$ctbase");
     run_command("zfs snapshot $zpath\/$ctbase$basesnap");
 
-    print "create linked clone $vmlinked\n" if $verbose;
+    print "create linked clone $ctlinked\n" if $verbose;
     run_command("zfs clone $zpath\/$ctbase$basesnap $zpath\/$ctlinked -o refquota=${volsize}G");
-    run_command("udevadm trigger --subsystem-match block");
-    run_command("udevadm settle --timeout 10 --exit-if-exists=/dev/zvol/$zpath\/$ctlinked");
+
+    my $vollist = [
+	"$storagename:$vmdisk",
+	"$storagename:$vmbase",
+	"$storagename:$vmbase/$vmlinked",
+	"$storagename:$ctdisk",
+	"$storagename:$ctbase",
+	"$storagename:$ctbase/$ctlinked",
+    ];
+
+    PVE::Storage::activate_volumes($cfg, $vollist);
 }
 
 sub cleanup_zfs {
