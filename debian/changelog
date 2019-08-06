@@ -1,3 +1,11 @@
+libpve-storage-perl (6.0-7) pve; urgency=medium
+
+  * fix #2317: list images on 'rootdir' only storages
+
+  * ZFS: wait for zvol symlinks in more cases
+
+ -- Proxmox Support Team <support@proxmox.com>  Tue, 6 Aug 2019 14:07:20 +0200
+
 libpve-storage-perl (6.0-6) pve; urgency=medium
 
   * fix #582: Add move-to-background delay logic when deleting volumes
