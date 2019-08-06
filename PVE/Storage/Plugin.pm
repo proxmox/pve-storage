@@ -954,7 +954,7 @@ sub list_volumes {
     foreach my $ct (@$content_types) {
 	my $data;
 
-	if ($ct eq 'images') {
+	if ($ct eq 'images' || $ct eq 'rootdir') {
 	    $data = $class->list_images($storeid, $scfg, $vmid);
 	} elsif ($scfg->{path}) {
 	    my $path = $class->get_subdir($scfg, $ct);
