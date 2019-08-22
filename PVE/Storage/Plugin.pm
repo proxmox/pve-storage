@@ -415,7 +415,7 @@ sub parse_volname {
 	my ($vmid, $name) = ($1, $2);
 	my (undef, $format, $isBase) = parse_name_dir($name);
 	return ('images', $name, $vmid, undef, undef, $isBase, $format);
-    } elsif ($volname =~ m!^iso/([^/]+\.[Ii][Ss][Oo])$!) {
+    } elsif ($volname =~ m!^iso/([^/]+$PVE::Storage::iso_extension_re)$!) {
 	return ('iso', $1);
     } elsif ($volname =~ m!^vztmpl/([^/]+\.tar\.[gx]z)$!) {
 	return ('vztmpl', $1);
@@ -915,7 +915,7 @@ my $get_subdir_files = sub {
 	my $info;
 
 	if ($tt eq 'iso') {
-	    next if $fn !~ m!/([^/]+\.iso)$!i;
+	    next if $fn !~ m!/([^/]+$PVE::Storage::iso_extension_re)$!i;
 
 	    $info = { volid => "$sid:iso/$1", format => 'iso' };
 

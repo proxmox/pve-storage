@@ -99,6 +99,8 @@ PVE::Storage::Plugin->init();
 
 my $UDEVADM = '/sbin/udevadm';
 
+my $iso_extension_re = qr/\.(?:[Ii][Ss][Oo]|[Ii][Mm][Gg])/;
+
 #  PVE::Storage utility functions
 
 sub config {
@@ -501,7 +503,7 @@ sub path_to_volume_id {
 		    return ('images', $info->{volid});
 		}
 	    }
-	} elsif ($path =~ m!^$isodir/([^/]+\.[Ii][Ss][Oo])$!) {
+	} elsif ($path =~ m!^$isodir/([^/]+$iso_extension_re)$!) {
 	    my $name = $1;
 	    return ('iso', "$sid:iso/$name");
 	} elsif ($path =~ m!^$tmpldir/([^/]+\.tar\.gz)$!) {

@@ -408,8 +408,8 @@ __PACKAGE__->register_method ({
 	my $path;
 
 	if ($content eq 'iso') {
-	    if ($filename !~ m![^/]+\.[Ii][Ss][Oo]$!) {
-		raise_param_exc({ filename => "missing '.iso' extension" });
+	    if ($filename !~ m![^/]+$PVE::Storage::iso_extension_re$!) {
+		raise_param_exc({ filename => "missing '.iso' or '.img' extension" });
 	    }
 	    $path = PVE::Storage::get_iso_dir($cfg, $param->{storage});
 	} elsif ($content eq 'vztmpl') {
