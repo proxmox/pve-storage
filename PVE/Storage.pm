@@ -99,7 +99,7 @@ PVE::Storage::Plugin->init();
 
 my $UDEVADM = '/sbin/udevadm';
 
-our $iso_extension_re = qr/\.(?:[Ii][Ss][Oo]|[Ii][Mm][Gg])/;
+our $iso_extension_re = qr/\.(?:iso|img)/i;
 
 #  PVE::Storage utility functions
 
