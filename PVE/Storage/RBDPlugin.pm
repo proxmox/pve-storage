@@ -521,7 +521,7 @@ sub status {
     # max_avail -> max available space for data w/o replication in the pool
     # bytes_used -> data w/o replication in the pool
     my $free = $d->{stats}->{max_avail};
-    my $used = $d->{stats}->{bytes_used};
+    my $used = $d->{stats}->{stored} // $d->{stats}->{bytes_used};
     my $total = $used + $free;
     my $active = 1;
 
