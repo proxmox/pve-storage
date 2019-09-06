@@ -927,8 +927,8 @@ my $get_subdir_files = sub {
 	    $info = { volid => "$sid:vztmpl/$1", format => "t$2" };
 
 	} elsif ($tt eq 'backup') {
-	    next if $fn !~ m!/([^/]+\.(tar|tar\.gz|tar\.lzo|tgz|vma|vma\.gz|vma\.lzo))$!;
 	    next if defined($vmid) && $fn !~  m/\S+-$vmid-\S+/;
+	    next if $fn !~ m!/([^/]+\.(tar|tar\.gz|tar\.lzo|tgz|vma|vma\.gz|vma\.lzo))$!;
 
 	    $info = { volid => "$sid:backup/$1", format => $2 };
 
