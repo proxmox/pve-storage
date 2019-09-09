@@ -742,6 +742,8 @@ sub file_size_info {
 	});
     };
 
+    warn $@ if $@;
+
     return wantarray ? ($size, $format, $used, $parent) : $size;
 }
 
