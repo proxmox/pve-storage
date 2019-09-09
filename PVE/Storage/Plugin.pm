@@ -712,36 +712,36 @@ sub file_size_info {
 	return wantarray ? (0, 'subvol', 0, undef) : 1;
     }
 
-    my $cmd = ['/usr/bin/qemu-img', 'info', $filename];
-
     my $format;
     my $parent;
     my $size = 0;
     my $used = 0;
 
-    eval {
-	run_command($cmd, timeout => $timeout, outfunc => sub {
-	    my $line = shift;
-	    if ($line =~ m/^file format:\s+(\S+)\s*$/) {
-		$format = $1;
-	    } elsif ($line =~ m/^backing file:\s(\S+)\s/) {
-		$parent = $1;
-	    } elsif ($line =~ m/^virtual size:\s\S+\s+\((\d+)\s+bytes\)$/) {
-		$size = int($1);
-	    } elsif ($line =~ m/^disk size:\s+(\d+(.\d+)?)([KMGT])\s*$/) {
-		$used = $1;
-		my $u = $3;
+    my $parse_qemu_img_info = sub {
+	my $line = shift;
+	if ($line =~ m/^file format:\s+(\S+)\s*$/) {
+	    $format = $1;
+	} elsif ($line =~ m/^backing file:\s(\S+)\s/) {
+	    $parent = $1;
+	} elsif ($line =~ m/^virtual size:\s\S+\s+\((\d+)\s+bytes\)$/) {
+	    $size = int($1);
+	} elsif ($line =~ m/^disk size:\s+(\d+(.\d+)?)([KMGT])\s*$/) {
+	    $used = $1;
+	    my $u = $3;
 
-		$used *= 1024 if $u eq 'K';
-		$used *= (1024*1024) if $u eq 'M';
-		$used *= (1024*1024*1024) if $u eq 'G';
-		$used *= (1024*1024*1024*1024) if $u eq 'T';
+	    $used *= 1024 if $u eq 'K';
+	    $used *= (1024*1024) if $u eq 'M';
+	    $used *= (1024*1024*1024) if $u eq 'G';
+	    $used *= (1024*1024*1024*1024) if $u eq 'T';
 
-		$used = int($used);
-	    }
-	});
+	    $used = int($used);
+	}
     };
 
+    my $cmd = ['/usr/bin/qemu-img', 'info', $filename];
+    eval {
+	run_command($cmd, timeout => $timeout, outfunc => $parse_qemu_img_info );
+    };
     warn $@ if $@;
 
     return wantarray ? ($size, $format, $used, $parent) : $size;
