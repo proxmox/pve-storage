@@ -651,7 +651,7 @@ sub alloc_image {
     if ($fmt eq 'subvol') {
 	# only allow this if size = 0, so that user knows what he is doing
 	die "storage does not support subvol quotas\n" if $size != 0;
-	
+
 	my $old_umask = umask(0022);
 	my $err;
 	mkdir($path) or $err = "unable to create subvol '$path' - $!\n";
@@ -661,7 +661,7 @@ sub alloc_image {
 	my $cmd = ['/usr/bin/qemu-img', 'create'];
 
 	push @$cmd, '-o', 'preallocation=metadata' if $fmt eq 'qcow2';
-	
+
 	push @$cmd, '-f', $fmt, $path, "${size}K";
 
 	eval { run_command($cmd, errmsg => "unable to create image"); };
@@ -671,7 +671,7 @@ sub alloc_image {
 	    die "$@";
 	}
     }
-    
+
     return "$vmid/$name";
 }
 
@@ -701,7 +701,7 @@ sub free_image {
     # all images from a guest got deleted
     my $dir = dirname($path);
     rmdir($dir);
-    
+
     return undef;
 }
 
@@ -711,7 +711,7 @@ sub file_size_info {
     if (-d $filename) {
 	return wantarray ? (0, 'subvol', 0, undef) : 1;
     }
-    
+
     my $cmd = ['/usr/bin/qemu-img', 'info', $filename];
 
     my $format;
@@ -785,9 +785,9 @@ sub volume_snapshot {
 }
 
 sub volume_rollback_is_possible {
-    my ($class, $scfg, $storeid, $volname, $snap) = @_; 
+    my ($class, $scfg, $storeid, $volname, $snap) = @_;
 
-    return 1; 
+    return 1;
 }
 
 sub volume_snapshot_rollback {
