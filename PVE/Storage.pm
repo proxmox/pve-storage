@@ -588,7 +588,7 @@ sub storage_migrate {
 	}
     }
 
-    my @formats = volume_transfer_formats($cfg, $volid, $volid, $snapshot, $base_snapshot, $with_snapshots);
+    my @formats = volume_transfer_formats($cfg, $volid, $target_volid, $snapshot, $base_snapshot, $with_snapshots);
     die "cannot migrate from storage type '$scfg->{type}' to '$tcfg->{type}'\n" if !@formats;
     my $format = $formats[0];
 
@@ -600,7 +600,7 @@ sub storage_migrate {
 
     $with_snapshots = $with_snapshots ? 1 : 0; # sanitize for passing as cli parameter
     my $send = ['pvesm', 'export', $volid, $format, '-', '-with-snapshots', $with_snapshots];
-    my $recv = [@$ssh, '--', 'pvesm', 'import', $volid, $format, $import_fn, '-with-snapshots', $with_snapshots];
+    my $recv = [@$ssh, '--', 'pvesm', 'import', $target_volid, $format, $import_fn, '-with-snapshots', $with_snapshots];
     if (defined($snapshot)) {
 	push @$send, '-snapshot', $snapshot
     }
