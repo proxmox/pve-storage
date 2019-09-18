@@ -250,7 +250,12 @@ my $create_lun = sub {
     my $res = $execute_remote_command->($scfg, $timeout, $targetcli, @cliparams);
     die $res->{msg} if !$res->{result};
 
-    # step 2: register lun with target
+    # step 2: enable unmap support on the backstore
+    @cliparams = ($BACKSTORE . '/' . $volname, 'set', 'attribute', 'emulate_tpu=1' );
+    $res = $execute_remote_command->($scfg, $timeout, $targetcli, @cliparams);
+    die $res->{msg} if !$res->{result};
+
+    # step 3: register lun with target
     # targetcli /iscsi/iqn.2018-04.at.bestsolution.somehost:target/tpg1/luns/ create /backstores/block/foobar
     @cliparams = ("/iscsi/$scfg->{target}/$tpg/luns/", 'create', "$BACKSTORE/$volname" );
     $res = $execute_remote_command->($scfg, $timeout, $targetcli, @cliparams);
