@@ -322,14 +322,8 @@ my $import_lun = sub {
 # needed for example when the underlying ZFS volume has been resized
 my $modify_lun = sub {
     my ($scfg, $timeout, $method, @params) = @_;
-    my $msg;
-
-    $msg = $delete_lun->($scfg, $timeout, $method, @params);
-    if ($msg) {
-	$msg = $create_lun->($scfg, $timeout, $method, @params);
-    }
-
-    return $msg;
+    # Nothing to do on volume modification for LIO
+    return undef;
 };
 
 my $add_view = sub {
