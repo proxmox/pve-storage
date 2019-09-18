@@ -101,6 +101,8 @@ sub zfs_get_lu_name {
 
     my $base = $zfs_get_base->($scfg);
 
+    $zvol = ($class->parse_volname($zvol))[1];
+
     my $object = ($zvol =~ /^.+\/.+/) ? "$base/$zvol" : "$base/$scfg->{pool}/$zvol";
 
     my $lu_name = $class->zfs_request($scfg, undef, 'list_lu', $object);
@@ -321,7 +323,9 @@ sub free_image {
 
 sub volume_resize {
     my ($class, $scfg, $storeid, $volname, $size, $running) = @_;
-    
+
+    $volname = ($class->parse_volname($volname))[1];
+
     my $new_size = $class->SUPER::volume_resize($scfg, $storeid, $volname, $size, $running);
 
     $class->zfs_resize_lu($scfg, $volname, $new_size);
@@ -332,11 +336,15 @@ sub volume_resize {
 sub volume_snapshot_delete {
     my ($class, $scfg, $storeid, $volname, $snap, $running) = @_;
 
+    $volname = ($class->parse_volname($volname))[1];
+
     $class->zfs_request($scfg, undef, 'destroy', "$scfg->{pool}/$volname\@$snap");
 }
 
 sub volume_snapshot_rollback {
     my ($class, $scfg, $storeid, $volname, $snap) = @_;
+
+    $volname = ($class->parse_volname($volname))[1];
 
     $class->zfs_delete_lu($scfg, $volname);
 
