@@ -11,6 +11,8 @@ use PVE::Tools qw(run_command);
 use PVE::JSONSchema qw(get_standard_option);
 use PVE::Cluster qw(cfs_register_file);
 
+use JSON;
+
 use base qw(PVE::SectionConfig);
 
 our @COMMON_TAR_FLAGS = qw(
@@ -712,26 +714,20 @@ sub file_size_info {
 	return wantarray ? (0, 'subvol', 0, undef) : 1;
     }
 
-    my $cmd = ['/usr/bin/qemu-img', 'info', '--output=json', $filename];
     my $json = '';
-
     eval {
-	run_command($cmd, timeout => $timeout, outfunc => sub { $json .= shift },
-	errfunc => sub {
-	    my $line = shift;
-	    warn $line;
-	});
-
+	run_command(['/usr/bin/qemu-img', 'info', '--output=json', $filename],
+	    timeout => $timeout,
+	    outfunc => sub { $json .= shift },
+	    errfunc => sub { warn "$_[0]\n" }
+	);
     };
-
     warn $@ if $@;
 
-    my $decoded = decode_json($json);
+    my $info = eval { decode_json($json) };
+    warn "could not parse qemu-img info command output for '$filename'\n" if $@;
 
-    my $format = $decoded->{format};
-    my $parent = $decoded->{'backing-filename'};
-    my $size = $decoded->{'virtual-size'};
-    my $used = $decoded->{'actual-size'};
+    my ($size, $format, $used, $parent) = $info->@{qw(virtual-size format actual-size backing-filename)};
 
     return wantarray ? ($size, $format, $used, $parent) : $size;
 }
