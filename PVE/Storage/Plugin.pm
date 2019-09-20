@@ -712,37 +712,26 @@ sub file_size_info {
 	return wantarray ? (0, 'subvol', 0, undef) : 1;
     }
 
-    my $format;
-    my $parent;
-    my $size = 0;
-    my $used = 0;
+    my $cmd = ['/usr/bin/qemu-img', 'info', '--output=json', $filename];
+    my $json = '';
 
-    my $parse_qemu_img_info = sub {
-	my $line = shift;
-	if ($line =~ m/^file format:\s+(\S+)\s*$/) {
-	    $format = $1;
-	} elsif ($line =~ m/^backing file:\s(\S+)\s/) {
-	    $parent = $1;
-	} elsif ($line =~ m/^virtual size:\s\S+\s+\((\d+)\s+bytes\)$/) {
-	    $size = int($1);
-	} elsif ($line =~ m/^disk size:\s+(\d+(.\d+)?)([KMGT])\s*$/) {
-	    $used = $1;
-	    my $u = $3;
-
-	    $used *= 1024 if $u eq 'K';
-	    $used *= (1024*1024) if $u eq 'M';
-	    $used *= (1024*1024*1024) if $u eq 'G';
-	    $used *= (1024*1024*1024*1024) if $u eq 'T';
-
-	    $used = int($used);
-	}
-    };
-
-    my $cmd = ['/usr/bin/qemu-img', 'info', $filename];
     eval {
-	run_command($cmd, timeout => $timeout, outfunc => $parse_qemu_img_info );
+	run_command($cmd, timeout => $timeout, outfunc => sub { $json .= shift },
+	errfunc => sub {
+	    my $line = shift;
+	    warn $line;
+	});
+
     };
+
     warn $@ if $@;
+
+    my $decoded = decode_json($json);
+
+    my $format = $decoded->{format};
+    my $parent = $decoded->{'backing-filename'};
+    my $size = $decoded->{'virtual-size'};
+    my $used = $decoded->{'actual-size'};
 
     return wantarray ? ($size, $format, $used, $parent) : $size;
 }
