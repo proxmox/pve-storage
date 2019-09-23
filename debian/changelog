@@ -1,3 +1,20 @@
+libpve-storage-perl (6.0-9) pve; urgency=medium
+
+  * warn if filesize info could not be read due to error and use JSON
+    interface from qemu-img
+
+  * fix VMID filter for backup listing
+
+  * ZFS over iSCSI/LIO: Don't remove and recreate lun when changing a
+    volume
+
+  * ZFS over iSCSI/LIO: set TRIM, UNMAP, DISCARD (TPU) to true for new
+    images to allow to reclaim free space
+
+  * ZFS over iSCSI/LIO: fix volname parsing for linked clones
+
+ -- Proxmox Support Team <support@proxmox.com>  Mon, 23 Sep 2019 18:17:37 +0200
+
 libpve-storage-perl (6.0-8) pve; urgency=medium
 
   * Fix #2346: rbd storage shows wrong %-usage
