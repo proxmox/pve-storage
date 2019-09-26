@@ -207,6 +207,8 @@ my $list_view = sub {
     my $object = $params[0];
     my $volname = $extract_volname->($scfg, $object);
 
+    return undef if !defined($volname); # nothing to search for..
+
     foreach my $lun (@{$SETTINGS->{target}->{luns}}) {
 	if ($lun->{storage_object} eq "$BACKSTORE/$volname") {
 	    return $lun->{index};
