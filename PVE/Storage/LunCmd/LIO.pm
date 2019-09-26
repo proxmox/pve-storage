@@ -168,6 +168,14 @@ my $parser = sub {
     }
 };
 
+# Get prefix for backstores
+my $get_backstore_prefix = sub {
+    my ($scfg) = @_;
+    my $pool = $scfg->{pool};
+    $pool =~ s/\//-/g;
+    return $pool . '-';
+};
+
 # removes the given lu_name from the local list of luns
 my $free_lu_name = sub {
     my ($scfg, $lu_name) = @_;
@@ -206,6 +214,16 @@ my $extract_volname = sub {
     my $base = get_base;
     if ($lunpath =~ /^$base\/$scfg->{pool}\/([\w\-]+)$/) {
 	$volname = $1;
+	my $prefix = $get_backstore_prefix->($scfg);
+	my $target = $get_target_settings->($scfg);
+	foreach my $lun (@{$target->{luns}}) {
+	    # If we have a lun with the pool prefix matching this vol, then return this one
+	    # like pool-pve-vm-100-disk-0
+	    # Else, just fallback to the old name scheme which is vm-100-disk-0
+	    if ($lun->{storage_object} =~ /^$BACKSTORE\/($prefix$volname)$/) {
+		return $1;
+	    }
+	}
     }
 
     return $volname;
@@ -259,6 +277,9 @@ my $create_lun = sub {
 
     my $device = $params[0];
     my $volname = $extract_volname->($scfg, $device);
+    # Here we create a new device, so we didn't get the volname prefixed with the pool name
+    # as extract_volname couldn't find a matching vol yet
+    $volname = $get_backstore_prefix->($scfg) . $volname;
     my $tpg = $scfg->{lio_tpg} || die "Target Portal Group not set, aborting!\n";
 
     # step 1: create backstore for device
