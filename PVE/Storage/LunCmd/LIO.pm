@@ -205,7 +205,7 @@ my $list_view = sub {
     my $lun = undef;
 
     my $object = $params[0];
-    my $volname = $extract_volname->($scfg, $params[0]);
+    my $volname = $extract_volname->($scfg, $object);
 
     foreach my $lun (@{$SETTINGS->{target}->{luns}}) {
 	if ($lun->{storage_object} eq "$BACKSTORE/$volname") {
