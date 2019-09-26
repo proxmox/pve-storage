@@ -121,6 +121,15 @@ my $get_config = sub {
     return $config;
 };
 
+# Return settings of a specific target
+my $get_target_settings = sub {
+   my ($scfg) = @_;
+
+   my $id = "$scfg->{portal}.$scfg->{target}";
+   return undef if !$SETTINGS;
+   return $SETTINGS->{$id};
+};
+
 # fetches and parses targetcli config from the portal
 my $parser = sub {
     my ($scfg) = @_;
@@ -145,7 +154,8 @@ my $parser = sub {
 	# find correct TPG
 	foreach my $tpg (@{$target->{tpgs}}) {
 	    if ($tpg->{tag} == $tpg_tag) {
-		$SETTINGS->{target} = $tpg;
+		my $id = "$scfg->{portal}.$scfg->{target}";
+		$SETTINGS->{$id} = $tpg;
 		$haveTarget = 1;
 		last;
 	    }
@@ -160,16 +170,17 @@ my $parser = sub {
 
 # removes the given lu_name from the local list of luns
 my $free_lu_name = sub {
-    my ($lu_name) = @_;
+    my ($scfg, $lu_name) = @_;
 
     my $new = [];
-    foreach my $lun (@{$SETTINGS->{target}->{luns}}) {
+    my $target = $get_target_settings->($scfg);
+    foreach my $lun (@{$target->{luns}}) {
 	if ($lun->{storage_object} ne "$BACKSTORE/$lu_name") {
 	    push @$new, $lun;
 	}
     }
 
-    $SETTINGS->{target}->{luns} = $new;
+    $target->{luns} = $new;
 };
 
 # locally registers a new lun
@@ -181,7 +192,8 @@ my $register_lun = sub {
 	storage_object => "$BACKSTORE/$volname",
 	is_new => 1,
     };
-    push @{$SETTINGS->{target}->{luns}}, $conf;
+    my $target = $get_target_settings->($scfg);
+    push @{$target->{luns}}, $conf;
 
     return $conf;
 };
@@ -206,10 +218,11 @@ my $list_view = sub {
 
     my $object = $params[0];
     my $volname = $extract_volname->($scfg, $object);
+    my $target = $get_target_settings->($scfg);
 
     return undef if !defined($volname); # nothing to search for..
 
-    foreach my $lun (@{$SETTINGS->{target}->{luns}}) {
+    foreach my $lun (@{$target->{luns}}) {
 	if ($lun->{storage_object} eq "$BACKSTORE/$volname") {
 	    return $lun->{index};
 	}
@@ -225,8 +238,9 @@ my $list_lun = sub {
 
     my $object = $params[0];
     my $volname = $extract_volname->($scfg, $params[0]);
+    my $target = $get_target_settings->($scfg);
 
-    foreach my $lun (@{$SETTINGS->{target}->{luns}}) {
+    foreach my $lun (@{$target->{luns}}) {
 	if ($lun->{storage_object} eq "$BACKSTORE/$volname") {
 	    return $object;
 	}
@@ -290,8 +304,9 @@ my $delete_lun = sub {
 
     my $path = $params[0];
     my $volname = $extract_volname->($scfg, $params[0]);
+    my $target = $get_target_settings->($scfg);
 
-    foreach my $lun (@{$SETTINGS->{target}->{luns}}) {
+    foreach my $lun (@{$target->{luns}}) {
 	next if $lun->{storage_object} ne "$BACKSTORE/$volname";
 
 	# step 1: delete the lun
@@ -312,7 +327,7 @@ my $delete_lun = sub {
 	$execute_remote_command->($scfg, $timeout, $targetcli, 'saveconfig');
 
 	# update interal cache
-	$free_lu_name->($volname);
+	$free_lu_name->($scfg, $volname);
 
 	last;
     }
@@ -354,7 +369,8 @@ sub run_lun_command {
 
     # fetch configuration from target if we haven't yet or if it is stale
     my $timediff = time - $SETTINGS_TIMESTAMP;
-    if (!$SETTINGS || $timediff > $SETTINGS_MAXAGE) {
+    my $target = $get_target_settings->($scfg);
+    if (!$target || $timediff > $SETTINGS_MAXAGE) {
 	$SETTINGS_TIMESTAMP = time;
 	$parser->($scfg);
     }
