@@ -255,7 +255,7 @@ my $list_lun = sub {
     my $name = undef;
 
     my $object = $params[0];
-    my $volname = $extract_volname->($scfg, $params[0]);
+    my $volname = $extract_volname->($scfg, $object);
     my $target = $get_target_settings->($scfg);
 
     foreach my $lun (@{$target->{luns}}) {
@@ -324,7 +324,7 @@ my $delete_lun = sub {
     my $tpg = $scfg->{lio_tpg} || die "Target Portal Group not set, aborting!\n";
 
     my $path = $params[0];
-    my $volname = $extract_volname->($scfg, $params[0]);
+    my $volname = $extract_volname->($scfg, $path);
     my $target = $get_target_settings->($scfg);
 
     foreach my $lun (@{$target->{luns}}) {
