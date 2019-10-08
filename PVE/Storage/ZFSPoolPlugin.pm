@@ -53,11 +53,11 @@ sub zfs_parse_size {
     my ($text) = @_;
 
     return 0 if !$text;
-    
+
     if ($text =~ m/^(\d+(\.\d+)?)([TGMK])?$/) {
 
 	my ($size, $reminder, $unit) = ($1, $2, $3);
-	
+
 	if ($unit) {
 	    if ($unit eq 'K') {
 		$size *= 1024;
@@ -75,9 +75,9 @@ sub zfs_parse_size {
 	if ($reminder) {
 	    $size = ceil($size);
 	}
-	
+
 	return $size;
-    
+
     }
 
     warn "unable to parse zfs size '$text'\n";
@@ -210,12 +210,12 @@ sub alloc_image {
     my ($class, $storeid, $scfg, $vmid, $fmt, $name, $size) = @_;
 
     my $volname = $name;
-    
+
     if ($fmt eq 'raw') {
 
 	die "illegal name '$volname' - should be 'vm-$vmid-*'\n"
 	    if $volname && $volname !~ m/^vm-$vmid-/;
-	$volname = $class->zfs_find_free_diskname($storeid, $scfg, $vmid, $fmt) 
+	$volname = $class->zfs_find_free_diskname($storeid, $scfg, $vmid, $fmt)
 	    if !$volname;
 
 	$class->zfs_create_zvol($scfg, $volname, $size);
@@ -225,14 +225,14 @@ sub alloc_image {
 
 	die "illegal name '$volname' - should be 'subvol-$vmid-*'\n"
 	    if $volname && $volname !~ m/^subvol-$vmid-/;
-	$volname = $class->zfs_find_free_diskname($storeid, $scfg, $vmid, $fmt) 
+	$volname = $class->zfs_find_free_diskname($storeid, $scfg, $vmid, $fmt)
 	    if !$volname;
 
 	die "illegal name '$volname' - should be 'subvol-$vmid-*'\n"
 	    if $volname !~ m/^subvol-$vmid-/;
 
-	$class->zfs_create_subvol($scfg, $volname, $size);	
-	
+	$class->zfs_create_subvol($scfg, $volname, $size);
+
     } else {
 	die "unsupported format '$fmt'";
     }
@@ -332,7 +332,7 @@ sub zfs_create_subvol {
     my ($class, $scfg, $volname, $size) = @_;
 
     my $dataset = "$scfg->{pool}/$volname";
-    
+
     my $cmd = ['create', '-o', 'acltype=posixacl', '-o', 'xattr=sa',
 	       '-o', "refquota=${size}k", $dataset];
 
@@ -482,14 +482,14 @@ sub volume_snapshot_rollback {
 }
 
 sub volume_rollback_is_possible {
-    my ($class, $scfg, $storeid, $volname, $snap) = @_; 
-    
+    my ($class, $scfg, $storeid, $volname, $snap) = @_;
+
     my $recentsnap = $class->zfs_get_latest_snapshot($scfg, $volname);
     if ($snap ne $recentsnap) {
 	die "can't rollback, more recent snapshots exist\n";
     }
 
-    return 1; 
+    return 1;
 }
 
 sub volume_snapshot_list {
