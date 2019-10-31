@@ -538,8 +538,8 @@ sub abs_filesystem_path {
     my ($cfg, $volid) = @_;
 
     my $path;
-    if (PVE::Storage::parse_volume_id ($volid, 1)) {
-	PVE::Storage::activate_volumes($cfg, [ $volid ]);
+    if (parse_volume_id ($volid, 1)) {
+	activate_volumes($cfg, [ $volid ]);
 	$path = PVE::Storage::path($cfg, $volid);
     } else {
 	if (-f $volid) {
