@@ -16,23 +16,23 @@ use PVE::JSONSchema qw(get_standard_option);
 use base qw(PVE::RESTHandler);
 
 __PACKAGE__->register_method ({
-    name => 'index', 
+    name => 'index',
     path => '',
     method => 'GET',
     description => "List storage content.",
-    permissions => { 
+    permissions => {
 	check => ['perm', '/storage/{storage}', ['Datastore.Audit', 'Datastore.AllocateSpace'], any => 1],
     },
     protected => 1,
     proxyto => 'node',
     parameters => {
     	additionalProperties => 0,
-	properties => { 
+	properties => {
 	    node => get_standard_option('pve-node'),
 	    storage => get_standard_option('pve-storage-id', {
 		completion => \&PVE::Storage::complete_storage_enabled,
             }),
-	    content => { 
+	    content => {
 		description => "Only list content of this type.",
 		type => 'string', format => 'pve-storage-content',
 		optional => 1,
@@ -49,7 +49,7 @@ __PACKAGE__->register_method ({
 	type => 'array',
 	items => {
 	    type => "object",
-	    properties => { 
+	    properties => {
 		volid => {
 		    description => "Volume identifier.",
 		    type => 'string',
@@ -104,27 +104,27 @@ __PACKAGE__->register_method ({
 	    push @$res, $item;
 	}
 
-	return $res;    
+	return $res;
     }});
 
 __PACKAGE__->register_method ({
-    name => 'create', 
+    name => 'create',
     path => '',
     method => 'POST',
     description => "Allocate disk images.",
-    permissions => { 
+    permissions => {
 	check => ['perm', '/storage/{storage}', ['Datastore.AllocateSpace']],
     },
     protected => 1,
     proxyto => 'node',
     parameters => {
     	additionalProperties => 0,
-	properties => { 
+	properties => {
 	    node => get_standard_option('pve-node'),
 	    storage => get_standard_option('pve-storage-id', {
 		completion => \&PVE::Storage::complete_storage_enabled,
 	    }),
-	    filename => { 
+	    filename => {
 		description => "The name of the file to create.",
 		type => 'string',
 	    },
@@ -171,16 +171,16 @@ __PACKAGE__->register_method ({
 	if ($name =~ m/\.(raw|qcow2|vmdk)$/) {
 	    my $fmt = $1;
 
-	    raise_param_exc({ format => "different storage formats ($param->{format} != $fmt)" }) 
+	    raise_param_exc({ format => "different storage formats ($param->{format} != $fmt)" })
 		if $param->{format} && $param->{format} ne $fmt;
 
 	    $param->{format} = $fmt;
 	}
 
 	my $cfg = PVE::Storage::config();
-    
-	my $volid = PVE::Storage::vdisk_alloc ($cfg, $storeid, $param->{vmid}, 
-					       $param->{format}, 
+
+	my $volid = PVE::Storage::vdisk_alloc ($cfg, $storeid, $param->{vmid},
+					       $param->{format},
 					       $name, $size);
 
 	return $volid;
@@ -201,12 +201,12 @@ my $real_volume_id = sub {
 	    $volid = $volume;
 	    $storeid = $sid;
 	};
-	raise_param_exc({ volume => $@ }) if $@; 
-	   
+	raise_param_exc({ volume => $@ }) if $@;
+
     } else {
-	raise_param_exc({ volume => "no storage speficied - incomplete volume ID" }) 
+	raise_param_exc({ volume => "no storage speficied - incomplete volume ID" })
 	    if !$storeid;
-	
+
 	$volid = "$storeid:$volume";
     }
 
@@ -218,7 +218,7 @@ __PACKAGE__->register_method ({
     path => '{volume}',
     method => 'GET',
     description => "Get volume attributes",
-    permissions => { 
+    permissions => {
 	description => "You need read access for the volume.",
 	user => 'all',
     },
@@ -226,12 +226,12 @@ __PACKAGE__->register_method ({
     proxyto => 'node',
     parameters => {
     	additionalProperties => 0,
-	properties => { 
+	properties => {
 	    node => get_standard_option('pve-node'),
 	    storage => get_standard_option('pve-storage-id', { optional => 1 }),
 	    volume => {
 		description => "Volume identifier",
-		type => 'string', 
+		type => 'string',
 	    },
 	},
     },
@@ -266,7 +266,7 @@ __PACKAGE__->register_method ({
     path => '{volume}',
     method => 'DELETE',
     description => "Delete volume",
-    permissions => { 
+    permissions => {
 	description => "You need 'Datastore.Allocate' privilege on the storage (or 'Datastore.AllocateSpace' for backup volumes if you have VM.Backup privilege on the VM).",
 	user => 'all',
     },
@@ -274,7 +274,7 @@ __PACKAGE__->register_method ({
     proxyto => 'node',
     parameters => {
     	additionalProperties => 0,
-	properties => { 
+	properties => {
 	    node => get_standard_option('pve-node'),
 	    storage => get_standard_option('pve-storage-id', {
                 optional => 1,
@@ -354,24 +354,24 @@ __PACKAGE__->register_method ({
     proxyto => 'node',
     parameters => {
     	additionalProperties => 0,
-	properties => { 
+	properties => {
 	    node => get_standard_option('pve-node'),
 	    storage => get_standard_option('pve-storage-id', { optional => 1}),
 	    volume => {
 		description => "Source volume identifier",
-		type => 'string', 
+		type => 'string',
 	    },
 	    target => {
 		description => "Target volume identifier",
-		type => 'string', 
+		type => 'string',
 	    },
-	    target_node => get_standard_option('pve-node',  { 
+	    target_node => get_standard_option('pve-node',  {
 		description => "Target node. Default is local node.",
 		optional => 1,
 	    }),
 	},
     },
-    returns => { 
+    returns => {
 	type => 'string',
     },
     code => sub {
