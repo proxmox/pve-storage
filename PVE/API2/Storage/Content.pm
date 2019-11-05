@@ -101,6 +101,7 @@ __PACKAGE__->register_method ({
 	foreach my $item (@$vollist) {
 	    eval {  PVE::Storage::check_volume_access($rpcenv, $authuser, $cfg, undef, $item->{volid}); };
 	    next if $@;
+	    $item->{vmid} = int($item->{vmid}) if (defined($item->{vmid}));
 	    push @$res, $item;
 	}
 
