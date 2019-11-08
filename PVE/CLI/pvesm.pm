@@ -310,9 +310,12 @@ __PACKAGE__->register_method ({
 	    my ($cidr, $ip, $subnet) = ($1, $2, $3);
 	    if ($subnet) { # got real CIDR notation, not just IP
 		my $ips = PVE::Network::get_local_ip_from_cidr($cidr);
-		die "Unable to get single local IP address in network '$cidr'\n"
-		    if scalar(@$ips) != 1;
-		$ip = @$ips[0];
+		die "Unable to get any local IP address in network '$cidr'\n"
+		    if scalar(@$ips) < 1;
+		die "Got multiple local IP address in network '$cidr'\n"
+		    if scalar(@$ips) > 1;
+
+		$ip = $ips->[0];
 	    }
 	    my $family = PVE::Tools::get_host_address_family($ip);
 	    my $port = PVE::Tools::next_migrate_port($family, $ip);
