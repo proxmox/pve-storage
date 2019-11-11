@@ -8,6 +8,7 @@ use File::Basename;
 use PVE::Tools;
 use PVE::INotify;
 use PVE::Cluster;
+use PVE::RRD;
 use PVE::Storage;
 use PVE::API2::Storage::Content;
 use PVE::RESTHandler;
@@ -295,7 +296,7 @@ __PACKAGE__->register_method ({
     code => sub {
 	my ($param) = @_;
 
-	return PVE::Cluster::create_rrd_graph(
+	return PVE::RRD::create_rrd_graph(
 	    "pve2-storage/$param->{node}/$param->{storage}", 
 	    $param->{timeframe}, $param->{ds}, $param->{cf});
 					      
@@ -339,7 +340,7 @@ __PACKAGE__->register_method ({
     code => sub {
 	my ($param) = @_;
 
-	return PVE::Cluster::create_rrd_data(
+	return PVE::RRD::create_rrd_data(
 	    "pve2-storage/$param->{node}/$param->{storage}", 
 	    $param->{timeframe}, $param->{cf});	      
     }});
