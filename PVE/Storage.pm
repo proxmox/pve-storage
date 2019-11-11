@@ -15,6 +15,7 @@ use Socket;
 
 use PVE::Tools qw(run_command file_read_firstline dir_glob_foreach $IPV6RE);
 use PVE::Cluster qw(cfs_read_file cfs_write_file cfs_lock_file);
+use PVE::DataCenterConfig;
 use PVE::Exception qw(raise_param_exc);
 use PVE::JSONSchema;
 use PVE::INotify;
