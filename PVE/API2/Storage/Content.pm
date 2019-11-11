@@ -12,6 +12,7 @@ use PVE::Exception qw(raise_param_exc);
 use PVE::RPCEnvironment;
 use PVE::RESTHandler;
 use PVE::JSONSchema qw(get_standard_option);
+use PVE::SSHInfo;
 
 use base qw(PVE::RESTHandler);
 
@@ -410,7 +411,7 @@ __PACKAGE__->register_method ({
 
 	    # you need to get this working (fails currently, because storage_migrate() uses
 	    # ssh to connect to local host (which is not needed
-	    my $sshinfo = PVE::Cluster::get_ssh_info($target_node);
+	    my $sshinfo = PVE::SSHInfo::get_ssh_info($target_node);
 	    PVE::Storage::storage_migrate($cfg, $src_volid, $sshinfo, $target_sid, $target_volname);
 
 	    print "DEBUG: end worker $upid\n";

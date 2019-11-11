@@ -20,6 +20,7 @@ use PVE::Exception qw(raise_param_exc);
 use PVE::JSONSchema;
 use PVE::INotify;
 use PVE::RPCEnvironment;
+use PVE::SSHInfo;
 
 use PVE::Storage::Plugin;
 use PVE::Storage::DirPlugin;
@@ -574,8 +575,8 @@ sub storage_migrate {
     my $target_ip = $target_sshinfo->{ip};
     my $errstr = "unable to migrate '$volid' to '${target_volid}' on host '$target_sshinfo->{name}'";
 
-    my $ssh = PVE::Cluster::ssh_info_to_command($target_sshinfo);
-    my $ssh_base = PVE::Cluster::ssh_info_to_command_base($target_sshinfo);
+    my $ssh = PVE::SSHInfo::ssh_info_to_command($target_sshinfo);
+    my $ssh_base = PVE::SSHInfo::ssh_info_to_command_base($target_sshinfo);
     local $ENV{RSYNC_RSH} = PVE::Tools::cmd2string($ssh_base);
 
     my @cstream = ([ '/usr/bin/cstream', '-t', $ratelimit_bps ])
