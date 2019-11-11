@@ -1,3 +1,15 @@
+libpve-storage-perl (6.0-10) pve; urgency=medium
+
+  * various LIO target improvements
+
+  * convert vmid to int to conform with return type declaration
+
+  * use correct local IP address helper
+
+  * use PVE::DataCenterConfig, PVE::SSHInfo and PVE::RRD
+
+ -- Proxmox Support Team <support@proxmox.com>  Mon, 18 Nov 2019 12:04:55 +0100
+
 libpve-storage-perl (6.0-9) pve; urgency=medium
 
   * warn if filesize info could not be read due to error and use JSON
