@@ -287,16 +287,22 @@ sub list_images {
     return $res;
 }
 
+sub zfs_get_properties {
+    my ($class, $scfg, $properties, $dataset, $timeout) = @_;
+
+    my $result = $class->zfs_request($scfg, $timeout, 'get', '-o', 'value',
+				     '-Hp', $properties, $dataset);
+    my @values = split /\n/, $result;
+    return wantarray ? @values : $values[0];
+}
+
 sub zfs_get_pool_stats {
     my ($class, $scfg) = @_;
 
     my $available = 0;
     my $used = 0;
 
-    my $text = $class->zfs_request($scfg, undef, 'get', '-o', 'value', '-Hp',
-               'available,used', $scfg->{pool});
-
-    my @lines = split /\n/, $text;
+    my @lines = $class->zfs_get_properties($scfg, 'available,used', $scfg->{pool});
 
     if($lines[0] =~ /^(\d+)$/) {
 	$available = $1;
@@ -448,8 +454,8 @@ sub volume_size_info {
         $class->parse_volname($volname);
 
     my $attr = $format eq 'subvol' ? 'refquota' : 'volsize';
-    my $text = $class->zfs_request($scfg, undef, 'get', '-Hp', $attr, "$scfg->{pool}/$vname");
-    if ($text =~ /\s$attr\s(\d+)\s/) {
+    my $value = $class->zfs_get_properties($scfg, $attr, "$scfg->{pool}/$vname");
+    if ($value =~ /^(\d+)$/) {
 	return $1;
     }
 
