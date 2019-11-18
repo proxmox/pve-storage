@@ -16,6 +16,7 @@ my $verbose = undef;
 
 my $storagename = "zfstank99";
 my $subvol = 'regressiontest';
+my $mountpoint = "${subvol}_mnt";
 
 #volsize in GB
 my $volsize = 1;
@@ -142,10 +143,10 @@ my $test19 = sub {
     $fail = 0;
     eval {
 	@res = PVE::Storage::path($cfg, "$storagename:$ctdisk");
-	if ($res[0] ne "\/regressiontest\/$ctdisk") {
+	if ($res[0] ne "\/$mountpoint\/$ctdisk") {
 	    $count++;
 	    $fail = 1;
-	    warn "Test 19 d: path is not correct: expected \'/regressiontest\/$ctdisk'\  get \'$res[0]\'";
+	    warn "Test 19 d: path is not correct: expected \'\/$mountpoint\/$ctdisk'\  get \'$res[0]\'";
 	}
 	if ($res[1] ne "202") {
 	    if (!$fail) {
@@ -171,10 +172,10 @@ my $test19 = sub {
     $fail = 0;
     eval {
 	@res = PVE::Storage::path($cfg, "$storagename:$ctbase");
-	if ($res[0] ne "\/regressiontest\/$ctbase") {
+	if ($res[0] ne "\/$mountpoint\/$ctbase") {
 	    $count++;
 	    $fail = 1;
-	    warn "Test 19 e: path is not correct: expected \'\/regressiontest\/$ctbase'\  get \'$res[0]\'";
+	    warn "Test 19 e: path is not correct: expected \'\/$mountpoint\/$ctbase'\  get \'$res[0]\'";
 	}
 	if ($res[1] ne "200") {
 	    if (!$fail) {
@@ -200,10 +201,10 @@ my $test19 = sub {
     $fail = 0;
     eval {
 	@res = PVE::Storage::path($cfg, "$storagename:$ctbase\/$ctlinked");
-	if ($res[0] ne "\/regressiontest\/$ctlinked") {
+	if ($res[0] ne "\/$mountpoint\/$ctlinked") {
 	    $count++;
 	    $fail = 1;
-	    warn "Test 19 f: path is not correct: expected \'\/regressiontest\/$ctlinked'\  get \'$res[0]\'";
+	    warn "Test 19 f: path is not correct: expected \'\/$mountpoint\/$ctlinked'\  get \'$res[0]\'";
 	}
 	if ($res[1] ne "201") {
 	    if (!$fail) {
@@ -1188,11 +1189,11 @@ my $test7 = sub {
     eval {
 	PVE::Storage::volume_snapshot($cfg, "$storagename:$ctdisk", 'snap1');
 
-	run_command("touch \/$zpath\/$ctdisk\/test.txt", outfunc => $parse_guid);
+	run_command("touch \/$mountpoint\/$ctdisk\/test.txt", outfunc => $parse_guid);
 	eval {
 	    PVE::Storage::volume_snapshot_rollback($cfg, "$storagename:$ctdisk", 'snap1');
 	    eval {
-		run_command("ls \/$zpath\/$ctdisk\/test.txt", errofunc => sub {});
+		run_command("ls \/$mountpoint\/$ctdisk\/test.txt", errofunc => sub {});
 	    };
 	    if (!$@) {
 		$count++;
@@ -1212,11 +1213,11 @@ my $test7 = sub {
     eval {
 	PVE::Storage::volume_snapshot($cfg, "$storagename:$ctbase", 'snap1');
 
-	run_command("touch \/$zpath\/$ctbase\/test.txt", outfunc => $parse_guid);
+	run_command("touch \/$mountpoint\/$ctbase\/test.txt", outfunc => $parse_guid);
 	eval {
 	    PVE::Storage::volume_snapshot_rollback($cfg, "$storagename:$ctbase", 'snap1');
 	    eval {
-		run_command("ls \/$zpath\/$ctbase\/test.txt", errofunc => sub {});
+		run_command("ls \/$mountpoint\/$ctbase\/test.txt", errofunc => sub {});
 	    };
 	    if (!$@) {
 		$count++;
@@ -1236,7 +1237,7 @@ my $test7 = sub {
     eval {
 	PVE::Storage::volume_snapshot($cfg, "$storagename:$ctbase/$ctlinked", 'snap1');
 
-	run_command("touch \/$zpath\/$ctlinked\/test.txt", outfunc => $parse_guid);
+	run_command("touch \/$mountpoint\/$ctlinked\/test.txt", outfunc => $parse_guid);
 	eval {
 	    PVE::Storage::volume_snapshot_rollback($cfg, "$storagename:$ctbase/$ctlinked", 'snap1');
 	    eval {
@@ -2650,7 +2651,7 @@ sub setup_zpool {
     }
     my $pwd = cwd();
     eval {
-	run_command("zpool create $subvol $pwd\/zpool.img");
+	run_command("zpool create -m \/$mountpoint $subvol $pwd\/zpool.img");
     };
     if ($@) {
 	clean_up_zpool();
@@ -2698,6 +2699,7 @@ $cfg = {'ids' => {
 	    'rootdir' => 1
 	},
 		'pool' => $subvol,
+		'mountpoint' => "\/$mountpoint",
 		'type' => 'zfspool'
     },
 	},

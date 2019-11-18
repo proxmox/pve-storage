@@ -32,6 +32,10 @@ sub properties {
 	    description => "use sparse volumes",
 	    type => 'boolean',
 	},
+	mountpoint => {
+	    description => "mount point",
+	    type => 'string', format => 'pve-storage-path',
+	},
     };
 }
 
@@ -44,6 +48,7 @@ sub options {
 	disable => { optional => 1 },
 	content => { optional => 1 },
 	bwlimit => { optional => 1 },
+	mountpoint => { optional => 1 },
     };
 }
 
@@ -142,17 +147,39 @@ sub parse_volname {
 
 # virtual zfs methods (subclass can overwrite them)
 
+sub on_add_hook {
+    my ($class, $storeid, $scfg, %param) = @_;
+
+    my $cfg_mountpoint = $scfg->{mountpoint};
+    my $mountpoint;
+
+    # ignore failure, pool might currently not be imported
+    eval {
+	$mountpoint = $class->zfs_get_properties($scfg, 'mountpoint', $scfg->{pool}, 1);
+	PVE::JSONSchema::check_format(properties()->{mountpoint}->{format}, $mountpoint);
+    };
+
+    if (defined($cfg_mountpoint)) {
+	if (defined($mountpoint) && !($cfg_mountpoint =~ m|^\Q$mountpoint\E/?$|)) {
+	    warn "warning for $storeid - mountpoint: $cfg_mountpoint " .
+		 "does not match current mount point: $mountpoint\n";
+	}
+    } else {
+	$scfg->{mountpoint} = $mountpoint;
+    }
+}
+
 sub path {
     my ($class, $scfg, $volname, $storeid, $snapname) = @_;
 
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
 
     my $path = '';
+    my $mountpoint = $scfg->{mountpoint} // "/$scfg->{pool}";
 
     if ($vtype eq "images") {
 	if ($name =~ m/^subvol-/ || $name =~ m/^basevol-/) {
-	    # fixme: we currently assume standard mount point?!
-	    $path = "/$scfg->{pool}/$name";
+	    $path = "$mountpoint/$name";
 	} else {
 	    $path = "/dev/zvol/$scfg->{pool}/$name";
 	}
