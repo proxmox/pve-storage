@@ -124,21 +124,23 @@ my $print_content = sub {
 	my $sidlen =  length ($volid);
 	$maxlenname = $sidlen if $sidlen > $maxlenname;
     }
+    printf "%-${maxlenname}s %-6s %-9s %-10s %s\n", "Volid",
+	"Format", "Type", "Size", "VMID";
 
     foreach my $info (@$list) {
 	next if !$info->{vmid};
 	my $volid = $info->{volid};
 
-	printf "%-${maxlenname}s %5s %10d %d\n", $volid,
-	$info->{format}, $info->{size}, $info->{vmid};
+	printf "%-${maxlenname}s %-6s %-9s %-10d %d\n", $volid,
+	$info->{format}, $info->{content}, $info->{size}, $info->{vmid};
     }
 
     foreach my $info (sort { $a->{format} cmp $b->{format} } @$list) {
 	next if $info->{vmid};
 	my $volid = $info->{volid};
 
-	printf "%-${maxlenname}s %5s %10d\n", $volid,
-	$info->{format}, $info->{size};
+	printf "%-${maxlenname}s %-6s %-9s %-10d\n", $volid,
+	$info->{format}, $info->{content}, $info->{size};
     }
 };
 
@@ -506,7 +508,7 @@ __PACKAGE__->register_method ({
 	type => 'array',
 	items => {
 	    type => "object",
-	    properties => { 
+	    properties => {
 		volname => {
 		    description => "The volume name.",
 		    type => 'string',
