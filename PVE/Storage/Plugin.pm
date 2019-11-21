@@ -968,10 +968,7 @@ sub list_volumes {
 		} else {
 		    $item->{content} = 'images';
 		}
-		if (!($type eq $item->{content})) {
-		    next;
-		}
-
+		next if $type ne $item->{content};
 	    } else {
 		$item->{content} = $type;
 	    }
