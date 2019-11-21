@@ -117,30 +117,30 @@ __PACKAGE__->register_method ({
 my $print_content = sub {
     my ($list) = @_;
 
-    my $maxlenname = 0;
+    my ($maxlenname, $maxsize) = (0, 0);
     foreach my $info (@$list) {
-
 	my $volid = $info->{volid};
 	my $sidlen =  length ($volid);
 	$maxlenname = $sidlen if $sidlen > $maxlenname;
+	$maxsize = $info->{size} if ($info->{size} // 0) > $maxsize;
     }
-    printf "%-${maxlenname}s %-6s %-9s %-10s %s\n", "Volid",
-	"Format", "Type", "Size", "VMID";
+    my $sizemaxdigits = length($maxsize);
+
+    my $basefmt = "%-${maxlenname}s %-7s %-9s %${sizemaxdigits}s";
+    printf "$basefmt %s\n", "Volid", "Format", "Type", "Size", "VMID";
 
     foreach my $info (@$list) {
 	next if !$info->{vmid};
 	my $volid = $info->{volid};
 
-	printf "%-${maxlenname}s %-6s %-9s %-10d %d\n", $volid,
-	$info->{format}, $info->{content}, $info->{size}, $info->{vmid};
+	printf "$basefmt %d\n", $volid, $info->{format}, $info->{content}, $info->{size}, $info->{vmid};
     }
 
     foreach my $info (sort { $a->{format} cmp $b->{format} } @$list) {
 	next if $info->{vmid};
 	my $volid = $info->{volid};
 
-	printf "%-${maxlenname}s %-6s %-9s %-10d\n", $volid,
-	$info->{format}, $info->{content}, $info->{size};
+	printf "$basefmt\n", $volid, $info->{format}, $info->{content}, $info->{size};
     }
 };
 
