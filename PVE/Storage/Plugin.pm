@@ -938,21 +938,21 @@ sub list_volumes {
 
     my $res = [];
     my $vmlist = PVE::Cluster::get_vmlist();
-    foreach my $ct (@$content_types) {
+    foreach my $type (@$content_types) {
 	my $data;
 
-	if ($ct eq 'images' || $ct eq 'rootdir') {
+	if ($type eq 'images' || $type eq 'rootdir') {
 	    $data = $class->list_images($storeid, $scfg, $vmid);
 	} elsif ($scfg->{path}) {
-	    my $path = $class->get_subdir($scfg, $ct);
+	    my $path = $class->get_subdir($scfg, $type);
 
-	    if ($ct eq 'iso' && !defined($vmid)) {
+	    if ($type eq 'iso' && !defined($vmid)) {
 		$data = $get_subdir_files->($storeid, $path, 'iso');
-	    } elsif ($ct eq 'vztmpl'&& !defined($vmid)) {
+	    } elsif ($type eq 'vztmpl'&& !defined($vmid)) {
 		$data = $get_subdir_files->($storeid, $path, 'vztmpl');
-	    } elsif ($ct eq 'backup') {
+	    } elsif ($type eq 'backup') {
 		$data = $get_subdir_files->($storeid, $path, 'backup', $vmid);
-	    } elsif ($ct eq 'snippets') {
+	    } elsif ($type eq 'snippets') {
 		$data = $get_subdir_files->($storeid, $path, 'snippets');
 	    }
 	}
@@ -960,7 +960,7 @@ sub list_volumes {
 	next if !$data;
 
 	foreach my $item (@$data) {
-	    if ($ct eq 'images' || $ct eq 'rootdir') {
+	    if ($type eq 'images' || $type eq 'rootdir') {
 
 		my $vmtype = $vmlist->{ids}->{$item->{vmid}}->{type};
 		if (defined($vmtype) && $vmtype eq 'lxc') {
@@ -968,12 +968,12 @@ sub list_volumes {
 		} else {
 		    $item->{content} = 'images';
 		}
-		if (!($ct eq $item->{content})) {
+		if (!($type eq $item->{content})) {
 		    next;
 		}
 
 	    } else {
-		$item->{content} = $ct;
+		$item->{content} = $type;
 	    }
 
 	    push @$res, $item;
