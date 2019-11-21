@@ -937,7 +937,7 @@ sub list_volumes {
     my ($class, $storeid, $scfg, $vmid, $content_types) = @_;
 
     my $res = [];
-
+    my $vmlist = PVE::Cluster::get_vmlist();
     foreach my $ct (@$content_types) {
 	my $data;
 
@@ -960,7 +960,22 @@ sub list_volumes {
 	next if !$data;
 
 	foreach my $item (@$data) {
-	    $item->{content} = $ct;
+	    if ($ct eq 'images' || $ct eq 'rootdir') {
+
+		my $vmtype = $vmlist->{ids}->{$item->{vmid}}->{type};
+		if (defined($vmtype) && $vmtype eq 'lxc') {
+		    $item->{content} = 'rootdir';
+		} else {
+		    $item->{content} = 'images';
+		}
+		if (!($ct eq $item->{content})) {
+		    next;
+		}
+
+	    } else {
+		$item->{content} = $ct;
+	    }
+
 	    push @$res, $item;
 	}
     }
