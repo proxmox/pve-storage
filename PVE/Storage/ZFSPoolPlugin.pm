@@ -151,12 +151,10 @@ sub on_add_hook {
     my ($class, $storeid, $scfg, %param) = @_;
 
     my $cfg_mountpoint = $scfg->{mountpoint};
-    my $mountpoint;
 
     # ignore failure, pool might currently not be imported
-    eval {
-	$mountpoint = $class->zfs_get_properties($scfg, 'mountpoint', $scfg->{pool}, 1);
-	PVE::JSONSchema::check_format(properties()->{mountpoint}->{format}, $mountpoint);
+    my $mountpoint = eval {
+	$class->zfs_get_properties($scfg, 'mountpoint', $scfg->{pool}, 1)
     };
 
     if (defined($cfg_mountpoint)) {
