@@ -2,14 +2,16 @@ package PVE::Storage::RBDPlugin;
 
 use strict;
 use warnings;
+
 use IO::File;
+use JSON;
 use Net::IP;
-use PVE::Tools qw(run_command trim);
-use PVE::Storage::Plugin;
+
+use PVE::CephConfig;
 use PVE::JSONSchema qw(get_standard_option);
 use PVE::RADOS;
-use PVE::CephConfig;
-use JSON;
+use PVE::Storage::Plugin;
+use PVE::Tools qw(run_command trim);
 
 use base qw(PVE::Storage::Plugin);
 
