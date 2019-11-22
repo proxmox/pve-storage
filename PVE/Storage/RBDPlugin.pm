@@ -74,8 +74,8 @@ my $librados_connect = sub {
 my $krbd_feature_disable = sub {
     my ($scfg, $storeid, $name) = @_;
 
-    my ($major, undef, undef, undef) = ceph_version();
-    return 1 if $major < 10;
+    my ($versionparts) = ceph_version();
+    return 1 if $versionparts->[0] < 10;
 
     my $krbd_feature_blacklist = ['deep-flatten', 'fast-diff', 'object-map', 'exclusive-lock'];
     my (undef, undef, undef, undef, $features) = rbd_volume_info($scfg, $storeid, $name);
@@ -90,33 +90,32 @@ my $krbd_feature_disable = sub {
 };
 
 my $ceph_version_parser = sub {
-    my $line = shift;
-    if ($line =~ m/^ceph version ((\d+)\.(\d+)\.(\d+))(?: \([a-fA-F0-9]+\))/) {
-	return ($2, $3, $4, $1);
-    } else {
-	warn "Could not parse Ceph version: '$line'\n";
+    my $ceph_version = shift;
+    # FIXME this is the same as pve-manager PVE::Ceph::Tools get_local_version
+    if ($ceph_version =~ /^ceph.*\s(\d+(?:\.\d+)+(?:-pve\d+)?)\s+(?:\(([a-zA-Z0-9]+)\))?/) {
+	my ($version, $buildcommit) = ($1, $2);
+	my $subversions = [ split(/\.|-/, $version) ];
+
+	return ($subversions, $version, $buildcommit);
     }
+    warn "Could not parse Ceph version: '$ceph_version'\n";
 };
 
 sub ceph_version {
     my ($cache) = @_;
 
     my $version_string = $cache;
-
-    my $major;
-    my $minor;
-    my $bugfix;
-
-    if (defined($version_string)) {
-	($major, $minor, $bugfix, $version_string) = &$ceph_version_parser($version_string);
-    } else {
+    if (!defined($version_string)) {
 	run_command('ceph --version', outfunc => sub {
-	    my $line = shift;
-	    ($major, $minor, $bugfix, $version_string) = &$ceph_version_parser($line);
+	    $version_string = shift;
 	});
     }
     return undef if !defined($version_string);
-    return wantarray ? ($major, $minor, $bugfix, $version_string) : $version_string;
+    # subversion is an array ref. with the version parts from major to minor
+    # version is the filtered version string
+    my ($subversions, $version) = $ceph_version_parser->($version_string);
+
+    return wantarray ? ($subversions, $version) : $version;
 }
 
 sub run_rbd_command {
