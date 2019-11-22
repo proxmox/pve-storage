@@ -1,3 +1,15 @@
+libpve-storage-perl (6.0-11) pve; urgency=medium
+
+  * pvesm list: add content type column to output
+
+  * fix #2085: add mountpoint property for non-default ZFS pool MPs
+
+  * fix #2467: avoid duplicate volumes & tag with correct content type
+
+  * RBD: fix ceph version detection
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 22 Nov 2019 16:06:17 +0100
+
 libpve-storage-perl (6.0-10) pve; urgency=medium
 
   * various LIO target improvements
