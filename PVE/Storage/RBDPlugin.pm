@@ -9,6 +9,7 @@ use Net::IP;
 
 use PVE::CephConfig;
 use PVE::JSONSchema qw(get_standard_option);
+use PVE::ProcFSTools;
 use PVE::RADOS;
 use PVE::Storage::Plugin;
 use PVE::Tools qw(run_command trim);
@@ -73,21 +74,52 @@ my $librados_connect = sub {
 };
 
 # needed for volumes created using ceph jewel (or higher)
-my $krbd_feature_disable = sub {
+my $krbd_feature_update = sub {
     my ($scfg, $storeid, $name) = @_;
 
     my ($versionparts) = ceph_version();
     return 1 if $versionparts->[0] < 10;
 
-    my $krbd_feature_blacklist = ['deep-flatten', 'fast-diff', 'object-map', 'exclusive-lock'];
-    my (undef, undef, undef, undef, $features) = rbd_volume_info($scfg, $storeid, $name);
+    my (@disable, @enable);
+    my ($kmajor, $kminor) = PVE::ProcFSTools::kernel_version();
 
-    my $active_features = { map { $_ => 1 } @$features };
-    my $incompatible_features = join(',', grep { %$active_features{$_} } @$krbd_feature_blacklist);
+    if ($kmajor > 5 || $kmajor == 5 && $kminor >= 3) {
+	# 'deep-flatten' can only be disabled, not enabled after image creation
+	push @enable, 'fast-diff', 'object-map';
+    } else {
+	push @disable, 'fast-diff', 'object-map', 'deep-flatten';
+    }
 
-    if ($incompatible_features) {
-	my $feature_cmd = &$rbd_cmd($scfg, $storeid, 'feature', 'disable', $name, $incompatible_features);
-	run_rbd_command($feature_cmd, errmsg => "could not disable krbd-incompatible image features of rbd volume $name");
+    if ($kmajor >= 5) {
+	push @enable, 'exclusive-lock';
+    } else {
+	push @disable, 'exclusive-lock';
+    }
+
+    my $active_features_list = (rbd_volume_info($scfg, $storeid, $name))[4];
+    my $active_features = { map { $_ => 1 } @$active_features_list };
+
+    my $to_disable = join(',', grep {  $active_features->{$_} } @disable);
+    my $to_enable  = join(',', grep { !$active_features->{$_} } @enable );
+
+    if ($to_disable) {
+	print "disable RBD image features this kernel RBD drivers is not compatible with: $to_disable\n";
+	my $cmd = $rbd_cmd->($scfg, $storeid, 'feature', 'disable', $name, $to_disable);
+	run_rbd_command(
+	    $cmd,
+	    errmsg => "could not disable krbd-incompatible image features '$to_disable' for rbd image: $name",
+	);
+    }
+    if ($to_enable) {
+	print "enable RBD image features this kernel RBD drivers supports: $to_enable\n";
+	eval {
+	    my $cmd = $rbd_cmd->($scfg, $storeid, 'feature', 'enable', $name, $to_enable);
+	    run_rbd_command(
+		$cmd,
+		errmsg => "could not enable krbd-compatible image features '$to_enable' for rbd image: $name",
+	    );
+	};
+	warn "$@" if $@;
     }
 };
 
@@ -557,7 +589,7 @@ sub map_volume {
 
     return $kerneldev if -b $kerneldev; # already mapped
 
-    &$krbd_feature_disable($scfg, $storeid, $name);
+    $krbd_feature_update->($scfg, $storeid, $name);
 
     my $cmd = &$rbd_cmd($scfg, $storeid, 'map', $name);
     run_rbd_command($cmd, errmsg => "can't map rbd volume $name");
