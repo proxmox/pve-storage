@@ -1,3 +1,11 @@
+libpve-storage-perl (6.0-12) pve; urgency=medium
+
+  * RBD: disable and enable disk image features depending on kernel version
+
+  * add zfs-zed to recommends
+
+ -- Proxmox Support Team <support@proxmox.com>  Mon, 25 Nov 2019 18:28:51 +0100
+
 libpve-storage-perl (6.0-11) pve; urgency=medium
 
   * pvesm list: add content type column to output
