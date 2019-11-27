@@ -1116,7 +1116,7 @@ sub read_common_header($) {
     sysread($fh, my $size, 8);
     $size = unpack('Q<', $size);
     die "import: no size found in export header, aborting.\n" if !defined($size);
-    die "got a bad size (not a multiple of 1K)\n" if ($size&1023);
+    die "import: got a bad size (not a multiple of 1K), aborting.\n" if ($size&1023);
     # Size is in bytes!
     return $size;
 }
