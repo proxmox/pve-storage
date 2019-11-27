@@ -1,3 +1,11 @@
+libpve-storage-perl (6.1-1) pve; urgency=medium
+
+  * fix #2309: allow LVM Volume Group names starting with a digit
+
+  * pvesm import: improve handling of interrupted export
+
+ -- Proxmox Support Team <support@proxmox.com>  Wed, 27 Nov 2019 14:46:39 +0100
+
 libpve-storage-perl (6.0-12) pve; urgency=medium
 
   * RBD: disable and enable disk image features depending on kernel version
