@@ -589,7 +589,7 @@ sub map_volume {
 
     return $kerneldev if -b $kerneldev; # already mapped
 
-    $krbd_feature_update->($scfg, $storeid, $name);
+    $krbd_feature_update->($scfg, $storeid, $name) if !$snapname;
 
     my $cmd = &$rbd_cmd($scfg, $storeid, 'map', $name);
     run_rbd_command($cmd, errmsg => "can't map rbd volume $name");
