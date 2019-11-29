@@ -227,6 +227,38 @@ sub rbd_ls {
     return $list;
 }
 
+sub rbd_ls_snap {
+    my ($scfg, $storeid, $name) = @_;
+
+    my $cmd = &$rbd_cmd($scfg, $storeid, 'snap', 'ls', $name, '--format', 'json');
+
+    my $raw = '';
+    run_rbd_command($cmd, errmsg => "rbd error", errfunc => sub {}, outfunc => sub { $raw .= shift; });
+
+    my $list;
+    if ($raw =~ m/^(\[.*\])$/s) { # untaint
+	$list = eval { JSON::decode_json($1) };
+	die "invalid JSON output from 'rbd snap ls $name': $@\n" if $@;
+    } else {
+	die "got unexpected data from 'rbd snap ls $name': '$raw'\n";
+    }
+
+    $list = [] if !defined($list);
+
+    my $res = {};
+    foreach my $el (@$list) {
+	my $snap = $el->{name};
+	my $protected = defined($el->{protected}) && $el->{protected} eq "true" ? 1 : undef;
+	$res->{$snap} = {
+	    name => $snap,
+	    id => $el->{id} // undef,
+	    size => $el->{size} // 0,
+	    protected => $protected,
+	};
+    }
+    return $res;
+}
+
 sub rbd_volume_info {
     my ($scfg, $storeid, $volname, $snap) = @_;
 
@@ -483,10 +515,9 @@ sub free_image {
     my ($vtype, $name, $vmid, undef, undef, undef) =
 	$class->parse_volname($volname);
 
-    if ($isBase) {
-	my $snap = '__base__';
-	my (undef, undef, undef, $protected) = rbd_volume_info($scfg, $storeid, $name, $snap);
-	if ($protected){
+    my $snaps = rbd_ls_snap($scfg, $storeid, $name);
+    foreach my $snap (keys %$snaps) {
+	if ($snaps->{$snap}->{protected}) {
 	    my $cmd = &$rbd_cmd($scfg, $storeid, 'snap', 'unprotect', $name, '--snap', $snap);
 	    run_rbd_command($cmd, errmsg => "rbd unprotect $name snap '$snap' error");
 	}
