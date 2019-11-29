@@ -13,6 +13,15 @@ use base qw(PVE::Storage::Plugin);
 
 # lvm helper functions
 
+my $ignore_no_medium_warnings = sub {
+    my $line = shift;
+    # ignore those, most of the time they're from (virtual) IPMI/iKVM devices
+    # and just spam the log..
+    if ($line !~ /open failed: No medium found/) {
+	print STDERR "$line\n";
+    }
+};
+
 sub lvm_pv_info {
     my ($device) = @_;
 
@@ -85,7 +94,7 @@ sub lvm_create_volume_group {
     $cmd = ['/sbin/vgcreate', $vgname, $device];
     # push @$cmd, '-c', 'y' if $shared; # we do not use this yet
 
-    run_command($cmd, errmsg => "vgcreate $vgname $device error");
+    run_command($cmd, errmsg => "vgcreate $vgname $device error", errfunc => $ignore_no_medium_warnings);
 }
 
 sub lvm_vgs {
@@ -106,13 +115,15 @@ sub lvm_vgs {
     eval {
 	run_command($cmd, outfunc => sub {
 	    my $line = shift;
-
 	    $line = trim($line);
 
 	    my ($name, $size, $free, $lvcount, $pvname, $pvsize, $pvfree) = split (':', $line);
 
-	    $vgs->{$name} = { size => int ($size), free => int ($free), lvcount => int($lvcount) }
-		if !$vgs->{$name};
+	    $vgs->{$name} //= {
+		size => int ($size),
+		free => int ($free),
+		lvcount => int($lvcount)
+	    };
 
 	    if (defined($pvname) && defined($pvsize) && defined($pvfree)) {
 		push @{$vgs->{$name}->{pvs}}, {
@@ -121,7 +132,9 @@ sub lvm_vgs {
 		    free => int($pvfree),
 		};
 	    }
-        });
+	},
+	errfunc => $ignore_no_medium_warnings,
+	);
     };
     my $err = $@;
 
@@ -169,7 +182,9 @@ sub lvm_list_volumes {
 	    $d->{used} = int(($data_percent * $lv_size)/100);
 	}
 	$lvs->{$vg_name}->{$lv_name} = $d;
-    });
+    },
+    errfunc => $ignore_no_medium_warnings,
+    );
 
     return $lvs;
 }
