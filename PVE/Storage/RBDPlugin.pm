@@ -580,7 +580,9 @@ my $get_kernel_device_name = sub {
 sub map_volume {
     my ($class, $storeid, $scfg, $volname, $snapname) = @_;
 
-    my ($vtype, $name, $vmid) = $class->parse_volname($volname);
+    my ($vtype, $img_name, $vmid) = $class->parse_volname($volname);
+
+    my $name = $img_name;
     $name .= '@'.$snapname if $snapname;
 
     my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
@@ -589,7 +591,8 @@ sub map_volume {
 
     return $kerneldev if -b $kerneldev; # already mapped
 
-    $krbd_feature_update->($scfg, $storeid, $name) if !$snapname;
+    # features can only be enabled/disabled for image, not for snapshot!
+    $krbd_feature_update->($scfg, $storeid, $img_name);
 
     my $cmd = &$rbd_cmd($scfg, $storeid, 'map', $name);
     run_rbd_command($cmd, errmsg => "can't map rbd volume $name");
