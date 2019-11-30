@@ -1,3 +1,11 @@
+libpve-storage-perl (6.1-2) pve; urgency=medium
+
+  * rbd: update features of image when mapping snapshot
+
+  * LVM commands: ignore "No medium found" bogus warnings
+
+ -- Proxmox Support Team <support@proxmox.com>  Sat, 30 Nov 2019 19:38:10 +0100
+
 libpve-storage-perl (6.1-1) pve; urgency=medium
 
   * fix #2309: allow LVM Volume Group names starting with a digit
