@@ -94,7 +94,7 @@ sub lvm_create_volume_group {
     $cmd = ['/sbin/vgcreate', $vgname, $device];
     # push @$cmd, '-c', 'y' if $shared; # we do not use this yet
 
-    run_command($cmd, errmsg => "vgcreate $vgname $device error", errfunc => $ignore_no_medium_warnings);
+    run_command($cmd, errmsg => "vgcreate $vgname $device error", errfunc => $ignore_no_medium_warnings, outfunc => $ignore_no_medium_warnings);
 }
 
 sub lvm_vgs {
