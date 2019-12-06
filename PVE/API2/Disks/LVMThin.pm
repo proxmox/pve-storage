@@ -109,9 +109,26 @@ __PACKAGE__->register_method ({
 	my $worker = sub {
 	    PVE::Diskmanage::locked_disk_action(sub {
 		PVE::Storage::LVMPlugin::lvm_create_volume_group($dev, $name);
+		my $pv = PVE::Storage::LVMPlugin::lvm_pv_info($dev);
+		# keep some free space just in case
+		my $datasize = $pv->{size} - 128*1024;
+		# default to 1% for metadata
+		my $metadatasize = $datasize/100;
+		# but at least 1G, as recommended in lvmthin man
+		$metadatasize = 1024*1024 if $metadatasize < 1024*1024;
+		# but at most 16G, which is the current lvm max
+		$metadatasize = 16*1024*1024 if $metadatasize > 16*1024*1024;
+		# shrink data by needed amount for metadata
+		$datasize -= 2*$metadatasize;
 
-		# create thinpool with size 100%, let lvm handle the metadata size
-		run_command(['/sbin/lvcreate', '--type', 'thin-pool', '-l100%FREE', '-n', $name, $name]);
+		run_command([
+		    '/sbin/lvcreate',
+		    '--type', 'thin-pool',
+		    "-L${datasize}K",
+		    '--poolmetadatasize', "${metadatasize}K",
+		    '-n', $name,
+		    $name
+		]);
 
 		if ($param->{add_storage}) {
 		    my $storage_params = {
