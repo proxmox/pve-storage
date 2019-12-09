@@ -662,6 +662,12 @@ sub volume_resize {
 
     my $attr = $format eq 'subvol' ? 'refquota' : 'volsize';
 
+    # align size to 1M so we always have a valid multiple of the volume block size
+    if ($format eq 'raw') {
+	my $padding = (1024 - $new_size % 1024) % 1024;
+	$new_size = $new_size + $padding;
+    }
+
     $class->zfs_request($scfg, undef, 'set', "$attr=${new_size}k", "$scfg->{pool}/$vname");
 
     return $new_size;
