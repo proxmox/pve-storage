@@ -240,7 +240,7 @@ sub alloc_image {
 
 	die "illegal name '$volname' - should be 'vm-$vmid-*'\n"
 	    if $volname && $volname !~ m/^vm-$vmid-/;
-	$volname = $class->zfs_find_free_diskname($storeid, $scfg, $vmid, $fmt)
+	$volname = $class->find_free_diskname($storeid, $scfg, $vmid, $fmt)
 	    if !$volname;
 
 	$class->zfs_create_zvol($scfg, $volname, $size);
@@ -250,7 +250,7 @@ sub alloc_image {
 
 	die "illegal name '$volname' - should be 'subvol-$vmid-*'\n"
 	    if $volname && $volname !~ m/^subvol-$vmid-/;
-	$volname = $class->zfs_find_free_diskname($storeid, $scfg, $vmid, $fmt)
+	$volname = $class->find_free_diskname($storeid, $scfg, $vmid, $fmt)
 	    if !$volname;
 
 	die "illegal name '$volname' - should be 'subvol-$vmid-*'\n"
@@ -421,16 +421,6 @@ sub zfs_list_zvol {
     }
 
     return $list;
-}
-
-sub zfs_find_free_diskname {
-    my ($class, $storeid, $scfg, $vmid, $format) = @_;
-
-    my $volumes = $class->zfs_list_zvol($scfg);
-    my $dat = $volumes->{$scfg->{pool}};
-
-    my $disk_list = [ keys %$dat ];
-    return PVE::Storage::Plugin::get_next_vm_diskname($disk_list, $storeid, $vmid, $format, $scfg);
 }
 
 sub zfs_get_latest_snapshot {
@@ -612,7 +602,7 @@ sub clone_image {
 
     die "clone_image only works on base images\n" if !$isBase;
 
-    my $name = $class->zfs_find_free_diskname($storeid, $scfg, $vmid, $format);
+    my $name = $class->find_free_diskname($storeid, $scfg, $vmid, $format);
 
     if ($format eq 'subvol') {
 	my $size = $class->zfs_request($scfg, undef, 'list', '-H', '-o', 'refquota', "$scfg->{pool}/$basename");

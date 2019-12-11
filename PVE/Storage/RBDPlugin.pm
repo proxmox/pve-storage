@@ -394,8 +394,8 @@ sub path {
     return ($path, $vmid, $vtype);
 }
 
-my $find_free_diskname = sub {
-    my ($storeid, $scfg, $vmid) = @_;
+sub find_free_diskname {
+    my ($class, $storeid, $scfg, $vmid, $fmt, $add_fmt_suffix) = @_;
 
     my $cmd = &$rbd_cmd($scfg, $storeid, 'ls');
     my $disk_list = [];
@@ -415,7 +415,7 @@ my $find_free_diskname = sub {
     die $err if $err && $err !~ m/doesn't contain rbd images/;
 
     return PVE::Storage::Plugin::get_next_vm_diskname($disk_list, $storeid, $vmid, undef, $scfg);
-};
+}
 
 sub create_base {
     my ($class, $storeid, $scfg, $volname) = @_;
@@ -470,7 +470,7 @@ sub clone_image {
     die "$volname is not a base image and snapname is not provided\n" 
 	if !$isBase && !length($snapname);
 
-    my $name = $find_free_diskname->($storeid, $scfg, $vmid);
+    my $name = $class->find_free_diskname($storeid, $scfg, $vmid);
 
     warn "clone $volname: $basename snapname $snap to $name\n";
 
@@ -501,7 +501,7 @@ sub alloc_image {
     die "illegal name '$name' - should be 'vm-$vmid-*'\n"
 	if  $name && $name !~ m/^vm-$vmid-/;
 
-    $name = $find_free_diskname->($storeid, $scfg, $vmid) if !$name;
+    $name = $class->find_free_diskname($storeid, $scfg, $vmid) if !$name;
 
     my $cmd = &$rbd_cmd($scfg, $storeid, 'create', '--image-format' , 2, '--size', int(($size+1023)/1024), $name);
     run_rbd_command($cmd, errmsg => "rbd create $name' error");

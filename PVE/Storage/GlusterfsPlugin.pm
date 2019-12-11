@@ -160,17 +160,6 @@ sub parse_name_dir {
     die "unable to parse volume filename '$name'\n";
 }
 
-my $find_free_diskname = sub {
-    my ($imgdir, $vmid, $fmt, $scfg) = @_;
-
-    my $disk_list = [];
-
-    my $dh = IO::Dir->new ($imgdir);
-    @$disk_list = $dh->read() if defined($dh);
-
-    return PVE::Storage::Plugin::get_next_vm_diskname($disk_list, $imgdir, $vmid, $fmt, $scfg, 1);
-};
-
 sub path {
     my ($class, $scfg, $volname, $storeid, $snapname) = @_;
 
@@ -225,7 +214,7 @@ sub clone_image {
 
     mkpath $imagedir;
 
-    my $name = $find_free_diskname->($imagedir, $vmid, "qcow2", $scfg);
+    my $name = $class->find_free_diskname($imagedir, $scfg, $vmid, "qcow2", 1);
 
     warn "clone $volname: $vtype, $name, $vmid to $name (base=../$basevmid/$basename)\n";
 
@@ -253,7 +242,7 @@ sub alloc_image {
 
     mkpath $imagedir;
 
-    $name = $find_free_diskname->($imagedir, $vmid, $fmt, $scfg) if !$name;
+    $name = $class->find_free_diskname($imagedir, $scfg, $vmid, $fmt, 1) if !$name;
 
     my (undef, $tmpfmt) = parse_name_dir($name);
 
