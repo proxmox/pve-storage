@@ -577,11 +577,7 @@ sub find_free_diskname {
 
     my $disks = $class->list_images($storeid, $scfg, $vmid);
 
-    my $disk_list = [];
-
-    foreach my $disk (@{$disks}) {
-	push @{$disk_list}, $disk->{volid};
-    }
+    my $disk_list = [ map { $_->{volid} } @$disks ];
 
     return get_next_vm_diskname($disk_list, $storeid, $vmid, $fmt, $scfg, $add_fmt_suffix);
 }
