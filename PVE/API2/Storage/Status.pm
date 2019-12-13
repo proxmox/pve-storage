@@ -398,7 +398,7 @@ __PACKAGE__->register_method ({
 	die "missing temporary file name\n" if !$tmpfilename;
 
 	my $size = -s $tmpfilename;
-	die "temporary file '$tmpfilename' does not exists\n" if !defined($size);
+	die "temporary file '$tmpfilename' does not exist\n" if !defined($size);
 
 	my $filename = $param->{filename};
 

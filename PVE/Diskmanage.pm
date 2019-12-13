@@ -684,7 +684,7 @@ sub get_partnum {
 
     $partnum = file_read_firstline("${partnum_path}partition");
 
-    die "Partition does not exists\n" if !defined($partnum);
+    die "Partition does not exist\n" if !defined($partnum);
 
     #untaint and ensure it is a int
     if ($partnum =~ m/(\d+)/) {

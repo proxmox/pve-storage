@@ -689,7 +689,7 @@ sub free_image {
 	File::Path::remove_tree($path);
     } else {
 	if (!(-f $path || -l $path)) {
-	    warn "disk image '$path' does not exists\n";
+	    warn "disk image '$path' does not exist\n";
 	    return undef;
 	}
 

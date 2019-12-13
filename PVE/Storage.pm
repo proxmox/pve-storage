@@ -132,7 +132,7 @@ sub storage_config {
 
     my $scfg = $cfg->{ids}->{$storeid};
 
-    die "storage '$storeid' does not exists\n" if (!$noerr && !$scfg);
+    die "storage '$storeid' does not exist\n" if (!$noerr && !$scfg);
 
     return $scfg;
 }
