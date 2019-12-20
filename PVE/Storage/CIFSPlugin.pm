@@ -127,6 +127,7 @@ sub options {
 	domain => { optional => 1},
 	smbversion => { optional => 1},
 	mkdir => { optional => 1 },
+	bwlimit => { optional => 1 },
     };
 }
 
