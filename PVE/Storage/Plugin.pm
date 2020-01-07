@@ -958,8 +958,11 @@ sub list_volumes {
 
 	foreach my $item (@$data) {
 	    if ($type eq 'images' || $type eq 'rootdir') {
-
-		my $vmtype = $vmlist->{ids}->{$item->{vmid}}->{type};
+		my $vminfo = $vmlist->{ids}->{$item->{vmid}};
+		my $vmtype;
+		if (defined($vminfo)) {
+		    $vmtype = $vminfo->{type};
+		}
 		if (defined($vmtype) && $vmtype eq 'lxc') {
 		    $item->{content} = 'rootdir';
 		} else {
