@@ -37,6 +37,24 @@ sub cephfs_is_mounted {
     return undef;
 }
 
+# FIXME: duplicate of api/diskmanage one, move to common helper (pve-common's
+#        Tools or Systemd ?)
+sub systemd_escape {
+    my ($val, $is_path) = @_;
+
+    # NOTE: this is not complete, but enough for our needs. normally all
+    # characters which are not alpha-numerical, '.' or '_' would need escaping
+    $val =~ s/\-/\\x2d/g;
+
+    if ($is_path) {
+	$val =~ s/^\///g;
+	$val =~ s/\/$//g;
+    }
+    $val =~ s/\//-/g;
+
+    return $val;
+}
+
 sub cephfs_mount {
     my ($scfg, $storeid) = @_;
 
