@@ -94,7 +94,6 @@ EOF
 sub cephfs_mount {
     my ($scfg, $storeid) = @_;
 
-    my $cmd;
     my $mountpoint = $scfg->{path};
     my $subdir = $scfg->{subdir} // '/';
 
@@ -102,31 +101,23 @@ sub cephfs_mount {
     my $configfile = $cmd_option->{ceph_conf};
     my $secretfile = $cmd_option->{keyring};
     my $server = $cmd_option->{mon_host} // PVE::CephConfig::get_monaddr_list($configfile);
+    my $type = 'ceph';
 
-    # fuse -> client-enforced quotas (kernel doesn't), updates w/ ceph-fuse pkg
-    # kernel -> better performance, less frequent updates
+    my @opts = ();
     if ($scfg->{fuse}) {
-	    # FIXME: ceph-fuse client complains about missing ceph.conf or keyring if
-	    # not provided on its default locations but still connects. Fix upstream??
-	    $cmd = ['/usr/bin/ceph-fuse', '-n', "client.$cmd_option->{userid}", '-m', $server];
-	    push @$cmd, '--keyfile', $secretfile if defined($secretfile);
-	    push @$cmd, '-r', $subdir if !($subdir =~ m|^/$|);
-	    push @$cmd, $mountpoint;
-	    push @$cmd, '--conf', $configfile if defined($configfile);
-
-	    if ($scfg->{options}) {
-		push @$cmd, '-o', $scfg->{options};
-	    }
-
-	    run_command($cmd, errmsg => "mount error");
+	$type = 'fuse.ceph';
+	push @opts, "ceph.id=$cmd_option->{userid}";
+	push @opts, "ceph.keyfile=$secretfile" if defined($secretfile);
+	push @opts, "ceph.conf=$configfile" if defined($configfile);
     } else {
-	my $source = "$server:$subdir";
-	my @opts = ( "name=$cmd_option->{userid}" );
+	push @opts, "name=$cmd_option->{userid}";
 	push @opts, "secretfile=$secretfile" if defined($secretfile);
-	push @opts, $scfg->{options} if $scfg->{options};
-
-	systemd_netmount($mountpoint, 'ceph', $source, join(',', @opts));
+	push @opts, "conf=$configfile" if defined($configfile);
     }
+
+    push @opts, $scfg->{options} if $scfg->{options};
+
+    systemd_netmount($mountpoint, $type, "$server:$subdir", join(',', @opts));
 }
 
 # Configuration
