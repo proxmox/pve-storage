@@ -7,7 +7,7 @@ use IO::File;
 use Net::IP;
 use File::Path;
 
-use PVE::Tools qw(run_command);
+use PVE::Tools qw(run_command file_set_contents);
 use PVE::ProcFSTools;
 use PVE::Storage::Plugin;
 use PVE::JSONSchema qw(get_standard_option);
@@ -37,6 +37,7 @@ sub cephfs_is_mounted {
     return undef;
 }
 
+
 # FIXME: duplicate of api/diskmanage one, move to common helper (pve-common's
 #        Tools or Systemd ?)
 sub systemd_escape {
@@ -53,6 +54,41 @@ sub systemd_escape {
     $val =~ s/\//-/g;
 
     return $val;
+}
+
+# FIXME: remove in PVE 7.0 where systemd is recent enough to not have those
+#        local-fs/remote-fs dependency cycles generated for _netdev mounts...
+sub systemd_netmount {
+    my ($where, $type, $what, $opts) = @_;
+
+# don't do default deps, systemd v241 generator produces ordering deps on both
+# local-fs(-pre) and remote-fs(-pre) targets if we use the required _netdev
+# option. Over thre corners this gets us an ordering cycle on shutdown, which
+# may make shutdown hang if the random cycle breaking hits the "wrong" unit to
+# delete.
+    my $unit =  <<"EOF";
+[Unit]
+Description=${where}
+DefaultDependencies=no
+Requires=system.slice
+Wants=network-online.target
+Before=umount.target remote-fs.target
+After=systemd-journald.socket system.slice network.target -.mount remote-fs-pre.target network-online.target
+Conflicts=umount.target
+
+[Mount]
+Where=${where}
+What=${what}
+Type=${type}
+Options=${opts}
+EOF
+
+    my $unit_fn = systemd_escape($where, 1) . ".mount";
+    my $unit_path = "/run/systemd/system/$unit_fn";
+
+    file_set_contents($unit_path, $unit);
+    run_command(['systemctl', 'start', $unit_fn], errmsg => "mount error");
+
 }
 
 sub cephfs_mount {
@@ -77,22 +113,20 @@ sub cephfs_mount {
 	    push @$cmd, '-r', $subdir if !($subdir =~ m|^/$|);
 	    push @$cmd, $mountpoint;
 	    push @$cmd, '--conf', $configfile if defined($configfile);
+
+	    if ($scfg->{options}) {
+		push @$cmd, '-o', $scfg->{options};
+	    }
+
+	    run_command($cmd, errmsg => "mount error");
     } else {
 	my $source = "$server:$subdir";
-	$cmd = ['/bin/mount', '-t', 'ceph', $source, $mountpoint, '-o', "name=$cmd_option->{userid}"];
-	push @$cmd, '-o', "secretfile=$secretfile" if defined($secretfile);
+	my @opts = ( "name=$cmd_option->{userid}" );
+	push @opts, "secretfile=$secretfile" if defined($secretfile);
+	push @opts, $scfg->{options} if $scfg->{options};
 
-	# tell systemd that we're network dependent, else it umounts us to late
-	# on shutdown, when we couldn't connect to the active MDS and thus
-	# unmount hangs and delays shutdown/reboot (man systemd.mount).
-	push @$cmd, '-o', '_netdev';
+	systemd_netmount($mountpoint, 'ceph', $source, join(',', @opts));
     }
-
-    if ($scfg->{options}) {
-	push @$cmd, '-o', $scfg->{options};
-    }
-
-    run_command($cmd, errmsg => "mount error");
 }
 
 # Configuration
