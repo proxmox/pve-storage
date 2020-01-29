@@ -626,11 +626,21 @@ sub storage_migrate {
 		or die "failed to connect to tunnel at $ip:$port\n";
 	    # we won't be reading from the socket
 	    shutdown($socket, 0);
-	    run_command([$send, @cstream], output => '>&'.fileno($socket));
+	    run_command([$send, @cstream], output => '>&'.fileno($socket), logfunc => $logfunc);
 	    # don't close the connection entirely otherwise the receiving end
 	    # might not get all buffered data (and fails with 'connection reset by peer')
 	    shutdown($socket, 1);
-	    1 while <$info>; # wait for the remote process to finish
+
+	    # wait for the remote process to finish
+	    if ($logfunc) {
+		while (my $line = <$info>) {
+		    chomp($line);
+		    $logfunc->("[$target_sshinfo->{name}] $line");
+		}
+	    } else {
+		1 while <$info>;
+	    }
+
 	    # now close the socket
 	    close($socket);
 	    if (!close($info)) { # does waitpid()
