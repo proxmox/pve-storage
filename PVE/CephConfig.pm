@@ -65,7 +65,7 @@ sub write_ceph_config {
     my $cond_write_sec = sub {
 	my $re = shift;
 
-	foreach my $section (keys %$cfg) {
+	foreach my $section (sort keys %$cfg) {
 	    next if $section !~ m/^$re$/;
 	    $out .= "[$section]\n";
 	    foreach my $key (sort keys %{$cfg->{$section}}) {
