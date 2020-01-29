@@ -85,8 +85,12 @@ EOF
 
     my $unit_fn = systemd_escape($where, 1) . ".mount";
     my $unit_path = "/run/systemd/system/$unit_fn";
+    my $daemon_needs_reload = -e $unit_path;
 
     file_set_contents($unit_path, $unit);
+
+    run_command(['systemctl', 'daemon-reload'], errmsg => "daemon-reload error")
+	if $daemon_needs_reload;
     run_command(['systemctl', 'start', $unit_fn], errmsg => "mount error");
 
 }
