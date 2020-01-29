@@ -573,7 +573,6 @@ sub storage_migrate {
     my $target_volid = "${target_storeid}:${target_volname}";
 
     my $target_ip = $target_sshinfo->{ip};
-    my $errstr = "unable to migrate '$volid' to '${target_volid}' on host '$target_sshinfo->{name}'";
 
     my $ssh = PVE::SSHInfo::ssh_info_to_command($target_sshinfo);
     my $ssh_base = PVE::SSHInfo::ssh_info_to_command_base($target_sshinfo);
