@@ -1,3 +1,15 @@
+libpve-storage-perl (6.1-4) pve; urgency=medium
+
+  * cifs-plugin: Add bwlimit storage option
+
+  * fix potential hanging of reboot for multiple minutes due to a systend mount
+    unit ordering constraint cycle due to an active CephFS mount in combination
+    with a systemd issue. Do this by actively generating a ephemeral mount unit
+    with the correct ordering constraints ourself. Do that for both, Kernel and
+    FUSE backed CephFS usage.
+
+ -- Proxmox Support Team <support@proxmox.com>  Wed, 29 Jan 2020 20:03:58 +0100
+
 libpve-storage-perl (6.1-3) pve; urgency=medium
 
   * base find_free_diskname: refactor mapping from disks to volid array
