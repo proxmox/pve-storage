@@ -11,6 +11,7 @@ use PVE::CephConfig;
 use PVE::JSONSchema qw(get_standard_option);
 use PVE::ProcFSTools;
 use PVE::Storage::Plugin;
+use PVE::Systemd;
 use PVE::Tools qw(run_command file_set_contents);
 
 use base qw(PVE::Storage::Plugin);
@@ -35,25 +36,6 @@ sub cephfs_is_mounted {
 	if grep { $_->[1] eq $mountpoint } @$mountdata;
 
     return undef;
-}
-
-
-# FIXME: duplicate of api/diskmanage one, move to common helper (pve-common's
-#        Tools or Systemd ?)
-sub systemd_escape {
-    my ($val, $is_path) = @_;
-
-    # NOTE: this is not complete, but enough for our needs. normally all
-    # characters which are not alpha-numerical, '.' or '_' would need escaping
-    $val =~ s/\-/\\x2d/g;
-
-    if ($is_path) {
-	$val =~ s/^\///g;
-	$val =~ s/\/$//g;
-    }
-    $val =~ s/\//-/g;
-
-    return $val;
 }
 
 # FIXME: remove in PVE 7.0 where systemd is recent enough to not have those
@@ -83,7 +65,7 @@ Type=${type}
 Options=${opts}
 EOF
 
-    my $unit_fn = systemd_escape($where, 1) . ".mount";
+    my $unit_fn = PVE::Systemd::escape_unit($where, 1) . ".mount";
     my $unit_path = "/run/systemd/system/$unit_fn";
     my $daemon_needs_reload = -e $unit_path;
 

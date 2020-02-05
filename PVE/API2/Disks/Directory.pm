@@ -7,6 +7,7 @@ use PVE::Diskmanage;
 use PVE::JSONSchema qw(get_standard_option);
 use PVE::RESTHandler;
 use PVE::RPCEnvironment;
+use PVE::Systemd;
 use PVE::Tools qw(run_command trim file_set_contents file_get_contents dir_glob_foreach lock_file);
 
 use PVE::API2::Storage::Config;
@@ -87,31 +88,6 @@ my $write_ini = sub {
     file_set_contents($filename, $content);
 };
 
-sub systemd_escape {
-    my ($val, $is_path) = @_;
-
-    # NOTE: this is not complete, but enough for our needs. normally all
-    # characters which are not alpha-numerical, '.' or '_' would need escaping
-    $val =~ s/\-/\\x2d/g;
-
-    if ($is_path) {
-	$val =~ s/^\///g;
-	$val =~ s/\/$//g;
-    }
-    $val =~ s/\//-/g;
-
-    return $val;
-}
-
-sub systemd_unescape {
-    my ($val) = @_;
-
-    $val =~ s/-/\//g;
-    $val =~ s/\\x([a-fA-F0-9]{2})/chr(hex($1))/eg;
-
-    return $val;
-}
-
 __PACKAGE__->register_method ({
     name => 'index',
     path => '',
@@ -163,7 +139,7 @@ __PACKAGE__->register_method ({
 
 	dir_glob_foreach('/etc/systemd/system', '^mnt-pve-(.+)\.mount$', sub {
 	    my ($filename, $storid) = @_;
-	    $storid = systemd_unescape($storid);
+	    $storid = PVE::Systemd::unescape_unit($storid);
 
 	    my $unitfile = "/etc/systemd/system/$filename";
 	    my $unit = $read_ini->($unitfile);
@@ -232,7 +208,7 @@ __PACKAGE__->register_method ({
 
 	my $worker = sub {
 	    my $path = "/mnt/pve/$name";
-	    my $mountunitname = systemd_escape($path, 1) . ".mount";
+	    my $mountunitname = PVE::Systemd::escape_unit($path, 1) . ".mount";
 	    my $mountunitpath = "/etc/systemd/system/$mountunitname";
 
 	    PVE::Diskmanage::locked_disk_action(sub {
