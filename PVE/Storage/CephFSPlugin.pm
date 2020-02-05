@@ -7,11 +7,11 @@ use IO::File;
 use Net::IP;
 use File::Path;
 
-use PVE::Tools qw(run_command file_set_contents);
+use PVE::CephConfig;
+use PVE::JSONSchema qw(get_standard_option);
 use PVE::ProcFSTools;
 use PVE::Storage::Plugin;
-use PVE::JSONSchema qw(get_standard_option);
-use PVE::CephConfig;
+use PVE::Tools qw(run_command file_set_contents);
 
 use base qw(PVE::Storage::Plugin);
 

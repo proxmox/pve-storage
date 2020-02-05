@@ -5,11 +5,11 @@ use warnings;
 
 use PVE::Diskmanage;
 use PVE::JSONSchema qw(get_standard_option);
-use PVE::API2::Storage::Config;
+use PVE::RESTHandler;
+use PVE::RPCEnvironment;
 use PVE::Tools qw(run_command trim file_set_contents file_get_contents dir_glob_foreach lock_file);
 
-use PVE::RPCEnvironment;
-use PVE::RESTHandler;
+use PVE::API2::Storage::Config;
 
 use base qw(PVE::RESTHandler);
 
