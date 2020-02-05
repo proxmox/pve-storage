@@ -626,7 +626,7 @@ sub storage_migrate {
 		or die "failed to connect to tunnel at $ip:$port\n";
 	    # we won't be reading from the socket
 	    shutdown($socket, 0);
-	    run_command([$send, @cstream], output => '>&'.fileno($socket), logfunc => $logfunc);
+	    run_command([$send, @cstream], output => '>&'.fileno($socket), errfunc => $logfunc);
 	    # don't close the connection entirely otherwise the receiving end
 	    # might not get all buffered data (and fails with 'connection reset by peer')
 	    shutdown($socket, 1);
