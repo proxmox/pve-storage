@@ -153,8 +153,10 @@ sub on_add_hook {
     my $cfg_mountpoint = $scfg->{mountpoint};
 
     # ignore failure, pool might currently not be imported
-    my $mountpoint = eval {
-	$class->zfs_get_properties($scfg, 'mountpoint', $scfg->{pool}, 1)
+    my $mountpoint;
+    eval {
+	my $res = $class->zfs_get_properties($scfg, 'mountpoint', $scfg->{pool}, 1);
+	$mountpoint = PVE::Storage::Plugin::verify_path($res, 1) if defined($res);
     };
 
     if (defined($cfg_mountpoint)) {
