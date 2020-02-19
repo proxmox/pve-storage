@@ -304,8 +304,8 @@ sub status {
 	$active = 1;
 	$total = $res->{total};
 	$used = $res->{used};
- 	$free = $res->{avail};
-   };
+	$free = $res->{avail};
+    };
     if (my $err = $@) {
 	warn $err;
     }
