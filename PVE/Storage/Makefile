@@ -12,6 +12,7 @@ SOURCES= \
 	ZFSPoolPlugin.pm \
 	ZFSPlugin.pm \
 	DRBDPlugin.pm \
+	PBSPlugin.pm \
 	LvmThinPlugin.pm
 
 .PHONY: install

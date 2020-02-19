@@ -136,7 +136,7 @@ __PACKAGE__->register_method ({
 	my $password;
 	# always extract pw, else it gets written to the www-data readable scfg
 	if (my $tmp_pw = extract_param($param, 'password')) {
-	    if ($type eq 'cifs' && $param->{username}) {
+	    if (($type eq 'pbs') || ($type eq 'cifs' && $param->{username})) {
 		$password = $tmp_pw;
 	    } else {
 		warn "ignore password parameter\n";
