@@ -121,11 +121,7 @@ sub run_client_cmd {
     my ($scfg, $storeid, $client_cmd, $param, $no_output) = @_;
 
     my $json_str = '';
-
-    my $outfunc = sub {
-	my $line = shift;
-	$json_str .= "$line\n";
-    };
+    my $outfunc = sub { $json_str .= "$_[0]\n" };
 
     $param = [] if !defined($param);
     $param = [ $param ] if !ref($param);
@@ -150,11 +146,7 @@ sub extract_vzdump_config {
     my ($vtype, $name, $vmid, undef, undef, undef, $format) = $class->parse_volname($volname);
 
     my $config = '';
-
-    my $outfunc = sub {
-	my $line = shift;
-	$config .= "$line\n";
-    };
+    my $outfunc = sub { $config .= "$_[0]\n" };
 
     my $config_name;
     if ($format eq 'pbs-vm') {
