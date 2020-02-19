@@ -59,7 +59,7 @@ sub options {
 sub pbs_password_file_name {
     my ($scfg, $storeid) = @_;
 
-    return "/etc/pve/priv/${storeid}.pw";
+    return "/etc/pve/priv/storage/${storeid}.pw";
 }
 
 sub pbs_set_password {
