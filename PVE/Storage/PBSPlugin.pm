@@ -144,6 +144,33 @@ sub run_client_cmd {
 
 # Storage implementation
 
+sub extract_vzdump_config {
+    my ($class, $scfg, $volname, $storeid) = @_;
+
+    my ($vtype, $name, $vmid, undef, undef, undef, $format) = $class->parse_volname($volname);
+
+    my $config = '';
+
+    my $outfunc = sub {
+	my $line = shift;
+	$config .= "$line\n";
+    };
+
+    my $config_name;
+    if ($format eq 'pbs-vm') {
+	$config_name = 'qemu-server.conf';
+    } elsif  ($format eq 'pbs-ct') {
+	$config_name = 'pct.conf';
+    } else {
+	die "unable to extract configuration for backup format '$format'\n";
+    }
+
+    run_raw_client_cmd(undef, $scfg, $storeid, 'restore', [ $name, $config_name, '-' ],
+		       outfunc => $outfunc, errmsg => 'proxmox-backup-client failed');
+
+    return $config;
+}
+
 sub on_add_hook {
     my ($class, $storeid, $scfg, %param) = @_;
 

@@ -1370,6 +1370,15 @@ sub extract_vzdump_config_vma {
 sub extract_vzdump_config {
     my ($cfg, $volid) = @_;
 
+    my ($storeid, $volname) = parse_volume_id($volid);
+    if (defined($storeid)) {
+	my $scfg = storage_config($cfg, $storeid);
+	if ($scfg->{type} eq 'pbs') {
+	    storage_check_enabled($cfg, $storeid);
+	    return PVE::Storage::PBSPlugin->extract_vzdump_config($scfg, $volname, $storeid);
+	}
+    }
+
     my $archive = abs_filesystem_path($cfg, $volid);
 
     if ($volid =~ /vzdump-(lxc|openvz)-\d+-(\d{4})_(\d{2})_(\d{2})-(\d{2})_(\d{2})_(\d{2})\.(tgz|(tar(\.(gz|lzo))?))$/) {
