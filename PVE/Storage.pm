@@ -209,6 +209,9 @@ sub volume_size_info {
 sub volume_resize {
     my ($cfg, $volid, $size, $running) = @_;
 
+    my $padding = (1024 - $size % 1024) % 1024;
+    $size = $size + $padding;
+
     my ($storeid, $volname) = parse_volume_id($volid, 1);
     if ($storeid) {
         my $scfg = storage_config($cfg, $storeid);
