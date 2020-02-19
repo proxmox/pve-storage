@@ -90,6 +90,10 @@ sub pbs_get_password {
 sub run_raw_client_cmd {
     my ($scfg, $storeid, $client_cmd, $param, %opts) = @_;
 
+    my $client_exe = '/usr/bin/proxmox-backup-client';
+    die "executable not found '$client_exe'! Proxmox backup client not installed?\n"
+	if ! -x $client_exe;
+
     my $server = $scfg->{server};
     my $datastore = $scfg->{datastore};
     my $username = $scfg->{username} // 'root@pam';
@@ -100,7 +104,7 @@ sub run_raw_client_cmd {
 
     push @$cmd, @$userns_cmd if defined($userns_cmd);
 
-    push @$cmd, "/usr/bin/proxmox-backup-client", $client_cmd;
+    push @$cmd, $client_exe, $client_cmd;
 
     push @$cmd, @$param if defined($param);
 
