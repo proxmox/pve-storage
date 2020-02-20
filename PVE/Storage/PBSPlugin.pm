@@ -171,8 +171,22 @@ sub extract_vzdump_config {
 sub on_add_hook {
     my ($class, $storeid, $scfg, %param) = @_;
 
-    if (my $password = $param{password}) {
-	pbs_set_password($scfg, $storeid, $password);
+    if (defined($param{password})) {
+	pbs_set_password($scfg, $storeid, $param{password});
+    } else {
+	pbs_delete_password($scfg, $storeid);
+    }
+}
+
+sub on_update_hook {
+    my ($class, $storeid, $scfg, %param) = @_;
+
+    return if !exists($param{password});
+
+    if (defined($param{password})) {
+	pbs_set_password($scfg, $storeid, $param{password});
+    } else {
+	pbs_delete_password($scfg, $storeid);
     }
 }
 
