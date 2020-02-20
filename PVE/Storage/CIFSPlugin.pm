@@ -30,7 +30,7 @@ sub cifs_is_mounted {
 
 sub cifs_cred_file_name {
     my ($storeid) = @_;
-    return "/etc/pve/priv/storage/${storeid}.cred";
+    return "/etc/pve/priv/storage/${storeid}.pw";
 }
 
 sub cifs_delete_credentials {
@@ -59,7 +59,7 @@ sub get_cred_file {
 
     if (-e $cred_file) {
 	return $cred_file;
-    } elsif ("/etc/pve/priv/${storeid}.cred") {
+    } elsif (-e "/etc/pve/priv/${storeid}.cred") {
 	# FIXME: remove fallback with 7.0 by doing a rename on upgrade from 6.x
 	return "/etc/pve/priv/${storeid}.cred";
     }
