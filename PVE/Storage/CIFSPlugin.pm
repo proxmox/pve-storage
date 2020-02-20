@@ -34,6 +34,15 @@ sub cifs_cred_file_name {
     return "/etc/pve/priv/${storeid}.cred";
 }
 
+sub cifs_delete_credentials {
+    my ($storeid) = @_;
+
+    my $cred_file = cifs_cred_file_name($storeid);
+    if (-f $cred_file) {
+	unlink($cred_file) or warn "removing cifs credientials '$cred_file' failed: $!\n";
+    }
+}
+
 sub cifs_set_credentials {
     my ($password, $storeid) = @_;
 
@@ -145,18 +154,29 @@ sub check_config {
 sub on_add_hook {
     my ($class, $storeid, $scfg, %param) = @_;
 
-    if (my $password = $param{password}) {
-	cifs_set_credentials($password, $storeid);
+    if (defined($param{password})) {
+	cifs_set_credentials($param{password}, $storeid);
+    } else {
+	cifs_delete_credentials($storeid);
+    }
+}
+
+sub on_update_hook {
+    my ($class, $storeid, $scfg, %param) = @_;
+
+    return if !exists($param{password});
+
+    if (defined($param{password})) {
+	cifs_set_credentials($param{password}, $storeid);
+    } else {
+	cifs_delete_credentials($storeid);
     }
 }
 
 sub on_delete_hook {
     my ($class, $storeid, $scfg) = @_;
 
-    my $cred_file = cifs_cred_file_name($storeid);
-    if (-f $cred_file) {
-	unlink($cred_file) or warn "removing cifs credientials '$cred_file' failed: $!\n";
-    }
+    cifs_delete_credentials($storeid);
 }
 
 sub status {
