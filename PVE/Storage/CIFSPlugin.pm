@@ -30,15 +30,13 @@ sub cifs_is_mounted {
 
 sub cifs_cred_file_name {
     my ($storeid) = @_;
-
-    return "/etc/pve/priv/${storeid}.cred";
+    return "/etc/pve/priv/storage/${storeid}.cred";
 }
 
 sub cifs_delete_credentials {
     my ($storeid) = @_;
 
-    my $cred_file = cifs_cred_file_name($storeid);
-    if (-f $cred_file) {
+    if (my $cred_file = get_cred_file($storeid)) {
 	unlink($cred_file) or warn "removing cifs credientials '$cred_file' failed: $!\n";
     }
 }
@@ -47,6 +45,7 @@ sub cifs_set_credentials {
     my ($password, $storeid) = @_;
 
     my $cred_file = cifs_cred_file_name($storeid);
+    mkdir "/etc/pve/priv/storage";
 
     PVE::Tools::file_set_contents($cred_file, "password=$password\n");
 
@@ -58,7 +57,13 @@ sub get_cred_file {
 
     my $cred_file = cifs_cred_file_name($storeid);
 
-    return -e $cred_file ? $cred_file : undef;
+    if (-e $cred_file) {
+	return $cred_file;
+    } elsif ("/etc/pve/priv/${storeid}.cred") {
+	# FIXME: remove fallback with 7.0 by doing a rename on upgrade from 6.x
+	return "/etc/pve/priv/${storeid}.cred";
+    }
+    return undef;
 }
 
 sub cifs_mount {
