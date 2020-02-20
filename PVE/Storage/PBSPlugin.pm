@@ -66,6 +66,7 @@ sub pbs_set_password {
     my ($scfg, $storeid, $password) = @_;
 
     my $pwfile = pbs_password_file_name($scfg, $storeid);
+    mkdir "/etc/pve/priv/storage";
 
     PVE::Tools::file_set_contents($pwfile, "$password\n");
 }
