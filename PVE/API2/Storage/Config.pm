@@ -204,12 +204,25 @@ __PACKAGE__->register_method ({
 	    PVE::SectionConfig::assert_if_modified($cfg, $digest);
 
 	    my $scfg = PVE::Storage::storage_config($cfg, $storeid);
+	    my $type = $scfg->{type};
 
-	    my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
+	    my $password;
+	    # always extract pw, else it gets written to the www-data readable scfg
+	    if (my $tmp_pw = extract_param($param, 'password')) {
+		if (($type eq 'pbs') || ($type eq 'cifs' && $param->{username})) {
+		    $password = $tmp_pw;
+		} else {
+		    warn "ignore password parameter\n";
+		}
+	    }
+
+	    my $plugin = PVE::Storage::Plugin->lookup($type);
 	    my $opts = $plugin->check_config($storeid, $param, 0, 1);
 
+	    my $delete_password = 0;
+
 	    if ($delete) {
-		my $options = $plugin->private()->{options}->{$scfg->{type}};
+		my $options = $plugin->private()->{options}->{$type};
 		foreach my $k (PVE::Tools::split_list($delete)) {
 		    my $d = $options->{$k} || die "no such option '$k'\n";
 		    die "unable to delete required option '$k'\n" if !$d->{optional};
@@ -218,7 +231,15 @@ __PACKAGE__->register_method ({
 			if defined($opts->{$k});
 
 		    delete $scfg->{$k};
+
+		    $delete_password = 1 if $k eq 'password';
 		}
+	    }
+
+	    if ($delete_password || defined($password)) {
+		$plugin->on_update_hook($storeid, $opts, password => $password);
+	    } else {
+		$plugin->on_update_hook($storeid, $opts);
 	    }
 
 	    for my $k (keys %$opts) {

@@ -366,6 +366,15 @@ sub on_add_hook {
     # do nothing by default
 }
 
+# called during storage configuration update (before the updated storage config got written)
+# die to abort the update if there are (grave) problems
+# NOTE: runs in a storage config *locked* context
+sub on_update_hook {
+    my ($class, $storeid, $scfg, %param) = @_;
+
+    # do nothing by default
+}
+
 # called during deletion of storage (before the new storage config got written)
 # and if the activate check on addition fails, to cleanup all storage traces
 # which on_add_hook may have created.
