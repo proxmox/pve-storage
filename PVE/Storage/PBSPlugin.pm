@@ -161,7 +161,7 @@ sub extract_vzdump_config {
 	die "unable to extract configuration for backup format '$format'\n";
     }
 
-    run_raw_client_cmd(undef, $scfg, $storeid, 'restore', [ $name, $config_name, '-' ],
+    run_raw_client_cmd($scfg, $storeid, 'restore', [ $name, $config_name, '-' ],
 		       outfunc => $outfunc, errmsg => 'proxmox-backup-client failed');
 
     return $config;
