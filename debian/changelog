@@ -1,3 +1,22 @@
+libpve-storage-perl (6.1-5) pve; urgency=medium
+
+  * ZFS pool plugin: check whether 'zfs get mountpoint' returns a valid
+    absolute path when setting the mountpoint property on storage addition
+
+  * storage migrate: also log when using an insecure connection
+
+  * api: introduce "on update" hook for plugins
+
+  * volume resize: align (round up) size to 1 KiB to avoid issues with some
+    storage backends which cannot handle sizes which aren't multiples of 512 or
+    1024
+
+  * add experimental storage plugin
+
+  * CIFS: fix credential handling on storage update by using new on_update_hook
+
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 20 Feb 2020 13:45:39 +0100
+
 libpve-storage-perl (6.1-4) pve; urgency=medium
 
   * cifs-plugin: Add bwlimit storage option
