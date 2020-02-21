@@ -924,7 +924,7 @@ my $get_subdir_files = sub {
 	    my $format = $2;
 	    $info = { volid => "$sid:backup/$1", format => $format };
 
-	    if (defined($vmid) || $fn =~ m!\-([0-9]{3,})\-[^/]+\.${format}$!) {
+	    if (defined($vmid) || $fn =~ m!\-([1-9][0-9]{2,8})\-[^/]+\.${format}$!) {
 		$info->{vmid} = $vmid // $1;
 	    }
 
