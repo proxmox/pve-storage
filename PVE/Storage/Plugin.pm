@@ -921,7 +921,13 @@ my $get_subdir_files = sub {
 	    next if defined($vmid) && $fn !~  m/\S+-$vmid-\S+/;
 	    next if $fn !~ m!/([^/]+\.(tar|tar\.gz|tar\.lzo|tgz|vma|vma\.gz|vma\.lzo))$!;
 
-	    $info = { volid => "$sid:backup/$1", format => $2 };
+	    my $format = $2;
+	    $info = { volid => "$sid:backup/$1", format => $format };
+
+	    if (defined($vmid) || $fn =~ m!\-([0-9]{3,})\-[^/]+\.${format}$!) {
+		$info->{vmid} = $vmid // $1;
+	    }
+
 
 	} elsif ($tt eq 'snippets') {
 
