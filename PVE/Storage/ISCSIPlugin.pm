@@ -353,7 +353,7 @@ sub status {
 
     $cache->{iscsi_sessions} = iscsi_session_list() if !$cache->{iscsi_sessions};
 
-    my $active = defined($cache->{iscsi_sessions}->{$scfg->{target}});
+    my $active = defined($cache->{iscsi_sessions}->{$scfg->{target}}) + 0;
 
     return (0, 0, 0, $active);
 }
