@@ -43,11 +43,11 @@ sub iscsi_session_list {
     eval {
 	run_command($cmd, errmsg => 'iscsi session scan failed', outfunc => sub {
 	    my $line = shift;
-	    
+
 	    if ($line =~ m/^tcp:\s+\[(\S+)\]\s+\S+\s+(\S+)(\s+\S+)?\s*$/) {
 		my ($session, $target) = ($1, $2);
 		# there can be several sessions per target (multipath)
-		push @{$res->{$target}}, $session;   
+		push @{$res->{$target}}, $session;
 	    }
 	});
     };
@@ -71,7 +71,7 @@ sub iscsi_discovery {
 
     check_iscsi_support ();
 
-    my $cmd = [$ISCSIADM, '--mode', 'discovery', '--type', 'sendtargets', 
+    my $cmd = [$ISCSIADM, '--mode', 'discovery', '--type', 'sendtargets',
 	       '--portal', $portal];
 
     my $res = {};
@@ -151,7 +151,7 @@ sub load_stable_scsi_paths {
     if (my $dh = IO::Dir->new($stabledir)) {
        while (defined(my $tmp = $dh->read)) {
            # exclude filenames with part in name (same disk but partitions)
-           # use only filenames with scsi(with multipath i have the same device 
+           # use only filenames with scsi(with multipath i have the same device
 	   # with dm-uuid-mpath , dm-name and scsi in name)
            if($tmp !~ m/-part\d+$/ && $tmp =~ m/^scsi-/) {
                  my $path = "$stabledir/$tmp";
@@ -197,8 +197,8 @@ sub iscsi_device_list {
 	    }
 	    return if !$bdev;
 
-	    #check multipath           
-	    if (-d "/sys/block/$bdev/holders") { 
+	    #check multipath
+	    if (-d "/sys/block/$bdev/holders") {
 		my $multipathdev = dir_glob_regex("/sys/block/$bdev/holders", '[A-Za-z]\S*');
 		$bdev = $multipathdev if $multipathdev;
 	    }
@@ -212,15 +212,15 @@ sub iscsi_device_list {
 	    my $volid = "$channel.$id.$lun.$blockdev";
 
 	    $res->{$target}->{$volid} = {
-		'format' => 'raw', 
-		'size' => int($size * 512), 
+		'format' => 'raw',
+		'size' => int($size * 512),
 		'vmid' => 0, # not assigned to any vm
 		'channel' => int($channel),
 		'id' => int($id),
 		'lun' => int($lun),
 	    };
 
-	    #print "TEST: $target $session $host,$bus,$tg,$lun $blockdev\n"; 
+	    #print "TEST: $target $session $host,$bus,$tg,$lun $blockdev\n";
 	});
 
     });
@@ -283,7 +283,7 @@ sub filesystem_path {
     die "snapshot is not possible on iscsi storage\n" if defined($snapname);
 
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
-    
+
     my $path = "/dev/disk/by-id/$name";
 
     return wantarray ? ($path, $vmid, $vtype) : $path;
