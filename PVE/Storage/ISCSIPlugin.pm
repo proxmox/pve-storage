@@ -350,12 +350,17 @@ sub list_images {
     return $res;
 }
 
+sub iscsi_session {
+    my ($cache, $target) = @_;
+    $cache->{iscsi_sessions} = iscsi_session_list() if !$cache->{iscsi_sessions};
+    return $cache->{iscsi_sessions}->{$target};
+}
+
 sub status {
     my ($class, $storeid, $scfg, $cache) = @_;
 
-    $cache->{iscsi_sessions} = iscsi_session_list() if !$cache->{iscsi_sessions};
-
-    my $active = defined($cache->{iscsi_sessions}->{$scfg->{target}}) + 0;
+    my $session = iscsi_session($cache, $scfg->{target});
+    my $active = defined($session) ? 1 : 0;
 
     return (0, 0, 0, $active);
 }
@@ -365,15 +370,14 @@ sub activate_storage {
 
     return if !check_iscsi_support(1);
 
-    $cache->{iscsi_sessions} = iscsi_session_list() if !$cache->{iscsi_sessions};
+    my $session = iscsi_session($cache, $scfg->{target});
 
-    my $iscsi_sess = $cache->{iscsi_sessions}->{$scfg->{target}};
-    if (!defined ($iscsi_sess)) {
+    if (!defined ($session)) {
 	eval { iscsi_login($scfg->{target}, $scfg->{portal}); };
 	warn $@ if $@;
     } else {
 	# make sure we get all devices
-	iscsi_session_rescan($iscsi_sess);
+	iscsi_session_rescan($session);
     }
 }
 
@@ -382,11 +386,7 @@ sub deactivate_storage {
 
     return if !check_iscsi_support(1);
 
-    $cache->{iscsi_sessions} = iscsi_session_list() if !$cache->{iscsi_sessions};
-
-    my $iscsi_sess = $cache->{iscsi_sessions}->{$scfg->{target}};
-
-    if (defined ($iscsi_sess)) {
+    if (defined(iscsi_session($cache, $scfg->{target}))) {
 	iscsi_logout($scfg->{target}, $scfg->{portal});
     }
 }
