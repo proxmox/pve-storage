@@ -3,6 +3,7 @@ package PVE::Storage::Plugin;
 use strict;
 use warnings;
 
+use Fcntl ':mode';
 use File::chdir;
 use File::Path;
 use File::Basename;
@@ -904,7 +905,11 @@ my $get_subdir_files = sub {
 
     foreach my $fn (<$path/*>) {
 
-	next if -d $fn;
+	my ($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,$size,
+	    $atime,$mtime,$ctime,$blksize,$blocks)
+	    = stat($fn);
+
+	next if S_ISDIR($mode);
 
 	my $info;
 
@@ -943,7 +948,8 @@ my $get_subdir_files = sub {
 	    };
 	}
 
-	$info->{size} = -s $fn // 0;
+	$info->{size} = $size;
+	$info->{ctime} //= $ctime;
 
 	push @$res, $info;
     }
