@@ -6,6 +6,7 @@ use warnings;
 use File::chdir;
 use File::Path;
 use File::Basename;
+use Time::Local qw(timelocal);
 
 use PVE::Tools qw(run_command);
 use PVE::JSONSchema qw(get_standard_option);
@@ -923,6 +924,11 @@ my $get_subdir_files = sub {
 
 	    my $format = $2;
 	    $info = { volid => "$sid:backup/$1", format => $format };
+
+	    if ($fn =~ m!^vzdump\-(?:lxc|qemu)\-(?:[1-9][0-9]{2,8})\-(\d{4})_(\d{2})_(\d{2})\-(\d{2})_(\d{2})_(\d{2})\.${format}$!) {
+		my $epoch = timelocal($6, $5, $4, $3, $2-1, $1 - 1900);
+		$info->{ctime} = $epoch;
+	    }
 
 	    if (defined($vmid) || $fn =~ m!\-([1-9][0-9]{2,8})\-[^/]+\.${format}$!) {
 		$info->{vmid} = $vmid // $1;
