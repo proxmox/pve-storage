@@ -282,18 +282,21 @@ sub list_volumes {
     foreach my $item (@$data) {
 	my $btype = $item->{"backup-type"};
 	my $bid = $item->{"backup-id"};
-	my $btime = $item->{"backup-time"};
+	my $epoch = $item->{"backup-time"};
 	my $size = $item->{size} // 1;
 
 	next if !($btype eq 'vm' || $btype eq 'ct');
 	next if $bid !~ m/^\d+$/;
 
-	$btime = strftime("%FT%TZ", gmtime($btime));
+	my $btime = strftime("%FT%TZ", gmtime($epoch));
 	my $volname = "backup/${btype}/${bid}/${btime}";
 
 	my $volid = "$storeid:$volname";
 
-	my $info = { volid => $volid , format => "pbs-$btype", size => $size, content => 'backup', vmid => int($bid) };
+	my $info = {
+	    volid => $volid , format => "pbs-$btype", size => $size,
+	    content => 'backup', vmid => int($bid), ctime => $epoch
+	};
 
 	push @$res, $info;
     }
