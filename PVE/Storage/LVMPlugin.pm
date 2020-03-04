@@ -148,9 +148,14 @@ sub lvm_vgs {
 sub lvm_list_volumes {
     my ($vgname) = @_;
 
-    my $cmd = ['/sbin/lvs', '--separator', ':', '--noheadings', '--units', 'b',
-	       '--unbuffered', '--nosuffix', '--options',
-	       'vg_name,lv_name,lv_size,lv_attr,pool_lv,data_percent,metadata_percent,snap_percent,uuid,tags,metadata_size'];
+    my $option_list = 'vg_name,lv_name,lv_size,lv_attr,pool_lv,data_percent,metadata_percent,snap_percent,uuid,tags,metadata_size,time';
+
+    my $cmd = [
+	'/sbin/lvs', '--separator', ':', '--noheadings', '--units', 'b',
+	'--unbuffered', '--nosuffix',
+	'--config', 'report/time_format="%s"',
+	'--options', $option_list,
+    ];
 
     push @$cmd, $vgname if $vgname;
 
@@ -160,7 +165,7 @@ sub lvm_list_volumes {
 
 	$line = trim($line);
 
-	my ($vg_name, $lv_name, $lv_size, $lv_attr, $pool_lv, $data_percent, $meta_percent, $snap_percent, $uuid, $tags, $meta_size) = split(':', $line);
+	my ($vg_name, $lv_name, $lv_size, $lv_attr, $pool_lv, $data_percent, $meta_percent, $snap_percent, $uuid, $tags, $meta_size, $ctime) = split(':', $line);
 	return if !$vg_name;
 	return if !$lv_name;
 
@@ -172,6 +177,7 @@ sub lvm_list_volumes {
 	};
 	$d->{pool_lv} = $pool_lv if $pool_lv;
 	$d->{tags} = $tags if $tags;
+	$d->{ctime} = $ctime;
 
 	if ($lv_type eq 't') {
 	    $data_percent ||= 0;
@@ -451,6 +457,7 @@ sub list_images {
 
 	    push @$res, {
 		volid => $volid, format => 'raw', size => $info->{lv_size}, vmid => $owner,
+		ctime => $info->{ctime},
 	    };
 	}
     }

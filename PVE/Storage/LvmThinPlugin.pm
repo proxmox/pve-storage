@@ -165,6 +165,7 @@ sub list_images {
 
 	    push @$res, {
 		volid => $volid, format => 'raw', size => $info->{lv_size}, vmid => $owner,
+		ctime => $info->{ctime},
 	    };
 	}
     }
