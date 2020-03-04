@@ -81,6 +81,12 @@ __PACKAGE__->register_method ({
 		    renderer => 'bytes',
 		    optional => 1,
 		},
+		ctime => {
+		    description => "Creation time (Unix epoch). Currently only set for backup volumes.",
+		    type => 'integer',
+		    minimum => 0,
+		    optional => 1,
+		},
 	    },
 	},
 	links => [ { rel => 'child', href => "{volid}" } ],
