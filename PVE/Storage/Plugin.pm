@@ -718,8 +718,12 @@ sub free_image {
 sub file_size_info {
     my ($filename, $timeout) = @_;
 
-    if (-d $filename) {
-	return wantarray ? (0, 'subvol', 0, undef) : 1;
+    my @fs = stat($filename);
+    my $mode = $fs[2];
+    my $ctime = $fs[10];
+
+    if (S_ISDIR($mode)) {
+	return wantarray ? (0, 'subvol', 0, undef, $ctime) : 1;
     }
 
     my $json = '';
@@ -737,7 +741,7 @@ sub file_size_info {
 
     my ($size, $format, $used, $parent) = $info->@{qw(virtual-size format actual-size backing-filename)};
 
-    return wantarray ? ($size, $format, $used, $parent) : $size;
+    return wantarray ? ($size, $format, $used, $parent, $ctime) : $size;
 }
 
 sub volume_size_info {
@@ -872,7 +876,7 @@ sub list_images {
 
 	next if !$vollist && defined($vmid) && ($owner ne $vmid);
 
-	my ($size, $format, $used, $parent) = file_size_info($fn);
+	my ($size, $format, $used, $parent, $ctime) = file_size_info($fn);
 	next if !($format && defined($size));
 
 	my $volid;
@@ -888,10 +892,14 @@ sub list_images {
 	    next if !$found;
 	}
 
-	push @$res, {
+        my $info = {
 	    volid => $volid, format => $format,
 	    size => $size, vmid => $owner, used => $used, parent => $parent
 	};
+
+        $info->{ctime} = $ctime if $ctime;
+
+        push @$res, $info;
     }
 
     return $res;
