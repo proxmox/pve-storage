@@ -76,13 +76,13 @@ __PACKAGE__->register_method ({
 		},
 		used => {
 		    description => "Used space. Please note that most storage plugins " .
-			"does not report anything useful here.",
+			"do not report anything useful here.",
 		    type => 'integer',
 		    renderer => 'bytes',
 		    optional => 1,
 		},
 		ctime => {
-		    description => "Creation time (Unix epoch). Currently only set for backup volumes.",
+		    description => "Creation time (seconds since the UNIX Epoch).",
 		    type => 'integer',
 		    minimum => 0,
 		    optional => 1,
