@@ -913,9 +913,20 @@ my $get_subdir_files = sub {
 
     foreach my $fn (<$path/*>) {
 
-	my ($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,$size,
-	    $atime,$mtime,$ctime,$blksize,$blocks)
-	    = stat($fn);
+	my ($dev,
+	    $ino,
+	    $mode,
+	    $nlink,
+	    $uid,
+	    $gid,
+	    $rdev,
+	    $size,
+	    $atime,
+	    $mtime,
+	    $ctime,
+	    $blksize,
+	    $blocks
+	) = stat($fn);
 
 	next if S_ISDIR($mode);
 
