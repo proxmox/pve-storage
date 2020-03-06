@@ -294,8 +294,12 @@ sub list_volumes {
 	my $volid = "$storeid:$volname";
 
 	my $info = {
-	    volid => $volid , format => "pbs-$btype", size => $size,
-	    content => 'backup', vmid => int($bid), ctime => $epoch
+	    volid => $volid,
+	    format => "pbs-$btype",
+	    size => $size,
+	    content => 'backup',
+	    vmid => int($bid),
+	    ctime => $epoch,
 	};
 
 	push @$res, $info;
