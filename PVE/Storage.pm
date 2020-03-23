@@ -39,11 +39,11 @@ use PVE::Storage::DRBDPlugin;
 use PVE::Storage::PBSPlugin;
 
 # Storage API version. Icrement it on changes in storage API interface.
-use constant APIVER => 3;
+use constant APIVER => 4;
 # Age is the number of versions we're backward compatible with.
 # This is like having 'current=APIVER' and age='APIAGE' in libtool,
 # see https://www.gnu.org/software/libtool/manual/html_node/Libtool-versioning.html
-use constant APIAGE => 2;
+use constant APIAGE => 3;
 
 # load standard plugins
 PVE::Storage::DirPlugin->register();
@@ -286,13 +286,13 @@ sub volume_snapshot_delete {
 }
 
 sub volume_has_feature {
-    my ($cfg, $feature, $volid, $snap, $running) = @_;
+    my ($cfg, $feature, $volid, $snap, $running, $opts) = @_;
 
     my ($storeid, $volname) = parse_volume_id($volid, 1);
     if ($storeid) {
         my $scfg = storage_config($cfg, $storeid);
         my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
-        return $plugin->volume_has_feature($scfg, $feature, $storeid, $volname, $snap, $running);
+        return $plugin->volume_has_feature($scfg, $feature, $storeid, $volname, $snap, $running, $opts);
     } elsif ($volid =~ m|^(/.+)$| && -e $volid) {
 	return undef;
     } else {

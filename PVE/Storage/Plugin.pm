@@ -828,7 +828,7 @@ sub storage_can_replicate {
 }
 
 sub volume_has_feature {
-    my ($class, $scfg, $feature, $storeid, $volname, $snapname, $running) = @_;
+    my ($class, $scfg, $feature, $storeid, $volname, $snapname, $running, $opts) = @_;
 
     my $features = {
 	snapshot => { current => { qcow2 => 1}, snap => { qcow2 => 1} },
@@ -840,6 +840,11 @@ sub volume_has_feature {
 	sparseinit => { base => {qcow2 => 1, raw => 1, vmdk => 1},
 			current => {qcow2 => 1, raw => 1, vmdk => 1} },
     };
+
+    # clone_image creates a qcow2 volume
+    return 0 if $feature eq 'clone' &&
+		defined($opts->{valid_target_formats}) &&
+		!(grep { $_ eq 'qcow2' } @{$opts->{valid_target_formats}});
 
     my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $format) =
 	$class->parse_volname($volname);
