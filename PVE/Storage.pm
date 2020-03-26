@@ -575,6 +575,11 @@ sub storage_migrate {
 
     my $tcfg = storage_config($cfg, $target_storeid);
 
+    my $vtype = (parse_volname($cfg, $volid))[0];
+
+    die "content type '$vtype' is not available on storage '$target_storeid'\n"
+	if !$tcfg->{content}->{$vtype};
+
     my $target_volid = "${target_storeid}:${target_volname}";
 
     my $target_ip = $target_sshinfo->{ip};
