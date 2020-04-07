@@ -81,7 +81,7 @@ sub zfs_parse_size {
 	    $size = ceil($size);
 	}
 
-	return $size;
+	return $size + 0;
 
     }
 
@@ -400,7 +400,7 @@ sub zfs_delete_zvol {
 sub zfs_list_zvol {
     my ($class, $scfg) = @_;
 
-    my $text = $class->zfs_request($scfg, 10, 'list', '-o', 'name,volsize,origin,type,refquota', '-t', 'volume,filesystem', '-Hr');
+    my $text = $class->zfs_request($scfg, 10, 'list', '-o', 'name,volsize,origin,type,refquota', '-t', 'volume,filesystem', '-Hrp');
     my $zvols = zfs_parse_zvol_list($text);
     return undef if !$zvols;
 
