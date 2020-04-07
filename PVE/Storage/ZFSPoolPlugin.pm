@@ -54,42 +54,6 @@ sub options {
 
 # static zfs helper methods
 
-sub zfs_parse_size {
-    my ($text) = @_;
-
-    return 0 if !$text;
-
-    if ($text =~ m/^(\d+(\.\d+)?)([TGMK])?$/) {
-
-	my ($size, $reminder, $unit) = ($1, $2, $3);
-
-	if ($unit) {
-	    if ($unit eq 'K') {
-		$size *= 1024;
-	    } elsif ($unit eq 'M') {
-		$size *= 1024*1024;
-	    } elsif ($unit eq 'G') {
-		$size *= 1024*1024*1024;
-	    } elsif ($unit eq 'T') {
-		$size *= 1024*1024*1024*1024;
-	    } else {
-		die "got unknown zfs size unit '$unit'\n";
-	    }
-	}
-
-	if ($reminder) {
-	    $size = ceil($size);
-	}
-
-	return $size + 0;
-
-    }
-
-    warn "unable to parse zfs size '$text'\n";
-
-    return 0;
-}
-
 sub zfs_parse_zvol_list {
     my ($text) = @_;
 
@@ -117,11 +81,11 @@ sub zfs_parse_zvol_list {
 	    if ($refquota eq 'none') {
 		$zvol->{size} = 0;
 	    } else {
-		$zvol->{size} = zfs_parse_size($refquota);
+		$zvol->{size} = $refquota + 0;
 	    }
 	    $zvol->{format} = 'subvol';
 	} else {
-	    $zvol->{size} = zfs_parse_size($size);
+	    $zvol->{size} = $size + 0;
 	    $zvol->{format} = 'raw';
 	}
 	if ($origin !~ /^-$/) {
