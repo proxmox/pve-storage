@@ -571,7 +571,7 @@ sub clone_image {
     my $name = $class->find_free_diskname($storeid, $scfg, $vmid, $format);
 
     if ($format eq 'subvol') {
-	my $size = $class->zfs_request($scfg, undef, 'list', '-H', '-o', 'refquota', "$scfg->{pool}/$basename");
+	my $size = $class->zfs_request($scfg, undef, 'list', '-Hp', '-o', 'refquota', "$scfg->{pool}/$basename");
 	chomp($size);
 	$class->zfs_request($scfg, undef, 'clone', "$scfg->{pool}/$basename\@$snap", "$scfg->{pool}/$name", '-o', "refquota=$size");
     } else {
