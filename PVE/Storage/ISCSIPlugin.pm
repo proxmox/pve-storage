@@ -315,6 +315,20 @@ sub free_image {
     die "can't free space in iscsi storage\n";
 }
 
+# list all luns regardless of set content_types, since we need it for
+# listing in the gui and we can only have images anyway
+sub list_volumes {
+    my ($class, $storeid, $scfg, $vmid, $content_types) = @_;
+
+    my $res = $class->list_images($storeid, $scfg, $vmid);
+
+    for my $item (@$res) {
+	$item->{content} = 'images'; # we only have images
+    }
+
+    return $res;
+}
+
 sub list_images {
     my ($class, $storeid, $scfg, $vmid, $vollist, $cache) = @_;
 
