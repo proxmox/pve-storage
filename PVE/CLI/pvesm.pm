@@ -48,6 +48,30 @@ sub setup_environment {
 }
 
 __PACKAGE__->register_method ({
+    name => 'apiinfo',
+    path => 'apiinfo',
+    method => 'GET',
+    description => "Returns APIVER and APIAGE.",
+    parameters => {
+	additionalProperties => 0,
+	properties => {},
+    },
+    returns => {
+	type => 'object',
+	properties => {
+	    apiver => { type => 'integer' },
+	    apiage => { type => 'integer' },
+	},
+    },
+    code => sub {
+	return {
+	    apiver => PVE::Storage::APIVER,
+	    apiage => PVE::Storage::APIAGE,
+	};
+    }
+});
+
+__PACKAGE__->register_method ({
     name => 'path',
     path => 'path',
     method => 'GET',
@@ -778,6 +802,12 @@ our $cmddef = {
     extractconfig => [__PACKAGE__, 'extractconfig', ['volume']],
     export => [ __PACKAGE__, 'export', ['volume', 'format', 'filename']],
     import => [ __PACKAGE__, 'import', ['volume', 'format', 'filename']],
+    apiinfo => [ __PACKAGE__, 'apiinfo', [], {}, sub {
+	my $res = shift;
+
+	print "APIVER $res->{apiver}\n";
+	print "APIAGE $res->{apiage}\n";
+    }],
 };
 
 1;
