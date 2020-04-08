@@ -285,6 +285,21 @@ sub volume_snapshot_delete {
     }
 }
 
+# check if a volume or snapshot supports a given feature
+# $feature - one of:
+#            clone - linked clone is possible
+#            copy  - full clone is possible
+#            replicate - replication is possible
+#            snapshot - taking a snapshot is possible
+#            sparseinit - volume is sparsely initialized
+#            template - conversion to base image is possible
+# $snap - check if the feature is supported for a given snapshot
+# $running - if the guest owning the volume is running
+# $opts - hash with further options:
+#         valid_target_formats - list of formats for the target of a copy/clone
+#                                operation that the caller could work with. The
+#                                format of $volid is always considered valid and if
+#                                no list is specified, all formats are considered valid.
 sub volume_has_feature {
     my ($cfg, $feature, $volid, $snap, $running, $opts) = @_;
 
