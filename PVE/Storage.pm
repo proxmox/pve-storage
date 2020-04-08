@@ -563,10 +563,17 @@ sub abs_filesystem_path {
 }
 
 sub storage_migrate {
-    my ($cfg, $volid, $target_sshinfo, $target_storeid, $target_volname, $base_snapshot, $snapshot, $ratelimit_bps, $insecure, $with_snapshots, $logfunc) = @_;
+    my ($cfg, $volid, $target_sshinfo, $target_storeid, $opts, $logfunc) = @_;
+
+    my $base_snapshot = $opts->{base_snapshot};
+    my $snapshot = $opts->{snapshot};
+    my $ratelimit_bps = $opts->{ratelimit_bps};
+    my $insecure = $opts->{insecure};
+    my $with_snapshots = $opts->{with_snapshots} ? 1 : 0;
+    my $allow_rename = $opts->{allow_rename} ? 1 : 0;
 
     my ($storeid, $volname) = parse_volume_id($volid);
-    $target_volname = $volname if !$target_volname;
+    my $target_volname = $opts->{target_volname} || $volname;
 
     my $scfg = storage_config($cfg, $storeid);
 
@@ -609,7 +616,6 @@ sub storage_migrate {
 	$import_fn = "tcp://$net";
     }
 
-    $with_snapshots = $with_snapshots ? 1 : 0; # sanitize for passing as cli parameter
     my $send = ['pvesm', 'export', $volid, $format, '-', '-with-snapshots', $with_snapshots];
     my $recv = [@$ssh, '--', 'pvesm', 'import', $target_volid, $format, $import_fn, '-with-snapshots', $with_snapshots];
     if (defined($snapshot)) {

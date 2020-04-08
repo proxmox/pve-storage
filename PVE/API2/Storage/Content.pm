@@ -418,7 +418,7 @@ __PACKAGE__->register_method ({
 	    # you need to get this working (fails currently, because storage_migrate() uses
 	    # ssh to connect to local host (which is not needed
 	    my $sshinfo = PVE::SSHInfo::get_ssh_info($target_node);
-	    PVE::Storage::storage_migrate($cfg, $src_volid, $sshinfo, $target_sid, $target_volname);
+	    PVE::Storage::storage_migrate($cfg, $src_volid, $sshinfo, $target_sid, {'target_volname' => $target_volname});
 
 	    print "DEBUG: end worker $upid\n";
 
