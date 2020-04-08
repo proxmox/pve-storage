@@ -562,6 +562,25 @@ sub abs_filesystem_path {
     return $path;
 }
 
+my $volname_for_storage = sub {
+    my ($cfg, $volid, $target_storeid) = @_;
+
+    my (undef, $name, $vmid, undef, undef, undef, $format) = parse_volname($cfg, $volid);
+    my $target_scfg = storage_config($cfg, $target_storeid);
+
+    my (undef, $valid_formats) = PVE::Storage::Plugin::default_format($target_scfg);
+    my $format_is_valid = grep { $_ eq $format } @$valid_formats;
+    die "unsupported format '$format' for storage type $target_scfg->{type}\n" if !$format_is_valid;
+
+    (my $name_without_extension = $name) =~ s/\.$format$//;
+
+    if ($target_scfg->{path}) {
+       return "$vmid/$name_without_extension.$format";
+    } else {
+       return "$name_without_extension";
+    }
+};
+
 sub storage_migrate {
     my ($cfg, $volid, $target_sshinfo, $target_storeid, $opts, $logfunc) = @_;
 
@@ -573,7 +592,6 @@ sub storage_migrate {
     my $allow_rename = $opts->{allow_rename} ? 1 : 0;
 
     my ($storeid, $volname) = parse_volume_id($volid);
-    my $target_volname = $opts->{target_volname} || $volname;
 
     my $scfg = storage_config($cfg, $storeid);
 
@@ -586,6 +604,15 @@ sub storage_migrate {
 
     die "content type '$vtype' is not available on storage '$target_storeid'\n"
 	if !$tcfg->{content}->{$vtype};
+
+    my $target_volname;
+    if ($opts->{target_volname}) {
+	$target_volname = $opts->{target_volname};
+    } elsif ($scfg->{type} eq $tcfg->{type}) {
+	$target_volname = $volname;
+    } else {
+	$target_volname = $volname_for_storage->($cfg, $volid, $target_storeid);
+    }
 
     my $target_volid = "${target_storeid}:${target_volname}";
 
