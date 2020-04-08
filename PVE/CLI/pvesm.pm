@@ -321,9 +321,16 @@ __PACKAGE__->register_method ({
 		maxLength => 80,
 		optional => 1,
 	    },
+	    'allow-rename' => {
+		description => "Choose a new volume ID if the requested " .
+		  "volume ID already exists, instead of throwing an error.",
+		type => 'boolean',
+		optional => 1,
+		default => 0,
+	    },
 	},
     },
-    returns => { type => 'null' },
+    returns => { type => 'string' },
     code => sub {
 	my ($param) = @_;
 
@@ -376,11 +383,11 @@ __PACKAGE__->register_method ({
 	my $cfg = PVE::Storage::config();
 	my $volume = $param->{volume};
 	my $delete = $param->{'delete-snapshot'};
-	PVE::Storage::volume_import($cfg, $infh, $volume, $param->{format},
-	    $param->{base}, $param->{'with-snapshots'});
-	PVE::Storage::volume_snapshot_delete($cfg, $volume, $delete)
+	my $imported_volid = PVE::Storage::volume_import($cfg, $infh, $volume, $param->{format},
+	    $param->{base}, $param->{'with-snapshots'}, $param->{'allow-rename'});
+	PVE::Storage::volume_snapshot_delete($cfg, $imported_volid, $delete)
 	    if defined($delete);
-	return;
+	return $imported_volid;
     }
 });
 
@@ -801,7 +808,10 @@ our $cmddef = {
     path => [ __PACKAGE__, 'path', ['volume']],
     extractconfig => [__PACKAGE__, 'extractconfig', ['volume']],
     export => [ __PACKAGE__, 'export', ['volume', 'format', 'filename']],
-    import => [ __PACKAGE__, 'import', ['volume', 'format', 'filename']],
+    import => [ __PACKAGE__, 'import', ['volume', 'format', 'filename'], {}, sub  {
+	my $volid = shift;
+	print PVE::Storage::volume_imported_message($volid);
+    }],
     apiinfo => [ __PACKAGE__, 'apiinfo', [], {}, sub {
 	my $res = shift;
 

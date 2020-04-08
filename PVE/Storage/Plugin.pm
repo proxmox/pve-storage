@@ -1227,7 +1227,7 @@ sub volume_export_formats {
 
 # Import data from a stream, creating a new or replacing or adding to an existing volume.
 sub volume_import {
-    my ($class, $scfg, $storeid, $fh, $volname, $format, $base_snapshot, $with_snapshots) = @_;
+    my ($class, $scfg, $storeid, $fh, $volname, $format, $base_snapshot, $with_snapshots, $allow_rename) = @_;
 
     die "volume import format '$format' not available for $class\n"
 	if $format !~ /^(raw|tar|qcow2|vmdk)\+size$/;
@@ -1249,16 +1249,20 @@ sub volume_import {
     # Check for an existing file first since interrupting alloc_image doesn't
     # free it.
     my $file = $class->path($scfg, $volname, $storeid);
-    die "file '$file' already exists\n" if -e $file;
+    if (-e $file) {
+	die "file '$file' already exists\n" if !$allow_rename;
+	warn "file '$file' already exists - importing with a different name\n";
+	$name = undef;
+    }
 
     my ($size) = read_common_header($fh);
     $size = int($size/1024);
 
     eval {
 	my $allocname = $class->alloc_image($storeid, $scfg, $vmid, $file_format, $name, $size);
-	if ($allocname ne $volname) {
-	    my $oldname = $volname;
-	    $volname = $allocname; # Let the cleanup code know what to free
+	my $oldname = $volname;
+	$volname = $allocname;
+	if (defined($name) && $allocname ne $oldname) {
 	    die "internal error: unexpected allocated name: '$allocname' != '$oldname'\n";
 	}
 	my $file = $class->path($scfg, $volname, $storeid)
@@ -1278,6 +1282,8 @@ sub volume_import {
 	warn $@ if $@;
 	die $err;
     }
+
+    return "$storeid:$volname";
 }
 
 sub volume_import_formats {

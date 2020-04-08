@@ -631,7 +631,7 @@ sub volume_import_formats {
 }
 
 sub volume_import {
-    my ($class, $scfg, $storeid, $fh, $volname, $format, $base_snapshot, $with_snapshots) = @_;
+    my ($class, $scfg, $storeid, $fh, $volname, $format, $base_snapshot, $with_snapshots, $allow_rename) = @_;
     die "volume import format $format not available for $class\n"
 	if $format ne 'raw+size';
     die "cannot import volumes together with their snapshots in $class\n"
@@ -645,17 +645,20 @@ sub volume_import {
 
     my $vg = $scfg->{vgname};
     my $lvs = lvm_list_volumes($vg);
-    die "volume $vg/$volname already exists\n"
-	if $lvs->{$vg}->{$volname};
+    if ($lvs->{$vg}->{$volname}) {
+	die "volume $vg/$volname already exists\n" if !$allow_rename;
+	warn "volume $vg/$volname already exists - importing with a different name\n";
+	$name = undef;
+    }
 
     my ($size) = PVE::Storage::Plugin::read_common_header($fh);
     $size = int($size/1024);
 
     eval {
 	my $allocname = $class->alloc_image($storeid, $scfg, $vmid, 'raw', $name, $size);
-	if ($allocname ne $volname) {
-	    my $oldname = $volname;
-	    $volname = $allocname; # Let the cleanup code know what to free
+	my $oldname = $volname;
+	$volname = $allocname;
+	if (defined($name) && $allocname ne $oldname) {
 	    die "internal error: unexpected allocated name: '$allocname' != '$oldname'\n";
 	}
 	my $file = $class->path($scfg, $volname, $storeid)
@@ -668,6 +671,8 @@ sub volume_import {
 	warn $@ if $@;
 	die $err;
     }
+
+    return "$storeid:$volname";
 }
 
 sub volume_import_write {

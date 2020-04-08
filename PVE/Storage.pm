@@ -39,11 +39,11 @@ use PVE::Storage::DRBDPlugin;
 use PVE::Storage::PBSPlugin;
 
 # Storage API version. Icrement it on changes in storage API interface.
-use constant APIVER => 4;
+use constant APIVER => 5;
 # Age is the number of versions we're backward compatible with.
 # This is like having 'current=APIVER' and age='APIAGE' in libtool,
 # see https://www.gnu.org/software/libtool/manual/html_node/Libtool-versioning.html
-use constant APIAGE => 3;
+use constant APIAGE => 4;
 
 # load standard plugins
 PVE::Storage::DirPlugin->register();
@@ -578,7 +578,7 @@ sub storage_migrate {
     my $scfg = storage_config($cfg, $storeid);
 
     # no need to migrate shared content
-    return if $storeid eq $target_storeid && $scfg->{shared};
+    return $volid if $storeid eq $target_storeid && $scfg->{shared};
 
     my $tcfg = storage_config($cfg, $target_storeid);
 
@@ -616,6 +616,11 @@ sub storage_migrate {
 	$import_fn = "tcp://$net";
     }
 
+    my $target_apiver = 1; # if there is no apiinfo call, assume 1
+    my $get_api_version = [@$ssh, 'pvesm', 'apiinfo'];
+    my $match_api_version = sub { $target_apiver = $1 if $_[0] =~ m!^APIVER (\d+)$!; };
+    eval { run_command($get_api_version, logfunc => $match_api_version); };
+
     my $send = ['pvesm', 'export', $volid, $format, '-', '-with-snapshots', $with_snapshots];
     my $recv = [@$ssh, '--', 'pvesm', 'import', $target_volid, $format, $import_fn, '-with-snapshots', $with_snapshots];
     if (defined($snapshot)) {
@@ -624,12 +629,26 @@ sub storage_migrate {
     if ($migration_snapshot) {
 	push @$recv, '-delete-snapshot', $snapshot;
     }
+    push @$recv, '-allow-rename', $allow_rename if $target_apiver >= 5;
 
     if (defined($base_snapshot)) {
 	# Check if the snapshot exists on the remote side:
 	push @$send, '-base', $base_snapshot;
 	push @$recv, '-base', $base_snapshot;
     }
+
+    my $new_volid;
+    my $pattern = volume_imported_message(undef, 1);
+    my $match_volid_and_log = sub {
+	my $line = shift;
+
+	$new_volid = $1 if ($line =~ $pattern);
+
+	if ($logfunc) {
+	    chomp($line);
+	    $logfunc->($line);
+	}
+    };
 
     volume_snapshot($cfg, $volid, $snapshot) if $migration_snapshot;
     eval {
@@ -648,13 +667,8 @@ sub storage_migrate {
 	    shutdown($socket, 1);
 
 	    # wait for the remote process to finish
-	    if ($logfunc) {
-		while (my $line = <$info>) {
-		    chomp($line);
-		    $logfunc->("[$target_sshinfo->{name}] $line");
-		}
-	    } else {
-		1 while <$info>;
+	    while (my $line = <$info>) {
+		$match_volid_and_log->("[$target_sshinfo->{name}] $line");
 	    }
 
 	    # now close the socket
@@ -664,8 +678,11 @@ sub storage_migrate {
 		die "import failed: exit code ".($?>>8)."\n";
 	    }
 	} else {
-	    run_command([$send, @cstream, $recv], logfunc => $logfunc);
+	    run_command([$send, @cstream, $recv], logfunc => $match_volid_and_log);
 	}
+
+	die "unable to get ID of the migrated volume\n"
+	    if !defined($new_volid) && $target_apiver >= 5;
     };
     my $err = $@;
     warn "send/receive failed, cleaning up snapshot(s)..\n" if $err;
@@ -674,6 +691,8 @@ sub storage_migrate {
 	warn "could not remove source snapshot: $@\n" if $@;
     }
     die $err if $err;
+
+    return $new_volid // $target_volid;
 }
 
 sub vdisk_clone {
@@ -1430,14 +1449,14 @@ sub volume_export {
 }
 
 sub volume_import {
-    my ($cfg, $fh, $volid, $format, $base_snapshot, $with_snapshots) = @_;
+    my ($cfg, $fh, $volid, $format, $base_snapshot, $with_snapshots, $allow_rename) = @_;
 
     my ($storeid, $volname) = parse_volume_id($volid, 1);
     die "cannot import into volume '$volid'\n" if !$storeid;
     my $scfg = storage_config($cfg, $storeid);
     my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
     return $plugin->volume_import($scfg, $storeid, $fh, $volname, $format,
-                                  $base_snapshot, $with_snapshots);
+                                  $base_snapshot, $with_snapshots, $allow_rename) // $volid;
 }
 
 sub volume_export_formats {
@@ -1470,6 +1489,16 @@ sub volume_transfer_formats {
     my %import_hash = map { $_ => 1 } @import_formats;
     my @common = grep { $import_hash{$_} } @export_formats;
     return @common;
+}
+
+sub volume_imported_message {
+    my ($volid, $want_pattern) = @_;
+
+    if ($want_pattern) {
+	return qr/successfully imported '([^']*)'$/;
+    } else {
+	return "successfully imported '$volid'\n";
+    }
 }
 
 # bash completion helper

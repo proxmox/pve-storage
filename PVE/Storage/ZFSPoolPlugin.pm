@@ -743,7 +743,7 @@ sub volume_export_formats {
 }
 
 sub volume_import {
-    my ($class, $scfg, $storeid, $fh, $volname, $format, $base_snapshot, $with_snapshots) = @_;
+    my ($class, $scfg, $storeid, $fh, $volname, $format, $base_snapshot, $with_snapshots, $allow_rename) = @_;
 
     die "unsupported import stream format for $class: $format\n"
 	if $format ne 'zfs';
@@ -752,15 +752,18 @@ sub volume_import {
     die "internal error: invalid file handle for volume_import\n"
 	if !defined($fd);
 
-    my $dataset = ($class->parse_volname($volname))[1];
+    my (undef, $dataset, $vmid) = $class->parse_volname($volname);
     my $zfspath = "$scfg->{pool}/$dataset";
     my $suffix = defined($base_snapshot) ? "\@$base_snapshot" : '';
     my $exists = 0 == run_command(['zfs', 'get', '-H', 'name', $zfspath.$suffix],
 			     noerr => 1, errfunc => sub {});
     if (defined($base_snapshot)) {
 	die "base snapshot '$zfspath\@$base_snapshot' doesn't exist\n" if !$exists;
-    } else {
-	die "volume '$zfspath' already exists\n" if $exists;
+    } elsif ($exists) {
+	die "volume '$zfspath' already exists\n" if !$allow_rename;
+	warn "volume '$zfspath' already exists - importing with a different name\n";
+	$dataset = $class->find_free_diskname($storeid, $scfg, $vmid, $format);
+	$zfspath = "$scfg->{pool}/$dataset";
     }
 
     eval { run_command(['zfs', 'recv', '-F', '--', $zfspath], input => "<&$fd") };
@@ -773,7 +776,7 @@ sub volume_import {
 	die $err;
     }
 
-    return;
+    return "$storeid:$dataset";
 }
 
 sub volume_import_formats {
