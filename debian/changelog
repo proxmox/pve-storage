@@ -1,3 +1,35 @@
+libpve-storage-perl (6.1-6) pve; urgency=medium
+
+  * list_volumes: try to return vmid also for backups
+
+  * fix #2620: storage API: iSCSI: return active field as integer
+
+  * iscsi: sort and split module usage
+
+  * iscis: add iscsi_session helper
+
+  * api: storage/content: add ctime to return schema
+
+  * plugins: add ctime for various file types
+
+  * api: storage/content: fix return schema property descriptions
+
+  * allow passing options to volume_has_feature
+
+  * fix #2474: always show iscsi content
+
+  * fix #2647: Add snippet content type for Gluster
+
+  * storage_migrate: check if target storage supports content type
+
+  * pvesm: add apiinfo helper
+
+  * storage_migrate: API change, collapse options into single hash parameter
+
+  * storage_migrate: add optional rename feature in case of volname conflicts
+
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 9 Apr 2020 08:39:45 +0200
+
 libpve-storage-perl (6.1-5) pve; urgency=medium
 
   * ZFS pool plugin: check whether 'zfs get mountpoint' returns a valid
