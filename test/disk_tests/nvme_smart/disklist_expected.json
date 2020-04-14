@@ -1,6 +1,6 @@
 {
     "nvme0n1" : {
-	"wearout" : 100,
+	"wearout" : 69,
 	"vendor" : "unknown",
 	"size" : 512000,
 	"health" : "PASSED",
