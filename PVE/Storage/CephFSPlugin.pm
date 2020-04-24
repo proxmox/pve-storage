@@ -80,6 +80,7 @@ EOF
 sub cephfs_mount {
     my ($scfg, $storeid) = @_;
 
+    my ($subversions) = PVE::CephConfig::ceph_version();
     my $mountpoint = $scfg->{path};
     my $subdir = $scfg->{subdir} // '/';
 
@@ -98,7 +99,10 @@ sub cephfs_mount {
     } else {
 	push @opts, "name=$cmd_option->{userid}";
 	push @opts, "secretfile=$secretfile" if defined($secretfile);
-	push @opts, "conf=$configfile" if defined($configfile);
+	
+	# FIXME: remove subversion check in PVE 7.0, not needed for >= Nautilus
+	# Luminous doesn't know the conf option
+	push @opts, "conf=$configfile" if defined($configfile) && @$subversions[0] > 12;
     }
 
     push @opts, $scfg->{options} if $scfg->{options};

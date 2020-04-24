@@ -255,4 +255,33 @@ sub ceph_remove_keyfile {
     }
 }
 
+my $ceph_version_parser = sub {
+    my $ceph_version = shift;
+    # FIXME this is the same as pve-manager PVE::Ceph::Tools get_local_version
+    if ($ceph_version =~ /^ceph.*\s(\d+(?:\.\d+)+(?:-pve\d+)?)\s+(?:\(([a-zA-Z0-9]+)\))?/) {
+	my ($version, $buildcommit) = ($1, $2);
+	my $subversions = [ split(/\.|-/, $version) ];
+
+	return ($subversions, $version, $buildcommit);
+    }
+    warn "Could not parse Ceph version: '$ceph_version'\n";
+};
+
+sub ceph_version {
+    my ($cache) = @_;
+
+    my $version_string = $cache;
+    if (!defined($version_string)) {
+	run_command('ceph --version', outfunc => sub {
+	    $version_string = shift;
+	});
+    }
+    return undef if !defined($version_string);
+    # subversion is an array ref. with the version parts from major to minor
+    # version is the filtered version string
+    my ($subversions, $version) = $ceph_version_parser->($version_string);
+
+    return wantarray ? ($subversions, $version) : $version;
+}
+
 1;
