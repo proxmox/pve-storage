@@ -77,9 +77,6 @@ my $librados_connect = sub {
 my $krbd_feature_update = sub {
     my ($scfg, $storeid, $name) = @_;
 
-    my ($versionparts) = PVE::CephConfig::ceph_version();
-    return 1 if $versionparts->[0] < 10;
-
     my (@disable, @enable);
     my ($kmajor, $kminor) = PVE::ProcFSTools::kernel_version();
 
