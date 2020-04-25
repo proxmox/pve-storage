@@ -267,7 +267,7 @@ my $ceph_version_parser = sub {
     warn "Could not parse Ceph version: '$ceph_version'\n";
 };
 
-sub ceph_version {
+sub local_ceph_version {
     my ($cache) = @_;
 
     my $version_string = $cache;
