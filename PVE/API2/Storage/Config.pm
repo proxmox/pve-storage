@@ -166,7 +166,7 @@ __PACKAGE__->register_method ({
 			PVE::Storage::activate_storage($cfg, $storeid);
 		    }
 		};
-		if(my $err = $@) {
+		if (my $err = $@) {
 		    eval { $plugin->on_delete_hook($storeid, $opts) };
 		    warn "$@\n" if $@;
 		    die $err;
