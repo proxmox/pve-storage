@@ -7,6 +7,7 @@ use Fcntl ':mode';
 use File::chdir;
 use File::Path;
 use File::Basename;
+use File::stat qw();
 use Time::Local qw(timelocal);
 
 use PVE::Tools qw(run_command);
@@ -718,12 +719,10 @@ sub free_image {
 sub file_size_info {
     my ($filename, $timeout) = @_;
 
-    my @fs = stat($filename);
-    my $mode = $fs[2];
-    my $ctime = $fs[10];
+    my $st = File::stat::stat($filename);
 
-    if (S_ISDIR($mode)) {
-	return wantarray ? (0, 'subvol', 0, undef, $ctime) : 1;
+    if (S_ISDIR($st->mode)) {
+	return wantarray ? (0, 'subvol', 0, undef, $st->ctime) : 1;
     }
 
     my $json = '';
@@ -741,7 +740,7 @@ sub file_size_info {
 
     my ($size, $format, $used, $parent) = $info->@{qw(virtual-size format actual-size backing-filename)};
 
-    return wantarray ? ($size, $format, $used, $parent, $ctime) : $size;
+    return wantarray ? ($size, $format, $used, $parent, $st->ctime) : $size;
 }
 
 sub volume_size_info {
@@ -918,22 +917,9 @@ my $get_subdir_files = sub {
 
     foreach my $fn (<$path/*>) {
 
-	my ($dev,
-	    $ino,
-	    $mode,
-	    $nlink,
-	    $uid,
-	    $gid,
-	    $rdev,
-	    $size,
-	    $atime,
-	    $mtime,
-	    $ctime,
-	    $blksize,
-	    $blocks
-	) = stat($fn);
+	my $st = File::stat::stat($fn);
 
-	next if S_ISDIR($mode);
+	next if S_ISDIR($st->mode);
 
 	my $info;
 
@@ -972,8 +958,8 @@ my $get_subdir_files = sub {
 	    };
 	}
 
-	$info->{size} = $size;
-	$info->{ctime} //= $ctime;
+	$info->{size} = $st->size;
+	$info->{ctime} //= $st->ctime;
 
 	push @$res, $info;
     }

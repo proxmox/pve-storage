@@ -6,6 +6,7 @@ use PVE::ProcFSTools;
 use Data::Dumper;
 use Cwd qw(abs_path);
 use Fcntl ':mode';
+use File::stat;
 use JSON;
 
 use PVE::Tools qw(extract_param run_command file_get_contents file_read_firstline dir_glob_regex dir_glob_foreach trim);
@@ -673,11 +674,11 @@ sub get_disks {
 sub get_partnum {
     my ($part_path) = @_;
 
-    my ($mode, $rdev) = (stat($part_path))[2,6];
+    my $st = stat($part_path);
 
-    next if !$mode || !S_ISBLK($mode) || !$rdev;
-    my $major = PVE::Tools::dev_t_major($rdev);
-    my $minor = PVE::Tools::dev_t_minor($rdev);
+    next if !$st->mode || !S_ISBLK($st->mode) || !$st->rdev;
+    my $major = PVE::Tools::dev_t_major($st->rdev);
+    my $minor = PVE::Tools::dev_t_minor($st->rdev);
     my $partnum_path = "/sys/dev/block/$major:$minor/";
 
     my $partnum;
