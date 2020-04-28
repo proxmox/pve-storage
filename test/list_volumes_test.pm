@@ -129,7 +129,7 @@ my @tests = (
 	    },
 	    {
 		'content' => 'backup',
-		'ctime'   => DEFAULT_CTIME,
+		'ctime'   => 1585595500,
 		'format'  => 'vma.gz',
 		'size'    => DEFAULT_SIZE,
 		'vmid'    => '16110',
@@ -137,7 +137,7 @@ my @tests = (
 	    },
 	    {
 		'content' => 'backup',
-		'ctime'   => DEFAULT_CTIME,
+		'ctime'   => 1585595565,
 		'format'  => 'vma.lzo',
 		'size'    => DEFAULT_SIZE,
 		'vmid'    => '16110',
@@ -145,7 +145,7 @@ my @tests = (
 	    },
 	    {
 		'content' => 'backup',
-		'ctime'   => DEFAULT_CTIME,
+		'ctime'   => 1585595635,
 		'format'  => 'vma',
 		'size'    => DEFAULT_SIZE,
 		'vmid'    => '16110',
@@ -189,7 +189,7 @@ my @tests = (
 	    },
 	    {
 		'content' => 'backup',
-		'ctime'   => DEFAULT_CTIME,
+		'ctime'   => 1585597170,
 		'format'  => 'tar.lzo',
 		'size'    => DEFAULT_SIZE,
 		'vmid'    => '16112',
@@ -197,7 +197,7 @@ my @tests = (
 	    },
 	    {
 		'content' => 'backup',
-		'ctime'   => DEFAULT_CTIME,
+		'ctime'   => 1585597770,
 		'format'  => 'tar.gz',
 		'size'    => DEFAULT_SIZE,
 		'vmid'    => '16112',
@@ -205,7 +205,7 @@ my @tests = (
 	    },
 	    {
 		'content' => 'backup',
-		'ctime'   => DEFAULT_CTIME,
+		'ctime'   => 1585598370,
 		'format'  => 'tgz',
 		'size'    => DEFAULT_SIZE,
 		'vmid'    => '16112',
@@ -347,7 +347,7 @@ my @tests = (
 	    },
 	    {
 		'content' => 'backup',
-		'ctime'   => DEFAULT_CTIME,
+		'ctime'   => 1580756263,
 		'format'  => 'tar.gz',
 		'size'    => DEFAULT_SIZE,
 		'vmid'    => '19253',
@@ -355,7 +355,7 @@ my @tests = (
 	    },
 	    {
 		'content' => 'backup',
-		'ctime'   => DEFAULT_CTIME,
+		'ctime'   => 1548095359,
 		'format'  => 'tar',
 		'size'    => DEFAULT_SIZE,
 		'vmid'    => '19254',

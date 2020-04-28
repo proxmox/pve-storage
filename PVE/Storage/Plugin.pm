@@ -942,7 +942,8 @@ my $get_subdir_files = sub {
 	    next if $fn !~ m!/([^/]+\.(tar|tar\.gz|tar\.lzo|tgz|vma|vma\.gz|vma\.lzo))$!;
 
 	    my $format = $2;
-	    $info = { volid => "$sid:backup/$1", format => $format };
+	    $fn = $1;
+	    $info = { volid => "$sid:backup/$fn", format => $format };
 
 	    if ($fn =~ m!^vzdump\-(?:lxc|qemu)\-(?:[1-9][0-9]{2,8})\-(\d{4})_(\d{2})_(\d{2})\-(\d{2})_(\d{2})_(\d{2})\.${format}$!) {
 		my $epoch = timelocal($6, $5, $4, $3, $2-1, $1 - 1900);
