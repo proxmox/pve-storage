@@ -93,6 +93,7 @@ my @tests = (
 	    "$storage_dir/dump/vzdump-qemu-16110-2020_03_30-21_11_40.vma.gz",
 	    "$storage_dir/dump/vzdump-qemu-16110-2020_03_30-21_12_45.vma.lzo",
 	    "$storage_dir/dump/vzdump-qemu-16110-2020_03_30-21_13_55.vma",
+	    "$storage_dir/dump/vzdump-qemu-16110-2020_03_30-21_13_55.vma.zst",
 	    "$storage_dir/snippets/userconfig.yaml",
 	    "$storage_dir/snippets/hookscript.pl",
 	],
@@ -152,6 +153,14 @@ my @tests = (
 		'volid'   => 'local:backup/vzdump-qemu-16110-2020_03_30-21_13_55.vma',
 	    },
 	    {
+		'content' => 'backup',
+		'ctime'   => 1585595635,
+		'format'  => 'vma.zst',
+		'size'    => DEFAULT_SIZE,
+		'vmid'    => '16110',
+		'volid'   => 'local:backup/vzdump-qemu-16110-2020_03_30-21_13_55.vma.zst',
+	    },
+	    {
 		'content' => 'snippets',
 		'ctime'   => DEFAULT_CTIME,
 		'format'  => 'snippet',
@@ -174,6 +183,7 @@ my @tests = (
 	    "$storage_dir/images/16112/vm-16112-disk-0.raw",
 	    "$storage_dir/dump/vzdump-lxc-16112-2020_03_30-21_39_30.tar.lzo",
 	    "$storage_dir/dump/vzdump-lxc-16112-2020_03_30-21_49_30.tar.gz",
+	    "$storage_dir/dump/vzdump-lxc-16112-2020_03_30-21_49_30.tar.zst",
 	    "$storage_dir/dump/vzdump-lxc-16112-2020_03_30-21_59_30.tgz",
 	],
 	expected => [
@@ -202,6 +212,14 @@ my @tests = (
 		'size'    => DEFAULT_SIZE,
 		'vmid'    => '16112',
 		'volid'   => 'local:backup/vzdump-lxc-16112-2020_03_30-21_49_30.tar.gz',
+	    },
+	    {
+		'content' => 'backup',
+		'ctime'   => 1585597770,
+		'format'  => 'tar.zst',
+		'size'    => DEFAULT_SIZE,
+		'vmid'    => '16112',
+		'volid'   => 'local:backup/vzdump-lxc-16112-2020_03_30-21_49_30.tar.zst',
 	    },
 	    {
 		'content' => 'backup',

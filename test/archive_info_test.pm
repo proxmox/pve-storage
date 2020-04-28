@@ -45,10 +45,12 @@ my $decompressor = {
     tar => {
 	gz  => ['tar', '-z'],
 	lzo => ['tar', '--lzop'],
+	zst => ['tar', '--zstd'],
     },
     vma => {
 	gz  => ['zcat'],
 	lzo => ['lzop', '-d', '-c'],
+	zst => ['zstd', '-q', '-d', '-c'],
     },
 };
 
@@ -85,7 +87,7 @@ foreach my $virt (keys %$bkp_suffix) {
 my $non_bkp_suffix = {
     'openvz' => [ 'zip', 'tgz.lzo', 'tar.bz2', 'zip.gz', '', ],
     'lxc'    => [ 'zip', 'tgz.lzo', 'tar.bz2', 'zip.gz', '', ],
-    'qemu'   => [ 'vma.xz', 'vms.gz', '', ],
+    'qemu'   => [ 'vma.xz', 'vms.gz', 'vmx.zst', '', ],
     'none'   => [ 'tar.gz', ],
 };
 

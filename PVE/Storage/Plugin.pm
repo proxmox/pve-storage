@@ -18,7 +18,7 @@ use JSON;
 
 use base qw(PVE::SectionConfig);
 
-use constant COMPRESSOR_RE => 'gz|lzo';
+use constant COMPRESSOR_RE => 'gz|lzo|zst';
 
 our @COMMON_TAR_FLAGS = qw(
     --one-file-system

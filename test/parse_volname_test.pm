@@ -176,9 +176,9 @@ foreach my $s (@$disk_suffix) {
 
 # create more test cases for backup files matches
 my $bkp_suffix = {
-    qemu   => [ 'vma', 'vma.gz', 'vma.lzo' ],
-    lxc    => [ 'tar', 'tgz', 'tar.gz', 'tar.lzo' ],
-    openvz => [ 'tar', 'tgz', 'tar.gz', 'tar.lzo' ],
+    qemu   => [ 'vma', 'vma.gz', 'vma.lzo', 'vma.zst' ],
+    lxc    => [ 'tar', 'tgz', 'tar.gz', 'tar.lzo', 'tar.zst' ],
+    openvz => [ 'tar', 'tgz', 'tar.gz', 'tar.lzo', 'tar.zst' ],
 };
 
 foreach my $virt (keys %$bkp_suffix) {

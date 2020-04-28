@@ -100,6 +100,22 @@ my @tests = (
 	    'local:backup/vzdump-lxc-16112-2020_03_30-21_39_30.tar.lzo',
 	],
     },
+    {
+	description => 'Backup, vma.zst',
+	volname     => "$storage_dir/dump/vzdump-qemu-16110-2020_03_30-21_13_55.vma.zst",
+	expected    => [
+	    'backup',
+	    'local:backup/vzdump-qemu-16110-2020_03_30-21_13_55.vma.zst'
+	],
+    },
+    {
+	description => 'Backup, tar.zst',
+	volname     => "$storage_dir/dump/vzdump-lxc-16112-2020_03_30-21_39_30.tar.zst",
+	expected    => [
+	    'backup',
+	    'local:backup/vzdump-lxc-16112-2020_03_30-21_39_30.tar.zst'
+	],
+    },
 
     {
 	description => 'ISO file',
