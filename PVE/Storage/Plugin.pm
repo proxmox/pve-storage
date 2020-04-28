@@ -457,6 +457,10 @@ my $vtype_subdirs = {
     snippets => 'snippets',
 };
 
+sub get_vtype_subdirs {
+    return $vtype_subdirs;
+}
+
 sub get_subdir {
     my ($class, $scfg, $vtype) = @_;
 
