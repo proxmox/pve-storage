@@ -1351,6 +1351,53 @@ sub foreach_volid {
     }
 }
 
+sub decompressor_info {
+    my ($format, $comp) = @_;
+
+    if ($format eq 'tgz' && !defined($comp)) {
+	($format, $comp) = ('tar', 'gz');
+    }
+
+    my $decompressor = {
+	tar => {
+	    gz => ['tar', '-z'],
+	    lzo => ['tar', '--lzop'],
+	},
+	vma => {
+	    gz => ['zcat'],
+	    lzo => ['lzop', '-d', '-c'],
+	},
+    };
+
+    die "ERROR: archive format not defined\n"
+	if !defined($decompressor->{$format});
+
+    my $decomp = $decompressor->{$format}->{$comp} if $comp;
+
+    my $info = {
+	format => $format,
+	compression => $comp,
+	decompressor => $decomp,
+    };
+
+    return $info;
+}
+
+sub archive_info {
+    my ($archive) = shift;
+    my $info;
+
+    my $volid = basename($archive);
+    if ($volid =~ /vzdump-(lxc|openvz|qemu)-\d+-(?:\d{4})_(?:\d{2})_(?:\d{2})-(?:\d{2})_(?:\d{2})_(?:\d{2})\.(tgz$|tar|vma)(?:\.(gz|lzo))?$/) {
+	$info = decompressor_info($2, $3);
+	$info->{type} = $1;
+    } else {
+	die "ERROR: couldn't determine format and compression type\n";
+    }
+
+    return $info;
+}
+
 sub extract_vzdump_config_tar {
     my ($archive, $conf_re) = @_;
 
@@ -1396,16 +1443,12 @@ sub extract_vzdump_config_vma {
     };
 
 
+    my $info = archive_info($archive);
+    $comp //= $info->{compression};
+    my $decompressor = $info->{decompressor};
+
     if ($comp) {
-	my $uncomp;
-	if ($comp eq 'gz') {
-	    $uncomp = ["zcat", $archive];
-	} elsif ($comp eq 'lzo') {
-	    $uncomp = ["lzop", "-d", "-c", $archive];
-	} else {
-	    die "unknown compression method '$comp'\n";
-	}
-	$cmd = [$uncomp, ["vma", "config", "-"]];
+	$cmd = [ [@$decompressor, $archive], ["vma", "config", "-"] ];
 
 	# in some cases, lzop/zcat exits with 1 when its stdout pipe is
 	# closed early by vma, detect this and ignore the exit code later
@@ -1455,20 +1498,14 @@ sub extract_vzdump_config {
     }
 
     my $archive = abs_filesystem_path($cfg, $volid);
+    my $info = archive_info($archive);
+    my $format = $info->{format};
+    my $comp = $info->{compression};
+    my $type = $info->{type};
 
-    if ($volid =~ /vzdump-(lxc|openvz)-\d+-(\d{4})_(\d{2})_(\d{2})-(\d{2})_(\d{2})_(\d{2})\.(tgz|(tar(\.(gz|lzo))?))$/) {
+    if ($type eq 'lxc' || $type eq 'openvz') {
 	return extract_vzdump_config_tar($archive, qr!^(\./etc/vzdump/(pct|vps)\.conf)$!);
-    } elsif ($volid =~ /vzdump-qemu-\d+-(\d{4})_(\d{2})_(\d{2})-(\d{2})_(\d{2})_(\d{2})\.(tgz|((tar|vma)(\.(gz|lzo))?))$/) {
-	my $format;
-	my $comp;
-	if ($7 eq 'tgz') {
-	    $format = 'tar';
-	    $comp = 'gz';
-	} else {
-	    $format = $9;
-	    $comp = $11 if defined($11);
-	}
-
+    } elsif ($type eq 'qemu') {
 	if ($format eq 'tar') {
 	    return extract_vzdump_config_tar($archive, qr!\(\./qemu-server\.conf\)!);
 	} else {
