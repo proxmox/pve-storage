@@ -512,6 +512,7 @@ sub path_to_volume_id {
 	my $tmpldir = $plugin->get_subdir($scfg, 'vztmpl');
 	my $backupdir = $plugin->get_subdir($scfg, 'backup');
 	my $privatedir = $plugin->get_subdir($scfg, 'rootdir');
+	my $snippetsdir = $plugin->get_subdir($scfg, 'snippets');
 
 	if ($path =~ m!^$imagedir/(\d+)/([^/\s]+)$!) {
 	    my $vmid = $1;
@@ -537,6 +538,9 @@ sub path_to_volume_id {
 	} elsif ($path =~ m!^$backupdir/([^/]+\.(tar|tar\.gz|tar\.lzo|tgz|vma|vma\.gz|vma\.lzo))$!) {
 	    my $name = $1;
 	    return ('backup', "$sid:backup/$name");
+	} elsif ($path =~ m!^$snippetsdir/([^/]+)$!) {
+	    my $name = $1;
+	    return ('snippets', "$sid:snippets/$name");
 	}
     }
 

@@ -134,18 +134,24 @@ my @tests = (
 	    'local:1234/subvol-1234-disk-0.subvol'
 	],
     },
-
-    # no matches
     {
 	description => 'Snippets, yaml',
 	volname => "$storage_dir/snippets/userconfig.yaml",
-	expected => [''],
+	expected => [
+	    'snippets',
+	    'local:snippets/userconfig.yaml',
+	],
     },
     {
 	description => 'Snippets, hookscript',
 	volname     => "$storage_dir/snippets/hookscript.pl",
-	expected    => [''],
+	expected    => [
+	    'snippets',
+	    'local:snippets/hookscript.pl',
+	],
     },
+
+    # no matches
     {
 	description => 'CT template, tar.xz',
 	volname     => "$storage_dir/template/cache/debian-10.0-standard_10.0-1_amd64.tar.xz",
@@ -210,7 +216,10 @@ my @tests = (
     },
 );
 
-plan tests => scalar @tests;
+plan tests => scalar @tests + 1;
+
+my $seen_vtype;
+my $vtype_subdirs = { map { $_ => 1 } keys %{ PVE::Storage::Plugin::get_vtype_subdirs() } };
 
 foreach my $tt (@tests) {
     my $file = $tt->{volname};
@@ -232,7 +241,14 @@ foreach my $tt (@tests) {
     $got = $@ if $@;
 
     is_deeply($got, $expected, $description) || diag(explain($got));
+
+    $seen_vtype->{@$expected[0]} = 1
+	if ( @$expected[0] ne '' && scalar @$expected > 1);
 }
+
+# to check if all $vtype_subdirs are defined in path_to_volume_id
+# or have a test
+is_deeply($seen_vtype, $vtype_subdirs, "vtype_subdir check");
 
 #cleanup
 # File::Temp unlinks tempdir on exit
