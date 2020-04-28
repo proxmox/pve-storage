@@ -535,7 +535,7 @@ sub path_to_volume_id {
 	} elsif ($path =~ m!^$privatedir/(\d+)$!) {
 	    my $vmid = $1;
 	    return ('rootdir', "$sid:rootdir/$vmid");
-	} elsif ($path =~ m!^$backupdir/([^/]+\.(tar|tar\.gz|tar\.lzo|tgz|vma|vma\.gz|vma\.lzo))$!) {
+	} elsif ($path =~ m!^$backupdir/([^/]+\.(?:tgz|(?:(?:tar|vma)(?:\.(?:${\PVE::Storage::Plugin::COMPRESSOR_RE}))?)))$!) {
 	    my $name = $1;
 	    return ('backup', "$sid:backup/$name");
 	} elsif ($path =~ m!^$snippetsdir/([^/]+)$!) {
@@ -1392,7 +1392,7 @@ sub archive_info {
     my $info;
 
     my $volid = basename($archive);
-    if ($volid =~ /vzdump-(lxc|openvz|qemu)-\d+-(?:\d{4})_(?:\d{2})_(?:\d{2})-(?:\d{2})_(?:\d{2})_(?:\d{2})\.(tgz$|tar|vma)(?:\.(gz|lzo))?$/) {
+    if ($volid =~ /vzdump-(lxc|openvz|qemu)-\d+-(?:\d{4})_(?:\d{2})_(?:\d{2})-(?:\d{2})_(?:\d{2})_(?:\d{2})\.(tgz$|tar|vma)(?:\.(${\PVE::Storage::Plugin::COMPRESSOR_RE}))?$/) {
 	$info = decompressor_info($2, $3);
 	$info->{type} = $1;
     } else {

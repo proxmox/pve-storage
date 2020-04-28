@@ -18,6 +18,8 @@ use JSON;
 
 use base qw(PVE::SectionConfig);
 
+use constant COMPRESSOR_RE => 'gz|lzo';
+
 our @COMMON_TAR_FLAGS = qw(
     --one-file-system
     -p --sparse --numeric-owner --acls
@@ -435,7 +437,7 @@ sub parse_volname {
 	return ('vztmpl', $1);
     } elsif ($volname =~ m!^rootdir/(\d+)$!) {
 	return ('rootdir', $1, $1);
-    } elsif ($volname =~ m!^backup/([^/]+(\.(tar|tar\.gz|tar\.lzo|tgz|vma|vma\.gz|vma\.lzo)))$!) {
+    } elsif ($volname =~ m!^backup/([^/]+(?:\.(?:tgz|(?:(?:tar|vma)(?:\.(?:${\COMPRESSOR_RE}))?))))$!) {
 	my $fn = $1;
 	if ($fn =~ m/^vzdump-(openvz|lxc|qemu)-(\d+)-.+/) {
 	    return ('backup', $fn, $2);
@@ -939,7 +941,7 @@ my $get_subdir_files = sub {
 
 	} elsif ($tt eq 'backup') {
 	    next if defined($vmid) && $fn !~  m/\S+-$vmid-\S+/;
-	    next if $fn !~ m!/([^/]+\.(tar|tar\.gz|tar\.lzo|tgz|vma|vma\.gz|vma\.lzo))$!;
+	    next if $fn !~ m!/([^/]+\.(tgz|(?:(?:tar|vma)(?:\.(${\COMPRESSOR_RE}))?)))$!;
 
 	    my $format = $2;
 	    $fn = $1;
