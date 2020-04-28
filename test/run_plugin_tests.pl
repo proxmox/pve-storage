@@ -12,6 +12,7 @@ my $res = $harness->runtests(
     "list_volumes_test.pm",
     "path_to_volume_id_test.pm",
     "get_subdir_test.pm",
+    "filesystem_path_test.pm",
 );
 
 exit -1 if !$res || $res->{failed} || $res->{parse_errors};
