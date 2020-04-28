@@ -536,7 +536,7 @@ sub path_to_volume_id {
 	    return ('rootdir', "$sid:rootdir/$vmid");
 	} elsif ($path =~ m!^$backupdir/([^/]+\.(tar|tar\.gz|tar\.lzo|tgz|vma|vma\.gz|vma\.lzo))$!) {
 	    my $name = $1;
-	    return ('iso', "$sid:backup/$name");
+	    return ('backup', "$sid:backup/$name");
 	}
     }
 

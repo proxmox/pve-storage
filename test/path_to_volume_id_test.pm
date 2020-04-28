@@ -72,7 +72,7 @@ my @tests = (
 	description => 'Backup, vma.gz',
 	volname     => "$storage_dir/dump/vzdump-qemu-16110-2020_03_30-21_11_40.vma.gz",
 	expected    => [
-	    'iso',
+	    'backup',
 	    'local:backup/vzdump-qemu-16110-2020_03_30-21_11_40.vma.gz',
 	],
     },
@@ -80,7 +80,7 @@ my @tests = (
 	description => 'Backup, vma.lzo',
 	volname     => "$storage_dir/dump/vzdump-qemu-16110-2020_03_30-21_12_45.vma.lzo",
 	expected    => [
-	    'iso',
+	    'backup',
 	    'local:backup/vzdump-qemu-16110-2020_03_30-21_12_45.vma.lzo',
 	],
     },
@@ -88,7 +88,7 @@ my @tests = (
 	description => 'Backup, vma',
 	volname     => "$storage_dir/dump/vzdump-qemu-16110-2020_03_30-21_13_55.vma",
 	expected    => [
-	    'iso',
+	    'backup',
 	    'local:backup/vzdump-qemu-16110-2020_03_30-21_13_55.vma',
 	],
     },
@@ -96,7 +96,7 @@ my @tests = (
 	description => 'Backup, tar.lzo',
 	volname     => "$storage_dir/dump/vzdump-lxc-16112-2020_03_30-21_39_30.tar.lzo",
 	expected    => [
-	    'iso',
+	    'backup',
 	    'local:backup/vzdump-lxc-16112-2020_03_30-21_39_30.tar.lzo',
 	],
     },
