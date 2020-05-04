@@ -3,6 +3,9 @@
 use strict;
 use warnings;
 
+# to ensure consistent ctime values on all systems
+$ENV{TZ} = 'UTC';
+
 use TAP::Harness;
 
 my $harness = TAP::Harness->new( { verbosity => -1 });
