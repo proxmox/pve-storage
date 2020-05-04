@@ -1,3 +1,29 @@
+libpve-storage-perl (6.1-7) pve; urgency=medium
+
+  * ZFSPoolPlugin: fix #2662 get volume size correctly
+
+  * disk_tests: improve nvme smart test
+
+  * fix nvme wearout parsing
+
+  * Fix #2705: cephfs: mount fails with bad option
+
+  * storage: replace built-in stat occurrences
+
+  * add lots of tests
+
+  * fix: backup ctime was from stat not file name
+
+  * fix: path_to_volume_id returned wrong content
+
+  * fix: add missing snippets subdir
+
+  * backup: compact regex for backup file filter
+
+  * fix: #2124 storage: add zstd support
+
+ -- Proxmox Support Team <support@proxmox.com>  Mon, 4 May 2020 14:02:26 +0200
+
 libpve-storage-perl (6.1-6) pve; urgency=medium
 
   * list_volumes: try to return vmid also for backups
