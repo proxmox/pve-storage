@@ -1394,9 +1394,13 @@ sub archive_info {
     my $info;
 
     my $volid = basename($archive);
-    if ($volid =~ /vzdump-(lxc|openvz|qemu)-\d+-(?:\d{4})_(?:\d{2})_(?:\d{2})-(?:\d{2})_(?:\d{2})_(?:\d{2})\.(tgz$|tar|vma)(?:\.(${\PVE::Storage::Plugin::COMPRESSOR_RE}))?$/) {
-	$info = decompressor_info($2, $3);
-	$info->{type} = $1;
+    if ($volid =~ /\.(tgz$|tar|vma)(?:\.(${\PVE::Storage::Plugin::COMPRESSOR_RE}))?$/) {
+	$info = decompressor_info($1, $2);
+	$info->{type} = 'unknown';
+
+	if ($volid =~ /vzdump-(lxc|openvz|qemu)-\d+-(?:\d{4})_(?:\d{2})_(?:\d{2})-(?:\d{2})_(?:\d{2})_(?:\d{2})/) {
+	    $info->{type} = $1;
+	}
     } else {
 	die "ERROR: couldn't determine format and compression type\n";
     }

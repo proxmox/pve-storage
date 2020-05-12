@@ -38,6 +38,16 @@ my $tests = [
 	    'compression'  => 'gz',
 	},
     },
+    {
+	description => 'Backup archive, none, tgz',
+	archive     => "backup/whatever-the-name_is_here.tgz",
+	expected    => {
+	    'type'         => 'unknown',
+	    'format'       => 'tar',
+	    'decompressor' => ['tar', '-z'],
+	    'compression'  => 'gz',
+	},
+    },
 ];
 
 # add new compression fromats to test
@@ -88,7 +98,6 @@ my $non_bkp_suffix = {
     'openvz' => [ 'zip', 'tgz.lzo', 'tar.bz2', 'zip.gz', '', ],
     'lxc'    => [ 'zip', 'tgz.lzo', 'tar.bz2', 'zip.gz', '', ],
     'qemu'   => [ 'vma.xz', 'vms.gz', 'vmx.zst', '', ],
-    'none'   => [ 'tar.gz', ],
 };
 
 # create tests for failed matches
