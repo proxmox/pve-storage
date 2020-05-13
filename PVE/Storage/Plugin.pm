@@ -925,7 +925,7 @@ my $get_subdir_files = sub {
 
 	my $st = File::stat::stat($fn);
 
-	next if S_ISDIR($st->mode);
+	next if (!$st || S_ISDIR($st->mode));
 
 	my $info;
 
