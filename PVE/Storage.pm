@@ -1437,7 +1437,7 @@ sub extract_vzdump_config_tar {
 	$raw .= "$output\n";
     };
 
-    PVE::Tools::run_command(['tar', '-xpOf', $archive, $file, '--occurrence'], outfunc => $out);
+    run_command(['tar', '-xpOf', $archive, $file, '--occurrence'], outfunc => $out);
 
     return wantarray ? ($raw, $file) : $raw;
 }
@@ -1445,23 +1445,17 @@ sub extract_vzdump_config_tar {
 sub extract_vzdump_config_vma {
     my ($archive, $comp) = @_;
 
-    my $cmd;
     my $raw = '';
-    my $out = sub {
-	my $output = shift;
-	$raw .= "$output\n";
-    };
-
+    my $out = sub { $raw .= "$_[0]\n"; };
 
     my $info = archive_info($archive);
     $comp //= $info->{compression};
     my $decompressor = $info->{decompressor};
 
     if ($comp) {
-	$cmd = [ [@$decompressor, $archive], ["vma", "config", "-"] ];
+	my $cmd = [ [@$decompressor, $archive], ["vma", "config", "-"] ];
 
-	# in some cases, lzop/zcat exits with 1 when its stdout pipe is
-	# closed early by vma, detect this and ignore the exit code later
+	# lzop/zcat exits with 1 when the pipe is closed early by vma, detect this and ignore the exit code later
 	my $broken_pipe;
 	my $errstring;
 	my $err = sub {
@@ -1473,23 +1467,18 @@ sub extract_vzdump_config_vma {
 	    }
 	};
 
-	# in other cases, the pipeline will exit with exit code 141
-	# because of the broken pipe, handle / ignore this as well
-	my $rc;
-	eval {
-	    $rc = PVE::Tools::run_command($cmd, outfunc => $out, errfunc => $err, noerr => 1);
-	};
+	my $rc = eval { run_command($cmd, outfunc => $out, errfunc => $err, noerr => 1) };
 	my $rerr = $@;
 
-	# use exit code if no stderr output and not just broken pipe
-	if (!$errstring && !$broken_pipe && $rc != 0 && $rc != 141) {
+	$broken_pipe ||= $rc == 141; # broken pipe from vma POV
+
+	if (!$errstring && !$broken_pipe && $rc != 0) {
 	    die "$rerr\n" if $rerr;
 	    die "config extraction failed with exit code $rc\n";
 	}
 	die "$errstring\n" if $errstring;
     } else {
-	# simple case without compression and weird piping behaviour
-	PVE::Tools::run_command(["vma", "config", $archive], outfunc => $out);
+	run_command(["vma", "config", $archive], outfunc => $out);
     }
 
     return wantarray ? ($raw, undef) : $raw;
