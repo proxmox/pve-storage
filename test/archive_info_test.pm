@@ -119,16 +119,12 @@ foreach my $virt (keys %$non_bkp_suffix) {
 
 plan tests => scalar @$tests;
 
-# run through tests array
-foreach my $tt (@$tests) {
-    my $description = $tt->{description};
-    my $archive = $tt->{archive};
-    my $expected = $tt->{expected};
-    my $got;
-    eval { $got = PVE::Storage::archive_info($archive) };
+for my $tt (@$tests) {
+
+    my $got = eval { PVE::Storage::archive_info($tt->{archive}) };
     $got = $@ if $@;
 
-    is_deeply($got, $expected, $description) || diag(explain($got));
+    is_deeply($got, $tt->{expected}, $tt->{description}) || diag(explain($got));
 }
 
 done_testing();
