@@ -1,3 +1,13 @@
+libpve-storage-perl (6.1-8) pve; urgency=medium
+
+  * backup archives: relax file name matching again to same level as before
+    6.2, only enforce as much as we require to be able to actually restore it.
+
+  * Fix #2737: avoid a noisy warning message when triggering a file deletion
+    over the API
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 15 May 2020 19:41:23 +0200
+
 libpve-storage-perl (6.1-7) pve; urgency=medium
 
   * ZFSPoolPlugin: fix #2662 get volume size correctly
