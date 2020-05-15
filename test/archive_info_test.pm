@@ -94,6 +94,7 @@ my $non_bkp_suffix = {
     'openvz' => [ 'zip', 'tgz.lzo', 'tar.bz2', 'zip.gz', '', ],
     'lxc'    => [ 'zip', 'tgz.lzo', 'tar.bz2', 'zip.gz', '', ],
     'qemu'   => [ 'vma.xz', 'vms.gz', 'vmx.zst', '', ],
+    'none'   => [ 'tar.gz', ],
 };
 
 # create tests for failed matches
