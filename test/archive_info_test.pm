@@ -40,9 +40,9 @@ my $tests = [
     },
     {
 	description => 'Backup archive, none, tgz',
-	archive     => "backup/whatever-the-name_is_here.tgz",
+	archive     => "backup/vzdump-qemu-$vmid-whatever-the-name_is_here.tgz",
 	expected    => {
-	    'type'         => 'unknown',
+	    'type'         => 'qemu',
 	    'format'       => 'tar',
 	    'decompressor' => ['tar', '-z'],
 	    'compression'  => 'gz',
