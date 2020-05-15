@@ -71,10 +71,10 @@ my $bkp_suffix = {
 };
 
 # create more test cases for backup files matches
-foreach my $virt (keys %$bkp_suffix) {
-    my ($format, $decomp) = @{ $bkp_suffix->{$virt} };
+for my $virt (sort keys %$bkp_suffix) {
+    my ($format, $decomp) = $bkp_suffix->{$virt}->@*;
 
-    foreach my $suffix (keys %$decomp) {
+    for my $suffix (sort keys %$decomp) {
 	my @arr = (
 	    {
 		description => "Backup archive, $virt, $format.$suffix",
@@ -101,7 +101,7 @@ my $non_bkp_suffix = {
 };
 
 # create tests for failed matches
-foreach my $virt (keys %$non_bkp_suffix) {
+for my $virt (sort keys %$non_bkp_suffix) {
     my $suffix = $non_bkp_suffix->{$virt};
     foreach my $s (@$suffix) {
 	my @arr = (
