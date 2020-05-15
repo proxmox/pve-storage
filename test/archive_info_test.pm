@@ -75,20 +75,16 @@ for my $virt (sort keys %$bkp_suffix) {
     my ($format, $decomp) = $bkp_suffix->{$virt}->@*;
 
     for my $suffix (sort keys %$decomp) {
-	my @arr = (
-	    {
-		description => "Backup archive, $virt, $format.$suffix",
-		archive     => "backup/vzdump-$virt-$vmid-2020_03_30-21_12_40.$format.$suffix",
-		expected    => {
-		    'type'         => "$virt",
-		    'format'       => "$format",
-		    'decompressor' => $decomp->{$suffix},
-		    'compression'  => "$suffix",
-		},
+	push @$tests, {
+	    description => "Backup archive, $virt, $format.$suffix",
+	    archive     => "backup/vzdump-$virt-$vmid-2020_03_30-21_12_40.$format.$suffix",
+	    expected    => {
+		'type'         => "$virt",
+		'format'       => "$format",
+		'decompressor' => $decomp->{$suffix},
+		'compression'  => "$suffix",
 	    },
-	);
-
-	push @$tests, @arr;
+	};
     }
 }
 
@@ -103,16 +99,12 @@ my $non_bkp_suffix = {
 # create tests for failed matches
 for my $virt (sort keys %$non_bkp_suffix) {
     my $suffix = $non_bkp_suffix->{$virt};
-    foreach my $s (@$suffix) {
-	my @arr = (
-	    {
-		description => "Failed match: Backup archive, $virt, $s",
-		archive     => "backup/vzdump-$virt-$vmid-2020_03_30-21_12_40.$s",
-		expected    => "ERROR: couldn't determine format and compression type\n",
-	    },
-	);
-
-	push @$tests, @arr;
+    for my $s (@$suffix) {
+	push @$tests, {
+	    description => "Failed match: Backup archive, $virt, $s",
+	    archive     => "backup/vzdump-$virt-$vmid-2020_03_30-21_12_40.$s",
+	    expected    => "ERROR: couldn't determine format and compression type\n",
+	};
     }
 }
 
