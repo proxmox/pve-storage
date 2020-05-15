@@ -1402,7 +1402,7 @@ sub archive_info {
 	    $info->{type} = $1;
 	}
     } else {
-	die "ERROR: couldn't determine format and compression type\n";
+	die "ERROR: couldn't determine archive info from '$archive'\n";
     }
 
     return $info;

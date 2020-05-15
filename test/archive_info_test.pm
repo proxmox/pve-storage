@@ -100,10 +100,11 @@ my $non_bkp_suffix = {
 for my $virt (sort keys %$non_bkp_suffix) {
     my $suffix = $non_bkp_suffix->{$virt};
     for my $s (@$suffix) {
+	my $archive = "backup/vzdump-$virt-$vmid-2020_03_30-21_12_40.$s";
 	push @$tests, {
 	    description => "Failed match: Backup archive, $virt, $s",
-	    archive     => "backup/vzdump-$virt-$vmid-2020_03_30-21_12_40.$s",
-	    expected    => "ERROR: couldn't determine format and compression type\n",
+	    archive     => $archive,
+	    expected    => "ERROR: couldn't determine archive info from '$archive'\n",
 	};
     }
 }
