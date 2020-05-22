@@ -258,7 +258,7 @@ sub ceph_remove_keyfile {
 my $ceph_version_parser = sub {
     my $ceph_version = shift;
     # FIXME this is the same as pve-manager PVE::Ceph::Tools get_local_version
-    if ($ceph_version =~ /^ceph.*\s(\d+(?:\.\d+)+(?:-pve\d+)?)\s+(?:\(([a-zA-Z0-9]+)\))?/) {
+    if ($ceph_version =~ /^ceph.*\sv?(\d+(?:\.\d+)+(?:-pve\d+)?)\s+(?:\(([a-zA-Z0-9]+)\))?/) {
 	my ($version, $buildcommit) = ($1, $2);
 	my $subversions = [ split(/\.|-/, $version) ];
 
