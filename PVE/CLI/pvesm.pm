@@ -204,7 +204,7 @@ __PACKAGE__->register_method ({
     name => 'export',
     path => 'export',
     method => 'GET',
-    description => "Export a volume.",
+    description => "Used internally to export a volume.",
     protected => 1,
     parameters => {
 	additionalProperties => 0,
@@ -279,7 +279,7 @@ __PACKAGE__->register_method ({
     name => 'import',
     path => 'import',
     method => 'PUT',
-    description => "Import a volume.",
+    description => "Used internally to import a volume.",
     protected => 1,
     parameters => {
 	additionalProperties => 0,
