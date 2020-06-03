@@ -115,6 +115,10 @@ sub run_raw_client_cmd {
 
     local $ENV{PBS_FINGERPRINT} = $scfg->{fingerprint};
 
+    # no ascii-art on task logs
+    local $ENV{PROXMOX_OUTPUT_NO_BORDER} = 1;
+    local $ENV{PROXMOX_OUTPUT_NO_HEADER} = 1;
+
     if (my $logfunc = $opts{logfunc}) {
 	$logfunc->("run bps command: " . join(' ', @$cmd));
     }
