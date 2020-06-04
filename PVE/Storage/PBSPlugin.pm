@@ -291,6 +291,7 @@ sub list_volumes {
 
 	next if !($btype eq 'vm' || $btype eq 'ct');
 	next if $bid !~ m/^\d+$/;
+	next if defined($vmid) && $bid ne $vmid;
 
 	my $btime = strftime("%FT%TZ", gmtime($epoch));
 	my $volname = "backup/${btype}/${bid}/${btime}";
