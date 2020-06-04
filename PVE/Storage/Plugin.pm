@@ -8,7 +8,6 @@ use File::chdir;
 use File::Path;
 use File::Basename;
 use File::stat qw();
-use Time::Local qw(timelocal);
 
 use PVE::Tools qw(run_command);
 use PVE::JSONSchema qw(get_standard_option);
@@ -942,20 +941,18 @@ my $get_subdir_files = sub {
 	} elsif ($tt eq 'backup') {
 	    next if defined($vmid) && $fn !~  m/\S+-$vmid-\S+/;
 	    next if $fn !~ m!/([^/]+\.(tgz|(?:(?:tar|vma)(?:\.(${\COMPRESSOR_RE}))?)))$!;
-
 	    my $format = $2;
 	    $fn = $1;
 	    $info = { volid => "$sid:backup/$fn", format => $format };
 
-	    if ($fn =~ m!^vzdump\-(?:lxc|qemu)\-(?:[1-9][0-9]{2,8})\-(\d{4})_(\d{2})_(\d{2})\-(\d{2})_(\d{2})_(\d{2})\.${format}$!) {
-		my $epoch = timelocal($6, $5, $4, $3, $2-1, $1 - 1900);
-		$info->{ctime} = $epoch;
-	    }
+	    my $archive_info = eval { PVE::Storage::archive_info($fn) };
+
+	    $info->{ctime} = $archive_info->{ctime}
+		if defined($archive_info) && defined($archive_info->{ctime});
 
 	    if (defined($vmid) || $fn =~ m!\-([1-9][0-9]{2,8})\-[^/]+\.${format}$!) {
 		$info->{vmid} = $vmid // $1;
 	    }
-
 
 	} elsif ($tt eq 'snippets') {
 

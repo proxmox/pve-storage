@@ -12,6 +12,7 @@ use File::Basename;
 use File::Path;
 use Cwd 'abs_path';
 use Socket;
+use Time::Local qw(timelocal);
 
 use PVE::Tools qw(run_command file_read_firstline dir_glob_foreach $IPV6RE);
 use PVE::Cluster qw(cfs_read_file cfs_write_file cfs_lock_file);
@@ -1394,9 +1395,19 @@ sub archive_info {
     my $info;
 
     my $volid = basename($archive);
-    if ($volid =~ /vzdump-(lxc|openvz|qemu)-\d+-.+\.(tgz$|tar|vma)(?:\.(${\PVE::Storage::Plugin::COMPRESSOR_RE}))?$/) {
-	$info = decompressor_info($2, $3);
-	$info->{type} = $1;
+    if ($volid =~ /^vzdump-(lxc|openvz|qemu)-\d+-.+\.(tgz$|tar|vma)(?:\.(${\PVE::Storage::Plugin::COMPRESSOR_RE}))?$/) {
+	my ($type, $format, $comp) = ($1, $2, $3);
+	my $format_re = defined($comp) ? "$format.$comp" : "$format";
+	$info = decompressor_info($format, $comp);
+	$info->{type} = $type;
+
+	if ($volid =~ /^vzdump-${type}-([1-9][0-9]{2,8})-(\d{4})_(\d{2})_(\d{2})-(\d{2})_(\d{2})_(\d{2})\.${format_re}$/) {
+	    $info->{vmid} = int($1);
+	    $info->{ctime} = timelocal($7, $6, $5, $4, $3 - 1, $2 - 1900);
+	    $info->{is_std_name} = 1;
+	} else {
+	    $info->{is_std_name} = 0;
+	}
     } else {
 	die "ERROR: couldn't determine archive info from '$archive'\n";
     }

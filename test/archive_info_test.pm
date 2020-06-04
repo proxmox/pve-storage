@@ -26,6 +26,9 @@ my $tests = [
 	    'format'       => 'tar',
 	    'decompressor' => ['tar', '-z'],
 	    'compression'  => 'gz',
+	    'vmid'         => $vmid,
+	    'ctime'        => 1585604370,
+	    'is_std_name'  => 1,
 	},
     },
     {
@@ -36,6 +39,9 @@ my $tests = [
 	    'format'       => 'tar',
 	    'decompressor' => ['tar', '-z'],
 	    'compression'  => 'gz',
+	    'vmid'         => $vmid,
+	    'ctime'        => 1585604370,
+	    'is_std_name'  => 1,
 	},
     },
     {
@@ -46,6 +52,7 @@ my $tests = [
 	    'format'       => 'tar',
 	    'decompressor' => ['tar', '-z'],
 	    'compression'  => 'gz',
+	    'is_std_name'  => 0,
 	},
     },
 ];
@@ -83,6 +90,9 @@ for my $virt (sort keys %$bkp_suffix) {
 		'format'       => "$format",
 		'decompressor' => $decomp->{$suffix},
 		'compression'  => "$suffix",
+		'vmid'         => $vmid,
+		'ctime'        => 1585602760,
+		'is_std_name'  => 1,
 	    },
 	};
     }
