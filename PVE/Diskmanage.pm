@@ -359,6 +359,11 @@ sub get_udev_info {
 	$data->{wwn} = $1;
     }
 
+    if ($info =~ m/^E: DEVLINKS=(.+)$/m) {
+	my @devlinks = grep(m#^/dev/disk/by-id/(ata|scsi|nvme(?!-eui))#, split (/ /, $1));
+	$data->{by_id_link} = $devlinks[0] if defined($devlinks[0]);
+    }
+
     return $data;
 }
 
@@ -583,6 +588,9 @@ sub get_disks {
 	    devpath => $devpath,
 	    wearout => $wearout,
 	};
+
+	my $by_id_link = $data->{by_id_link};
+	$disklist->{$dev}->{by_id_link} = $by_id_link if defined($by_id_link);
 
 	my $osdid = -1;
 	my $bluestore = 0;

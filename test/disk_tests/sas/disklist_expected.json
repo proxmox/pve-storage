@@ -11,6 +11,7 @@
 	"rpm" : -1,
 	"size" : 5120000,
 	"serial" : "SER2",
-	"wearout" : "N/A"
+	"wearout" : "N/A",
+	"by_id_link" : "/dev/disk/by-id/scsi-00000000000000000"
     }
 }
