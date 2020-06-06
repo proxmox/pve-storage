@@ -945,10 +945,9 @@ my $get_subdir_files = sub {
 	    $fn = $1;
 	    $info = { volid => "$sid:backup/$fn", format => $format };
 
-	    my $archive_info = eval { PVE::Storage::archive_info($fn) };
+	    my $archive_info = eval { PVE::Storage::archive_info($fn) } // {};
 
-	    $info->{ctime} = $archive_info->{ctime}
-		if defined($archive_info) && defined($archive_info->{ctime});
+	    $info->{ctime} = $archive_info->{ctime} if defined($archive_info->{ctime});
 
 	    if (defined($vmid) || $fn =~ m!\-([1-9][0-9]{2,8})\-[^/]+\.${format}$!) {
 		$info->{vmid} = $vmid // $1;
