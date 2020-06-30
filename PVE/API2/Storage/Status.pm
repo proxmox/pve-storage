@@ -19,19 +19,19 @@ use PVE::Exception qw(raise_param_exc);
 use base qw(PVE::RESTHandler);
 
 __PACKAGE__->register_method ({
-    subclass => "PVE::API2::Storage::Content", 
+    subclass => "PVE::API2::Storage::Content",
     # set fragment delimiter (no subdirs) - we need that, because volume
-    # IDs may contain a slash '/' 
-    fragmentDelimiter => '', 
+    # IDs may contain a slash '/'
+    fragmentDelimiter => '',
     path => '{storage}/content',
 });
 
 __PACKAGE__->register_method ({
-    name => 'index', 
+    name => 'index',
     path => '',
     method => 'GET',
     description => "Get status for all datastores.",
-    permissions => { 
+    permissions => {
 	description => "Only list entries where you have 'Datastore.Audit' or 'Datastore.AllocateSpace' permissions on '/storage/<storage>'",
 	user => 'all',
     },
@@ -46,7 +46,7 @@ __PACKAGE__->register_method ({
 		optional => 1,
 		completion => \&PVE::Storage::complete_storage_enabled,
 	    }),
-	    content => { 
+	    content => {
 		description => "Only list stores which support this content type.",
 		type => 'string', format => 'pve-storage-content-list',
 		optional => 1,
@@ -182,10 +182,10 @@ __PACKAGE__->register_method ({
 
 __PACKAGE__->register_method ({
     name => 'diridx',
-    path => '{storage}', 
+    path => '{storage}',
     method => 'GET',
     description => "",
-    permissions => { 
+    permissions => {
 	check => ['perm', '/storage/{storage}', ['Datastore.Audit', 'Datastore.AllocateSpace'], any => 1],
     },
     parameters => {
@@ -214,17 +214,17 @@ __PACKAGE__->register_method ({
 	    { subdir => 'upload' },
 	    { subdir => 'rrd' },
 	    { subdir => 'rrddata' },
-	    ];
-	
+	];
+
 	return $res;
     }});
 
 __PACKAGE__->register_method ({
     name => 'read_status',
-    path => '{storage}/status', 
+    path => '{storage}/status',
     method => 'GET',
     description => "Read storage status.",
-    permissions => { 
+    permissions => {
 	check => ['perm', '/storage/{storage}', ['Datastore.Audit', 'Datastore.AllocateSpace'], any => 1],
     },
     protected => 1,
@@ -251,16 +251,16 @@ __PACKAGE__->register_method ({
 
 	raise_param_exc({ storage => "No such storage." })
 	    if !defined($data);
-    
+
 	return $data;
     }});
 
 __PACKAGE__->register_method ({
     name => 'rrd',
-    path => '{storage}/rrd', 
+    path => '{storage}/rrd',
     method => 'GET',
     description => "Read storage RRD statistics (returns PNG).",
-    permissions => { 
+    permissions => {
 	check => ['perm', '/storage/{storage}', ['Datastore.Audit', 'Datastore.AllocateSpace'], any => 1],
     },
     protected => 1,
@@ -297,17 +297,16 @@ __PACKAGE__->register_method ({
 	my ($param) = @_;
 
 	return PVE::RRD::create_rrd_graph(
-	    "pve2-storage/$param->{node}/$param->{storage}", 
+	    "pve2-storage/$param->{node}/$param->{storage}",
 	    $param->{timeframe}, $param->{ds}, $param->{cf});
-					      
     }});
 
 __PACKAGE__->register_method ({
     name => 'rrddata',
-    path => '{storage}/rrddata', 
+    path => '{storage}/rrddata',
     method => 'GET',
     description => "Read storage RRD statistics.",
-    permissions => { 
+    permissions => {
 	check => ['perm', '/storage/{storage}', ['Datastore.Audit', 'Datastore.AllocateSpace'], any => 1],
     },
     protected => 1,
@@ -341,18 +340,18 @@ __PACKAGE__->register_method ({
 	my ($param) = @_;
 
 	return PVE::RRD::create_rrd_data(
-	    "pve2-storage/$param->{node}/$param->{storage}", 
-	    $param->{timeframe}, $param->{cf});	      
+	    "pve2-storage/$param->{node}/$param->{storage}",
+	    $param->{timeframe}, $param->{cf});
     }});
 
-# makes no sense for big images and backup files (because it 
+# makes no sense for big images and backup files (because it
 # create a copy of the file).
 __PACKAGE__->register_method ({
     name => 'upload',
-    path => '{storage}/upload', 
+    path => '{storage}/upload',
     method => 'POST',
     description => "Upload templates and ISO images.",
-    permissions => { 
+    permissions => {
 	check => ['perm', '/storage/{storage}', ['Datastore.AllocateTemplate']],
     },
     protected => 1,
@@ -361,15 +360,15 @@ __PACKAGE__->register_method ({
 	properties => {
 	    node => get_standard_option('pve-node'),
 	    storage => get_standard_option('pve-storage-id'),
-	    content => { 
+	    content => {
 		description => "Content type.",
 		type => 'string', format => 'pve-storage-content',
 	    },
-	    filename => { 
+	    filename => {
 		description => "The name of the file to create.",
 		type => 'string',
 	    },
-	    tmpfilename => { 
+	    tmpfilename => {
 		description => "The source file name. This parameter is usually set by the REST handler. You can only overwrite it when connecting to the trusted port on localhost.",
 		type => 'string',
 		optional => 1,
@@ -441,10 +440,10 @@ __PACKAGE__->register_method ({
 
 	    my @remcmd = ('/usr/bin/ssh', @ssh_options, $remip, '--');
 
-	    eval { 
+	    eval {
 		# activate remote storage
-		PVE::Tools::run_command([@remcmd, '/usr/sbin/pvesm', 'status', 
-					 '--storage', $param->{storage}]); 
+		PVE::Tools::run_command([@remcmd, '/usr/sbin/pvesm', 'status',
+					 '--storage', $param->{storage}]);
 	    };
 	    die "can't activate storage '$param->{storage}' on node '$node': $@\n" if $@;
 
@@ -458,9 +457,9 @@ __PACKAGE__->register_method ({
 	    $cmd = ['cp', '--', $tmpfilename, $dest];
 	}
 
-	my $worker = sub  {
+	my $worker = sub {
 	    my $upid = shift;
-	    
+
 	    print "starting file import from: $tmpfilename\n";
 	    print "target node: $node\n";
 	    print "target file: $dest\n";
@@ -484,5 +483,5 @@ __PACKAGE__->register_method ({
 
 	return $upid;
    }});
-    
+
 1;
