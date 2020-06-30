@@ -1390,15 +1390,18 @@ sub archive_info {
     my $info;
 
     my $volid = basename($archive);
-    if ($volid =~ /^vzdump-(lxc|openvz|qemu)-\d+-.+\.(tgz$|tar|vma)(?:\.(${\PVE::Storage::Plugin::COMPRESSOR_RE}))?$/) {
-	my ($type, $format, $comp) = ($1, $2, $3);
+    if ($volid =~ /^(vzdump-(lxc|openvz|qemu)-\d+-.+\.(tgz$|tar|vma)(?:\.(${\PVE::Storage::Plugin::COMPRESSOR_RE}))?)$/) {
+	my $filename = "$1"; # untaint
+	my ($type, $format, $comp) = ($2, $3, $4);
 	my $format_re = defined($comp) ? "$format.$comp" : "$format";
 	$info = decompressor_info($format, $comp);
+	$info->{filename} = $filename;
 	$info->{type} = $type;
 
-	if ($volid =~ /^vzdump-${type}-([1-9][0-9]{2,8})-(\d{4})_(\d{2})_(\d{2})-(\d{2})_(\d{2})_(\d{2})\.${format_re}$/) {
-	    $info->{vmid} = int($1);
-	    $info->{ctime} = timelocal($7, $6, $5, $4, $3 - 1, $2 - 1900);
+	if ($volid =~ /^(vzdump-${type}-([1-9][0-9]{2,8})-(\d{4})_(\d{2})_(\d{2})-(\d{2})_(\d{2})_(\d{2}))\.${format_re}$/) {
+	    $info->{logfilename} = "$1.log";
+	    $info->{vmid} = int($2);
+	    $info->{ctime} = timelocal($8, $7, $6, $5, $4 - 1, $3 - 1900);
 	    $info->{is_std_name} = 1;
 	} else {
 	    $info->{is_std_name} = 0;
