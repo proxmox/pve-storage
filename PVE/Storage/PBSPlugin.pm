@@ -87,6 +87,14 @@ sub pbs_get_password {
     return PVE::Tools::file_read_firstline($pwfile);
 }
 
+sub print_volid {
+    my ($storeid, $btype, $bid, $btime) = @_;
+
+    my $time_str = strftime("%FT%TZ", gmtime($btime));
+    my $volname = "backup/${btype}/${bid}/${time_str}";
+
+    return "${storeid}:${volname}";
+}
 
 sub run_raw_client_cmd {
     my ($scfg, $storeid, $client_cmd, $param, %opts) = @_;
@@ -293,10 +301,7 @@ sub list_volumes {
 	next if $bid !~ m/^\d+$/;
 	next if defined($vmid) && $bid ne $vmid;
 
-	my $btime = strftime("%FT%TZ", gmtime($epoch));
-	my $volname = "backup/${btype}/${bid}/${btime}";
-
-	my $volid = "$storeid:$volname";
+	my $volid = print_volid($storeid, $btype, $bid, $epoch);
 
 	my $info = {
 	    volid => $volid,
