@@ -1199,10 +1199,10 @@ sub scan_cifs {
     if (defined($user)) {
 	die "password is required\n" if !defined($password);
 	push @$cmd, '-U', "$user\%$password";
-	push @$cmd, '-W', $domain if defined($domain);
     } else {
 	push @$cmd, '-N';
     }
+    push @$cmd, '-W', $domain if defined($domain);
 
     my $res = {};
     my $err = '';
