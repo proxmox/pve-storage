@@ -17,7 +17,7 @@ use Time::Local qw(timelocal);
 use PVE::Tools qw(run_command file_read_firstline dir_glob_foreach $IPV6RE);
 use PVE::Cluster qw(cfs_read_file cfs_write_file cfs_lock_file);
 use PVE::DataCenterConfig;
-use PVE::Exception qw(raise_param_exc);
+use PVE::Exception qw(raise_param_exc raise);
 use PVE::JSONSchema;
 use PVE::INotify;
 use PVE::RPCEnvironment;
@@ -1205,9 +1205,12 @@ sub scan_cifs {
     }
 
     my $res = {};
+    my $err = '';
     run_command($cmd,
 	noerr => 1,
-	errfunc => sub { },
+	errfunc => sub {
+	    $err .= "$_[0]\n"
+	},
 	outfunc => sub {
 	    my $line = shift;
 	    if ($line =~ m/(\S+)\s*Disk\s*(\S*)/) {
@@ -1217,6 +1220,7 @@ sub scan_cifs {
 	    }
 	},
     );
+    raise($err) if $err;
 
     return $res;
 }
