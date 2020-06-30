@@ -1413,6 +1413,23 @@ sub archive_info {
     return $info;
 }
 
+sub archive_remove {
+    my ($archive_path) = @_;
+
+    my $dirname = dirname($archive_path);
+    my $archive_info = eval { archive_info($archive_path) } // {};
+    my $logfn = $archive_info->{logfilename};
+
+    unlink $archive_path or die "removing archive $archive_path failed: $!\n";
+
+    if (defined($logfn)) {
+	my $logpath = "$dirname/$logfn";
+	if (-e $logpath) {
+	    unlink $logpath or warn "removing log file $logpath failed: $!\n";
+	}
+    }
+}
+
 sub extract_vzdump_config_tar {
     my ($archive, $conf_re) = @_;
 
