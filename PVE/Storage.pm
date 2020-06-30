@@ -1191,12 +1191,10 @@ sub scan_nfs {
 sub scan_cifs {
     my ($server_in, $user, $password, $domain) = @_;
 
-    my $server;
-    if (!($server = resolv_server ($server_in))) {
-	die "unable to resolve address for server '${server_in}'\n";
-    }
+    my $server = resolv_server($server_in);
+    die "unable to resolve address for server '${server_in}'\n" if !$server;
 
-    # we support only Windows grater than 2012 cifsscan so use smb3
+    # we only support Windows 2012 and newer, so just use smb3
     my $cmd = ['/usr/bin/smbclient', '-m', 'smb3', '-d', '0', '-L', $server];
     if (defined($user)) {
 	die "password is required\n" if !defined($password);
@@ -1208,16 +1206,16 @@ sub scan_cifs {
 
     my $res = {};
     run_command($cmd,
-		outfunc => sub {
-		    my $line = shift;
-		    if ($line =~ m/(\S+)\s*Disk\s*(\S*)/) {
-			$res->{$1} = $2;
-		    } elsif ($line =~ m/(NT_STATUS_(\S*))/) {
-			$res->{$1} = '';
-		    }
-		},
-		errfunc => sub {},
-		noerr => 1
+	noerr => 1,
+	errfunc => sub { },
+	outfunc => sub {
+	    my $line = shift;
+	    if ($line =~ m/(\S+)\s*Disk\s*(\S*)/) {
+		$res->{$1} = $2;
+	    } elsif ($line =~ m/(NT_STATUS_(\S*))/) {
+		$res->{$1} = '';
+	    }
+	},
     );
 
     return $res;
