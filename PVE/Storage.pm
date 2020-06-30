@@ -1199,7 +1199,7 @@ sub scan_cifs {
     # we support only Windows grater than 2012 cifsscan so use smb3
     my $cmd = ['/usr/bin/smbclient', '-m', 'smb3', '-d', '0', '-L', $server];
     if (defined($user)) {
-	die "password is required" if !defined($password);
+	die "password is required\n" if !defined($password);
 	push @$cmd, '-U', "$user\%$password";
 	push @$cmd, '-W', $domain if defined($domain);
     } else {
