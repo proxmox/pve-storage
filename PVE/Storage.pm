@@ -1219,7 +1219,9 @@ sub scan_cifs {
 	    }
 	},
     );
-    raise($err) if $err;
+    # only die if we got no share, else it's just some followup check error
+    # (like workgroup querying)
+    raise($err) if $err && !%$res;
 
     return $res;
 }
