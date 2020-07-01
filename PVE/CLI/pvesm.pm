@@ -434,7 +434,7 @@ __PACKAGE__->register_method ({
 	my $res = PVE::Storage::scan_nfs($server);
 
 	my $data = [];
-	foreach my $k (keys %$res) {
+	foreach my $k (sort keys %$res) {
 	    push @$data, { path => $k, options => $res->{$k} };
 	}
 	return $data;
@@ -503,7 +503,7 @@ __PACKAGE__->register_method ({
 	my $res = PVE::Storage::scan_cifs($server, $username, $password, $domain);
 
 	my $data = [];
-	foreach my $k (keys %$res) {
+	foreach my $k (sort keys %$res) {
 	    push @$data, { share => $k, description => $res->{$k} };
 	}
 
@@ -553,7 +553,7 @@ __PACKAGE__->register_method ({
 	my $res = PVE::Storage::scan_nfs($server);
 
 	my $data = [];
-	foreach my $path (keys %$res) {
+	foreach my $path (sort keys %$res) {
 	    if ($path =~ m!^/([^\s/]+)$!) {
 		push @$data, { volname => $1 };
 	    }
@@ -603,7 +603,7 @@ __PACKAGE__->register_method ({
 	my $res = PVE::Storage::scan_iscsi($param->{portal});
 
 	my $data = [];
-	foreach my $k (keys %$res) {
+	foreach my $k (sort keys %$res) {
 	    push @$data, { target => $k, portal => join(',', @{$res->{$k}}) };
 	}
 
