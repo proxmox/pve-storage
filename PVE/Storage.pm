@@ -1198,7 +1198,6 @@ sub scan_cifs {
     my $cmd = ['/usr/bin/smbclient', '-m', 'smb3', '-d', '0', '-L', $server];
     push @$cmd, '-N' if !defined($user);
     push @$cmd, '-W', $domain if defined($domain);
-    die "password is required\n" if defined($user) && !defined($password);
 
     local $ENV{USER} = $user if defined($user);
     local $ENV{PASSWD} = $password if defined($password);
