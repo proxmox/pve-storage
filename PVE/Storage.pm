@@ -1213,8 +1213,9 @@ sub scan_cifs {
 	    my $line = shift;
 	    if ($line =~ m/(\S+)\s*Disk\s*(\S*)/) {
 		$res->{$1} = $2;
-	    } elsif ($line =~ m/(NT_STATUS_(\S*))/) {
-		$res->{$1} = '';
+	    } elsif ($line =~ m/(NT_STATUS_(\S+))/) {
+		my $status = $1;
+		$err .= "unexpected status: $1\n" if uc($1) ne 'SUCCESS';
 	    }
 	},
     );

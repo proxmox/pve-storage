@@ -504,7 +504,6 @@ __PACKAGE__->register_method ({
 
 	my $data = [];
 	foreach my $k (keys %$res) {
-	    next if $k =~ m/NT_STATUS_/;
 	    push @$data, { share => $k, description => $res->{$k} };
 	}
 
