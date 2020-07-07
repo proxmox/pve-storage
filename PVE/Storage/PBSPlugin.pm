@@ -128,7 +128,7 @@ sub run_raw_client_cmd {
     local $ENV{PROXMOX_OUTPUT_NO_HEADER} = 1;
 
     if (my $logfunc = $opts{logfunc}) {
-	$logfunc->("run bps command: " . join(' ', @$cmd));
+	$logfunc->("run: " . join(' ', @$cmd));
     }
 
     run_command($cmd, %opts);
