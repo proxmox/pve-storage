@@ -151,11 +151,11 @@ sub load_stable_scsi_paths {
     my $stabledir = "/dev/disk/by-id";
 
     if (my $dh = IO::Dir->new($stabledir)) {
-       while (defined(my $tmp = $dh->read)) {
+	foreach my $tmp (sort $dh->read) {
            # exclude filenames with part in name (same disk but partitions)
            # use only filenames with scsi(with multipath i have the same device
 	   # with dm-uuid-mpath , dm-name and scsi in name)
-           if($tmp !~ m/-part\d+$/ && $tmp =~ m/^scsi-/) {
+           if($tmp !~ m/-part\d+$/ && ($tmp =~ m/^scsi-/ || $tmp =~ m/^dm-uuid-mpath-/)) {
                  my $path = "$stabledir/$tmp";
                  my $bdevdest = readlink($path);
 		 if ($bdevdest && $bdevdest =~ m|^../../([^/]+)|) {
