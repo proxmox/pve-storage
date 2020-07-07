@@ -1,3 +1,19 @@
+libpve-storage-perl (6.2-1) pve; urgency=medium
+
+  * ceph: get_local_version: allow optional v prefix for version number
+
+  * fix #2777 create zpools with stable dev paths
+
+  * docs: Clarify that pvesm export is mostly internal
+
+  * fix #2763: Revert "storage_migrate: check if target storage supports content type"
+
+  * improve CIFS server scanning
+
+  * fix #2460: use dm-uuid-mpath- as fallback for multipath
+
+ -- Proxmox Support Team <support@proxmox.com>  Tue, 07 Jul 2020 19:23:50 +0200
+
 libpve-storage-perl (6.1-8) pve; urgency=medium
 
   * backup archives: relax file name matching again to same level as before
