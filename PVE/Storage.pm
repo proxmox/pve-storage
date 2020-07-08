@@ -1393,7 +1393,7 @@ sub archive_info {
     my $info;
 
     my $volid = basename($archive);
-    if ($volid =~ /^(vzdump-(lxc|openvz|qemu)-\d+-.+\.(tgz$|tar|vma)(?:\.(${\PVE::Storage::Plugin::COMPRESSOR_RE}))?)$/) {
+    if ($volid =~ /^(vzdump-(lxc|openvz|qemu)-.+\.(tgz$|tar|vma)(?:\.(${\PVE::Storage::Plugin::COMPRESSOR_RE}))?)$/) {
 	my $filename = "$1"; # untaint
 	my ($type, $format, $comp) = ($2, $3, $4);
 	my $format_re = defined($comp) ? "$format.$comp" : "$format";
