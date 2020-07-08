@@ -19,6 +19,36 @@ my $vmid = 16110;
 my $tests = [
     # backup archives
     {
+	description => 'Backup archive, lxc, tgz, future millenium',
+	archive     => "backup/vzdump-lxc-$vmid-3070_01_01-00_00_00.tgz",
+	expected    => {
+	    'filename'     => "vzdump-lxc-$vmid-3070_01_01-00_00_00.tgz",
+	    'logfilename'  => "vzdump-lxc-$vmid-3070_01_01-00_00_00.log",
+	    'type'         => 'lxc',
+	    'format'       => 'tar',
+	    'decompressor' => ['tar', '-z'],
+	    'compression'  => 'gz',
+	    'vmid'         => $vmid,
+	    'ctime'        => 60*60*24 * (365*1100 + 267),
+	    'is_std_name'  => 1,
+	},
+    },
+    {
+	description => 'Backup archive, lxc, tgz, very old',
+	archive     => "backup/vzdump-lxc-$vmid-1970_01_01-02_00_30.tgz",
+	expected    => {
+	    'filename'     => "vzdump-lxc-$vmid-1970_01_01-02_00_30.tgz",
+	    'logfilename'  => "vzdump-lxc-$vmid-1970_01_01-02_00_30.log",
+	    'type'         => 'lxc',
+	    'format'       => 'tar',
+	    'decompressor' => ['tar', '-z'],
+	    'compression'  => 'gz',
+	    'vmid'         => $vmid,
+	    'ctime'        => 60*60*2 + 30,
+	    'is_std_name'  => 1,
+	},
+    },
+    {
 	description => 'Backup archive, lxc, tgz',
 	archive     => "backup/vzdump-lxc-$vmid-2020_03_30-21_39_30.tgz",
 	expected    => {
