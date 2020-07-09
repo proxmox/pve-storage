@@ -36,9 +36,11 @@ sub param_mapping {
 	    return PVE::PTY::read_password("Enter Password: ");
 	},
     });
+
     my $mapping = {
 	'cifsscan' => [ $password_map ],
-	'create' => [ $password_map ],
+	'create' => [ $password_map, 'encryption_key' ],
+	'update' => [ $password_map, 'encryption_key' ],
     };
     return $mapping->{$name};
 }
