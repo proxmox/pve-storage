@@ -449,6 +449,9 @@ sub status {
 
 sub activate_storage {
     my ($class, $storeid, $scfg, $cache) = @_;
+
+    run_client_cmd($scfg, $storeid, "status");
+
     return 1;
 }
 
