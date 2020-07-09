@@ -107,7 +107,7 @@ sub properties {
 	    type => 'string',
 	},
 	password => {
-	    description => "Password for CIFS share.",
+	    description => "Password for accessing the share/datastore.",
 	    type => 'string',
 	    maxLength => 256,
 	},
