@@ -4,12 +4,12 @@ package PVE::Storage::PBSPlugin;
 
 use strict;
 use warnings;
-use POSIX qw(strftime);
-use IO::File;
+use Fcntl qw(F_GETFD F_SETFD FD_CLOEXEC);
 use HTTP::Request;
-use LWP::UserAgent;
+use IO::File;
 use JSON;
-use Data::Dumper; # fixme: remove
+use LWP::UserAgent;
+use POSIX qw(strftime ENOENT);
 
 use PVE::Tools qw(run_command file_read_firstline trim dir_glob_regex dir_glob_foreach);
 use PVE::Storage::Plugin;
@@ -37,6 +37,10 @@ sub properties {
 	},
 	# openssl s_client -connect <host>:8007 2>&1 |openssl x509 -fingerprint -sha256
 	fingerprint => get_standard_option('fingerprint-sha256'),
+	encryption_key => {
+	    description => "Encryption key.",
+	    type => 'string',
+	},
     };
 }
 
@@ -49,6 +53,7 @@ sub options {
 	content => { optional => 1},
 	username => { optional => 1 },
 	password => { optional => 1},
+	encryption_key => { optional => 1 },
 	maxfiles => { optional => 1 },
 	fingerprint => { optional => 1 },
     };
@@ -87,6 +92,52 @@ sub pbs_get_password {
     return PVE::Tools::file_read_firstline($pwfile);
 }
 
+sub pbs_encryption_key_file_name {
+    my ($scfg, $storeid) = @_;
+
+    return "/etc/pve/priv/storage/${storeid}.enc";
+}
+
+sub pbs_set_encryption_key {
+    my ($scfg, $storeid, $key) = @_;
+
+    my $pwfile = pbs_encryption_key_file_name($scfg, $storeid);
+    mkdir "/etc/pve/priv/storage";
+
+    PVE::Tools::file_set_contents($pwfile, "$key\n");
+}
+
+sub pbs_delete_encryption_key {
+    my ($scfg, $storeid) = @_;
+
+    my $pwfile = pbs_encryption_key_file_name($scfg, $storeid);
+
+    unlink $pwfile;
+}
+
+sub pbs_get_encryption_key {
+    my ($scfg, $storeid) = @_;
+
+    my $pwfile = pbs_encryption_key_file_name($scfg, $storeid);
+
+    return PVE::Tools::file_get_contents($pwfile);
+}
+
+# Returns a file handle if there is an encryption key, or `undef` if there is not. Dies on error.
+sub pbs_open_encryption_key {
+    my ($scfg, $storeid) = @_;
+
+    my $encryption_key_file = pbs_encryption_key_file_name($scfg, $storeid);
+
+    my $keyfd;
+    if (!open($keyfd, '<', $encryption_key_file)) {
+	return undef if $! == ENOENT;
+	die "failed to open encryption key: $encryption_key_file: $!\n";
+    }
+
+    return $keyfd;
+}
+
 sub print_volid {
     my ($storeid, $btype, $bid, $btime) = @_;
 
@@ -96,8 +147,8 @@ sub print_volid {
     return "${storeid}:${volname}";
 }
 
-sub run_raw_client_cmd {
-    my ($scfg, $storeid, $client_cmd, $param, %opts) = @_;
+my sub do_raw_client_cmd {
+    my ($scfg, $storeid, $client_cmd, $param, $can_encrypt, %opts) = @_;
 
     my $client_exe = '/usr/bin/proxmox-backup-client';
     die "executable not found '$client_exe'! Proxmox backup client not installed?\n"
@@ -114,6 +165,20 @@ sub run_raw_client_cmd {
     push @$cmd, @$userns_cmd if defined($userns_cmd);
 
     push @$cmd, $client_exe, $client_cmd;
+
+    # This must live in the top scope to not get closed before the `run_command`
+    my $keyfd;
+    if ($can_encrypt) {
+	if (defined($keyfd = pbs_open_encryption_key($scfg, $storeid))) {
+	    my $flags = fcntl($keyfd, F_GETFD, 0)
+		// die "failed to get file descriptor flags: $!\n";
+	    fcntl($keyfd, F_SETFD, $flags & ~FD_CLOEXEC)
+		or die "failed to remove FD_CLOEXEC from encryption key file descriptor\n";
+	    push @$cmd, '--crypt-mode=encrypt', '--keyfd='.fileno($keyfd);
+	} else {
+	    push @$cmd, '--crypt-mode=none';
+	}
+    }
 
     push @$cmd, @$param if defined($param);
 
@@ -134,6 +199,18 @@ sub run_raw_client_cmd {
     run_command($cmd, %opts);
 }
 
+# FIXME: External perl code should NOT have access to this.
+#
+# There should be separate functions to
+# - make backups
+# - restore backups
+# - restore files
+# with a sane API
+sub run_raw_client_cmd{
+    my ($scfg, $storeid, $client_cmd, $param, %opts) = @_;
+    return do_raw_client_cmd($scfg, $storeid, $client_cmd, $param, 1, %opts);
+}
+
 sub run_client_cmd {
     my ($scfg, $storeid, $client_cmd, $param, $no_output) = @_;
 
@@ -145,8 +222,8 @@ sub run_client_cmd {
 
     $param = [@$param, '--output-format=json'] if !$no_output;
 
-    run_raw_client_cmd($scfg, $storeid, $client_cmd, $param,
-		       outfunc => $outfunc, errmsg => 'proxmox-backup-client failed');
+    do_raw_client_cmd($scfg, $storeid, $client_cmd, $param, 0,
+		      outfunc => $outfunc, errmsg => 'proxmox-backup-client failed');
 
     return undef if $no_output;
 
@@ -174,8 +251,8 @@ sub extract_vzdump_config {
 	die "unable to extract configuration for backup format '$format'\n";
     }
 
-    run_raw_client_cmd($scfg, $storeid, 'restore', [ $name, $config_name, '-' ],
-		       outfunc => $outfunc, errmsg => 'proxmox-backup-client failed');
+    do_raw_client_cmd($scfg, $storeid, 'restore', [ $name, $config_name, '-' ], 0,
+		      outfunc => $outfunc, errmsg => 'proxmox-backup-client failed');
 
     return $config;
 }
@@ -183,22 +260,36 @@ sub extract_vzdump_config {
 sub on_add_hook {
     my ($class, $storeid, $scfg, %param) = @_;
 
-    if (defined($param{password})) {
-	pbs_set_password($scfg, $storeid, $param{password});
+    if (defined(my $password = $param{password})) {
+	pbs_set_password($scfg, $storeid, $password);
     } else {
 	pbs_delete_password($scfg, $storeid);
+    }
+
+    if (defined(my $encryption_key = delete($scfg->{encryption_key}))) {
+	pbs_set_encryption_key($scfg, $storeid, $encryption_key);
+    } else {
+	pbs_delete_encryption_key($scfg, $storeid);
     }
 }
 
 sub on_update_hook {
     my ($class, $storeid, $scfg, %param) = @_;
 
-    return if !exists($param{password});
+    if (exists($param{password})) {
+	if (defined($param{password})) {
+	    pbs_set_password($scfg, $storeid, $param{password});
+	} else {
+	    pbs_delete_password($scfg, $storeid);
+	}
+    }
 
-    if (defined($param{password})) {
-	pbs_set_password($scfg, $storeid, $param{password});
-    } else {
-	pbs_delete_password($scfg, $storeid);
+    if (exists($scfg->{encryption_key})) {
+	if (defined(my $encryption_key = delete($scfg->{encryption_key}))) {
+	    pbs_set_encryption_key($scfg, $storeid, $encryption_key);
+	} else {
+	    pbs_delete_encryption_key($scfg, $storeid);
+	}
     }
 }
 
@@ -206,6 +297,7 @@ sub on_delete_hook {
     my ($class, $storeid, $scfg) = @_;
 
     pbs_delete_password($scfg, $storeid);
+    pbs_delete_encryption_key($scfg, $storeid);
 }
 
 sub parse_volname {
