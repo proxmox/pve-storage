@@ -150,6 +150,7 @@ sub options {
 	fuse => { optional => 1 },
 	bwlimit => { optional => 1 },
 	maxfiles => { optional => 1 },
+	'prune-backups' => { optional => 1 },
     };
 }
 

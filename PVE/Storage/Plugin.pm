@@ -10,7 +10,7 @@ use File::Basename;
 use File::stat qw();
 
 use PVE::Tools qw(run_command);
-use PVE::JSONSchema qw(get_standard_option);
+use PVE::JSONSchema qw(get_standard_option register_standard_option);
 use PVE::Cluster qw(cfs_register_file);
 
 use JSON;
@@ -43,6 +43,62 @@ cfs_register_file ('storage.cfg',
 		   sub { __PACKAGE__->parse_config(@_); },
 		   sub { __PACKAGE__->write_config(@_); });
 
+my %prune_option = (
+    optional => 1,
+    type => 'integer', minimum => '0',
+    format_description => 'N',
+);
+
+my $prune_backups_format = {
+	'keep-last' => {
+	    %prune_option,
+	    description => 'Keep the last <N> backups.',
+	},
+	'keep-hourly' => {
+	    %prune_option,
+	    description => 'Keep backups for the last <N> different hours. If there is more' .
+			   'than one backup for a single hour, only the latest one is kept.'
+	},
+	'keep-daily' => {
+	    %prune_option,
+	    description => 'Keep backups for the last <N> different days. If there is more' .
+			   'than one backup for a single day, only the latest one is kept.'
+	},
+	'keep-weekly' => {
+	    %prune_option,
+	    description => 'Keep backups for the last <N> different weeks. If there is more' .
+			   'than one backup for a single week, only the latest one is kept.'
+	},
+	'keep-monthly' => {
+	    %prune_option,
+	    description => 'Keep backups for the last <N> different months. If there is more' .
+			   'than one backup for a single month, only the latest one is kept.'
+	},
+	'keep-yearly' => {
+	    %prune_option,
+	    description => 'Keep backups for the last <N> different years. If there is more' .
+			   'than one backup for a single year, only the latest one is kept.'
+	},
+};
+PVE::JSONSchema::register_format('prune-backups', $prune_backups_format, \&validate_prune_backups);
+sub validate_prune_backups {
+    my ($keep) = @_;
+
+    die "at least one keep-option must be set and positive\n"
+	if !grep { $_ } values %{$keep};
+
+    return $keep;
+}
+register_standard_option('prune-backups', {
+    description => "The retention options with shorter intervals are processed first " .
+		   "with --keep-last being the very first one. Each option covers a " .
+		   "specific period of time. We say that backups within this period " .
+		   "are covered by this option. The next option does not take care " .
+		   "of already covered backups and only considers older backups.",
+    optional => 1,
+    type => 'string',
+    format => 'prune-backups',
+});
 
 my $defaultData = {
     propertyList => {
@@ -68,6 +124,7 @@ my $defaultData = {
 	    minimum => 0,
 	    optional => 1,
 	},
+	'prune-backups' => get_standard_option('prune-backups'),
 	shared => {
 	    description => "Mark storage as shared.",
 	    type => 'boolean',
