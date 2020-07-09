@@ -11,12 +11,18 @@ use PVE::Cluster;
 use PVE::RRD;
 use PVE::Storage;
 use PVE::API2::Storage::Content;
+use PVE::API2::Storage::PruneBackups;
 use PVE::RESTHandler;
 use PVE::RPCEnvironment;
 use PVE::JSONSchema qw(get_standard_option);
 use PVE::Exception qw(raise_param_exc);
 
 use base qw(PVE::RESTHandler);
+
+__PACKAGE__->register_method ({
+    subclass => "PVE::API2::Storage::PruneBackups",
+    path => '{storage}/prunebackups',
+});
 
 __PACKAGE__->register_method ({
     subclass => "PVE::API2::Storage::Content",
@@ -214,6 +220,7 @@ __PACKAGE__->register_method ({
 	    { subdir => 'upload' },
 	    { subdir => 'rrd' },
 	    { subdir => 'rrddata' },
+	    { subdir => 'prunebackups' },
 	];
 
 	return $res;

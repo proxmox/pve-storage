@@ -12,8 +12,10 @@ use PVE::Cluster;
 use PVE::INotify;
 use PVE::RPCEnvironment;
 use PVE::Storage;
+use PVE::Tools qw(extract_param);
 use PVE::API2::Storage::Config;
 use PVE::API2::Storage::Content;
+use PVE::API2::Storage::PruneBackups;
 use PVE::API2::Storage::Status;
 use PVE::JSONSchema qw(get_standard_option);
 use PVE::PTY;
@@ -731,6 +733,99 @@ __PACKAGE__->register_method ({
 	return PVE::Storage::scan_zfs();
     }});
 
+__PACKAGE__->register_method ({
+    name => 'prunebackups',
+    path => 'prunebackups',
+    method => 'GET',
+    description => "Prune backups. This is only a wrapper for the proper API endpoints.",
+    protected => 1,
+    proxyto => 'node',
+    parameters => {
+	additionalProperties => 0,
+	properties => {
+	    'dry-run' => {
+		description => "Only show what would be pruned, don't delete anything.",
+		type => 'boolean',
+		optional => 1,
+	    },
+	    node => get_standard_option('pve-node'),
+	    storage => get_standard_option('pve-storage-id', {
+		completion => \&PVE::Storage::complete_storage_enabled,
+            }),
+	    'prune-backups' => get_standard_option('prune-backups', {
+		description => "Use these retention options instead of those from the storage configuration.",
+		optional => 1,
+	    }),
+	    type => {
+		description => "Either 'qemu' or 'lxc'. Only consider backups for guests of this type.",
+		type => 'string',
+		optional => 1,
+		enum => ['qemu', 'lxc'],
+	    },
+	    vmid => get_standard_option('pve-vmid', {
+		description => "Only consider backups for this guest.",
+		optional => 1,
+		completion => \&PVE::Cluster::complete_vmid,
+	    }),
+	},
+    },
+    returns => {
+	type => 'object',
+	properties => {
+	    dryrun => {
+		description => 'If it was a dry run or not. The list will only be defined in that case.',
+		type => 'boolean',
+	    },
+	    list => {
+		type => 'array',
+		items => {
+		    type => 'object',
+		    properties => {
+			volid => {
+			    description => "Backup volume ID.",
+			    type => 'string',
+			},
+			'ctime' => {
+			    description => "Creation time of the backup (seconds since the UNIX epoch).",
+			    type => 'integer',
+			},
+			'mark' => {
+			    description => "Whether the backup would be kept or removed. For backups that don't " .
+					   "use the standard naming scheme, it's 'protected'.",
+			    type => 'string',
+			},
+			type => {
+			    description => "One of 'qemu', 'lxc', 'openvz' or 'unknown'.",
+			    type => 'string',
+			},
+			'vmid' => {
+			    description => "The VM the backup belongs to.",
+			    type => 'integer',
+			    optional => 1,
+			},
+		    },
+		},
+	    },
+	},
+    },
+    code => sub {
+	my ($param) = @_;
+
+	my $dryrun = extract_param($param, 'dry-run') ? 1 : 0;
+
+	my $list = [];
+	if ($dryrun) {
+	    $list = PVE::API2::Storage::PruneBackups->dryrun($param);
+	} else {
+	    PVE::API2::Storage::PruneBackups->delete($param);
+	}
+
+	return {
+	    dryrun => $dryrun,
+	    list => $list,
+	};
+    }});
+
 our $cmddef = {
     add => [ "PVE::API2::Storage::Config", 'create', ['type', 'storage'] ],
     set => [ "PVE::API2::Storage::Config", 'update', ['storage'] ],
@@ -829,6 +924,37 @@ our $cmddef = {
 
 	print "APIVER $res->{apiver}\n";
 	print "APIAGE $res->{apiage}\n";
+    }],
+    'prune-backups' => [ __PACKAGE__, 'prunebackups', ['storage'], { node => $nodename }, sub {
+	my $res = shift;
+
+	my ($dryrun, $list) = ($res->{dryrun}, $res->{list});
+
+	return if !$dryrun;
+
+	print "NOTE: this is only a preview and might not be exactly what a subsequent prune call does,\n" .
+	      "if the hour changes or if backups are removed/added in the meantime.\n\n";
+
+	my @sorted = sort {
+	    my $vmcmp = PVE::Tools::safe_compare($a->{vmid}, $b->{vmid}, sub { $_[0] <=> $_[1] });
+	    return $vmcmp if $vmcmp ne 0;
+	    return $a->{ctime} <=> $b->{ctime};
+	} @{$list};
+
+	my $maxlen = 0;
+	foreach my $backup (@sorted) {
+	    my $volid = $backup->{volid};
+	    $maxlen = length($volid) if length($volid) > $maxlen;
+	}
+	$maxlen+=1;
+
+	printf("%-${maxlen}s %15s %10s\n", 'Backup', 'Backup-ID', 'Prune-Mark');
+	foreach my $backup (@sorted) {
+	    my $type = $backup->{type};
+	    my $vmid = $backup->{vmid};
+	    my $backup_id = defined($vmid) ? "$type/$vmid" : "$type";
+	    printf("%-${maxlen}s %15s %10s\n", $backup->{volid}, $backup_id, $backup->{mark});
+	}
     }],
 };
 
