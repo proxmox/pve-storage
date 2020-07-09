@@ -38,7 +38,7 @@ sub properties {
 	# openssl s_client -connect <host>:8007 2>&1 |openssl x509 -fingerprint -sha256
 	fingerprint => get_standard_option('fingerprint-sha256'),
 	'encryption-key' => {
-	    description => "Encryption key.",
+	    description => "Encryption key. Use 'autogen' to generate one automatically without passphrase.",
 	    type => 'string',
 	},
     };
@@ -257,6 +257,12 @@ sub extract_vzdump_config {
     return $config;
 }
 
+my $autogen_encryption_key = sub {
+    my ($scfg, $storeid) = @_;
+    my $encfile = pbs_encryption_key_file_name($scfg, $storeid);
+    run_command(['proxmox-backup-client', 'key', 'create', '--kdf', 'none', $encfile]);
+};
+
 sub on_add_hook {
     my ($class, $storeid, $scfg, %param) = @_;
 
@@ -267,7 +273,11 @@ sub on_add_hook {
     }
 
     if (defined(my $encryption_key = $param{'encryption-key'})) {
-	pbs_set_encryption_key($scfg, $storeid, $encryption_key);
+	if ($encryption_key eq 'autogen') {
+	    $autogen_encryption_key->($scfg, $storeid);
+	} else {
+	    pbs_set_encryption_key($scfg, $storeid, $encryption_key);
+	}
     } else {
 	pbs_delete_encryption_key($scfg, $storeid);
     }
@@ -286,7 +296,11 @@ sub on_update_hook {
 
     if (exists($param{'encryption-key'})) {
 	if (defined(my $encryption_key = delete($param{'encryption-key'}))) {
-	    pbs_set_encryption_key($scfg, $storeid, $encryption_key);
+	    if ($encryption_key eq 'autogen') {
+		$autogen_encryption_key->($scfg, $storeid);
+	    } else {
+		pbs_set_encryption_key($scfg, $storeid, $encryption_key);
+	    }
 	} else {
 	    pbs_delete_encryption_key($scfg, $storeid);
 	}
