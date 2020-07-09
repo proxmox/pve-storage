@@ -40,11 +40,11 @@ use PVE::Storage::DRBDPlugin;
 use PVE::Storage::PBSPlugin;
 
 # Storage API version. Icrement it on changes in storage API interface.
-use constant APIVER => 5;
+use constant APIVER => 6;
 # Age is the number of versions we're backward compatible with.
 # This is like having 'current=APIVER' and age='APIAGE' in libtool,
 # see https://www.gnu.org/software/libtool/manual/html_node/Libtool-versioning.html
-use constant APIAGE => 4;
+use constant APIAGE => 5;
 
 # load standard plugins
 PVE::Storage::DirPlugin->register();
@@ -1539,6 +1539,93 @@ sub extract_vzdump_config {
 	}
     } else {
 	die "cannot determine backup guest type for backup archive '$volid'\n";
+    }
+}
+
+sub prune_backups {
+    my ($cfg, $storeid, $keep, $vmid, $type, $dryrun, $logfunc) = @_;
+
+    my $scfg = storage_config($cfg, $storeid);
+    die "storage '$storeid' does not support backups\n" if !$scfg->{content}->{backup};
+
+    if (!defined($keep)) {
+	die "no prune-backups options configured for storage '$storeid'\n"
+	    if !defined($scfg->{'prune-backups'});
+	$keep = PVE::JSONSchema::parse_property_string('prune-backups', $scfg->{'prune-backups'});
+    }
+
+    my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
+    return $plugin->prune_backups($scfg, $storeid, $keep, $vmid, $type, $dryrun, $logfunc);
+}
+
+my $prune_mark = sub {
+    my ($prune_entries, $keep_count, $id_func) = @_;
+
+    return if !$keep_count;
+
+    my $already_included = {};
+    my $newly_included = {};
+
+    foreach my $prune_entry (@{$prune_entries}) {
+	my $mark = $prune_entry->{mark};
+	my $id = $id_func->($prune_entry->{ctime});
+
+	next if $already_included->{$id};
+
+	if (defined($mark)) {
+	    $already_included->{$id} = 1 if $mark eq 'keep';
+	    next;
+	}
+
+	if (!$newly_included->{$id}) {
+	    last if scalar(keys %{$newly_included}) >= $keep_count;
+	    $newly_included->{$id} = 1;
+	    $prune_entry->{mark} = 'keep';
+	} else {
+	    $prune_entry->{mark} = 'remove';
+	}
+    }
+};
+
+sub prune_mark_backup_group {
+    my ($backup_group, $keep) = @_;
+
+    my $prune_list = [ sort { $b->{ctime} <=> $a->{ctime} } @{$backup_group} ];
+
+    $prune_mark->($prune_list, $keep->{'keep-last'}, sub {
+	my ($ctime) = @_;
+	return $ctime;
+    });
+    $prune_mark->($prune_list, $keep->{'keep-hourly'}, sub {
+	my ($ctime) = @_;
+	my (undef, undef, $hour, $day, $month, $year) = localtime($ctime);
+	return "$hour/$day/$month/$year";
+    });
+    $prune_mark->($prune_list, $keep->{'keep-daily'}, sub {
+	my ($ctime) = @_;
+	my (undef, undef, undef, $day, $month, $year) = localtime($ctime);
+	return "$day/$month/$year";
+    });
+    $prune_mark->($prune_list, $keep->{'keep-weekly'}, sub {
+	my ($ctime) = @_;
+	my ($sec, $min, $hour, $day, $month, $year) = localtime($ctime);
+	my $iso_week = int(strftime("%V", $sec, $min, $hour, $day, $month - 1, $year - 1900));
+	my $iso_week_year = int(strftime("%G", $sec, $min, $hour, $day, $month - 1, $year - 1900));
+	return "$iso_week/$iso_week_year";
+    });
+    $prune_mark->($prune_list, $keep->{'keep-monthly'}, sub {
+	my ($ctime) = @_;
+	my (undef, undef, undef, undef, $month, $year) = localtime($ctime);
+	return "$month/$year";
+    });
+    $prune_mark->($prune_list, $keep->{'keep-yearly'}, sub {
+	my ($ctime) = @_;
+	my $year = (localtime($ctime))[5];
+	return "$year";
+    });
+
+    foreach my $prune_entry (@{$prune_list}) {
+	$prune_entry->{mark} //= 'remove';
     }
 }
 

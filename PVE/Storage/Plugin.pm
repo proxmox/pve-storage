@@ -1174,6 +1174,71 @@ sub check_connection {
     return 1;
 }
 
+sub prune_backups {
+    my ($class, $scfg, $storeid, $keep, $vmid, $type, $dryrun, $logfunc) = @_;
+
+    $logfunc //= sub { print "$_[1]\n" };
+
+    my $backups = $class->list_volumes($storeid, $scfg, $vmid, ['backup']);
+
+    my $backup_groups = {};
+    my $prune_list = [];
+
+    foreach my $backup (@{$backups}) {
+	my $volid = $backup->{volid};
+	my $backup_vmid = $backup->{vmid};
+	my $archive_info = eval { PVE::Storage::archive_info($volid) } // {};
+	my $backup_type = $archive_info->{type} // 'unknown';
+
+	next if defined($type) && $type ne $backup_type;
+
+	my $prune_entry = {
+	    ctime => $backup->{ctime},
+	    type => $backup_type,
+	    volid => $volid,
+	};
+
+	$prune_entry->{vmid} = $backup_vmid if defined($backup_vmid);
+
+	if ($archive_info->{is_std_name}) {
+	    $prune_entry->{ctime} = $archive_info->{ctime};
+	    my $group = "$backup_type/$backup_vmid";
+	    push @{$backup_groups->{$group}}, $prune_entry;
+	} else {
+	    # ignore backups that don't use the standard naming scheme
+	    $prune_entry->{mark} = 'protected';
+	}
+
+	push @{$prune_list}, $prune_entry;
+    }
+
+    foreach my $backup_group (values %{$backup_groups}) {
+	PVE::Storage::prune_mark_backup_group($backup_group, $keep);
+    }
+
+    my $failed;
+    if (!$dryrun) {
+	foreach my $prune_entry (@{$prune_list}) {
+	    next if $prune_entry->{mark} ne 'remove';
+
+	    my $volid = $prune_entry->{volid};
+	    $logfunc->('info', "removing backup '$volid'");
+	    eval {
+		my (undef, $volname) = parse_volume_id($volid);
+		my $archive_path = $class->filesystem_path($scfg, $volname);
+		PVE::Storage::archive_remove($archive_path);
+	    };
+	    if (my $err = $@) {
+		$logfunc->('err', "error when removing backup '$volid' - $err\n");
+		$failed = 1;
+	    }
+	}
+    }
+    die "error pruning backups - check log\n" if $failed;
+
+    return $prune_list;
+}
+
 # Import/Export interface:
 #   Any path based storage is assumed to support 'raw' and 'tar' streams, so
 #   the default implementations will return this if $scfg->{path} is set,

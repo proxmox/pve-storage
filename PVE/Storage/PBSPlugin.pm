@@ -266,6 +266,74 @@ sub extract_vzdump_config {
     return $config;
 }
 
+sub prune_backups {
+    my ($class, $scfg, $storeid, $keep, $vmid, $type, $dryrun, $logfunc) = @_;
+
+    $logfunc //= sub { print "$_[1]\n" };
+
+    my $backups = $class->list_volumes($storeid, $scfg, $vmid, ['backup']);
+
+    $type = 'vm' if defined($type) && $type eq 'qemu';
+    $type = 'ct' if defined($type) && $type eq 'lxc';
+
+    my $backup_groups = {};
+    foreach my $backup (@{$backups}) {
+	(my $backup_type = $backup->{format}) =~ s/^pbs-//;
+
+	next if defined($type) && $backup_type ne $type;
+
+	my $backup_group = "$backup_type/$backup->{vmid}";
+	$backup_groups->{$backup_group} = 1;
+    }
+
+    my @param;
+    foreach my $opt (keys %{$keep}) {
+	push @param, "--$opt";
+	push @param, "$keep->{$opt}";
+    }
+
+    push @param, '--dry-run' if $dryrun;
+
+    my $prune_list = [];
+    my $failed;
+
+    foreach my $backup_group (keys %{$backup_groups}) {
+	$logfunc->('info', "running 'proxmox-backup-client prune' for '$backup_group'")
+	    if !$dryrun;
+	eval {
+	    my $res = run_client_cmd($scfg, $storeid, 'prune', [ $backup_group, @param ]);
+
+	    foreach my $backup (@{$res}) {
+		die "result from proxmox-backup-client is not as expected\n"
+		    if !defined($backup->{'backup-time'})
+		    || !defined($backup->{'backup-type'})
+		    || !defined($backup->{'backup-id'})
+		    || !defined($backup->{'keep'});
+
+		my $ctime = $backup->{'backup-time'};
+		my $type = $backup->{'backup-type'};
+		my $vmid = $backup->{'backup-id'};
+		my $volid = print_volid($storeid, $type, $vmid, $ctime);
+
+		push @{$prune_list}, {
+		    ctime => $ctime,
+		    mark => $backup->{keep} ? 'keep' : 'remove',
+		    type => $type eq 'vm' ? 'qemu' : 'lxc',
+		    vmid => $vmid,
+		    volid => $volid,
+		};
+	    }
+	};
+	if (my $err = $@) {
+	    $logfunc->('err', "prune '$backup_group': $err\n");
+	    $failed = 1;
+	}
+    }
+    die "error pruning backups - check log\n" if $failed;
+
+    return $prune_list;
+}
+
 my $autogen_encryption_key = sub {
     my ($scfg, $storeid) = @_;
     my $encfile = pbs_encryption_key_file_name($scfg, $storeid);
