@@ -882,6 +882,8 @@ sub vdisk_list {
 	foreach my $sid (keys %$ids) {
 	    next if $storeid && $storeid ne $sid;
 	    next if !storage_check_enabled($cfg, $sid, undef, 1);
+	    my $content = $ids->{$sid}->{content};
+	    next if !($content->{rootdir} || $content->{images});
 	    push @$storage_list, $sid;
 	}
     }
