@@ -1,3 +1,18 @@
+libpve-storage-perl (6.2-2) pve; urgency=medium
+
+  * archive info: further relax custom name handling
+
+  * archive info: use timelocal correctly
+
+  * pbs: encryption support
+
+  * pbs: support passing encryption key as file-descriptor, avoiding issues
+    when backing up an unprivileged container
+
+  * pvesm: encryption key parameter should load files
+
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 09 Jul 2020 14:03:29 +0200
+
 libpve-storage-perl (6.2-1) pve; urgency=medium
 
   * ceph: get_local_version: allow optional v prefix for version number
