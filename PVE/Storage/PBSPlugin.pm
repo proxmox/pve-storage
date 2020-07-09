@@ -266,7 +266,7 @@ sub on_add_hook {
 	pbs_delete_password($scfg, $storeid);
     }
 
-    if (defined(my $encryption_key = delete($scfg->{encryption_key}))) {
+    if (defined(my $encryption_key = $param{encryption_key})) {
 	pbs_set_encryption_key($scfg, $storeid, $encryption_key);
     } else {
 	pbs_delete_encryption_key($scfg, $storeid);
@@ -284,8 +284,8 @@ sub on_update_hook {
 	}
     }
 
-    if (exists($scfg->{encryption_key})) {
-	if (defined(my $encryption_key = delete($scfg->{encryption_key}))) {
+    if (exists($param{encryption_key})) {
+	if (defined(my $encryption_key = delete($param{encryption_key}))) {
 	    pbs_set_encryption_key($scfg, $storeid, $encryption_key);
 	} else {
 	    pbs_delete_encryption_key($scfg, $storeid);

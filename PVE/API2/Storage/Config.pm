@@ -112,6 +112,29 @@ __PACKAGE__->register_method ({
 	return &$api_storage_config($cfg, $param->{storage});
     }});
 
+my sub extract_sensitive_params :prototype($$) {
+    my ($param, $delete_list) = @_;
+
+    my $sensitive;
+
+    my %delete = map { $_ => 1 } ($delete_list || [])->@*;
+
+    # always extract pw and keys, so they don't get written to the www-data readable scfg
+    for my $opt (qw(password encryption_key)) {
+	# First handle deletions as explicitly setting `undef`, afterwards new values may override
+	# it.
+	if (exists($delete{$opt})) {
+	    $sensitive->{$opt} = undef;
+	}
+
+	if (defined(my $value = extract_param($param, $opt))) {
+	    $sensitive->{$opt} = $value;
+	}
+    }
+
+    return $sensitive;
+}
+
 __PACKAGE__->register_method ({
     name => 'create',
     protected => 1,
@@ -133,15 +156,7 @@ __PACKAGE__->register_method ({
 	# fix me in section config create never need an empty entity.
 	delete $param->{nodes} if !$param->{nodes};
 
-	my $password;
-	# always extract pw, else it gets written to the www-data readable scfg
-	if (my $tmp_pw = extract_param($param, 'password')) {
-	    if (($type eq 'pbs') || ($type eq 'cifs' && $param->{username})) {
-		$password = $tmp_pw;
-	    } else {
-		warn "ignore password parameter\n";
-	    }
-	}
+	my $sensitive = extract_sensitive_params($param, []);
 
 	my $plugin = PVE::Storage::Plugin->lookup($type);
 	my $opts = $plugin->check_config($storeid, $param, 1, 1);
@@ -157,7 +172,7 @@ __PACKAGE__->register_method ({
 
 		$cfg->{ids}->{$storeid} = $opts;
 
-		$plugin->on_add_hook($storeid, $opts, password => $password);
+		$plugin->on_add_hook($storeid, $opts, %$sensitive);
 
 		eval {
 		    # try to activate if enabled on local node,
@@ -197,6 +212,10 @@ __PACKAGE__->register_method ({
 	my $digest = extract_param($param, 'digest');
 	my $delete = extract_param($param, 'delete');
 
+	if ($delete) {
+	    $delete = [ PVE::Tools::split_list($delete) ];
+	}
+
         PVE::Storage::lock_storage_config(sub {
 
 	    my $cfg = PVE::Storage::config();
@@ -206,24 +225,14 @@ __PACKAGE__->register_method ({
 	    my $scfg = PVE::Storage::storage_config($cfg, $storeid);
 	    my $type = $scfg->{type};
 
-	    my $password;
-	    # always extract pw, else it gets written to the www-data readable scfg
-	    if (my $tmp_pw = extract_param($param, 'password')) {
-		if (($type eq 'pbs') || ($type eq 'cifs' && $param->{username})) {
-		    $password = $tmp_pw;
-		} else {
-		    warn "ignore password parameter\n";
-		}
-	    }
+	    my $sensitive = extract_sensitive_params($param, $delete);
 
 	    my $plugin = PVE::Storage::Plugin->lookup($type);
 	    my $opts = $plugin->check_config($storeid, $param, 0, 1);
 
-	    my $delete_password = 0;
-
 	    if ($delete) {
 		my $options = $plugin->private()->{options}->{$type};
-		foreach my $k (PVE::Tools::split_list($delete)) {
+		foreach my $k (@$delete) {
 		    my $d = $options->{$k} || die "no such option '$k'\n";
 		    die "unable to delete required option '$k'\n" if !$d->{optional};
 		    die "unable to delete fixed option '$k'\n" if $d->{fixed};
@@ -231,16 +240,10 @@ __PACKAGE__->register_method ({
 			if defined($opts->{$k});
 
 		    delete $scfg->{$k};
-
-		    $delete_password = 1 if $k eq 'password';
 		}
 	    }
 
-	    if ($delete_password || defined($password)) {
-		$plugin->on_update_hook($storeid, $opts, password => $password);
-	    } else {
-		$plugin->on_update_hook($storeid, $opts);
-	    }
+	    $plugin->on_update_hook($storeid, $opts, %$sensitive);
 
 	    for my $k (keys %$opts) {
 		$scfg->{$k} = $opts->{$k};

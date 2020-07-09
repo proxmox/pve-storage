@@ -161,6 +161,9 @@ sub on_add_hook {
 
     if (defined($param{password})) {
 	cifs_set_credentials($param{password}, $storeid);
+	if (!exists($scfg->{username})) {
+	    warn "ignoring password parameter\n";
+	}
     } else {
 	cifs_delete_credentials($storeid);
     }
@@ -173,6 +176,9 @@ sub on_update_hook {
 
     if (defined($param{password})) {
 	cifs_set_credentials($param{password}, $storeid);
+	if (!exists($scfg->{username})) {
+	    warn "ignoring password parameter\n";
+	}
     } else {
 	cifs_delete_credentials($storeid);
     }
