@@ -37,7 +37,7 @@ sub properties {
 	},
 	# openssl s_client -connect <host>:8007 2>&1 |openssl x509 -fingerprint -sha256
 	fingerprint => get_standard_option('fingerprint-sha256'),
-	encryption_key => {
+	'encryption-key' => {
 	    description => "Encryption key.",
 	    type => 'string',
 	},
@@ -52,8 +52,8 @@ sub options {
 	disable => { optional => 1},
 	content => { optional => 1},
 	username => { optional => 1 },
-	password => { optional => 1},
-	encryption_key => { optional => 1 },
+	password => { optional => 1 },
+	'encryption-key' => { optional => 1 },
 	maxfiles => { optional => 1 },
 	fingerprint => { optional => 1 },
     };
@@ -266,7 +266,7 @@ sub on_add_hook {
 	pbs_delete_password($scfg, $storeid);
     }
 
-    if (defined(my $encryption_key = $param{encryption_key})) {
+    if (defined(my $encryption_key = $param{'encryption-key'})) {
 	pbs_set_encryption_key($scfg, $storeid, $encryption_key);
     } else {
 	pbs_delete_encryption_key($scfg, $storeid);
@@ -284,8 +284,8 @@ sub on_update_hook {
 	}
     }
 
-    if (exists($param{encryption_key})) {
-	if (defined(my $encryption_key = delete($param{encryption_key}))) {
+    if (exists($param{'encryption-key'})) {
+	if (defined(my $encryption_key = delete($param{'encryption-key'}))) {
 	    pbs_set_encryption_key($scfg, $storeid, $encryption_key);
 	} else {
 	    pbs_delete_encryption_key($scfg, $storeid);
