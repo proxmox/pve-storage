@@ -147,8 +147,16 @@ sub print_volid {
     return "${storeid}:${volname}";
 }
 
+my $USE_CRYPT_PARAMS = {
+    backup => 1,
+    restore => 1,
+    'upload-log' => 1,
+};
+
 my sub do_raw_client_cmd {
-    my ($scfg, $storeid, $client_cmd, $param, $can_encrypt, %opts) = @_;
+    my ($scfg, $storeid, $client_cmd, $param, %opts) = @_;
+
+    my $use_crypto = $USE_CRYPT_PARAMS->{$client_cmd};
 
     my $client_exe = '/usr/bin/proxmox-backup-client';
     die "executable not found '$client_exe'! Proxmox backup client not installed?\n"
@@ -168,7 +176,7 @@ my sub do_raw_client_cmd {
 
     # This must live in the top scope to not get closed before the `run_command`
     my $keyfd;
-    if ($can_encrypt) {
+    if ($use_crypto) {
 	if (defined($keyfd = pbs_open_encryption_key($scfg, $storeid))) {
 	    my $flags = fcntl($keyfd, F_GETFD, 0)
 		// die "failed to get file descriptor flags: $!\n";
@@ -206,9 +214,9 @@ my sub do_raw_client_cmd {
 # - restore backups
 # - restore files
 # with a sane API
-sub run_raw_client_cmd{
+sub run_raw_client_cmd {
     my ($scfg, $storeid, $client_cmd, $param, %opts) = @_;
-    return do_raw_client_cmd($scfg, $storeid, $client_cmd, $param, 1, %opts);
+    return do_raw_client_cmd($scfg, $storeid, $client_cmd, $param, %opts);
 }
 
 sub run_client_cmd {
@@ -222,7 +230,7 @@ sub run_client_cmd {
 
     $param = [@$param, '--output-format=json'] if !$no_output;
 
-    do_raw_client_cmd($scfg, $storeid, $client_cmd, $param, 0,
+    do_raw_client_cmd($scfg, $storeid, $client_cmd, $param,
 		      outfunc => $outfunc, errmsg => 'proxmox-backup-client failed');
 
     return undef if $no_output;
@@ -251,7 +259,7 @@ sub extract_vzdump_config {
 	die "unable to extract configuration for backup format '$format'\n";
     }
 
-    do_raw_client_cmd($scfg, $storeid, 'restore', [ $name, $config_name, '-' ], 0,
+    do_raw_client_cmd($scfg, $storeid, 'restore', [ $name, $config_name, '-' ],
 		      outfunc => $outfunc, errmsg => 'proxmox-backup-client failed');
 
     return $config;
