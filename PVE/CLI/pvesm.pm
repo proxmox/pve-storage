@@ -39,8 +39,8 @@ sub param_mapping {
 
     my $mapping = {
 	'cifsscan' => [ $password_map ],
-	'create' => [ $password_map, 'encryption_key' ],
-	'update' => [ $password_map, 'encryption_key' ],
+	'create' => [ $password_map, 'encryption-key' ],
+	'update' => [ $password_map, 'encryption-key' ],
     };
     return $mapping->{$name};
 }
