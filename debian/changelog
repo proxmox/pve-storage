@@ -1,6 +1,10 @@
-libpve-storage-perl (6.2-4) pve; urgency=medium
+libpve-storage-perl (6.2-5) pve; urgency=medium
 
   * fix pvesm's handling of `--encryption-key`
+
+ -- Proxmox Support Team <support@proxmox.com>  Tue, 14 Jul 2020 13:58:24 +0200
+
+libpve-storage-perl (6.2-4) pve; urgency=medium
 
   * when scanning storages for disk images, don't activate ones which cannot
     contain disk images
