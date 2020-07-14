@@ -120,7 +120,7 @@ my sub extract_sensitive_params :prototype($$) {
     my %delete = map { $_ => 1 } ($delete_list || [])->@*;
 
     # always extract pw and keys, so they don't get written to the www-data readable scfg
-    for my $opt (qw(password encryption_key)) {
+    for my $opt (qw(password encryption-key)) {
 	# First handle deletions as explicitly setting `undef`, afterwards new values may override
 	# it.
 	if (exists($delete{$opt})) {
