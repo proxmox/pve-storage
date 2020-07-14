@@ -37,10 +37,21 @@ sub param_mapping {
 	},
     });
 
+    my $enc_key_map = {
+	name => 'encryption-key',
+	desc => 'a file containing an encryption key, or the special value "autogen"',
+	func => sub {
+	    my ($value) = @_;
+	    return $value if $value eq 'autogen';
+	    return PVE::Tools::file_get_contents($value);
+	}
+    };
+
+
     my $mapping = {
 	'cifsscan' => [ $password_map ],
-	'create' => [ $password_map, 'encryption-key' ],
-	'update' => [ $password_map, 'encryption-key' ],
+	'create' => [ $password_map, $enc_key_map ],
+	'update' => [ $password_map, $enc_key_map ],
     };
     return $mapping->{$name};
 }
