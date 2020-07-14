@@ -1,3 +1,12 @@
+libpve-storage-perl (6.2-4) pve; urgency=medium
+
+  * fix pvesm's handling of `--encryption-key`
+
+  * when scanning storages for disk images, don't activate ones which cannot
+    contain disk images
+
+ -- Proxmox Support Team <support@proxmox.com>  Tue, 14 Jul 2020 13:44:26 +0200
+
 libpve-storage-perl (6.2-3) pve; urgency=medium
 
   * pbs: prune command failing with encryption enabled
