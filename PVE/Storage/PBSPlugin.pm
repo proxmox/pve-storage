@@ -113,7 +113,10 @@ sub pbs_delete_encryption_key {
 
     my $pwfile = pbs_encryption_key_file_name($scfg, $storeid);
 
-    unlink $pwfile;
+    if (!unlink $pwfile) {
+	return if $! == ENOENT;
+	die "failed to delete encryption key! $!\n";
+    }
     delete $scfg->{'encryption-key'};
 }
 
