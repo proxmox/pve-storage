@@ -1,3 +1,13 @@
+libpve-storage-perl (6.2-6) pve; urgency=medium
+
+  * introduce prune-backups property for directory-based storages
+
+  * add intial API and pvesm endpoints for pruning backups
+
+  * config: add hint for set encryption key
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 24 Jul 2020 19:10:00 +0200
+
 libpve-storage-perl (6.2-5) pve; urgency=medium
 
   * fix pvesm's handling of `--encryption-key`
