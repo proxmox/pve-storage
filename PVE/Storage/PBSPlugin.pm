@@ -114,6 +114,7 @@ sub pbs_delete_encryption_key {
     my $pwfile = pbs_encryption_key_file_name($scfg, $storeid);
 
     unlink $pwfile;
+    delete $scfg->{'encryption-key'};
 }
 
 sub pbs_get_encryption_key {
@@ -355,6 +356,7 @@ sub on_add_hook {
 	} else {
 	    pbs_set_encryption_key($scfg, $storeid, $encryption_key);
 	}
+	$scfg->{'encryption-key'} = 1;
     } else {
 	pbs_delete_encryption_key($scfg, $storeid);
     }
@@ -378,6 +380,7 @@ sub on_update_hook {
 	    } else {
 		pbs_set_encryption_key($scfg, $storeid, $encryption_key);
 	    }
+	    $scfg->{'encryption-key'} = 1;
 	} else {
 	    pbs_delete_encryption_key($scfg, $storeid);
 	}
