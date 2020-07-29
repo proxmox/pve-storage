@@ -637,8 +637,11 @@ sub storage_migrate {
     my $ssh_base = PVE::SSHInfo::ssh_info_to_command_base($target_sshinfo);
     local $ENV{RSYNC_RSH} = PVE::Tools::cmd2string($ssh_base);
 
-    my @cstream = ([ '/usr/bin/cstream', '-t', $ratelimit_bps ])
-	if defined($ratelimit_bps);
+    my @cstream;
+    if (defined($ratelimit_bps)) {
+	@cstream = ([ '/usr/bin/cstream', '-t', $ratelimit_bps ]);
+	$logfunc->("using a bandwidth limit of $ratelimit_bps bps for transferring '$volid'") if $logfunc;
+    }
 
     my $migration_snapshot;
     if (!defined($snapshot)) {
