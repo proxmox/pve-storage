@@ -932,6 +932,11 @@ our $cmddef = {
 
 	return if !$dryrun;
 
+	if (!scalar(@{$list})) {
+	    print "No backups found\n";
+	    return;
+	}
+
 	print "NOTE: this is only a preview and might not be what a subsequent\n" .
 	      "prune call does if backups are removed/added in the meantime.\n\n";
 
