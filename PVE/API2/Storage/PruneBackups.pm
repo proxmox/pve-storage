@@ -16,9 +16,8 @@ __PACKAGE__->register_method ({
     name => 'dryrun',
     path => '',
     method => 'GET',
-    description => "Get prune information for backups. NOTE: this is only a preview and might not be exactly " .
-		   "what a subsequent prune call does, if the hour changes or if backups are removed/added " .
-		   "in the meantime.",
+    description => "Get prune information for backups. NOTE: this is only a preview and might not be " .
+		   "what a subsequent prune call does if backups are removed/added in the meantime.",
     permissions => {
 	check => ['perm', '/storage/{storage}', ['Datastore.Audit', 'Datastore.AllocateSpace'], any => 1],
     },

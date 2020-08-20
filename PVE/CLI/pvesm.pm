@@ -932,8 +932,8 @@ our $cmddef = {
 
 	return if !$dryrun;
 
-	print "NOTE: this is only a preview and might not be exactly what a subsequent prune call does,\n" .
-	      "if the hour changes or if backups are removed/added in the meantime.\n\n";
+	print "NOTE: this is only a preview and might not be what a subsequent\n" .
+	      "prune call does if backups are removed/added in the meantime.\n\n";
 
 	my @sorted = sort {
 	    my $vmcmp = PVE::Tools::safe_compare($a->{vmid}, $b->{vmid}, sub { $_[0] <=> $_[1] });
