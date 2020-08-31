@@ -49,7 +49,7 @@ my %prune_option = (
     format_description => 'N',
 );
 
-my $prune_backups_format = {
+our $prune_backups_format = {
 	'keep-last' => {
 	    %prune_option,
 	    description => 'Keep the last <N> backups.',

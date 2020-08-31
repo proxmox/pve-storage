@@ -752,10 +752,7 @@ __PACKAGE__->register_method ({
 	    storage => get_standard_option('pve-storage-id', {
 		completion => \&PVE::Storage::complete_storage_enabled,
             }),
-	    'prune-backups' => get_standard_option('prune-backups', {
-		description => "Use these retention options instead of those from the storage configuration.",
-		optional => 1,
-	    }),
+	    %{$PVE::Storage::Plugin::prune_backups_format},
 	    type => {
 		description => "Either 'qemu' or 'lxc'. Only consider backups for guests of this type.",
 		type => 'string',
@@ -812,6 +809,13 @@ __PACKAGE__->register_method ({
 	my ($param) = @_;
 
 	my $dryrun = extract_param($param, 'dry-run') ? 1 : 0;
+
+	my $keep_opts;
+	foreach my $keep (keys %{$PVE::Storage::Plugin::prune_backups_format}) {
+	    $keep_opts->{$keep} = extract_param($param, $keep) if defined($param->{$keep});
+	}
+	$param->{'prune-backups'} = PVE::JSONSchema::print_property_string(
+	    $keep_opts, $PVE::Storage::Plugin::prune_backups_format) if $keep_opts;
 
 	my $list = [];
 	if ($dryrun) {
