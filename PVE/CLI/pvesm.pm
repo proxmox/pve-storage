@@ -737,7 +737,8 @@ __PACKAGE__->register_method ({
     name => 'prunebackups',
     path => 'prunebackups',
     method => 'GET',
-    description => "Prune backups. This is only a wrapper for the proper API endpoints.",
+    description => "Prune backups. Only those using the standard naming scheme are considered. " .
+		   "If no keep options are specified, those from the storage configuration are used.",
     protected => 1,
     proxyto => 'node',
     parameters => {
