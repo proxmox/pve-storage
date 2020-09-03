@@ -50,35 +50,35 @@ my %prune_option = (
 );
 
 our $prune_backups_format = {
-	'keep-last' => {
-	    %prune_option,
-	    description => 'Keep the last <N> backups.',
-	},
-	'keep-hourly' => {
-	    %prune_option,
-	    description => 'Keep backups for the last <N> different hours. If there is more' .
-			   'than one backup for a single hour, only the latest one is kept.'
-	},
-	'keep-daily' => {
-	    %prune_option,
-	    description => 'Keep backups for the last <N> different days. If there is more' .
-			   'than one backup for a single day, only the latest one is kept.'
-	},
-	'keep-weekly' => {
-	    %prune_option,
-	    description => 'Keep backups for the last <N> different weeks. If there is more' .
-			   'than one backup for a single week, only the latest one is kept.'
-	},
-	'keep-monthly' => {
-	    %prune_option,
-	    description => 'Keep backups for the last <N> different months. If there is more' .
-			   'than one backup for a single month, only the latest one is kept.'
-	},
-	'keep-yearly' => {
-	    %prune_option,
-	    description => 'Keep backups for the last <N> different years. If there is more' .
-			   'than one backup for a single year, only the latest one is kept.'
-	},
+    'keep-last' => {
+	%prune_option,
+	description => 'Keep the last <N> backups.',
+    },
+    'keep-hourly' => {
+	%prune_option,
+	description => 'Keep backups for the last <N> different hours. If there is more' .
+		       'than one backup for a single hour, only the latest one is kept.'
+    },
+    'keep-daily' => {
+	%prune_option,
+	description => 'Keep backups for the last <N> different days. If there is more' .
+		       'than one backup for a single day, only the latest one is kept.'
+    },
+    'keep-weekly' => {
+	%prune_option,
+	description => 'Keep backups for the last <N> different weeks. If there is more' .
+		       'than one backup for a single week, only the latest one is kept.'
+    },
+    'keep-monthly' => {
+	%prune_option,
+	description => 'Keep backups for the last <N> different months. If there is more' .
+		       'than one backup for a single month, only the latest one is kept.'
+    },
+    'keep-yearly' => {
+	%prune_option,
+	description => 'Keep backups for the last <N> different years. If there is more' .
+		       'than one backup for a single year, only the latest one is kept.'
+    },
 };
 PVE::JSONSchema::register_format('prune-backups', $prune_backups_format, \&validate_prune_backups);
 sub validate_prune_backups {
