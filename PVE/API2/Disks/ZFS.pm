@@ -5,6 +5,7 @@ use warnings;
 
 use PVE::Diskmanage;
 use PVE::JSONSchema qw(get_standard_option);
+use PVE::Systemd;
 use PVE::API2::Storage::Config;
 use PVE::Storage;
 use PVE::Tools qw(run_command lock_file trim);
@@ -390,6 +391,11 @@ __PACKAGE__->register_method ({
 		run_command($cmd);
 
 		$cmd = [$ZFS, 'set', "compression=$compression", $name];
+		print "# ", join(' ', @$cmd), "\n";
+		run_command($cmd);
+
+		my $importunit = 'zfs-import@'. PVE::Systemd::escape_unit($name, undef) . '.service';
+		$cmd = ['systemctl', 'enable', $importunit];
 		print "# ", join(' ', @$cmd), "\n";
 		run_command($cmd);
 
