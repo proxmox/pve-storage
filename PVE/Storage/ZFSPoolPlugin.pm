@@ -472,6 +472,10 @@ sub volume_rollback_is_possible {
     my ($class, $scfg, $storeid, $volname, $snap) = @_;
 
     my $recentsnap = $class->zfs_get_latest_snapshot($scfg, $volname);
+
+    die "can't rollback, no snapshots exist at all\n"
+	if !defined($recentsnap);
+
     if ($snap ne $recentsnap) {
 	die "can't rollback, more recent snapshots exist\n";
     }
