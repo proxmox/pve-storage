@@ -476,9 +476,8 @@ sub volume_rollback_is_possible {
     die "can't rollback, no snapshots exist at all\n"
 	if !defined($recentsnap);
 
-    if ($snap ne $recentsnap) {
-	die "can't rollback, more recent snapshots exist\n";
-    }
+    die "can't rollback, '$snap' is not most recent snapshot\n"
+	if $snap ne $recentsnap;
 
     return 1;
 }
