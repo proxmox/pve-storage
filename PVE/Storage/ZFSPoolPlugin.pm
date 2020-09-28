@@ -549,9 +549,14 @@ sub activate_volume {
 
     my (undef, undef, undef, undef, undef, undef, $format) = $class->parse_volname($volname);
 
-    return 1 if $format ne 'raw';
-
-    $class->zfs_wait_for_zvol_link($scfg, $volname);
+    if ($format eq 'raw') {
+	$class->zfs_wait_for_zvol_link($scfg, $volname);
+    } elsif ($format eq 'subvol') {
+	my $mounted = $class->zfs_get_properties($scfg, 'mounted', "$scfg->{pool}/$volname");
+	if ($mounted !~ m/^yes$/) {
+	    $class->zfs_request($scfg, undef, 'mount', "$scfg->{pool}/$volname");
+	}
+    }
 
     return 1;
 }
