@@ -394,10 +394,12 @@ __PACKAGE__->register_method ({
 		print "# ", join(' ', @$cmd), "\n";
 		run_command($cmd);
 
-		my $importunit = 'zfs-import@'. PVE::Systemd::escape_unit($name, undef) . '.service';
-		$cmd = ['systemctl', 'enable', $importunit];
-		print "# ", join(' ', @$cmd), "\n";
-		run_command($cmd);
+		if (-e '/lib/systemd/system/zfs-import@.service') {
+		    my $importunit = 'zfs-import@'. PVE::Systemd::escape_unit($name, undef) . '.service';
+		    $cmd = ['systemctl', 'enable', $importunit];
+		    print "# ", join(' ', @$cmd), "\n";
+		    run_command($cmd);
+		}
 
 		if ($param->{add_storage}) {
 		    my $storage_params = {
