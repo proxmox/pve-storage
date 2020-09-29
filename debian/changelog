@@ -1,3 +1,19 @@
+libpve-storage-perl (6.2-7) pve; urgency=medium
+
+  * storage_migrate: log bandwidth limit
+
+  * cli: pvesm prune-backups: use keep-options directly
+
+  * zfs: rollback: improve error message and handle unexpectedly missing
+    snapshots better
+
+  * zfs: check and mount subvolumes on volume activation
+
+  * api/disks: create zfs: instantiate import unit for newly created ZFS
+    pool
+
+ -- Proxmox Support Team <support@proxmox.com>  Tue, 29 Sep 2020 18:55:53 +0200
+
 libpve-storage-perl (6.2-6) pve; urgency=medium
 
   * introduce prune-backups property for directory-based storages
