@@ -8,6 +8,7 @@ use POSIX;
 use IO::Select;
 use IO::File;
 use IO::Socket::IP;
+use IPC::Open3;
 use File::Basename;
 use File::Path;
 use Cwd 'abs_path';
@@ -698,15 +699,22 @@ sub storage_migrate {
     volume_snapshot($cfg, $volid, $snapshot) if $migration_snapshot;
     eval {
 	if ($insecure) {
-	    open(my $info, '-|', @$recv)
+	    my $input = IO::File->new();
+	    my $info = IO::File->new();
+	    open3($input, $info, $info, @{$recv})
 		or die "receive command failed: $!\n";
+	    close($input);
+
 	    my ($ip) = <$info> =~ /^($PVE::Tools::IPRE)$/ or die "no tunnel IP received\n";
 	    my ($port) = <$info> =~ /^(\d+)$/ or die "no tunnel port received\n";
 	    my $socket = IO::Socket::IP->new(PeerHost => $ip, PeerPort => $port, Type => SOCK_STREAM)
 		or die "failed to connect to tunnel at $ip:$port\n";
 	    # we won't be reading from the socket
 	    shutdown($socket, 0);
-	    run_command([$send, @cstream], output => '>&'.fileno($socket), errfunc => $logfunc);
+
+	    eval { run_command([$send, @cstream], output => '>&'.fileno($socket), errfunc => $logfunc); };
+	    my $send_error = $@;
+
 	    # don't close the connection entirely otherwise the receiving end
 	    # might not get all buffered data (and fails with 'connection reset by peer')
 	    shutdown($socket, 1);
@@ -722,6 +730,8 @@ sub storage_migrate {
 		die "import failed: $!\n" if $!;
 		die "import failed: exit code ".($?>>8)."\n";
 	    }
+
+	    die $send_error if $send_error;
 	} else {
 	    run_command([$send, @cstream, $recv], logfunc => $match_volid_and_log);
 	}
