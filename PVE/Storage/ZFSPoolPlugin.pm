@@ -731,7 +731,7 @@ sub volume_import {
     my $zfspath = "$scfg->{pool}/$dataset";
     my $suffix = defined($base_snapshot) ? "\@$base_snapshot" : '';
     my $exists = 0 == run_command(['zfs', 'get', '-H', 'name', $zfspath.$suffix],
-			     noerr => 1, errfunc => sub {});
+				  noerr => 1, quiet => 1);
     if (defined($base_snapshot)) {
 	die "base snapshot '$zfspath\@$base_snapshot' doesn't exist\n" if !$exists;
     } elsif ($exists) {
