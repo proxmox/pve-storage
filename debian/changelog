@@ -1,3 +1,13 @@
+libpve-storage-perl (6.2-8) pve; urgency=medium
+
+  * PBS: add support to specify port, for when a reverse proxy or similar is
+    used
+
+  * PBS: use simple TCP ping for online check for now, reducing the amout of
+    status API calls
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 02 Oct 2020 16:09:06 +0200
+
 libpve-storage-perl (6.2-7) pve; urgency=medium
 
   * storage_migrate: log bandwidth limit
