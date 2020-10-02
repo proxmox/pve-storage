@@ -783,6 +783,12 @@ sub file_size_info {
 
     my $st = File::stat::stat($filename);
 
+    if (!defined($st)) {
+	my $extramsg = -l $filename ? ' - dangling symlink?' : '';
+	warn "failed to stat '$filename'$extramsg\n";
+	return undef;
+    }
+
     if (S_ISDIR($st->mode)) {
 	return wantarray ? (0, 'subvol', 0, undef, $st->ctime) : 1;
     }
