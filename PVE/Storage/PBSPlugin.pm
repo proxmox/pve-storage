@@ -4,6 +4,7 @@ package PVE::Storage::PBSPlugin;
 
 use strict;
 use warnings;
+
 use Fcntl qw(F_GETFD F_SETFD FD_CLOEXEC);
 use HTTP::Request;
 use IO::File;
@@ -11,9 +12,10 @@ use JSON;
 use LWP::UserAgent;
 use POSIX qw(strftime ENOENT);
 
-use PVE::Tools qw(run_command file_read_firstline trim dir_glob_regex dir_glob_foreach);
-use PVE::Storage::Plugin;
 use PVE::JSONSchema qw(get_standard_option);
+use PVE::Network;
+use PVE::Storage::Plugin;
+use PVE::Tools qw(run_command file_read_firstline trim dir_glob_regex dir_glob_foreach $IPV6RE);
 
 use base qw(PVE::Storage::Plugin);
 
@@ -32,7 +34,7 @@ sub plugindata {
 sub properties {
     return {
 	datastore => {
-	    description => "Proxmox backup server datastore name.",
+	    description => "Proxmox Backup Server datastore name.",
 	    type => 'string',
 	},
 	# openssl s_client -connect <host>:8007 2>&1 |openssl x509 -fingerprint -sha256
@@ -41,6 +43,13 @@ sub properties {
 	    description => "Encryption key. Use 'autogen' to generate one automatically without passphrase.",
 	    type => 'string',
 	},
+	port => {
+	    description => "For non default port.",
+	    type => 'integer',
+	    minimum => 1,
+	    maximum => 65535,
+	    default => 8007,
+	}
     };
 }
 
@@ -48,6 +57,7 @@ sub options {
     return {
 	server => { fixed => 1 },
 	datastore => { fixed => 1 },
+	port => { optional => 1 },
 	nodes => { optional => 1},
 	disable => { optional => 1},
 	content => { optional => 1},
@@ -152,6 +162,18 @@ sub print_volid {
     return "${storeid}:${volname}";
 }
 
+my sub get_server_with_port {
+    my ($scfg) = @_;
+
+    my $server = $scfg->{server};
+    $server = "[$server]" if $server =~ /^$IPV6RE$/;
+
+    if (my $port = $scfg->{port}) {
+	$server .= ":$port" if $port != 8007;
+    }
+    return $server;
+}
+
 my $USE_CRYPT_PARAMS = {
     backup => 1,
     restore => 1,
@@ -167,7 +189,7 @@ my sub do_raw_client_cmd {
     die "executable not found '$client_exe'! Proxmox backup client not installed?\n"
 	if ! -x $client_exe;
 
-    my $server = $scfg->{server};
+    my $server = get_server_with_port($scfg);
     my $datastore = $scfg->{datastore};
     my $username = $scfg->{username} // 'root@pam';
 
@@ -426,7 +448,7 @@ sub path {
 
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
 
-    my $server = $scfg->{server};
+    my $server = get_server_with_port($scfg);
     my $datastore = $scfg->{datastore};
     my $username = $scfg->{username} // 'root@pam';
 
