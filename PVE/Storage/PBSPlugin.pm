@@ -555,7 +555,11 @@ sub status {
 sub activate_storage {
     my ($class, $storeid, $scfg, $cache) = @_;
 
-    run_client_cmd($scfg, $storeid, "status");
+    # a 'status' client command is to expensive here
+    # TODO: use a dummy ping API call to ensure the PBS API daemon is available for real
+    my $server = $scfg->{server};
+    my $port = $scfg->{port} // 8007;
+    PVE::Network::tcp_ping($server, $port, 2);
 
     return 1;
 }
