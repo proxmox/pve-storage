@@ -464,6 +464,11 @@ sub is_iscsi {
     return 0;
 }
 
+my sub is_ssdlike {
+    my ($type) = @_;
+    return $type eq 'ssd' || $type eq 'nvme';
+}
+
 sub get_disks {
     my ($disks, $nosmart) = @_;
     my $disklist = {};
@@ -533,6 +538,7 @@ sub get_disks {
 
 	if ($sysdata->{rotational} == 0) {
 	    $type = 'ssd';
+	    $type = 'nvme' if $dev =~ m/^nvme\d+n\d+$/;
 	    $data->{rpm} = 0;
 	} elsif ($sysdata->{rotational} == 1) {
 	    if ($data->{rpm} != -1) {
@@ -548,10 +554,10 @@ sub get_disks {
 
 	if (!$nosmart) {
 	    eval {
-		my $smartdata = get_smart_data($devpath, ($type ne 'ssd'));
+		my $smartdata = get_smart_data($devpath, !is_ssdlike($type));
 		$health = $smartdata->{health} if $smartdata->{health};
 
-		if ($type eq 'ssd') {
+		if (is_ssdlike($type)) {
 		    # if we have an ssd we try to get the wearout indicator
 		    my $wearval = get_wear_leveling_info($smartdata, $data->{model} || $sysdata->{model});
 		    $wearout = $wearval if defined($wearval);

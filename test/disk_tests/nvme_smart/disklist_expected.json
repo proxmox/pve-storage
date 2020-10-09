@@ -11,6 +11,6 @@
 	"devpath" : "/dev/nvme0n1",
 	"gpt" : 0,
 	"wwn" : "unknown",
-	"type" : "ssd"
+	"type" : "nvme"
     }
 }
