@@ -159,7 +159,11 @@ sub zfs_get_lun_number {
 
     die "could not find lun_number for guid $guid" if !$guid;
 
-    return $class->zfs_request($scfg, undef, 'list_view', $guid);
+    if ($class->zfs_request($scfg, undef, 'list_view', $guid) =~ /^(\d+)$/) {
+	return $1;
+    }
+
+    die "lun_number for guid $guid is not a number";
 }
 
 # Configuration
