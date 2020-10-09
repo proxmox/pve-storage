@@ -3,18 +3,18 @@ package PVE::API2::Disks;
 use strict;
 use warnings;
 
-use PVE::SafeSyslog;
-use PVE::Diskmanage;
 use HTTP::Status qw(:constants);
-use PVE::JSONSchema qw(get_standard_option);
 
+use PVE::Diskmanage;
+use PVE::JSONSchema qw(get_standard_option);
+use PVE::SafeSyslog;
+
+use PVE::API2::Disks::Directory;
 use PVE::API2::Disks::LVM;
 use PVE::API2::Disks::LVMThin;
-use PVE::API2::Disks::Directory;
 use PVE::API2::Disks::ZFS;
 
 use PVE::RESTHandler;
-
 use base qw(PVE::RESTHandler);
 
 __PACKAGE__->register_method ({
@@ -69,7 +69,7 @@ __PACKAGE__->register_method ({
 	    { name => 'lvmthin' },
 	    { name => 'directory' },
 	    { name => 'zfs' },
-	    ];
+	];
 
 	return $result;
     }});

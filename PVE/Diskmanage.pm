@@ -2,6 +2,7 @@ package PVE::Diskmanage;
 
 use strict;
 use warnings;
+
 use PVE::ProcFSTools;
 use Data::Dumper;
 use Cwd qw(abs_path);
@@ -107,7 +108,6 @@ sub get_smart_data {
 
 	    if (defined($type) && $type eq 'ata' && $line =~ m/^([ \d]{2}\d)\s+(\S+)\s+(\S{6})\s+(\d+)\s+(\d+)\s+(\S+)\s+(\S+)\s+(.*)$/) {
 		my $entry = {};
-
 
 		$entry->{name} = $2 if defined $2;
 		$entry->{flags} = $3 if defined $3;
