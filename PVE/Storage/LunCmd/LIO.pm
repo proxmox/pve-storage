@@ -142,8 +142,6 @@ my $parser = sub {
 	die "Target Portal Group has invalid value, must contain string 'tpg' and a suffix number, eg 'tpg17'\n";
     }
 
-    my $base = get_base;
-
     my $config = $get_config->($scfg);
     my $jsonconfig = JSON->new->utf8->decode($config);
 
@@ -266,7 +264,6 @@ my $list_view = sub {
 # determines, if the given object exists on the portal
 my $list_lun = sub {
     my ($scfg, $timeout, $method, @params) = @_;
-    my $name = undef;
 
     my $object = $params[0];
     my $volname = $extract_volname->($scfg, $object);
@@ -278,7 +275,7 @@ my $list_lun = sub {
 	}
     }
 
-    return $name;
+    return undef;
 };
 
 # adds a new LUN to the target
