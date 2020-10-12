@@ -154,8 +154,22 @@ my $parser = sub {
 	# find correct TPG
 	foreach my $tpg (@{$target->{tpgs}}) {
 	    if ($tpg->{tag} == $tpg_tag) {
+		my $res = [];
+		foreach my $lun (@{$tpg->{luns}}) {
+		    my ($idx, $storage_object);
+		    if ($lun->{index} =~ /^(\d+)$/) {
+			$idx = $1;
+		    }
+		    if ($lun->{storage_object} =~ m|^($BACKSTORE/.*)$|) {
+			$storage_object = $1;
+		    }
+		    die "Invalid lun definition in config!\n"
+			if !(defined($idx) && defined($storage_object));
+		    push @$res, { index => $idx, storage_object => $storage_object };
+		}
+
 		my $id = "$scfg->{portal}.$scfg->{target}";
-		$SETTINGS->{$id} = $tpg;
+		$SETTINGS->{$id}->{luns} = $res;
 		$haveTarget = 1;
 		last;
 	    }
