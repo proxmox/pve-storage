@@ -1,3 +1,15 @@
+libpve-storage-perl (6.2-9) pve; urgency=medium
+
+  * file_size_info: handle dangling symlinks
+
+  * disk management: set more specific type for NVMe attached SSDs
+
+  * ZFS over iSCSI: untaint LUN number
+
+  * LIO: untaint values read from remote config
+
+ -- Proxmox Support Team <support@proxmox.com>  Tue, 13 Oct 2020 11:14:04 +0200
+
 libpve-storage-perl (6.2-8) pve; urgency=medium
 
   * PBS: add support to specify port, for when a reverse proxy or similar is
