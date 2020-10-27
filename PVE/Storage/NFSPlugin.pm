@@ -166,9 +166,7 @@ sub check_connection {
 
     my $cmd = ['/sbin/showmount', '--no-headers', '--exports', $server];
 
-    eval {
-	run_command($cmd, timeout => 2, outfunc => sub {}, errfunc => sub {});
-    };
+    eval { run_command($cmd, timeout => 10, outfunc => sub {}, errfunc => sub {}) };
     if (my $err = $@) {
 	return 0;
     }

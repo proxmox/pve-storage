@@ -262,14 +262,12 @@ sub check_connection {
     } else {
 	push @$cmd, '-U', 'Guest','-N';
     }
-
     push @$cmd, '-c', 'echo 1 0';
 
     my $out_str;
-    eval {
-	run_command($cmd, timeout => 2, outfunc => sub {$out_str .= shift;},
-		    errfunc => sub {});
-    };
+    my $out = sub { $out_str .= shift };
+
+    eval { run_command($cmd, timeout => 10, outfunc => $out, errfunc => sub {}) };
 
     if (my $err = $@) {
 	die "$out_str\n" if defined($out_str) &&
