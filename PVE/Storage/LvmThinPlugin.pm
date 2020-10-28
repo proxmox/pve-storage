@@ -117,7 +117,7 @@ sub free_image {
 
 	# remove all volume snapshots first
 	foreach my $lv (keys %$dat) {
-	    next if $lv !~ m/^snap_${volname}_(\w+)$/;
+	    next if $lv !~ m/^snap_${volname}_${PVE::JSONSchema::CONFIGID_RE}$/;
 	    my $cmd = ['/sbin/lvremove', '-f', "$vg/$lv"];
 	    run_command($cmd, errmsg => "lvremove snapshot '$vg/$lv' error");
 	}
