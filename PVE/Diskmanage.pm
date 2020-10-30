@@ -396,7 +396,7 @@ sub get_sysdir_info {
 }
 
 sub get_wear_leveling_info {
-    my ($smartdata, $model) = @_;
+    my ($smartdata) = @_;
     my $attributes = $smartdata->{attributes};
 
     if (defined($smartdata->{wearout})) {
@@ -405,35 +405,33 @@ sub get_wear_leveling_info {
 
     my $wearout;
 
-    my $vendormap = {
-	'kingston' => 231,
-	'samsung' => 177,
-	'intel' => 233,
-	'sandisk' => 233,
-	'crucial' => 202,
-	'default' => 233,
-    };
+    # Common register names that represent percentage values of potential
+    # failure indicators used in drivedb.h of smartmontool's. Order matters,
+    # as some drives may have multiple definitions
+    my @wearoutregisters = (
+	"Media_Wearout_Indicator",
+	"SSD_Life_Left",
+	"Wear_Leveling_Count",
+	"Perc_Write\/Erase_Ct_BC",
+	"Perc_Rated_Life_Remain",
+	"Remaining_Lifetime_Perc",
+	"Percent_Lifetime_Remain",
+	"Lifetime_Left",
+	"PCT_Life_Remaining",
+	"Lifetime_Remaining",
+	"Percent_Life_Remaining",
+	"Percent_Lifetime_Used",
+	"Perc_Rated_Life_Used"
+    );
 
-    # find target attr id
-
-    my $attrid;
-
-    foreach my $vendor (keys %$vendormap) {
-	if ($model =~ m/$vendor/i) {
-	    $attrid = $vendormap->{$vendor};
-	    # found the attribute
-	    last;
+    # Search for S.M.A.R.T. attributes for known register
+    foreach my $register (@wearoutregisters) {
+	last if defined $wearout;
+	foreach my $attr (@$attributes) {
+	   next if $attr->{name} !~ m/$register/;
+	   $wearout = $attr->{value};
+	   last;
 	}
-    }
-
-    if (!$attrid) {
-	$attrid = $vendormap->{default};
-    }
-
-    foreach my $attr (@$attributes) {
-	next if $attr->{id} != $attrid;
-	$wearout = $attr->{value};
-	last;
     }
 
     return $wearout;
@@ -559,7 +557,7 @@ sub get_disks {
 
 		if (is_ssdlike($type)) {
 		    # if we have an ssd we try to get the wearout indicator
-		    my $wearval = get_wear_leveling_info($smartdata, $data->{model} || $sysdata->{model});
+		    my $wearval = get_wear_leveling_info($smartdata);
 		    $wearout = $wearval if defined($wearval);
 		}
 	    };
