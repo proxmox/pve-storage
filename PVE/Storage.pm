@@ -40,7 +40,7 @@ use PVE::Storage::ZFSPlugin;
 use PVE::Storage::DRBDPlugin;
 use PVE::Storage::PBSPlugin;
 
-# Storage API version. Icrement it on changes in storage API interface.
+# Storage API version. Increment it on changes in storage API interface.
 use constant APIVER => 6;
 # Age is the number of versions we're backward compatible with.
 # This is like having 'current=APIVER' and age='APIAGE' in libtool,
