@@ -888,6 +888,10 @@ sub volume_snapshot_delete {
     return undef;
 }
 
+sub volume_snapshot_needs_fsfreeze {
+
+    return 0;
+}
 sub storage_can_replicate {
     my ($class, $scfg, $storeid, $format) = @_;
 

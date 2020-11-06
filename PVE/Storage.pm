@@ -41,11 +41,11 @@ use PVE::Storage::DRBDPlugin;
 use PVE::Storage::PBSPlugin;
 
 # Storage API version. Increment it on changes in storage API interface.
-use constant APIVER => 6;
+use constant APIVER => 7;
 # Age is the number of versions we're backward compatible with.
 # This is like having 'current=APIVER' and age='APIAGE' in libtool,
 # see https://www.gnu.org/software/libtool/manual/html_node/Libtool-versioning.html
-use constant APIAGE => 5;
+use constant APIAGE => 6;
 
 # load standard plugins
 PVE::Storage::DirPlugin->register();
@@ -285,6 +285,18 @@ sub volume_snapshot_delete {
     } else {
 	die "unable to parse volume ID '$volid'\n";
     }
+}
+
+# check if a filesystem on top of a volume needs to flush its journal for
+# consistency (see fsfreeze(8)) before a snapshot is taken - needed for
+# container mountpoints
+sub volume_snapshot_needs_fsfreeze {
+    my ($cfg, $volid) = @_;
+
+    my ($storeid, $volname) = parse_volume_id($volid);
+    my $scfg = storage_config($cfg, $storeid);
+    my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
+    return $plugin->volume_snapshot_needs_fsfreeze();
 }
 
 # check if a volume or snapshot supports a given feature

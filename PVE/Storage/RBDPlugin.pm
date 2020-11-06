@@ -694,6 +694,11 @@ sub volume_snapshot_delete {
     return undef;
 }
 
+sub volume_snapshot_needs_fsfreeze {
+
+    return 1;
+}
+
 sub volume_has_feature {
     my ($class, $scfg, $feature, $storeid, $volname, $snapname, $running) = @_;
 
