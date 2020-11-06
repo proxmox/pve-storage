@@ -709,6 +709,13 @@ sub storage_migrate {
     };
 
     volume_snapshot($cfg, $volid, $snapshot) if $migration_snapshot;
+
+    if (defined($snapshot)) {
+	activate_volumes($cfg, [$volid], $snapshot);
+    } else {
+	activate_volumes($cfg, [$volid]);
+    }
+
     eval {
 	if ($insecure) {
 	    my $input = IO::File->new();
