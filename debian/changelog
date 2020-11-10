@@ -1,3 +1,18 @@
+libpve-storage-perl (6.2-10) pve; urgency=medium
+
+  * fix #3097: cifs, nfs: increase connection check timeout to 10s
+
+  * fix #1452: also log stderr of remote command with insecure storage
+    migration
+
+  * Diskmanage: Use S.M.A.R.T. attributes for SSDs wearout lookup
+
+  * ZFS pool plugin: avoid noisy output on volume import
+
+  * fix #3030: always activate volumes in storage_migrate
+
+ -- Proxmox Support Team <support@proxmox.com>  Tue, 10 Nov 2020 19:05:01 +0100
+
 libpve-storage-perl (6.2-9) pve; urgency=medium
 
   * file_size_info: handle dangling symlinks
