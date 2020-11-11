@@ -161,35 +161,33 @@ __PACKAGE__->register_method ({
 	my $plugin = PVE::Storage::Plugin->lookup($type);
 	my $opts = $plugin->check_config($storeid, $param, 1, 1);
 
-        PVE::Storage::lock_storage_config(
-	    sub {
+        PVE::Storage::lock_storage_config(sub {
+	    my $cfg = PVE::Storage::config();
 
-		my $cfg = PVE::Storage::config();
+	    if (my $scfg = PVE::Storage::storage_config($cfg, $storeid, 1)) {
+		die "storage ID '$storeid' already defined\n";
+	    }
 
-		if (my $scfg = PVE::Storage::storage_config($cfg, $storeid, 1)) {
-		    die "storage ID '$storeid' already defined\n";
+	    $cfg->{ids}->{$storeid} = $opts;
+
+	    $plugin->on_add_hook($storeid, $opts, %$sensitive);
+
+	    eval {
+		# try to activate if enabled on local node,
+		# we only do this to detect errors/problems sooner
+		if (PVE::Storage::storage_check_enabled($cfg, $storeid, undef, 1)) {
+		    PVE::Storage::activate_storage($cfg, $storeid);
 		}
+	    };
+	    if (my $err = $@) {
+		eval { $plugin->on_delete_hook($storeid, $opts) };
+		warn "$@\n" if $@;
+		die $err;
+	    }
 
-		$cfg->{ids}->{$storeid} = $opts;
+	    PVE::Storage::write_config($cfg);
 
-		$plugin->on_add_hook($storeid, $opts, %$sensitive);
-
-		eval {
-		    # try to activate if enabled on local node,
-		    # we only do this to detect errors/problems sooner
-		    if (PVE::Storage::storage_check_enabled($cfg, $storeid, undef, 1)) {
-			PVE::Storage::activate_storage($cfg, $storeid);
-		    }
-		};
-		if (my $err = $@) {
-		    eval { $plugin->on_delete_hook($storeid, $opts) };
-		    warn "$@\n" if $@;
-		    die $err;
-		}
-
-		PVE::Storage::write_config($cfg);
-
-	    }, "create storage failed");
+	}, "create storage failed");
 
 	return undef;
     }});
@@ -217,7 +215,6 @@ __PACKAGE__->register_method ({
 	}
 
         PVE::Storage::lock_storage_config(sub {
-
 	    my $cfg = PVE::Storage::config();
 
 	    PVE::SectionConfig::assert_if_modified($cfg, $digest);
@@ -279,25 +276,23 @@ __PACKAGE__->register_method ({
 
 	my $storeid = extract_param($param, 'storage');
 
-        PVE::Storage::lock_storage_config(
-	    sub {
+        PVE::Storage::lock_storage_config(sub {
+	    my $cfg = PVE::Storage::config();
 
-		my $cfg = PVE::Storage::config();
+	    my $scfg = PVE::Storage::storage_config($cfg, $storeid);
 
-		my $scfg = PVE::Storage::storage_config($cfg, $storeid);
+	    die "can't remove storage - storage is used as base of another storage\n"
+		if PVE::Storage::storage_is_used($cfg, $storeid);
 
-		die "can't remove storage - storage is used as base of another storage\n"
-		    if PVE::Storage::storage_is_used($cfg, $storeid);
+	    my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
 
-		my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
+	    $plugin->on_delete_hook($storeid, $scfg);
 
-		$plugin->on_delete_hook($storeid, $scfg);
+	    delete $cfg->{ids}->{$storeid};
 
-		delete $cfg->{ids}->{$storeid};
+	    PVE::Storage::write_config($cfg);
 
-		PVE::Storage::write_config($cfg);
-
-	    }, "delete storage failed");
+	}, "delete storage failed");
 
 	PVE::AccessControl::remove_storage_access($storeid);
 
