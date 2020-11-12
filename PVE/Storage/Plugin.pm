@@ -989,18 +989,7 @@ my $get_subdir_files = sub {
 
     my $res = [];
 
-    my $has_comment = {};
-
     foreach my $fn (<$path/*>) {
-
-	if (COMMENT_EXT eq substr($fn, -length(COMMENT_EXT))) {
-	    my $real_fn = substr($fn, 0, length($fn) -  length(COMMENT_EXT));
-	    if (!defined($has_comment->{$real_fn})) {
-		$has_comment->{$real_fn} = (-f $fn);
-	    }
-	    next; # we do not need to do anything with comments themselves
-	}
-
 	my $st = File::stat::stat($fn);
 
 	next if (!$st || S_ISDIR($st->mode));
@@ -1034,11 +1023,7 @@ my $get_subdir_files = sub {
 	    }
 
 	    my $comment_fn = $original.COMMENT_EXT;
-	    if (!defined($has_comment->{$original})) {
-		$has_comment->{$original} = (-f $comment_fn);
-	    }
-
-	    if ($has_comment->{$original}) {
+	    if (-f $comment_fn) {
 		my $comment = PVE::Tools::file_read_firstline($comment_fn);
 		$info->{comment} = $comment if defined($comment);
 	    }
