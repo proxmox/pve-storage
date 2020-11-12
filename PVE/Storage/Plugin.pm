@@ -19,6 +19,8 @@ use base qw(PVE::SectionConfig);
 
 use constant COMPRESSOR_RE => 'gz|lzo|zst';
 
+use constant COMMENT_EXT => ".comment";
+
 our @COMMON_TAR_FLAGS = qw(
     --one-file-system
     -p --sparse --numeric-owner --acls
@@ -987,7 +989,17 @@ my $get_subdir_files = sub {
 
     my $res = [];
 
+    my $has_comment = {};
+
     foreach my $fn (<$path/*>) {
+
+	if (COMMENT_EXT eq substr($fn, -length(COMMENT_EXT))) {
+	    my $real_fn = substr($fn, 0, length($fn) -  length(COMMENT_EXT));
+	    if (!defined($has_comment->{$real_fn})) {
+		$has_comment->{$real_fn} = (-f $fn);
+	    }
+	    next; # we do not need to do anything with comments themselves
+	}
 
 	my $st = File::stat::stat($fn);
 
@@ -1008,6 +1020,7 @@ my $get_subdir_files = sub {
 	} elsif ($tt eq 'backup') {
 	    next if defined($vmid) && $fn !~  m/\S+-$vmid-\S+/;
 	    next if $fn !~ m!/([^/]+\.(tgz|(?:(?:tar|vma)(?:\.(${\COMPRESSOR_RE}))?)))$!;
+	    my $original = $fn;
 	    my $format = $2;
 	    $fn = $1;
 	    $info = { volid => "$sid:backup/$fn", format => $format };
@@ -1018,6 +1031,16 @@ my $get_subdir_files = sub {
 
 	    if (defined($vmid) || $fn =~ m!\-([1-9][0-9]{2,8})\-[^/]+\.${format}$!) {
 		$info->{vmid} = $vmid // $1;
+	    }
+
+	    my $comment_fn = $original.COMMENT_EXT;
+	    if (!defined($has_comment->{$original})) {
+		$has_comment->{$original} = (-f $comment_fn);
+	    }
+
+	    if ($has_comment->{$original}) {
+		my $comment = PVE::Tools::file_read_firstline($comment_fn);
+		$info->{comment} = $comment if defined($comment);
 	    }
 
 	} elsif ($tt eq 'snippets') {
