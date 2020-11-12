@@ -371,6 +371,8 @@ my $autogen_encryption_key = sub {
 sub on_add_hook {
     my ($class, $storeid, $scfg, %param) = @_;
 
+    my $res = {};
+
     if (defined(my $password = $param{password})) {
 	pbs_set_password($scfg, $storeid, $password);
     } else {
@@ -379,18 +381,23 @@ sub on_add_hook {
 
     if (defined(my $encryption_key = $param{'encryption-key'})) {
 	if ($encryption_key eq 'autogen') {
-	    $autogen_encryption_key->($scfg, $storeid);
+	    $res->{'encryption-key'} = $autogen_encryption_key->($scfg, $storeid);
 	} else {
 	    pbs_set_encryption_key($scfg, $storeid, $encryption_key);
+	    $res->{'encryption-key'} = $encryption_key;
 	}
 	$scfg->{'encryption-key'} = 1;
     } else {
 	pbs_delete_encryption_key($scfg, $storeid);
     }
+
+    return $res;
 }
 
 sub on_update_hook {
     my ($class, $storeid, $scfg, %param) = @_;
+
+    my $res = {};
 
     if (exists($param{password})) {
 	if (defined($param{password})) {
@@ -403,15 +410,18 @@ sub on_update_hook {
     if (exists($param{'encryption-key'})) {
 	if (defined(my $encryption_key = delete($param{'encryption-key'}))) {
 	    if ($encryption_key eq 'autogen') {
-		$autogen_encryption_key->($scfg, $storeid);
+		$res->{'encryption-key'} = $autogen_encryption_key->($scfg, $storeid);
 	    } else {
 		pbs_set_encryption_key($scfg, $storeid, $encryption_key);
+		$res->{'encryption-key'} = $encryption_key;
 	    }
 	    $scfg->{'encryption-key'} = 1;
 	} else {
 	    pbs_delete_encryption_key($scfg, $storeid);
 	}
     }
+
+    return $res;
 }
 
 sub on_delete_hook {
