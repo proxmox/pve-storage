@@ -87,6 +87,26 @@ __PACKAGE__->register_method ({
 		    minimum => 0,
 		    optional => 1,
 		},
+		comment => {
+		    description => "An optional Comment.",
+		    type => 'string',
+		    optional => 1,
+		},
+		verification => {
+		    description => "Last backup verification result, only useful for PBS storages.",
+		    type => 'object',
+		    properties => {
+			state => {
+			    description => "Last backup verification state.",
+			    type => 'string',
+			},
+			upid => {
+			    description => "Last backup verification UPID.",
+			    type => 'string',
+			},
+		    },
+		    optional => 1,
+		},
 	    },
 	},
 	links => [ { rel => 'child', href => "{volid}" } ],

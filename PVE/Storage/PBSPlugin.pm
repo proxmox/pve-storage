@@ -525,6 +525,9 @@ sub list_volumes {
 	    ctime => $epoch,
 	};
 
+	$info->{verification} = $item->{verification} if defined($item->{verification});
+	$info->{comment} = $item->{comment} if defined($item->{comment});
+
 	push @$res, $info;
     }
 
