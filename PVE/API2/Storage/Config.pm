@@ -145,7 +145,33 @@ __PACKAGE__->register_method ({
 	check => ['perm', '/storage', ['Datastore.Allocate']],
     },
     parameters => PVE::Storage::Plugin->createSchema(),
-    returns => { type => 'null' },
+    returns => {
+	type => 'object',
+	properties => {
+	    storage => {
+		description => "The ID of the created storage.",
+		type => 'string',
+	    },
+	    type => {
+		description => "The type of the created storage.",
+		type => 'string',
+		enum => $storage_type_enum,
+	    },
+	    config => {
+		description => "Partial, possible server generated, configuration properties.",
+		type => 'object',
+		optional => 1,
+		additionalProperties => 1,
+		properties => {
+		    'encryption-key' => {
+			description => "The, possible auto-generated, encryption-key.",
+			optional => 1,
+			type => 'string',
+		    },
+		},
+	    },
+	},
+    },
     code => sub {
 	my ($param) = @_;
 
@@ -161,7 +187,8 @@ __PACKAGE__->register_method ({
 	my $plugin = PVE::Storage::Plugin->lookup($type);
 	my $opts = $plugin->check_config($storeid, $param, 1, 1);
 
-        PVE::Storage::lock_storage_config(sub {
+	my $returned_config;
+	PVE::Storage::lock_storage_config(sub {
 	    my $cfg = PVE::Storage::config();
 
 	    if (my $scfg = PVE::Storage::storage_config($cfg, $storeid, 1)) {
@@ -170,7 +197,7 @@ __PACKAGE__->register_method ({
 
 	    $cfg->{ids}->{$storeid} = $opts;
 
-	    $plugin->on_add_hook($storeid, $opts, %$sensitive);
+	    $returned_config = $plugin->on_add_hook($storeid, $opts, %$sensitive);
 
 	    eval {
 		# try to activate if enabled on local node,
@@ -189,7 +216,12 @@ __PACKAGE__->register_method ({
 
 	}, "create storage failed");
 
-	return undef;
+	my $res = {
+	    storage => $storeid,
+	    type => $type,
+	};
+	$res->{config} = $returned_config if $returned_config;
+	return $res;
     }});
 
 __PACKAGE__->register_method ({
@@ -202,25 +234,53 @@ __PACKAGE__->register_method ({
 	check => ['perm', '/storage', ['Datastore.Allocate']],
     },
     parameters => PVE::Storage::Plugin->updateSchema(),
-    returns => { type => 'null' },
+    returns => {
+	type => 'object',
+	properties => {
+	    storage => {
+		description => "The ID of the created storage.",
+		type => 'string',
+	    },
+	    type => {
+		description => "The type of the created storage.",
+		type => 'string',
+		enum => $storage_type_enum,
+	    },
+	    config => {
+		description => "Partial, possible server generated, configuration properties.",
+		type => 'object',
+		optional => 1,
+		additionalProperties => 1,
+		properties => {
+		    'encryption-key' => {
+			description => "The, possible auto-generated, encryption-key.",
+			optional => 1,
+			type => 'string',
+		    },
+		},
+	    },
+	},
+    },
     code => sub {
 	my ($param) = @_;
 
 	my $storeid = extract_param($param, 'storage');
 	my $digest = extract_param($param, 'digest');
 	my $delete = extract_param($param, 'delete');
+	my $type;
 
 	if ($delete) {
 	    $delete = [ PVE::Tools::split_list($delete) ];
 	}
 
+	my $returned_config;
         PVE::Storage::lock_storage_config(sub {
 	    my $cfg = PVE::Storage::config();
 
 	    PVE::SectionConfig::assert_if_modified($cfg, $digest);
 
 	    my $scfg = PVE::Storage::storage_config($cfg, $storeid);
-	    my $type = $scfg->{type};
+	    $type = $scfg->{type};
 
 	    my $sensitive = extract_sensitive_params($param, $delete);
 
@@ -240,7 +300,7 @@ __PACKAGE__->register_method ({
 		}
 	    }
 
-	    $plugin->on_update_hook($storeid, $opts, %$sensitive);
+	    $returned_config = $plugin->on_update_hook($storeid, $opts, %$sensitive);
 
 	    for my $k (keys %$opts) {
 		$scfg->{$k} = $opts->{$k};
@@ -250,7 +310,12 @@ __PACKAGE__->register_method ({
 
 	}, "update storage failed");
 
-	return undef;
+	my $res = {
+	    storage => $storeid,
+	    type => $type,
+	};
+	$res->{config} = $returned_config if $returned_config;
+	return $res;
     }});
 
 __PACKAGE__->register_method ({
@@ -266,8 +331,8 @@ __PACKAGE__->register_method ({
 	additionalProperties => 0,
 	properties => {
 	    storage => get_standard_option('pve-storage-id', {
-                completion => \&PVE::Storage::complete_storage,
-            }),
+		completion => \&PVE::Storage::complete_storage,
+	    }),
 	},
     },
     returns => { type => 'null' },
