@@ -82,15 +82,7 @@ our $prune_backups_format = {
 		       'than one backup for a single year, only the latest one is kept.'
     },
 };
-PVE::JSONSchema::register_format('prune-backups', $prune_backups_format, \&validate_prune_backups);
-sub validate_prune_backups {
-    my ($keep) = @_;
-
-    die "at least one keep-option must be set and positive\n"
-	if !grep { $_ } values %{$keep};
-
-    return $keep;
-}
+PVE::JSONSchema::register_format('prune-backups', $prune_backups_format);
 register_standard_option('prune-backups', {
     description => "The retention options with shorter intervals are processed first " .
 		   "with --keep-last being the very first one. Each option covers a " .
