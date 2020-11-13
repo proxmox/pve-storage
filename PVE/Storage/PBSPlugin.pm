@@ -314,6 +314,7 @@ sub prune_backups {
 
     my @param;
     foreach my $opt (keys %{$keep}) {
+	next if $keep->{$opt} == 0;
 	push @param, "--$opt";
 	push @param, "$keep->{$opt}";
     }
