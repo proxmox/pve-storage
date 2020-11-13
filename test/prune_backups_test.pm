@@ -240,6 +240,18 @@ my $tests = [
 	expected => generate_expected(\@vmids, undef, ['keep', 'remove', 'keep', 'remove', 'keep', 'keep']),
     },
     {
+	description => 'last=daily=weekly=1, others zero, multiple IDs',
+	keep => {
+	    'keep-hourly' => 0,
+	    'keep-last' => 1,
+	    'keep-daily' => 1,
+	    'keep-weekly' => 1,
+	    'keep-monthly' => 0,
+	    'keep-yearly' => 0,
+	},
+	expected => generate_expected(\@vmids, undef, ['keep', 'remove', 'keep', 'remove', 'keep', 'keep']),
+    },
+    {
 	description => 'daily=2, one ID',
 	vmid => $vmids[0],
 	keep => {
@@ -320,6 +332,34 @@ my $tests = [
 		'type'  => 'lxc',
 	    },
 	],
+    },
+    {
+	description => 'all missing, multiple IDs',
+	keep => {},
+	expected => generate_expected(\@vmids, undef, ['keep', 'keep', 'keep', 'keep', 'keep', 'keep']),
+    },
+    {
+	description => 'all zero, multiple IDs',
+	keep => {
+	    'keep-last' => 0,
+	    'keep-hourly' => 0,
+	    'keep-daily' => 0,
+	    'keep-weekly' => 0,
+	    'keep-monthyl' => 0,
+	    'keep-yearly' => 0,
+	},
+	expected => generate_expected(\@vmids, undef, ['keep', 'keep', 'keep', 'keep', 'keep', 'keep']),
+    },
+    {
+	description => 'some zero, some missing, multiple IDs',
+	keep => {
+	    'keep-last' => 0,
+	    'keep-hourly' => 0,
+	    'keep-daily' => 0,
+	    'keep-monthyl' => 0,
+	    'keep-yearly' => 0,
+	},
+	expected => generate_expected(\@vmids, undef, ['keep', 'keep', 'keep', 'keep', 'keep', 'keep']),
     },
 ];
 

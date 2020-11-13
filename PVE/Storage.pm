@@ -1622,6 +1622,13 @@ my $prune_mark = sub {
 sub prune_mark_backup_group {
     my ($backup_group, $keep) = @_;
 
+    if (!scalar(grep {$_ > 0} values %{$keep})) {
+	foreach my $prune_entry (@{$backup_group}) {
+	    $prune_entry->{mark} = 'keep';
+	}
+	return;
+    }
+
     my $prune_list = [ sort { $b->{ctime} <=> $a->{ctime} } @{$backup_group} ];
 
     $prune_mark->($prune_list, $keep->{'keep-last'}, sub {
