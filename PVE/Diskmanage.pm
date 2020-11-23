@@ -502,7 +502,7 @@ sub get_disks {
 	    die "disks is not a string or array reference\n";
 	}
 	# we get cciss/c0d0 but need cciss!c0d0
-	map { s|cciss/|cciss!| } @$disks;
+	$_ =~ s|cciss/|cciss!| for @$disks;
 
 	$disk_regex = "(?:" . join('|', @$disks) . ")";
     }
