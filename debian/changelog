@@ -1,3 +1,24 @@
+libpve-storage-perl (6.2-11) pve; urgency=medium
+
+  * pbs: autogen encryption key: bubble up error message
+
+  * api: content listing: add comment and verification fields
+
+  * don't pass along keep-options equal to zero to Proxmox Backup client
+
+  * prune mark: keep all if all prune options are zero/missing
+
+  * lvmthin: Match snapshot remove regex to allowed names
+
+  * fix volume activation for ZFS subvols
+
+  * prune: introduce keep-all option
+
+  * convert 'maxfiles' to new 'prune-backups' option when reading the storage
+    configuration
+
+ -- Proxmox Support Team <support@proxmox.com>  Mon, 23 Nov 2020 19:36:41 +0100
+
 libpve-storage-perl (6.2-10) pve; urgency=medium
 
   * fix #3097: cifs, nfs: increase connection check timeout to 10s
