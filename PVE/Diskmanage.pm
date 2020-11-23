@@ -713,9 +713,12 @@ sub get_partnum {
 sub get_blockdev {
     my ($part_path) = @_;
 
-    my $dev = $1 if $part_path =~ m|^/dev/(.*)$|;
-    my $link = readlink "/sys/class/block/$dev";
-    my $block_dev = $1 if $link =~ m|([^/]*)/$dev$|;
+    my ($dev, $block_dev);
+    if ($part_path =~ m|^/dev/(.*)$|) {
+	$dev = $1;
+	my $link = readlink "/sys/class/block/$dev";
+	$block_dev = $1 if $link =~ m|([^/]*)/$dev$|;
+    }
 
     die "Can't parse parent device\n" if !defined($block_dev);
     die "No valid block device\n" if index($dev, $block_dev) == -1;

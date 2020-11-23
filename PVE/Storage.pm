@@ -1411,7 +1411,8 @@ sub decompressor_info {
     die "ERROR: archive format not defined\n"
 	if !defined($decompressor->{$format});
 
-    my $decomp = $decompressor->{$format}->{$comp} if $comp;
+    my $decomp;
+    $decomp = $decompressor->{$format}->{$comp} if $comp;
 
     my $info = {
 	format => $format,
