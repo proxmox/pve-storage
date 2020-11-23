@@ -419,6 +419,7 @@ sub on_add_hook {
     my ($class, $storeid, $scfg, %param) = @_;
 
     # do nothing by default
+    return undef;
 }
 
 # called during storage configuration update (before the updated storage config got written)
@@ -428,6 +429,7 @@ sub on_update_hook {
     my ($class, $storeid, $scfg, %param) = @_;
 
     # do nothing by default
+    return undef;
 }
 
 # called during deletion of storage (before the new storage config got written)
@@ -439,6 +441,7 @@ sub on_delete_hook {
     my ($class, $storeid, $scfg) = @_;
 
     # do nothing by default
+    return undef;
 }
 
 sub cluster_lock_storage {
