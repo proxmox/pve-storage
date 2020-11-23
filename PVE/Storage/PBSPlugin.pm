@@ -313,10 +313,17 @@ sub prune_backups {
     }
 
     my @param;
-    foreach my $opt (keys %{$keep}) {
-	next if $keep->{$opt} == 0;
-	push @param, "--$opt";
-	push @param, "$keep->{$opt}";
+
+    my $keep_all = delete $keep->{'keep-all'};
+
+    if (!$keep_all) {
+	foreach my $opt (keys %{$keep}) {
+	    next if $keep->{$opt} == 0;
+	    push @param, "--$opt";
+	    push @param, "$keep->{$opt}";
+	}
+    } else { # no need to pass anything to PBS
+	$keep = { 'keep-all' => 1 };
     }
 
     push @param, '--dry-run' if $dryrun;

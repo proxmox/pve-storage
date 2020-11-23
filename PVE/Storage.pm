@@ -1623,7 +1623,10 @@ my $prune_mark = sub {
 sub prune_mark_backup_group {
     my ($backup_group, $keep) = @_;
 
-    if (!scalar(grep {$_ > 0} values %{$keep})) {
+    my $keep_all = delete $keep->{'keep-all'};
+
+    if ($keep_all || !scalar(grep {$_ > 0} values %{$keep})) {
+	$keep = { 'keep-all' => 1 } if $keep_all;
 	foreach my $prune_entry (@{$backup_group}) {
 	    $prune_entry->{mark} = 'keep';
 	}

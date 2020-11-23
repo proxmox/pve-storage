@@ -52,6 +52,11 @@ my %prune_option = (
 );
 
 our $prune_backups_format = {
+    'keep-all' => {
+	type => 'boolean',
+	description => 'Keep all backups. Conflicts with the other options when true.',
+	optional => 1,
+    },
     'keep-last' => {
 	%prune_option,
 	description => 'Keep the last <N> backups.',
@@ -82,7 +87,20 @@ our $prune_backups_format = {
 		       'than one backup for a single year, only the latest one is kept.'
     },
 };
-PVE::JSONSchema::register_format('prune-backups', $prune_backups_format);
+PVE::JSONSchema::register_format('prune-backups', $prune_backups_format, \&validate_prune_backups);
+sub validate_prune_backups {
+    my ($prune_backups) = @_;
+
+    my $keep_all = delete $prune_backups->{'keep-all'};
+
+    if (!scalar(grep {$_ > 0} values %{$prune_backups})) {
+	$prune_backups = { 'keep-all' => 1 };
+    } elsif ($keep_all) {
+	die "keep-all cannot be set together with other options.\n";
+    }
+
+    return $prune_backups;
+}
 register_standard_option('prune-backups', {
     description => "The retention options with shorter intervals are processed first " .
 		   "with --keep-last being the very first one. Each option covers a " .
