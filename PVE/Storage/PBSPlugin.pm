@@ -608,6 +608,26 @@ sub deactivate_volume {
     return 1;
 }
 
+sub get_volume_notes {
+    my ($class, $scfg, $storeid, $volname, $timeout) = @_;
+
+    my (undef, $name,  undef, undef, undef, undef, $format) = $class->parse_volname($volname);
+
+    my $data = run_client_cmd($scfg, $storeid, "snapshot", [ "notes", "show", $name ]);
+
+    return $data->{notes};
+}
+
+sub update_volume_notes {
+    my ($class, $scfg, $storeid, $volname, $notes, $timeout) = @_;
+
+    my (undef, $name,  undef, undef, undef, undef, $format) = $class->parse_volname($volname);
+
+    run_client_cmd($scfg, $storeid, "snapshot", [ "notes", "update", $name, $notes ], 1);
+
+    return undef;
+}
+
 sub volume_size_info {
     my ($class, $scfg, $storeid, $volname, $timeout) = @_;
 
