@@ -394,6 +394,7 @@ sub on_add_hook {
 	my $decoded_key;
 	if ($encryption_key eq 'autogen') {
 	    $res->{'encryption-key'} = $autogen_encryption_key->($scfg, $storeid);
+	    $decoded_key = decode_json($res->{'encryption-key'});
 	} else {
 	    $decoded_key = eval { decode_json($encryption_key) };
 	    if ($@ || !exists($decoded_key->{data})) {
@@ -402,7 +403,7 @@ sub on_add_hook {
 	    pbs_set_encryption_key($scfg, $storeid, $encryption_key);
 	    $res->{'encryption-key'} = $encryption_key;
 	}
-	$scfg->{'encryption-key'} = 1;
+	$scfg->{'encryption-key'} = $decoded_key->{fingerprint} || 1;
     } else {
 	pbs_delete_encryption_key($scfg, $storeid);
     }
@@ -428,6 +429,7 @@ sub on_update_hook {
 	    my $decoded_key;
 	    if ($encryption_key eq 'autogen') {
 		$res->{'encryption-key'} = $autogen_encryption_key->($scfg, $storeid);
+		$decoded_key = decode_json($res->{'encryption-key'});
 	    } else {
 		$decoded_key = eval { decode_json($encryption_key) };
 		if ($@ || !exists($decoded_key->{data})) {
@@ -436,7 +438,7 @@ sub on_update_hook {
 		pbs_set_encryption_key($scfg, $storeid, $encryption_key);
 		$res->{'encryption-key'} = $encryption_key;
 	    }
-	    $scfg->{'encryption-key'} = 1;
+	    $scfg->{'encryption-key'} = $decoded_key->{fingerprint} || 1;
 	} else {
 	    pbs_delete_encryption_key($scfg, $storeid);
 	}
