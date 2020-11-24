@@ -371,6 +371,9 @@ sub prune_backups {
 my $autogen_encryption_key = sub {
     my ($scfg, $storeid) = @_;
     my $encfile = pbs_encryption_key_file_name($scfg, $storeid);
+    if (-f $encfile) {
+	rename $encfile, "$encfile.old";
+    }
     my $cmd = ['proxmox-backup-client', 'key', 'create', '--kdf', 'none', $encfile];
     run_command($cmd, errmsg => 'failed to create encryption key');
     return PVE::Tools::file_get_contents($encfile);
