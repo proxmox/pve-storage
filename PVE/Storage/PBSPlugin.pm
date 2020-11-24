@@ -528,6 +528,24 @@ sub list_images {
     return $res;
 }
 
+my sub snapshot_files_encrypted {
+    my ($files) = @_;
+    return 0 if !$files;
+
+    my $any;
+    my $all = 1;
+    for my $file (@$files) {
+	my $fn = $file->{filename};
+	next if $fn eq 'client.log.blob' || $fn eq 'index.json.blob';
+
+	my $crypt = $file->{'crypt-mode'};
+
+	$all = 0 if !$crypt || $crypt ne 'encrypt';
+	$any ||= $crypt eq 'encrypt';
+    }
+    return $any && $all;
+}
+
 sub list_volumes {
     my ($class, $storeid, $scfg, $vmid, $content_types) = @_;
 
@@ -560,6 +578,11 @@ sub list_volumes {
 
 	$info->{verification} = $item->{verification} if defined($item->{verification});
 	$info->{notes} = $item->{comment} if defined($item->{comment});
+	if (defined($item->{fingerprint})) {
+	    $info->{encrypted} = $item->{fingerprint};
+	} elsif (snapshot_files_encrypted($item->{files})) {
+	    $info->{encrypted} = '1';
+	}
 
 	push @$res, $info;
     }

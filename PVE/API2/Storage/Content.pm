@@ -92,6 +92,12 @@ __PACKAGE__->register_method ({
 		    type => 'string',
 		    optional => 1,
 		},
+		encrypted => {
+		    description => "If whole backup is encrypted, value is the fingerprint or '1' "
+			." if encrypted. Only useful for the Proxmox Backup Server storage type.",
+		    type => 'string',
+		    optional => 1,
+		},
 		verification => {
 		    description => "Last backup verification result, only useful for PBS storages.",
 		    type => 'object',
