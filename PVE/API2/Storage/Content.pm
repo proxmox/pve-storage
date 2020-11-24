@@ -263,7 +263,30 @@ __PACKAGE__->register_method ({
 	    },
 	},
     },
-    returns => { type => 'object' },
+    returns => {
+	type => 'object',
+	properties => {
+	    path => {
+		description => "The Path",
+		type => 'string',
+	    },
+	    size => {
+		description => "Volume size in bytes.",
+		type => 'integer',
+		renderer => 'bytes',
+	    },
+	    used => {
+		description => "Used space. Please note that most storage plugins " .
+		"do not report anything useful here.",
+		type => 'integer',
+		renderer => 'bytes',
+	    },
+	    format => {
+		description => "Format identifier ('raw', 'qcow2', 'subvol', 'iso', 'tgz' ...)",
+		type => 'string',
+	    },
+	},
+    },
     code => sub {
 	my ($param) = @_;
 
@@ -277,8 +300,8 @@ __PACKAGE__->register_method ({
 	PVE::Storage::check_volume_access($rpcenv, $authuser, $cfg, undef, $volid);
 
 	my $path = PVE::Storage::path($cfg, $volid);
-	my ($size, $format, $used, $parent) =  PVE::Storage::file_size_info($path);
-	die "file_size_info on '$volid' failed\n" if !($format && $size);
+	my ($size, $format, $used, $parent) =  PVE::Storage::volume_size_info($cfg, $volid);
+	die "volume_size_info on '$volid' failed\n" if !($format && $size);
 
 	# fixme: return more attributes?
 	return {
