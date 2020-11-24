@@ -544,7 +544,7 @@ sub list_volumes {
 	};
 
 	$info->{verification} = $item->{verification} if defined($item->{verification});
-	$info->{comment} = $item->{comment} if defined($item->{comment});
+	$info->{notes} = $item->{comment} if defined($item->{comment});
 
 	push @$res, $info;
     }

@@ -87,8 +87,8 @@ __PACKAGE__->register_method ({
 		    minimum => 0,
 		    optional => 1,
 		},
-		comment => {
-		    description => "An optional Comment.",
+		notes => {
+		    description => "Optional notes. If they contain multiple lines, only the first one is returned here.",
 		    type => 'string',
 		    optional => 1,
 		},

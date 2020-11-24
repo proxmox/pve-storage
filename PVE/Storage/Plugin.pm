@@ -19,7 +19,7 @@ use base qw(PVE::SectionConfig);
 
 use constant COMPRESSOR_RE => 'gz|lzo|zst';
 
-use constant COMMENT_EXT => ".comment";
+use constant NOTES_EXT => ".notes";
 
 our @COMMON_TAR_FLAGS = qw(
     --one-file-system
@@ -1035,10 +1035,10 @@ my $get_subdir_files = sub {
 		$info->{vmid} = $vmid // $1;
 	    }
 
-	    my $comment_fn = $original.COMMENT_EXT;
-	    if (-f $comment_fn) {
-		my $comment = PVE::Tools::file_read_firstline($comment_fn);
-		$info->{comment} = $comment if defined($comment);
+	    my $notes_fn = $original.NOTES_EXT;
+	    if (-f $notes_fn) {
+		my $notes = PVE::Tools::file_read_firstline($notes_fn);
+		$info->{notes} = $notes if defined($notes);
 	    }
 
 	} elsif ($tt eq 'snippets') {
