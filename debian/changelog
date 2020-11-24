@@ -1,3 +1,15 @@
+libpve-storage-perl (6.3-1) pve; urgency=medium
+
+  * Proxmox Backup Server: add/update: save encryption-key fingerprint in
+    storage config for reference
+
+  * Proxmox Backup Server: add/update: autogen key: rename old one if existing
+
+  * api: content: return backup encryption status for Proxmox Backup Server
+    images
+
+ -- Proxmox Support Team <support@proxmox.com>  Tue, 24 Nov 2020 23:20:50 +0100
+
 libpve-storage-perl (6.2-12) pve; urgency=medium
 
   * api: rename comment to notes
