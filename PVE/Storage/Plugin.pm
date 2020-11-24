@@ -826,6 +826,18 @@ sub file_size_info {
     return wantarray ? ($size, $format, $used, $parent, $st->ctime) : $size;
 }
 
+sub get_volume_notes {
+    my ($class, $scfg, $storeid, $volname, $timeout) = @_;
+
+    die "volume notes are not supported for $class";
+}
+
+sub update_volume_notes {
+    my ($class, $scfg, $storeid, $volname, $notes, $timeout) = @_;
+
+    die "volume notes are not supported for $class";
+}
+
 sub volume_size_info {
     my ($class, $scfg, $storeid, $volname, $timeout) = @_;
     my $path = $class->filesystem_path($scfg, $volname);

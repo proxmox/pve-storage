@@ -285,6 +285,11 @@ __PACKAGE__->register_method ({
 		description => "Format identifier ('raw', 'qcow2', 'subvol', 'iso', 'tgz' ...)",
 		type => 'string',
 	    },
+	    notes => {
+		description => "Optional notes.",
+		optional => 1,
+		type => 'string',
+	    }
 	},
     },
     code => sub {
@@ -303,13 +308,67 @@ __PACKAGE__->register_method ({
 	my ($size, $format, $used, $parent) =  PVE::Storage::volume_size_info($cfg, $volid);
 	die "volume_size_info on '$volid' failed\n" if !($format && $size);
 
-	# fixme: return more attributes?
-	return {
+	my $entry = {
 	    path => $path,
 	    size => $size,
             used => $used,
 	    format => $format,
 	};
+
+	# not all storages/types support notes, so ignore errors here
+	eval {
+	    my $notes = PVE::Storage::get_volume_notes($cfg, $volid);
+	    $entry->{notes} = $notes if defined($notes);
+	};
+
+	return $entry;
+    }});
+
+__PACKAGE__->register_method ({
+    name => 'updateattributes',
+    path => '{volume}',
+    method => 'PUT',
+    description => "Update volume attributes",
+    permissions => {
+	description => "You need read access for the volume.",
+	user => 'all',
+    },
+    protected => 1,
+    proxyto => 'node',
+    parameters => {
+	additionalProperties => 0,
+	properties => {
+	    node => get_standard_option('pve-node'),
+	    storage => get_standard_option('pve-storage-id', { optional => 1 }),
+	    volume => {
+		description => "Volume identifier",
+		type => 'string',
+	    },
+	    notes => {
+		description => "The new notes.",
+		type => 'string',
+		optional => 1,
+	    },
+	},
+    },
+    returns => { type => 'null' },
+    code => sub {
+	my ($param) = @_;
+
+	my $rpcenv = PVE::RPCEnvironment::get();
+	my $authuser = $rpcenv->get_user();
+
+	my ($volid, $storeid) = &$real_volume_id($param->{storage}, $param->{volume});
+
+	my $cfg = PVE::Storage::config();
+
+	PVE::Storage::check_volume_access($rpcenv, $authuser, $cfg, undef, $volid);
+
+	if (my $notes = $param->{notes}) {
+	    PVE::Storage::update_volume_notes($cfg, $volid, $notes);
+	}
+
+	return undef;
     }});
 
 __PACKAGE__->register_method ({
