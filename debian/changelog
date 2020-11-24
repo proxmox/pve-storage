@@ -1,3 +1,14 @@
+libpve-storage-perl (6.2-12) pve; urgency=medium
+
+  * api: rename comment to notes
+
+  * api: storage/content: use more generic volume size info helper
+
+  * plugins: add get/update_volume_comment and implement for all directory
+    based storages
+
+ -- Proxmox Support Team <support@proxmox.com>  Tue, 24 Nov 2020 16:05:15 +0100
+
 libpve-storage-perl (6.2-11) pve; urgency=medium
 
   * pbs: autogen encryption key: bubble up error message
