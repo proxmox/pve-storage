@@ -391,9 +391,14 @@ sub on_add_hook {
     }
 
     if (defined(my $encryption_key = $param{'encryption-key'})) {
+	my $decoded_key;
 	if ($encryption_key eq 'autogen') {
 	    $res->{'encryption-key'} = $autogen_encryption_key->($scfg, $storeid);
 	} else {
+	    $decoded_key = eval { decode_json($encryption_key) };
+	    if ($@ || !exists($decoded_key->{data})) {
+		die "Value does not seems like a valid, JSON formatted encryption key!\n";
+	    }
 	    pbs_set_encryption_key($scfg, $storeid, $encryption_key);
 	    $res->{'encryption-key'} = $encryption_key;
 	}
@@ -420,9 +425,14 @@ sub on_update_hook {
 
     if (exists($param{'encryption-key'})) {
 	if (defined(my $encryption_key = delete($param{'encryption-key'}))) {
+	    my $decoded_key;
 	    if ($encryption_key eq 'autogen') {
 		$res->{'encryption-key'} = $autogen_encryption_key->($scfg, $storeid);
 	    } else {
+		$decoded_key = eval { decode_json($encryption_key) };
+		if ($@ || !exists($decoded_key->{data})) {
+		    die "Value does not seems like a valid, JSON formatted encryption key!\n";
+		}
 		pbs_set_encryption_key($scfg, $storeid, $encryption_key);
 		$res->{'encryption-key'} = $encryption_key;
 	    }
