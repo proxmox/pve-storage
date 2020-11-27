@@ -317,6 +317,8 @@ sub on_add_hook {
     return if defined($scfg->{monhost}); # nothing to do if not pve managed ceph
 
     PVE::CephConfig::ceph_create_keyfile($scfg->{type}, $storeid);
+
+    return;
 }
 
 sub on_delete_hook {
@@ -325,6 +327,8 @@ sub on_delete_hook {
     return if defined($scfg->{monhost}); # nothing to do if not pve managed ceph
 
     PVE::CephConfig::ceph_remove_keyfile($scfg->{type}, $storeid);
+
+    return;
 }
 
 sub parse_volname {

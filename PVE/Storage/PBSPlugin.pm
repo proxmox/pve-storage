@@ -452,6 +452,8 @@ sub on_delete_hook {
 
     pbs_delete_password($scfg, $storeid);
     pbs_delete_encryption_key($scfg, $storeid);
+
+    return;
 }
 
 sub parse_volname {

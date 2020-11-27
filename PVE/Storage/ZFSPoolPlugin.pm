@@ -133,6 +133,8 @@ sub on_add_hook {
     } else {
 	$scfg->{mountpoint} = $mountpoint;
     }
+
+    return;
 }
 
 sub path {

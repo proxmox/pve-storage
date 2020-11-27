@@ -168,6 +168,8 @@ sub on_add_hook {
     } else {
 	cifs_delete_credentials($storeid);
     }
+
+    return;
 }
 
 sub on_update_hook {
@@ -183,12 +185,16 @@ sub on_update_hook {
     } else {
 	cifs_delete_credentials($storeid);
     }
+
+    return;
 }
 
 sub on_delete_hook {
     my ($class, $storeid, $scfg) = @_;
 
     cifs_delete_credentials($storeid);
+
+    return;
 }
 
 sub status {

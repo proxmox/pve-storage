@@ -269,6 +269,8 @@ sub on_add_hook {
 
 	lvm_create_volume_group($path, $scfg->{vgname}, $scfg->{shared});
     }
+
+    return;
 }
 
 sub parse_volname {
