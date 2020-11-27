@@ -127,11 +127,8 @@ sub activate_storage {
     my $server = $scfg->{server};
     my $export = $scfg->{export};
 
-    if (!nfs_is_mounted($server, $export, $path, $cache->{mountdata})) {    
-		    
-	# NOTE: only call mkpath when not mounted (avoid hang 
-	# when NFS server is offline 
-		    
+    if (!nfs_is_mounted($server, $export, $path, $cache->{mountdata})) {
+	# NOTE: only call mkpath when not mounted (avoid hang when NFS server is offline
 	mkpath $path if !(defined($scfg->{mkdir}) && !$scfg->{mkdir});
 
 	die "unable to activate storage '$storeid' - " .
