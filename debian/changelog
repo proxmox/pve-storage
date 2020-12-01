@@ -1,3 +1,17 @@
+libpve-storage-perl (6.3-2) pve; urgency=medium
+
+  * plugin: hooks: add explicit returns to avoid some accidental return schema
+    verification
+
+  * pbs: add scan datastore as new API endpoint and a pvesm scan pbs CLI command
+
+  * pbs: activate storage: fully validate if storage config works on storage
+    addition and storage update
+
+  * api: scan cifs: port over NT_STATUS filter from pve-manager
+
+ -- Proxmox Support Team <support@proxmox.com>  Tue, 01 Dec 2020 19:27:50 +0100
+
 libpve-storage-perl (6.3-1) pve; urgency=medium
 
   * Proxmox Backup Server: add/update: save encryption-key fingerprint in
