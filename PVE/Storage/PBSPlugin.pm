@@ -645,6 +645,24 @@ my sub pbs_api_connect {
     return $conn;
 }
 
+# can also be used for not (yet) added storages, pass $scfg with
+# {
+#   server
+#   user
+#   port          (optional default to 8007)
+#   fingerprint   (optional for trusted certs)
+# }
+sub scan_datastores {
+    my ($scfg, $password) = @_;
+
+    my $conn = pbs_api_connect($scfg, $password);
+
+    my $response = eval { $conn->get('/api2/json/admin/datastore', {}) };
+    die "error fetching datastores - $@" if $@;
+
+    return $response;
+}
+
 sub activate_storage {
     my ($class, $storeid, $scfg, $cache) = @_;
 
