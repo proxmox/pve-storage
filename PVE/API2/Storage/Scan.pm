@@ -47,6 +47,7 @@ __PACKAGE__->register_method({
 	    { method => 'iscsi' },
 	    { method => 'lvm' },
 	    { method => 'nfs' },
+	    { method => 'pbs' },
 	    { method => 'usb' },
 	    { method => 'zfs' },
 	];
@@ -173,6 +174,71 @@ __PACKAGE__->register_method({
 
 	return $data;
     }});
+
+__PACKAGE__->register_method({
+    name => 'pbsscan',
+    path => 'pbs',
+    method => 'GET',
+    description => "Scan remote Proxmox Backup Server.",
+    protected => 1,
+    proxyto => "node",
+    permissions => {
+	check => ['perm', '/storage', ['Datastore.Allocate']],
+    },
+    parameters => {
+	additionalProperties => 0,
+	properties => {
+	    node => get_standard_option('pve-node'),
+	    server => {
+		description => "The server address (name or IP).",
+		type => 'string', format => 'pve-storage-server',
+	    },
+	    username => {
+		description => "User-name or API token-ID.",
+		type => 'string',
+	    },
+	    password => {
+		description => "User password or API token secret.",
+		type => 'string',
+	    },
+	    fingerprint => get_standard_option('fingerprint-sha256', {
+		optional => 1,
+	    }),
+	    port => {
+		description => "Optional port.",
+		type => 'integer',
+		minimum => 1,
+		maximum => 65535,
+		default => 8007,
+		optional => 1,
+	    },
+	},
+    },
+    returns => {
+	type => 'array',
+	items => {
+	    type => "object",
+	    properties => {
+		store => {
+		    description => "The datastore name.",
+		    type => 'string',
+		},
+		comment => {
+		    description => "Comment from server.",
+		    type => 'string',
+		    optional => 1,
+		},
+	    },
+	},
+    },
+    code => sub {
+	my ($param) = @_;
+
+	my $password = delete $param->{password};
+
+	return PVE::Storage::PBSPlugin::scan_datastores($param, $password);
+    }
+});
 
 # Note: GlusterFS currently does not have an equivalent of showmount.
 # As workaround, we simply use nfs showmount.

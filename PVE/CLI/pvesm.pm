@@ -54,6 +54,7 @@ sub param_mapping {
     my $mapping = {
 	'cifsscan' => [ $password_map ],
 	'cifs' => [ $password_map ],
+	'pbs' => [ $password_map ],
 	'create' => [ $password_map, $enc_key_map ],
 	'update' => [ $password_map, $enc_key_map ],
     };
@@ -506,6 +507,11 @@ __PACKAGE__->register_method ({
 	};
     }});
 
+my $print_api_result = sub {
+    my ($data, $schema, $options) = @_;
+    PVE::CLIFormatter::print_api_result($data, $schema, undef, $options);
+};
+
 our $cmddef = {
     add => [ "PVE::API2::Storage::Config", 'create', ['type', 'storage'] ],
     set => [ "PVE::API2::Storage::Config", 'update', ['storage'] ],
@@ -577,6 +583,14 @@ our $cmddef = {
 		printf "$rec->{lv}\n";
 	    }
 	}],
+	pbs => [
+	    "PVE::API2::Storage::Scan",
+	    'pbsscan',
+	    ['server', 'username'],
+	    { node => $nodename },
+	    $print_api_result,
+	    $PVE::RESTHandler::standard_output_options,
+	],
 	zfs => [ "PVE::API2::Storage::Scan", 'zfsscan', [], { node => $nodename }, sub  {
 	    my $res = shift;
 
