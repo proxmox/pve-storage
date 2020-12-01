@@ -666,13 +666,20 @@ sub scan_datastores {
 sub activate_storage {
     my ($class, $storeid, $scfg, $cache) = @_;
 
-    # a 'status' client command is to expensive here
-    # TODO: use a dummy ping API call to ensure the PBS API daemon is available for real
-    my $server = $scfg->{server};
-    my $port = $scfg->{port} // 8007;
-    PVE::Network::tcp_ping($server, $port, 2);
+    my $password = pbs_get_password($scfg, $storeid);
 
-    return 1;
+    my $datastores = eval { scan_datastores($scfg, $password) };
+    die "$storeid: $@" if $@;
+
+    my $datastore = $scfg->{datastore};
+
+    for my $ds (@$datastores) {
+	if ($ds->{store} eq $datastore) {
+	    return 1;
+	}
+    }
+
+    die "$storeid: Cannot find datastore '$datastore', check permissions and existance!\n";
 }
 
 sub deactivate_storage {
