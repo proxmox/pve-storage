@@ -16,6 +16,7 @@ use PVE::Tools qw(extract_param);
 use PVE::API2::Storage::Config;
 use PVE::API2::Storage::Content;
 use PVE::API2::Storage::PruneBackups;
+use PVE::API2::Storage::Scan;
 use PVE::API2::Storage::Status;
 use PVE::JSONSchema qw(get_standard_option);
 use PVE::PTY;
@@ -407,333 +408,6 @@ __PACKAGE__->register_method ({
 });
 
 __PACKAGE__->register_method ({
-    name => 'nfsscan',
-    path => 'nfs',
-    method => 'GET',
-    description => "Scan remote NFS server.",
-    protected => 1,
-    proxyto => "node",
-    permissions => {
-	check => ['perm', '/storage', ['Datastore.Allocate']],
-    },
-    parameters => {
-	additionalProperties => 0,
-	properties => {
-	    node => get_standard_option('pve-node'),
-	    server => {
-		description => "The server address (name or IP).",
-		type => 'string', format => 'pve-storage-server',
-	    },
-	},
-    },
-    returns => {
-	type => 'array',
-	items => {
-	    type => "object",
-	    properties => {
-		path => {
-		    description => "The exported path.",
-		    type => 'string',
-		},
-		options => {
-		    description => "NFS export options.",
-		    type => 'string',
-		},
-	    },
-	},
-    },
-    code => sub {
-	my ($param) = @_;
-
-	my $server = $param->{server};
-	my $res = PVE::Storage::scan_nfs($server);
-
-	my $data = [];
-	foreach my $k (sort keys %$res) {
-	    push @$data, { path => $k, options => $res->{$k} };
-	}
-	return $data;
-    }});
-
-__PACKAGE__->register_method ({
-    name => 'cifsscan',
-    path => 'cifs',
-    method => 'GET',
-    description => "Scan remote CIFS server.",
-    protected => 1,
-    proxyto => "node",
-    permissions => {
-	check => ['perm', '/storage', ['Datastore.Allocate']],
-    },
-    parameters => {
-	additionalProperties => 0,
-	properties => {
-	    node => get_standard_option('pve-node'),
-	    server => {
-		description => "The server address (name or IP).",
-		type => 'string', format => 'pve-storage-server',
-	    },
-	    username => {
-		description => "User name.",
-		type => 'string',
-		optional => 1,
-	    },
-	    password => {
-		description => "User password.",
-		type => 'string',
-		optional => 1,
-	    },
-	    domain => {
-		description => "SMB domain (Workgroup).",
-		type => 'string',
-		optional => 1,
-	    },
-	},
-    },
-    returns => {
-	type => 'array',
-	items => {
-	    type => "object",
-	    properties => {
-		share => {
-		    description => "The cifs share name.",
-		    type => 'string',
-		},
-		description => {
-		    description => "Descriptive text from server.",
-		    type => 'string',
-		},
-	    },
-	},
-    },
-    code => sub {
-	my ($param) = @_;
-
-	my $server = $param->{server};
-
-	my $username = $param->{username};
-	my $password = $param->{password};
-	my $domain = $param->{domain};
-
-	my $res = PVE::Storage::scan_cifs($server, $username, $password, $domain);
-
-	my $data = [];
-	foreach my $k (sort keys %$res) {
-	    push @$data, { share => $k, description => $res->{$k} };
-	}
-
-	return $data;
-    }});
-
-# Note: GlusterFS currently does not have an equivalent of showmount.
-# As workaround, we simply use nfs showmount.
-# see http://www.gluster.org/category/volumes/
-
-__PACKAGE__->register_method ({
-    name => 'glusterfsscan',
-    path => 'glusterfs',
-    method => 'GET',
-    description => "Scan remote GlusterFS server.",
-    protected => 1,
-    proxyto => "node",
-    permissions => {
-	check => ['perm', '/storage', ['Datastore.Allocate']],
-    },
-    parameters => {
-	additionalProperties => 0,
-	properties => {
-	    node => get_standard_option('pve-node'),
-	    server => {
-		description => "The server address (name or IP).",
-		type => 'string', format => 'pve-storage-server',
-	    },
-	},
-    },
-    returns => {
-	type => 'array',
-	items => {
-	    type => "object",
-	    properties => {
-		volname => {
-		    description => "The volume name.",
-		    type => 'string',
-		},
-	    },
-	},
-    },
-    code => sub {
-	my ($param) = @_;
-
-	my $server = $param->{server};
-	my $res = PVE::Storage::scan_nfs($server);
-
-	my $data = [];
-	foreach my $path (sort keys %$res) {
-	    if ($path =~ m!^/([^\s/]+)$!) {
-		push @$data, { volname => $1 };
-	    }
-	}
-	return $data;
-    }});
-
-__PACKAGE__->register_method ({
-    name => 'iscsiscan',
-    path => 'iscsi',
-    method => 'GET',
-    description => "Scan remote iSCSI server.",
-    protected => 1,
-    proxyto => "node",
-    permissions => {
-	check => ['perm', '/storage', ['Datastore.Allocate']],
-    },
-    parameters => {
-	additionalProperties => 0,
-	properties => {
-	    node => get_standard_option('pve-node'),
-	    portal => {
-		description => "The iSCSI portal (IP or DNS name with optional port).",
-		type => 'string', format => 'pve-storage-portal-dns',
-	    },
-	},
-    },
-    returns => {
-	type => 'array',
-	items => {
-	    type => "object",
-	    properties => {
-		target => {
-		    description => "The iSCSI target name.",
-		    type => 'string',
-		},
-		portal => {
-		    description => "The iSCSI portal name.",
-		    type => 'string',
-		},
-	    },
-	},
-    },
-    code => sub {
-	my ($param) = @_;
-
-	my $res = PVE::Storage::scan_iscsi($param->{portal});
-
-	my $data = [];
-	foreach my $k (sort keys %$res) {
-	    push @$data, { target => $k, portal => join(',', @{$res->{$k}}) };
-	}
-
-	return $data;
-    }});
-
-__PACKAGE__->register_method ({
-    name => 'lvmscan',
-    path => 'lvm',
-    method => 'GET',
-    description => "List local LVM volume groups.",
-    protected => 1,
-    proxyto => "node",
-    permissions => {
-	check => ['perm', '/storage', ['Datastore.Allocate']],
-    },
-    parameters => {
-	additionalProperties => 0,
-	properties => {
-	    node => get_standard_option('pve-node'),
-	},
-    },
-    returns => {
-	type => 'array',
-	items => {
-	    type => "object",
-	    properties => {
-		vg => {
-		    description => "The LVM logical volume group name.",
-		    type => 'string',
-		},
-	    },
-	},
-    },
-    code => sub {
-	my ($param) = @_;
-
-	my $res = PVE::Storage::LVMPlugin::lvm_vgs();
-	return PVE::RESTHandler::hash_to_array($res, 'vg');
-    }});
-
-__PACKAGE__->register_method ({
-    name => 'lvmthinscan',
-    path => 'lvmthin',
-    method => 'GET',
-    description => "List local LVM Thin Pools.",
-    protected => 1,
-    proxyto => "node",
-    permissions => {
-	check => ['perm', '/storage', ['Datastore.Allocate']],
-    },
-    parameters => {
-	additionalProperties => 0,
-	properties => {
-	    node => get_standard_option('pve-node'),
-	    vg => {
-		type => 'string',
-		pattern => '[a-zA-Z0-9\.\+\_][a-zA-Z0-9\.\+\_\-]+', # see lvm(8) manpage
-		maxLength => 100,
-	    },
-	},
-    },
-    returns => {
-	type => 'array',
-	items => {
-	    type => "object",
-	    properties => {
-		lv => {
-		    description => "The LVM Thin Pool name (LVM logical volume).",
-		    type => 'string',
-		},
-	    },
-	},
-    },
-    code => sub {
-	my ($param) = @_;
-
-	return PVE::Storage::LvmThinPlugin::list_thinpools($param->{vg});
-    }});
-
-__PACKAGE__->register_method ({
-    name => 'zfsscan',
-    path => 'zfs',
-    method => 'GET',
-    description => "Scan zfs pool list on local node.",
-    protected => 1,
-    proxyto => "node",
-    permissions => {
-	check => ['perm', '/storage', ['Datastore.Allocate']],
-    },
-    parameters => {
-	additionalProperties => 0,
-	properties => {
-	    node => get_standard_option('pve-node'),
-	},
-    },
-    returns => {
-	type => 'array',
-	items => {
-	    type => "object",
-	    properties => {
-		pool => {
-		    description => "ZFS pool name.",
-		    type => 'string',
-		},
-	    },
-	},
-    },
-    code => sub {
-	my ($param) = @_;
-
-	return PVE::Storage::scan_zfs();
-    }});
-
-__PACKAGE__->register_method ({
     name => 'prunebackups',
     path => 'prunebackups',
     method => 'GET',
@@ -847,7 +521,7 @@ our $cmddef = {
     free => [ "PVE::API2::Storage::Content", 'delete', ['volume'],
 	      { node => $nodename } ],
     scan => {
-	nfs => [ __PACKAGE__, 'nfsscan', ['server'], { node => $nodename }, sub  {
+	nfs => [ "PVE::API2::Storage::Scan", 'nfsscan', ['server'], { node => $nodename }, sub  {
 	    my $res = shift;
 
 	    my $maxlen = 0;
@@ -859,7 +533,7 @@ our $cmddef = {
 		printf "%-${maxlen}s %s\n", $rec->{path}, $rec->{options};
 	    }
 	}],
-	cifs => [ __PACKAGE__, 'cifsscan', ['server'], { node => $nodename }, sub  {
+	cifs => [ "PVE::API2::Storage::Scan", 'cifsscan', ['server'], { node => $nodename }, sub  {
 	    my $res = shift;
 
 	    my $maxlen = 0;
@@ -871,14 +545,14 @@ our $cmddef = {
 		printf "%-${maxlen}s %s\n", $rec->{share}, $rec->{description};
 	    }
 	}],
-	glusterfs => [ __PACKAGE__, 'glusterfsscan', ['server'], { node => $nodename }, sub  {
+	glusterfs => [ "PVE::API2::Storage::Scan", 'glusterfsscan', ['server'], { node => $nodename }, sub  {
 	    my $res = shift;
 
 	    foreach my $rec (@$res) {
 		printf "%s\n", $rec->{volname};
 	    }
 	}],
-	iscsi => [ __PACKAGE__, 'iscsiscan', ['portal'], { node => $nodename }, sub  {
+	iscsi => [ "PVE::API2::Storage::Scan", 'iscsiscan', ['portal'], { node => $nodename }, sub  {
 	    my $res = shift;
 
 	    my $maxlen = 0;
@@ -890,19 +564,19 @@ our $cmddef = {
 		printf "%-${maxlen}s %s\n", $rec->{target}, $rec->{portal};
 	    }
 	}],
-	lvm => [ __PACKAGE__, 'lvmscan', [], { node => $nodename }, sub  {
+	lvm => [ "PVE::API2::Storage::Scan", 'lvmscan', [], { node => $nodename }, sub  {
 	    my $res = shift;
 	    foreach my $rec (@$res) {
 		printf "$rec->{vg}\n";
 	    }
 	}],
-	lvmthin => [ __PACKAGE__, 'lvmthinscan', ['vg'], { node => $nodename }, sub  {
+	lvmthin => [ "PVE::API2::Storage::Scan", 'lvmthinscan', ['vg'], { node => $nodename }, sub  {
 	    my $res = shift;
 	    foreach my $rec (@$res) {
 		printf "$rec->{lv}\n";
 	    }
 	}],
-	zfs => [ __PACKAGE__, 'zfsscan', [], { node => $nodename }, sub  {
+	zfs => [ "PVE::API2::Storage::Scan", 'zfsscan', [], { node => $nodename }, sub  {
 	    my $res = shift;
 
 	    foreach my $rec (@$res) {
