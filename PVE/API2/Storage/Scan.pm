@@ -15,6 +15,46 @@ use PVE::SysFSTools;
 use base qw(PVE::RESTHandler);
 
 __PACKAGE__->register_method({
+    name => 'index',
+    path => '',
+    method => 'GET',
+    description => "Index of available scan methods",
+    permissions => {
+	user => 'all',
+    },
+    parameters => {
+	additionalProperties => 0,
+	properties => {
+	    node => get_standard_option('pve-node'),
+	},
+    },
+    returns => {
+	type => 'array',
+	items => {
+	    type => "object",
+	    properties => {
+		method => { type => 'string'},
+	    },
+	},
+	links => [ { rel => 'child', href => "{method}" } ],
+    },
+    code => sub {
+	my ($param) = @_;
+
+	my $res = [
+	    { method => 'cifs' },
+	    { method => 'glusterfs' },
+	    { method => 'iscsi' },
+	    { method => 'lvm' },
+	    { method => 'nfs' },
+	    { method => 'usb' },
+	    { method => 'zfs' },
+	];
+
+	return $res;
+    }});
+
+__PACKAGE__->register_method({
     name => 'nfsscan',
     path => 'nfs',
     method => 'GET',
@@ -340,3 +380,47 @@ __PACKAGE__->register_method({
 
 	return PVE::Storage::scan_zfs();
     }});
+
+__PACKAGE__->register_method({
+    name => 'usbscan',
+    path => 'usb',
+    method => 'GET',
+    description => "List local USB devices.",
+    protected => 1,
+    proxyto => "node",
+    permissions => {
+	check => ['perm', '/', ['Sys.Modify']],
+    },
+    parameters => {
+	additionalProperties => 0,
+	properties => {
+	    node => get_standard_option('pve-node'),
+	},
+    },
+    returns => {
+	type => 'array',
+	items => {
+	    type => "object",
+	    properties => {
+		busnum => { type => 'integer'},
+		class => { type => 'integer'},
+		devnum => { type => 'integer'},
+		level => { type => 'integer'},
+		manufacturer => { type => 'string', optional => 1 },
+		port => { type => 'integer'},
+		prodid => { type => 'string'},
+		product => { type => 'string', optional => 1 },
+		serial => { type => 'string', optional => 1 },
+		speed => { type => 'string'},
+		usbpath => { type => 'string', optional => 1},
+		vendid => { type => 'string'},
+	    },
+	},
+    },
+    code => sub {
+	my ($param) = @_;
+
+	return PVE::SysFSTools::scan_usb();
+    }});
+
+1;
