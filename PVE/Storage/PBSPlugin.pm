@@ -6,12 +6,11 @@ use strict;
 use warnings;
 
 use Fcntl qw(F_GETFD F_SETFD FD_CLOEXEC);
-use HTTP::Request;
 use IO::File;
 use JSON;
-use LWP::UserAgent;
 use POSIX qw(strftime ENOENT);
 
+use PVE::APIClient::LWP;
 use PVE::JSONSchema qw(get_standard_option);
 use PVE::Network;
 use PVE::Storage::Plugin;
@@ -49,7 +48,7 @@ sub properties {
 	    minimum => 1,
 	    maximum => 65535,
 	    default => 8007,
-	}
+	},
     };
 }
 
@@ -613,6 +612,37 @@ sub status {
     }
 
     return ($total, $free, $used, $active);
+}
+
+# TODO: use a client with native rust/proxmox-backup bindings to profit from
+# API schema checks and types
+my sub pbs_api_connect {
+    my ($scfg, $password) = @_;
+
+    my $params = {};
+
+    my $user = $scfg->{username} // 'root@pam';
+
+    if (my $tokenid = PVE::AccessControl::pve_verify_tokenid($user, 1)) {
+	$params->{apitoken} = "PBSAPIToken=${tokenid}=${password}";
+    } else {
+	$params->{password} = $password;
+	$params->{username} = $user;
+    }
+
+    if (my $fp = $scfg->{fingerprint}) {
+	$params->{cached_fingerprints}->{uc($fp)} = 1;
+    }
+
+    my $conn = PVE::APIClient::LWP->new(
+	%$params,
+	host => $scfg->{server},
+	port => $scfg->{port} // 8007,
+	timeout => 7, # cope with a 401 (3s api delay) and high latency
+	cookie_name => 'PBSAuthCookie',
+    );
+
+    return $conn;
 }
 
 sub activate_storage {
