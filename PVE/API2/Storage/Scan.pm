@@ -48,6 +48,7 @@ __PACKAGE__->register_method({
 	    { method => 'lvm' },
 	    { method => 'nfs' },
 	    { method => 'pbs' },
+	    # FIXME: remove with 7.0 (replaced by /nodes/<node>/hardware/usb)
 	    { method => 'usb' },
 	    { method => 'zfs' },
 	];
@@ -447,6 +448,7 @@ __PACKAGE__->register_method({
 	return PVE::Storage::scan_zfs();
     }});
 
+# FIXME: remove with 7.0 (replaced by /nodes/<node>/hardware/usb)
 __PACKAGE__->register_method({
     name => 'usbscan',
     path => 'usb',
