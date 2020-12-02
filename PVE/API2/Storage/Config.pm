@@ -4,7 +4,7 @@ use strict;
 use warnings;
 
 use PVE::SafeSyslog;
-use PVE::Tools qw(extract_param);
+use PVE::Tools qw(extract_param extract_sensitive_params);
 use PVE::Cluster qw(cfs_read_file cfs_write_file);
 use PVE::Storage;
 use PVE::Storage::Plugin;
@@ -112,28 +112,7 @@ __PACKAGE__->register_method ({
 	return &$api_storage_config($cfg, $param->{storage});
     }});
 
-my sub extract_sensitive_params :prototype($$) {
-    my ($param, $delete_list) = @_;
-
-    my $sensitive;
-
-    my %delete = map { $_ => 1 } ($delete_list || [])->@*;
-
-    # always extract pw and keys, so they don't get written to the www-data readable scfg
-    for my $opt (qw(password encryption-key)) {
-	# First handle deletions as explicitly setting `undef`, afterwards new values may override
-	# it.
-	if (exists($delete{$opt})) {
-	    $sensitive->{$opt} = undef;
-	}
-
-	if (defined(my $value = extract_param($param, $opt))) {
-	    $sensitive->{$opt} = $value;
-	}
-    }
-
-    return $sensitive;
-}
+my $sensitive_params = [qw(password encryption-key)];
 
 __PACKAGE__->register_method ({
     name => 'create',
@@ -182,7 +161,7 @@ __PACKAGE__->register_method ({
 	# fix me in section config create never need an empty entity.
 	delete $param->{nodes} if !$param->{nodes};
 
-	my $sensitive = extract_sensitive_params($param, []);
+	my $sensitive = extract_sensitive_params($param, $sensitive_params, []);
 
 	my $plugin = PVE::Storage::Plugin->lookup($type);
 	my $opts = $plugin->check_config($storeid, $param, 1, 1);
@@ -282,7 +261,7 @@ __PACKAGE__->register_method ({
 	    my $scfg = PVE::Storage::storage_config($cfg, $storeid);
 	    $type = $scfg->{type};
 
-	    my $sensitive = extract_sensitive_params($param, $delete);
+	    my $sensitive = extract_sensitive_params($param, $sensitive_params, $delete);
 
 	    my $plugin = PVE::Storage::Plugin->lookup($type);
 	    my $opts = $plugin->check_config($storeid, $param, 0, 1);
