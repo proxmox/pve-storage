@@ -1,3 +1,9 @@
+libpve-storage-perl (6.3-3) pve; urgency=medium
+
+  * pbs: allow one the use of API tokens when adding a new storage again
+
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 03 Dec 2020 17:24:56 +0100
+
 libpve-storage-perl (6.3-2) pve; urgency=medium
 
   * plugin: hooks: add explicit returns to avoid some accidental return schema
