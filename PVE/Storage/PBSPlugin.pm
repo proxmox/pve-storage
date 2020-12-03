@@ -13,6 +13,7 @@ use POSIX qw(strftime ENOENT);
 use PVE::APIClient::LWP;
 use PVE::JSONSchema qw(get_standard_option);
 use PVE::Network;
+use PVE::PBSClient;
 use PVE::Storage::Plugin;
 use PVE::Tools qw(run_command file_read_firstline trim dir_glob_regex dir_glob_foreach $IPV6RE);
 
@@ -161,18 +162,6 @@ sub print_volid {
     return "${storeid}:${volname}";
 }
 
-my sub get_server_with_port {
-    my ($scfg) = @_;
-
-    my $server = $scfg->{server};
-    $server = "[$server]" if $server =~ /^$IPV6RE$/;
-
-    if (my $port = $scfg->{port}) {
-	$server .= ":$port" if $port != 8007;
-    }
-    return $server;
-}
-
 my $USE_CRYPT_PARAMS = {
     backup => 1,
     restore => 1,
@@ -188,9 +177,7 @@ my sub do_raw_client_cmd {
     die "executable not found '$client_exe'! Proxmox backup client not installed?\n"
 	if ! -x $client_exe;
 
-    my $server = get_server_with_port($scfg);
-    my $datastore = $scfg->{datastore};
-    my $username = $scfg->{username} // 'root@pam';
+    my $repo = PVE::PBSClient::get_repository($scfg);
 
     my $userns_cmd = delete $opts{userns_cmd};
 
@@ -216,7 +203,7 @@ my sub do_raw_client_cmd {
 
     push @$cmd, @$param if defined($param);
 
-    push @$cmd, "--repository", "$username\@$server:$datastore";
+    push @$cmd, "--repository", $repo;
 
     local $ENV{PBS_PASSWORD} = pbs_get_password($scfg, $storeid);
 
@@ -484,12 +471,10 @@ sub path {
 
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
 
-    my $server = get_server_with_port($scfg);
-    my $datastore = $scfg->{datastore};
-    my $username = $scfg->{username} // 'root@pam';
+    my $repo = PVE::PBSClient::get_repository($scfg);
 
     # artifical url - we currently do not use that anywhere
-    my $path = "pbs://$username\@$server:$datastore/$name";
+    my $path = "pbs://$repo/$name";
 
     return ($path, $vmid, $vtype);
 }
