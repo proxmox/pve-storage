@@ -624,7 +624,7 @@ my sub pbs_api_connect {
     my $user = $scfg->{username} // 'root@pam';
 
     if (my $tokenid = PVE::AccessControl::pve_verify_tokenid($user, 1)) {
-	$params->{apitoken} = "PBSAPIToken=${tokenid}=${password}";
+	$params->{apitoken} = "PBSAPIToken=${tokenid}:${password}";
     } else {
 	$params->{password} = $password;
 	$params->{username} = $user;
