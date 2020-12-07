@@ -370,8 +370,8 @@ __PACKAGE__->register_method ({
 
 	PVE::Storage::check_volume_access($rpcenv, $authuser, $cfg, undef, $volid);
 
-	if (my $notes = $param->{notes}) {
-	    PVE::Storage::update_volume_notes($cfg, $volid, $notes);
+	if (exists $param->{notes}) {
+	    PVE::Storage::update_volume_notes($cfg, $volid, $param->{notes});
 	}
 
 	return undef;

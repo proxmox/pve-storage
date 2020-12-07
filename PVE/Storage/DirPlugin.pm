@@ -107,8 +107,11 @@ sub update_volume_notes {
     my $path = $class->filesystem_path($scfg, $volname);
     $path .= $class->SUPER::NOTES_EXT;
 
-    PVE::Tools::file_set_contents($path, $notes);
-
+    if (defined($notes) && $notes ne '') {
+	PVE::Tools::file_set_contents($path, $notes);
+    } else {
+	unlink $path or die "could not delete notes - $!\n";
+    }
     return;
 }
 
