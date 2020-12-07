@@ -89,32 +89,27 @@ sub parse_is_mountpoint {
 
 sub get_volume_notes {
     my ($class, $scfg, $storeid, $volname, $timeout) = @_;
+
     my $path = $class->filesystem_path($scfg, $volname);
     $path .= $class->SUPER::NOTES_EXT;
 
-    my $notes = "";
+    return PVE::Tools::file_get_contents($path) if -f $path;
 
-    if (-f $path) {
-	$notes = PVE::Tools::file_get_contents($path);
-    }
-
-    return $notes;
+    return '';
 }
 
 sub update_volume_notes {
     my ($class, $scfg, $storeid, $volname, $notes, $timeout) = @_;
+
+    my ($vtype) = $class->parse_volname($volname);
+    die "only backups can have notes\n" if $vtype ne 'backup';
+
     my $path = $class->filesystem_path($scfg, $volname);
-    my ($vtype, undef, undef, undef, undef, undef, undef) = $class->parse_volname($volname);
-
-    if ($vtype ne 'backup') {
-	die "only backups can have notes\n";
-    }
-
     $path .= $class->SUPER::NOTES_EXT;
 
     PVE::Tools::file_set_contents($path, $notes);
 
-    return undef;
+    return;
 }
 
 sub status {
