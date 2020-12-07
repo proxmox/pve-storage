@@ -284,4 +284,13 @@ sub check_connection {
     return 1;
 }
 
+sub get_volume_notes {
+    my $class = shift;
+    PVE::Storage::DirPlugin::get_volume_notes($class, @_);
+}
+sub update_volume_notes {
+    my $class = shift;
+    PVE::Storage::DirPlugin::update_volume_notes($class, @_);
+}
+
 1;
