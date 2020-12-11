@@ -1,0 +1,17 @@
+{
+    "sda" : {
+	"gpt" : 1,
+	"devpath" : "/dev/sda",
+	"type" : "ssd",
+	"model" : "MODEL1",
+	"health" : "OK",
+	"osdid" : -1,
+	"wwn" : "0x0000000000000000",
+	"vendor" : "VENDOR1",
+	"rpm" : 0,
+	"size" : 5120000,
+	"serial" : "SER2",
+	"wearout" : "N/A",
+	"by_id_link" : "/dev/disk/by-id/scsi-00000000000000000"
+    }
+}
