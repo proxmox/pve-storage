@@ -134,8 +134,8 @@ sub get_smart_data {
 	    } elsif (defined($type) && $type eq 'text') {
 		$smartdata->{text} = '' if !defined $smartdata->{text};
 		$smartdata->{text} .= "$line\n";
-		# extract wearout from nvme text, allow for decimal values
-		if ($line =~ m/Percentage Used:\s*(\d+(?:\.\d+)?)\%/i) {
+		# extract wearout from nvme/sas text, allow for decimal values
+		if ($line =~ m/Percentage Used(?: endurance indicator)?:\s*(\d+(?:\.\d+)?)\%/i) {
 		    $smartdata->{wearout} = 100 - $1;
 		}
 	    } elsif ($line =~ m/SMART Disabled/) {
