@@ -1,3 +1,15 @@
+libpve-storage-perl (6.3-4) pve; urgency=medium
+
+  * api: content/backup: handle deletion of notes
+
+  * nfs and cifs: implement backup notes helper
+
+  * prune mark: correctly keep track of already included backups when dealing
+    with smaller intervalls being included in two greater (e.g., a week which
+    goes over a month boundary)
+
+ -- Proxmox Support Team <support@proxmox.com>  Mon, 14 Dec 2020 16:15:01 +0100
+
 libpve-storage-perl (6.3-3) pve; urgency=medium
 
   * pbs: allow one the use of API tokens when adding a new storage again
