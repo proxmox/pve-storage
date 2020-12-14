@@ -74,6 +74,23 @@ push @{$mocked_backups_lists->{novmid}}, (
 	'ctime' => 1234,
     },
 );
+push @{$mocked_backups_lists->{threeway}}, (
+    {
+	'volid' => "$storeid:backup/vzdump-qemu-7654-2019_12_25-12_18_21.tar.zst",
+	'ctime' => $basetime - 7*24*60*60,
+	'vmid'  => 7654,
+    },
+    {
+	'volid' => "$storeid:backup/vzdump-qemu-7654-2019_12_31-12_18_21.tar.zst",
+	'ctime' => $basetime - 24*60*60,
+	'vmid'  => 7654,
+    },
+    {
+	'volid' => "$storeid:backup/vzdump-qemu-7654-2020_01_01-12_18_21.tar.zst",
+	'ctime' => $basetime,
+	'vmid'  => 7654,
+    },
+);
 my $current_list;
 my $mock_plugin = Test::MockModule->new('PVE::Storage::Plugin');
 $mock_plugin->redefine(list_volumes => sub {
@@ -360,6 +377,38 @@ my $tests = [
 	    'keep-yearly' => 0,
 	},
 	expected => generate_expected(\@vmids, undef, ['keep', 'keep', 'keep', 'keep', 'keep', 'keep']),
+    },
+    {
+	description => 'daily=weekly=monthly=1',
+	keep => {
+	    'keep-daily' => 1,
+	    'keep-weekly' => 1,
+	    'keep-monthly' => 1,
+	},
+	list => 'threeway',
+	expected => [
+	    {
+		'volid' => "$storeid:backup/vzdump-qemu-7654-2019_12_25-12_18_21.tar.zst",
+		'ctime' => $basetime - 7*24*60*60,
+		'type'  => 'qemu',
+		'vmid'  => 7654,
+		'mark'  => 'keep',
+	    },
+	    {
+		'volid' => "$storeid:backup/vzdump-qemu-7654-2019_12_31-12_18_21.tar.zst",
+		'ctime' => $basetime - 24*60*60,
+		'type'  => 'qemu',
+		'vmid'  => 7654,
+		'mark'  => 'remove', # month is already covered by the backup kept by keep-weekly!
+	    },
+	    {
+		'volid' => "$storeid:backup/vzdump-qemu-7654-2020_01_01-12_18_21.tar.zst",
+		'ctime' => $basetime,
+		'type'  => 'qemu',
+		'vmid'  => 7654,
+		'mark'  => 'keep',
+	    },
+	],
     },
 ];
 

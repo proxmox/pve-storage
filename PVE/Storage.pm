@@ -1646,13 +1646,14 @@ my $prune_mark = sub {
     foreach my $prune_entry (@{$prune_entries}) {
 	my $mark = $prune_entry->{mark};
 	my $id = $id_func->($prune_entry->{ctime});
+	$already_included->{$id} = 1 if defined($mark) && $mark eq 'keep';
+    }
 
-	next if $already_included->{$id};
+    foreach my $prune_entry (@{$prune_entries}) {
+	my $mark = $prune_entry->{mark};
+	my $id = $id_func->($prune_entry->{ctime});
 
-	if (defined($mark)) {
-	    $already_included->{$id} = 1 if $mark eq 'keep';
-	    next;
-	}
+	next if defined($mark) || $already_included->{$id};
 
 	if (!$newly_included->{$id}) {
 	    last if scalar(keys %{$newly_included}) >= $keep_count;
