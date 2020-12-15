@@ -1,9 +1,12 @@
 package PVE::Storage::DRBDPlugin;
 
+# FIXME: remove with 7.0
+
 use strict;
 use warnings;
 
 use IO::File;
+# FIXME remove libnet-dbus-perl dependency once this gets removed
 use Net::DBus;
 
 use PVE::Tools qw(run_command trim);
