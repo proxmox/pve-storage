@@ -1697,8 +1697,8 @@ sub prune_mark_backup_group {
     $prune_mark->($prune_list, $keep->{'keep-weekly'}, sub {
 	my ($ctime) = @_;
 	my ($sec, $min, $hour, $day, $month, $year) = localtime($ctime);
-	my $iso_week = int(strftime("%V", $sec, $min, $hour, $day, $month - 1, $year - 1900));
-	my $iso_week_year = int(strftime("%G", $sec, $min, $hour, $day, $month - 1, $year - 1900));
+	my $iso_week = int(strftime("%V", $sec, $min, $hour, $day, $month, $year));
+	my $iso_week_year = int(strftime("%G", $sec, $min, $hour, $day, $month, $year));
 	return "$iso_week/$iso_week_year";
     });
     $prune_mark->($prune_list, $keep->{'keep-monthly'}, sub {
