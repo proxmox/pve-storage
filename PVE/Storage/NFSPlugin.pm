@@ -160,8 +160,16 @@ sub check_connection {
     my ($class, $storeid, $scfg) = @_;
 
     my $server = $scfg->{server};
+    my $opts = $scfg->{options};
 
-    my $cmd = ['/sbin/showmount', '--no-headers', '--exports', $server];
+    my $cmd;
+    if (defined($opts) && $opts =~ /vers=4.*/) {
+	# nfsv4 uses a pseudo-filesystem always beginning with /
+	# no exports are listed
+	$cmd = ['/usr/sbin/rpcinfo', '-t', $server, 'nfs', '4'];
+    } else {
+	$cmd = ['/sbin/showmount', '--no-headers', '--exports', $server];
+    }
 
     eval { run_command($cmd, timeout => 10, outfunc => sub {}, errfunc => sub {}) };
     if (my $err = $@) {
