@@ -446,7 +446,8 @@ sub list_images {
 
 	    next if $scfg->{tagged_only} && !&$check_tags($info->{tags});
 
-	    next if $info->{lv_type} ne '-';
+	    # Allow mirrored and RAID LVs
+	    next if $info->{lv_type} !~ m/^[-mMrR]$/;
 
 	    my $volid = "$storeid:$volname";
 
