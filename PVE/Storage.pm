@@ -496,8 +496,15 @@ sub check_volume_access {
     return undef;
 }
 
-my $volume_is_base_and_used__no_lock = sub {
-    my ($scfg, $storeid, $plugin, $volname) = @_;
+# NOTE: this check does not work for LVM-thin, where the clone -> base
+# reference is not encoded in the volume ID.
+# see note in PVE::Storage::LvmThinPlugin for details.
+sub volume_is_base_and_used {
+    my ($cfg, $volid) = @_;
+
+    my ($storeid, $volname) = parse_volume_id($volid);
+    my $scfg = storage_config($cfg, $storeid);
+    my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
 
     my ($vtype, $name, $vmid, undef, undef, $isBase, undef) =
 	$plugin->parse_volname($volname);
@@ -520,21 +527,6 @@ my $volume_is_base_and_used__no_lock = sub {
 	}
     }
     return 0;
-};
-
-# NOTE: this check does not work for LVM-thin, where the clone -> base
-# reference is not encoded in the volume ID.
-# see note in PVE::Storage::LvmThinPlugin for details.
-sub volume_is_base_and_used {
-    my ($cfg, $volid) = @_;
-
-    my ($storeid, $volname) = parse_volume_id($volid);
-    my $scfg = storage_config($cfg, $storeid);
-    my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
-
-    $plugin->cluster_lock_storage($storeid, $scfg->{shared}, undef, sub {
-	return &$volume_is_base_and_used__no_lock($scfg, $storeid, $plugin, $volname);
-    });
 }
 
 # try to map a filesystem path to a volume identifier
@@ -918,7 +910,7 @@ sub vdisk_free {
     $plugin->cluster_lock_storage($storeid, $scfg->{shared}, undef, sub {
 	# LVM-thin allows deletion of still referenced base volumes!
 	die "base volume '$volname' is still in use by linked clones\n"
-	    if &$volume_is_base_and_used__no_lock($scfg, $storeid, $plugin, $volname);
+	    if volume_is_base_and_used($cfg, $volid);
 
 	my (undef, undef, undef, undef, undef, $isBase, $format) =
 	    $plugin->parse_volname($volname);
