@@ -467,9 +467,18 @@ sub volume_snapshot_delete {
 sub volume_snapshot_rollback {
     my ($class, $scfg, $storeid, $volname, $snap) = @_;
 
-    my $vname = ($class->parse_volname($volname))[1];
+    my (undef, $vname, undef, undef, undef, undef, $format) = $class->parse_volname($volname);
 
-    $class->zfs_request($scfg, undef, 'rollback', "$scfg->{pool}/$vname\@$snap");
+    my $msg = $class->zfs_request($scfg, undef, 'rollback', "$scfg->{pool}/$vname\@$snap");
+
+    # we have to unmount rollbacked subvols, to invalidate wrong kernel
+    # caches, they get mounted in activate volume again
+    # see zfs bug #10931 https://github.com/openzfs/zfs/issues/10931
+    if ($format eq 'subvol') {
+	$class->zfs_request($scfg, undef, 'unmount', "$scfg->{pool}/$vname");
+    }
+
+    return $msg;
 }
 
 sub volume_rollback_is_possible {
