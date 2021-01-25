@@ -103,8 +103,6 @@ if ( -d '/usr/share/perl5/PVE/Storage/Custom' ) {
 # initialize all plugins
 PVE::Storage::Plugin->init();
 
-my $UDEVADM = '/sbin/udevadm';
-
 our $iso_extension_re = qr/\.(?:iso|img)/i;
 
 #  PVE::Storage utility functions
@@ -1075,8 +1073,7 @@ sub activate_storage {
 
     # only call udevsettle if there are events
     if ($newseq > $cache->{uevent_seqnum}) {
-	my $timeout = 30;
-	system ("$UDEVADM settle --timeout=$timeout"); # ignore errors
+	system ("udevadm settle --timeout=30"); # ignore errors
 	$cache->{uevent_seqnum} = $newseq;
     }
 

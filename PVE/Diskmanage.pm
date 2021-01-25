@@ -17,7 +17,6 @@ my $ZPOOL = "/sbin/zpool";
 my $SGDISK = "/sbin/sgdisk";
 my $PVS = "/sbin/pvs";
 my $LVS = "/sbin/lvs";
-my $UDEVADM = "/bin/udevadm";
 my $LSBLK = "/bin/lsblk";
 
 sub verify_blockdev_path {
@@ -312,7 +311,7 @@ sub get_udev_info {
     my $info = "";
     my $data = {};
     eval {
-	run_command([$UDEVADM, 'info', '-p', $dev, '--query', 'all'], outfunc => sub {
+	run_command(['udevadm', 'info', '-p', $dev, '--query', 'all'], outfunc => sub {
 	    my ($line) = @_;
 	    $info .= "$line\n";
 	});
