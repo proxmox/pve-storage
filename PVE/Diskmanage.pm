@@ -565,22 +565,6 @@ sub get_disks {
 	    };
 	}
 
-	my $used;
-
-	$used = 'LVM' if $lvmhash->{$devpath};
-
-	$used = 'mounted' if $mounted->{$devpath};
-
-	$used = 'ZFS' if $zfshash->{$devpath};
-
-	if (defined($lsblk_info->{$devpath})) {
-	    my $fstype = $lsblk_info->{$devpath}->{fstype};
-	    if (defined($fstype)) {
-		$used = $fstype;
-		$used .= ' (mounted)' if $mounted->{$devpath};
-	    }
-	}
-
 	# we replaced cciss/ with cciss! above
 	# but in the result we need cciss/ again
 	# because the caller might want to check the
@@ -614,16 +598,34 @@ sub get_disks {
 	my $db_count = 0;
 	my $wal_count = 0;
 
-	my $found_lvm;
-	my $found_mountpoints;
-	my $found_zfs;
-	my $found_dm;
 	my $partpath = $devpath;
 
 	# remove part after last / to
 	# get the base path for the partitions
 	# e.g. from /dev/cciss/c0d0 get /dev/cciss
 	$partpath =~ s/\/[^\/]+$//;
+
+	my $determine_usage = sub {
+	    my ($devpath, $sysdir, $is_partition) = @_;
+
+	    return 'LVM' if $lvmhash->{$devpath};
+	    return 'ZFS' if $zfshash->{$devpath};
+
+	    my $info = $lsblk_info->{$devpath} // {};
+	    my $fstype = $info->{fstype};
+	    if (defined($fstype)) {
+		return "${fstype} (mounted)" if $mounted->{$devpath};
+		return "${fstype}";
+	    }
+	    return 'mounted' if $mounted->{$devpath};
+
+	    return if !$is_partition;
+
+	    # for devices, this check is done explicitly later
+	    return 'Device Mapper' if !dir_is_empty("$sysdir/holders");
+
+	    return 'partition';
+	};
 
 	my $partitions = {};
 
@@ -634,20 +636,13 @@ sub get_disks {
 	    $partitions->{$part}->{gpt} = $data->{gpt};
 	    $partitions->{$part}->{size} =
 		get_sysdir_size("$sysdir/$part") // 0;
+	    $partitions->{$part}->{used} =
+		$determine_usage->("$partpath/$part", "$sysdir/$part", 1);
 
 	    if (my $mp = $mounted->{"$partpath/$part"}) {
-		$found_mountpoints = 1;
 		if ($mp =~ m|^/var/lib/ceph/osd/ceph-(\d+)$|) {
 		    $osdid = $1;
 		}
-	    }
-
-	    if ($lvmhash->{"$partpath/$part"}) {
-		$found_lvm = 1;
-	    }
-
-	    if ($zfshash->{"$partpath/$part"}) {
-		$found_zfs = 1;
 	    }
 
 	    if (my $journal_part = $journalhash->{"$partpath/$part"}) {
@@ -655,10 +650,6 @@ sub get_disks {
 		$db_count++ if $journal_part == 2;
 		$wal_count++ if $journal_part == 3;
 		$bluestore = 1 if $journal_part == 4;
-	    }
-
-	    if (!dir_is_empty("$sysdir/$part/holders") && !$found_lvm)  {
-		$found_dm = 1;
 	    }
 	});
 
@@ -673,16 +664,16 @@ sub get_disks {
 	    }
 	}
 
-	$used = 'mounted' if $found_mountpoints && !$used;
-	$used = 'LVM' if $found_lvm && !$used;
-	$used = 'ZFS' if $found_zfs && !$used;
-	$used = 'Device Mapper' if $found_dm && !$used;
-	$used = 'partitions' if scalar(keys %{$partitions}) && !$used;
-
+	my $used = $determine_usage->($devpath, $sysdir, 0);
+	foreach my $part (sort keys %{$partitions}) {
+	    next if $partitions->{$part}->{used} eq 'partition';
+	    $used //= $partitions->{$part}->{used};
+	}
+	$used //= 'partitions' if scalar(keys %{$partitions});
 	# multipath, software raid, etc.
 	# this check comes in last, to show more specific info
 	# if we have it
-	$used = 'Device Mapper' if !$used && !dir_is_empty("$sysdir/holders");
+	$used //= 'Device Mapper' if !dir_is_empty("$sysdir/holders");
 
 	$disklist->{$dev}->{used} = $used if $used;
 	$disklist->{$dev}->{osdid} = $osdid;
