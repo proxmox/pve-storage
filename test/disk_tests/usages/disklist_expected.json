@@ -203,5 +203,20 @@
 	"rpm" : 0,
 	"type" : "hdd",
 	"osdid" : -1
+    },
+    "sdn" : {
+	"serial" : "SERIAL1",
+	"vendor" : "ATA",
+	"wwn" : "0x0000000000000000",
+	"devpath" : "/dev/sdn",
+	"model" : "MODEL1",
+	"used" : "xfs",
+	"wearout" : "N/A",
+	"health" : "UNKNOWN",
+	"gpt" : 0,
+	"size" : 1536000,
+	"rpm" : 0,
+	"type" : "hdd",
+	"osdid" : -1
     }
 }

@@ -157,7 +157,7 @@ sub get_smart_data {
 }
 
 sub get_lsblk_info() {
-    my $cmd = [$LSBLK, '--json', '-o', 'path,parttype'];
+    my $cmd = [$LSBLK, '--json', '-o', 'path,parttype,fstype'];
     my $output = "";
     my $res = {};
     eval {
@@ -174,7 +174,10 @@ sub get_lsblk_info() {
     my $list = $parsed->{blockdevices} // [];
 
     $res = { map {
-	$_->{path} => { parttype => $_->{parttype} }
+	$_->{path} => {
+	    parttype => $_->{parttype},
+	    fstype => $_->{fstype}
+	}
     } @{$list} };
 
     return $res;
@@ -563,6 +566,14 @@ sub get_disks {
 	$used = 'mounted' if $mounted->{$devpath};
 
 	$used = 'ZFS' if $zfshash->{$devpath};
+
+	if (defined($lsblk_info->{$devpath})) {
+	    my $fstype = $lsblk_info->{$devpath}->{fstype};
+	    if (defined($fstype)) {
+		$used = $fstype;
+		$used .= ' (mounted)' if $mounted->{$devpath};
+	    }
+	}
 
 	# we replaced cciss/ with cciss! above
 	# but in the result we need cciss/ again
