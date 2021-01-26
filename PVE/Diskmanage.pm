@@ -614,7 +614,6 @@ sub get_disks {
 	my $db_count = 0;
 	my $wal_count = 0;
 
-	my $found_partitions;
 	my $found_lvm;
 	my $found_mountpoints;
 	my $found_zfs;
@@ -626,10 +625,15 @@ sub get_disks {
 	# e.g. from /dev/cciss/c0d0 get /dev/cciss
 	$partpath =~ s/\/[^\/]+$//;
 
+	my $partitions = {};
+
 	dir_glob_foreach("$sysdir", "$dev.+", sub {
 	    my ($part) = @_;
 
-	    $found_partitions = 1;
+	    $partitions->{$part}->{devpath} = "$partpath/$part";
+	    $partitions->{$part}->{gpt} = $data->{gpt};
+	    $partitions->{$part}->{size} =
+		get_sysdir_size("$sysdir/$part") // 0;
 
 	    if (my $mp = $mounted->{"$partpath/$part"}) {
 		$found_mountpoints = 1;
@@ -673,7 +677,7 @@ sub get_disks {
 	$used = 'LVM' if $found_lvm && !$used;
 	$used = 'ZFS' if $found_zfs && !$used;
 	$used = 'Device Mapper' if $found_dm && !$used;
-	$used = 'partitions' if $found_partitions && !$used;
+	$used = 'partitions' if scalar(keys %{$partitions}) && !$used;
 
 	# multipath, software raid, etc.
 	# this check comes in last, to show more specific info
