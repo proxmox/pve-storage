@@ -612,6 +612,17 @@ sub get_disks {
 	    return 'ZFS' if $zfshash->{$devpath};
 
 	    my $info = $lsblk_info->{$devpath} // {};
+
+	    my $parttype = $info->{parttype};
+	    if (defined($parttype)) {
+		return 'BIOS boot'
+		    if $parttype eq '21686148-6449-6e6f-744e-656564454649';
+		return 'EFI'
+		    if $parttype eq 'c12a7328-f81f-11d2-ba4b-00a0c93ec93b';
+		return 'ZFS reserved'
+		    if $parttype eq '6a945a3b-1dd2-11b2-99a6-080020736631';
+	    }
+
 	    my $fstype = $info->{fstype};
 	    if (defined($fstype)) {
 		return "${fstype} (mounted)" if $mounted->{$devpath};
