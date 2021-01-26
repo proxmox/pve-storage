@@ -368,6 +368,17 @@ sub get_udev_info {
     return $data;
 }
 
+sub get_sysdir_size {
+    my ($sysdir) = @_;
+
+    my $size = file_read_firstline("$sysdir/size");
+    return if !$size;
+
+    # linux always considers sectors to be 512 bytes,
+    # independently of real block size
+    return $size * 512;
+}
+
 sub get_sysdir_info {
     my ($sysdir) = @_;
 
@@ -375,12 +386,7 @@ sub get_sysdir_info {
 
     my $data = {};
 
-    my $size = file_read_firstline("$sysdir/size");
-    return undef if !$size;
-
-    # linux always considers sectors to be 512 bytes,
-    # independently of real block size
-    $data->{size} = $size * 512;
+    $data->{size} = get_sysdir_size($sysdir) or return;
 
     # dir/queue/rotational should be 1 for hdd, 0 for ssd
     $data->{rotational} = file_read_firstline("$sysdir/queue/rotational") // -1;

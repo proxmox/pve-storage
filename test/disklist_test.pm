@@ -87,6 +87,16 @@ sub mocked_get_sysdir_info {
     return &$originalsub($param);
 }
 
+sub mocked_get_sysdir_size {
+    my ($param) = @_;
+
+    my $originalsub = $diskmanage_module->original('get_sysdir_size');
+
+    $param =~ s|/sys/block|disk_tests/$testcasedir|;
+
+    return &$originalsub($param);
+}
+
 sub mocked_is_iscsi {
     return 0;
 }
@@ -219,6 +229,8 @@ $diskmanage_module->mock('dir_glob_foreach' => \&mocked_dir_glob_foreach);
 print("\tMocked dir_glob_foreach\n");
 $diskmanage_module->mock('get_sysdir_info' => \&mocked_get_sysdir_info);
 print("\tMocked get_sysdir_info\n");
+$diskmanage_module->mock('get_sysdir_size' => \&mocked_get_sysdir_size);
+print("\tMocked get_sysdir_size\n");
 $diskmanage_module->mock('is_iscsi' => \&mocked_is_iscsi);
 print("\tMocked is_iscsi\n");
 $diskmanage_module->mock('assert_blockdev' => sub { return 1; });
