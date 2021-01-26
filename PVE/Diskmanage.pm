@@ -650,7 +650,11 @@ sub get_disks {
 		$bluestore = 1 if $ceph_volume->{bluestore};
 		$osdencrypted = 1 if $ceph_volume->{encrypted};
 	    }
-	    return 1;
+
+	    my $result = { %{$ceph_volume} };
+	    $result->{journals} = delete $result->{journal}
+		if $result->{journal};
+	    return $result;
 	};
 
 	my $partitions = {};
@@ -658,14 +662,16 @@ sub get_disks {
 	dir_glob_foreach("$sysdir", "$dev.+", sub {
 	    my ($part) = @_;
 
+	    $partitions->{$part} = $collect_ceph_info->("$partpath/$part");
+	    my $lvm_based_osd = defined($partitions->{$part});
+
 	    $partitions->{$part}->{devpath} = "$partpath/$part";
 	    $partitions->{$part}->{gpt} = $data->{gpt};
 	    $partitions->{$part}->{size} =
 		get_sysdir_size("$sysdir/$part") // 0;
 	    $partitions->{$part}->{used} =
 		$determine_usage->("$partpath/$part", "$sysdir/$part", 1);
-
-	    my $lvm_based_osd = $collect_ceph_info->("$partpath/$part");
+	    $partitions->{$part}->{osdid} //= -1;
 
 	    # Avoid counting twice (e.g. partition on which the LVM for the
 	    # DB OSD resides is present in the $journalhash)
@@ -676,6 +682,7 @@ sub get_disks {
 	    if (my $mp = $mounted->{"$partpath/$part"}) {
 		if ($mp =~ m|^/var/lib/ceph/osd/ceph-(\d+)$|) {
 		    $osdid = $1;
+		    $partitions->{$part}->{osdid} = $osdid;
 		}
 	    }
 
@@ -684,6 +691,11 @@ sub get_disks {
 		$db_count++ if $journal_part == 2;
 		$wal_count++ if $journal_part == 3;
 		$bluestore = 1 if $journal_part == 4;
+
+		$partitions->{$part}->{journals} = 1 if $journal_part == 1;
+		$partitions->{$part}->{db} = 1 if $journal_part == 2;
+		$partitions->{$part}->{wal} = 1 if $journal_part == 3;
+		$partitions->{$part}->{bluestore} = 1 if $journal_part == 4;
 	    }
 	});
 
