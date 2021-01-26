@@ -1,3 +1,14 @@
+libpve-storage-perl (6.3-5) pve; urgency=medium
+
+  * fix #3199: backup prune: correctly format time also in edge cases
+
+  * Diskmanage: extend wearout detection for SAS disk
+
+  * add workaround for incorrect handling of mmap caches when doing a ZFS
+    subvolume rollback
+
+ -- Proxmox Support Team <support@proxmox.com>  Tue, 26 Jan 2021 18:37:33 +0100
+
 libpve-storage-perl (6.3-4) pve; urgency=medium
 
   * api: content/backup: handle deletion of notes
