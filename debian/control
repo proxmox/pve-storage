@@ -14,7 +14,7 @@ Build-Depends: debhelper (>= 10~),
                pve-doc-generator (>= 5.3-3),
                zfsutils-linux,
 Standards-Version: 4.3.0
-Homepage: http://www.proxmox.com
+Homepage: https://www.proxmox.com
 
 Package: libpve-storage-perl
 Architecture: all
