@@ -156,7 +156,7 @@ sub get_smart_data {
     return $smartdata;
 }
 
-sub get_parttype_info() {
+sub get_lsblk_info() {
     my $cmd = [$LSBLK, '--json', '-o', 'path,parttype'];
     my $output = "";
     my $res = {};
@@ -173,30 +173,29 @@ sub get_parttype_info() {
     warn "$@\n" if $@;
     my $list = $parsed->{blockdevices} // [];
 
-    foreach my $dev (@$list) {
-	next if !($dev->{parttype});
-	my $type = $dev->{parttype};
-	$res->{$type} = [] if !defined($res->{$type});
-	push @{$res->{$type}}, $dev->{path};
-    }
+    $res = { map {
+	$_->{path} => { parttype => $_->{parttype} }
+    } @{$list} };
 
     return $res;
 }
 
 my $get_devices_by_partuuid = sub {
-    my ($parttype_map, $uuids, $res) = @_;
+    my ($lsblk_info, $uuids, $res) = @_;
 
     $res = {} if !defined($res);
 
-    foreach my $uuid (sort keys %$uuids) {
-       map { $res->{$_} = $uuids->{$uuid} } @{$parttype_map->{$uuid}};
+    foreach my $dev (sort keys %{$lsblk_info}) {
+	my $uuid = $lsblk_info->{$dev}->{parttype};
+	next if !defined($uuid) || !defined($uuids->{$uuid});
+	$res->{$dev} = $uuids->{$uuid};
     }
 
     return $res;
 };
 
 sub get_zfs_devices {
-    my ($parttype_map) = @_;
+    my ($lsblk_info) = @_;
     my $res = {};
 
     return {} if ! -x $ZPOOL;
@@ -224,13 +223,13 @@ sub get_zfs_devices {
     };
 
 
-    $res = $get_devices_by_partuuid->($parttype_map, $uuids, $res);
+    $res = $get_devices_by_partuuid->($lsblk_info, $uuids, $res);
 
     return $res;
 }
 
 sub get_lvm_devices {
-    my ($parttype_map) = @_;
+    my ($lsblk_info) = @_;
     my $res = {};
     eval {
 	run_command([$PVS, '--noheadings', '--readonly', '-o', 'pv_name'], outfunc => sub{
@@ -250,13 +249,13 @@ sub get_lvm_devices {
 	"e6d6d379-f507-44c2-a23c-238f2a3df928" => 1,
     };
 
-    $res = $get_devices_by_partuuid->($parttype_map, $uuids, $res);
+    $res = $get_devices_by_partuuid->($lsblk_info, $uuids, $res);
 
     return $res;
 }
 
 sub get_ceph_journals {
-    my ($parttype_map) = @_;
+    my ($lsblk_info) = @_;
     my $res = {};
 
     my $uuids = {
@@ -266,7 +265,7 @@ sub get_ceph_journals {
 	'cafecafe-9b03-4f30-b4c6-b4b80ceff106' => 4, # block
     };
 
-    $res = $get_devices_by_partuuid->($parttype_map, $uuids, $res);
+    $res = $get_devices_by_partuuid->($lsblk_info, $uuids, $res);
 
     return $res;
 }
@@ -479,14 +478,14 @@ sub get_disks {
 	$mounted->{abs_path($mount->[0])} = $mount->[1];
     };
 
-    my $parttype_map = get_parttype_info();
+    my $lsblk_info = get_lsblk_info();
 
-    my $journalhash = get_ceph_journals($parttype_map);
+    my $journalhash = get_ceph_journals($lsblk_info);
     my $ceph_volume_infos = get_ceph_volume_infos();
 
-    my $zfshash = get_zfs_devices($parttype_map);
+    my $zfshash = get_zfs_devices($lsblk_info);
 
-    my $lvmhash = get_lvm_devices($parttype_map);
+    my $lvmhash = get_lvm_devices($lsblk_info);
 
     my $disk_regex = ".*";
     if (defined($disks)) {
