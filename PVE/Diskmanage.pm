@@ -479,11 +479,6 @@ sub get_disks {
 	$mounted->{abs_path($mount->[0])} = $mount->[1];
     };
 
-    my $dev_is_mounted = sub {
-	my ($dev) = @_;
-	return $mounted->{$dev};
-    };
-
     my $parttype_map = get_parttype_info();
 
     my $journalhash = get_ceph_journals($parttype_map);
@@ -566,7 +561,7 @@ sub get_disks {
 
 	$used = 'LVM' if $lvmhash->{$devpath};
 
-	$used = 'mounted' if &$dev_is_mounted($devpath);
+	$used = 'mounted' if $mounted->{$devpath};
 
 	$used = 'ZFS' if $zfshash->{$devpath};
 
@@ -620,7 +615,7 @@ sub get_disks {
 
 	    $found_partitions = 1;
 
-	    if (my $mp = &$dev_is_mounted("$partpath/$part")) {
+	    if (my $mp = $mounted->{"$partpath/$part"}) {
 		$found_mountpoints = 1;
 		if ($mp =~ m|^/var/lib/ceph/osd/ceph-(\d+)$|) {
 		    $osdid = $1;
