@@ -287,7 +287,7 @@ sub get_ceph_volume_infos {
 	my $fields = [ split(';', $line) ];
 
 	# lvs syntax is /dev/sdX(Y) where Y is the start (which we do not need)
-	my ($dev) = $fields->[0] =~ m|^(/dev/[a-z]+)|;
+	my ($dev) = $fields->[0] =~ m|^(/dev/[a-z]+[^(]*)|;
 	if ($fields->[1] =~ m|^osd-([^-]+)-|) {
 	    my $type = $1;
 	    # $result autovivification is wanted, to not creating empty hashes
@@ -638,6 +638,21 @@ sub get_disks {
 	    return 'partition';
 	};
 
+	my $collect_ceph_info = sub {
+	    my ($devpath) = @_;
+
+	    my $ceph_volume = $ceph_volume_infos->{$devpath} or return;
+	    $journal_count += $ceph_volume->{journal} // 0;
+	    $db_count += $ceph_volume->{db} // 0;
+	    $wal_count += $ceph_volume->{wal} // 0;
+	    if (defined($ceph_volume->{osdid})) {
+		$osdid = $ceph_volume->{osdid};
+		$bluestore = 1 if $ceph_volume->{bluestore};
+		$osdencrypted = 1 if $ceph_volume->{encrypted};
+	    }
+	    return 1;
+	};
+
 	my $partitions = {};
 
 	dir_glob_foreach("$sysdir", "$dev.+", sub {
@@ -649,6 +664,14 @@ sub get_disks {
 		get_sysdir_size("$sysdir/$part") // 0;
 	    $partitions->{$part}->{used} =
 		$determine_usage->("$partpath/$part", "$sysdir/$part", 1);
+
+	    my $lvm_based_osd = $collect_ceph_info->("$partpath/$part");
+
+	    # Avoid counting twice (e.g. partition on which the LVM for the
+	    # DB OSD resides is present in the $journalhash)
+	    return if $lvm_based_osd;
+
+	    # Legacy handling for non-LVM based OSDs
 
 	    if (my $mp = $mounted->{"$partpath/$part"}) {
 		if ($mp =~ m|^/var/lib/ceph/osd/ceph-(\d+)$|) {
@@ -664,17 +687,6 @@ sub get_disks {
 	    }
 	});
 
-	if (my $ceph_volume = $ceph_volume_infos->{$devpath}) {
-	    $journal_count += $ceph_volume->{journal} // 0;
-	    $db_count += $ceph_volume->{db} // 0;
-	    $wal_count += $ceph_volume->{wal} // 0;
-	    if (defined($ceph_volume->{osdid})) {
-		$osdid = $ceph_volume->{osdid};
-		$bluestore = 1 if $ceph_volume->{bluestore};
-		$osdencrypted = 1 if $ceph_volume->{encrypted};
-	    }
-	}
-
 	my $used = $determine_usage->($devpath, $sysdir, 0);
 	foreach my $part (sort keys %{$partitions}) {
 	    next if $partitions->{$part}->{used} eq 'partition';
@@ -687,6 +699,9 @@ sub get_disks {
 	$used //= 'Device Mapper' if !dir_is_empty("$sysdir/holders");
 
 	$disklist->{$dev}->{used} = $used if $used;
+
+	$collect_ceph_info->($devpath);
+
 	$disklist->{$dev}->{osdid} = $osdid;
 	$disklist->{$dev}->{journals} = $journal_count if $journal_count;
 	$disklist->{$dev}->{bluestore} = $bluestore if $osdid != -1;
