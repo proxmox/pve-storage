@@ -475,7 +475,7 @@ my sub is_ssdlike {
 }
 
 sub get_disks {
-    my ($disks, $nosmart) = @_;
+    my ($disks, $nosmart, $include_partitions) = @_;
     my $disklist = {};
 
     my $mounted = {};
@@ -666,6 +666,7 @@ sub get_disks {
 	    my $lvm_based_osd = defined($partitions->{$part});
 
 	    $partitions->{$part}->{devpath} = "$partpath/$part";
+	    $partitions->{$part}->{parent} = "$devpath";
 	    $partitions->{$part}->{gpt} = $data->{gpt};
 	    $partitions->{$part}->{size} =
 		get_sysdir_size("$sysdir/$part") // 0;
@@ -700,9 +701,11 @@ sub get_disks {
 	});
 
 	my $used = $determine_usage->($devpath, $sysdir, 0);
-	foreach my $part (sort keys %{$partitions}) {
-	    next if $partitions->{$part}->{used} eq 'partition';
-	    $used //= $partitions->{$part}->{used};
+	if (!$include_partitions) {
+	    foreach my $part (sort keys %{$partitions}) {
+		next if $partitions->{$part}->{used} eq 'partition';
+		$used //= $partitions->{$part}->{used};
+	    }
 	}
 	$used //= 'partitions' if scalar(keys %{$partitions});
 	# multipath, software raid, etc.
@@ -720,6 +723,12 @@ sub get_disks {
 	$disklist->{$dev}->{osdencrypted} = $osdencrypted if $osdid != -1;
 	$disklist->{$dev}->{db} = $db_count if $db_count;
 	$disklist->{$dev}->{wal} = $wal_count if $wal_count;
+
+	if ($include_partitions) {
+	    foreach my $part (keys %{$partitions}) {
+		$disklist->{$part} = $partitions->{$part};
+	    }
+	}
     });
 
     return $disklist;

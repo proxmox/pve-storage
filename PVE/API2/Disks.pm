@@ -88,6 +88,12 @@ __PACKAGE__->register_method ({
 	additionalProperties => 0,
 	properties => {
 	    node => get_standard_option('pve-node'),
+	    'include-partitions' => {
+		description => "Also include partitions.",
+		type => 'boolean',
+		optional => 1,
+		default => 0,
+	    },
 	    skipsmart => {
 		description => "Skip smart checks.",
 		type => 'boolean',
@@ -120,6 +126,12 @@ __PACKAGE__->register_method ({
 		serial =>  { type => 'string', optional => 1 },
 		wwn => { type => 'string', optional => 1},
 		health => { type => 'string', optional => 1},
+		parent => {
+		    type => 'string',
+		    description => 'For partitions only. The device path of ' .
+			'the disk the partition resides on.',
+		    optional => 1
+		},
 	    },
 	},
     },
@@ -127,8 +139,13 @@ __PACKAGE__->register_method ({
 	my ($param) = @_;
 
 	my $skipsmart = $param->{skipsmart} // 0;
+	my $include_partitions = $param->{'include-partitions'} // 0;
 
-	my $disks = PVE::Diskmanage::get_disks(undef, $skipsmart);
+	my $disks = PVE::Diskmanage::get_disks(
+	    undef,
+	    $skipsmart,
+	    $include_partitions
+	);
 
 	my $type = $param->{type} // '';
 	my $result = [];
