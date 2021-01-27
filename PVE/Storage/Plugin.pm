@@ -37,7 +37,9 @@ our @SHARED_STORAGE = (
     'iscsidirect',
     'glusterfs',
     'zfs',
-    'drbd');
+    'drbd',
+    'pbs',
+);
 
 our $MAX_VOLUMES_PER_GUEST = 1024;
 
