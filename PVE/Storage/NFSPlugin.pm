@@ -166,7 +166,7 @@ sub check_connection {
     if (defined($opts) && $opts =~ /vers=4.*/) {
 	# nfsv4 uses a pseudo-filesystem always beginning with /
 	# no exports are listed
-	$cmd = ['/usr/sbin/rpcinfo', '-t', $server, 'nfs', '4'];
+	$cmd = ['/usr/sbin/rpcinfo', '-T', 'tcp', $server, 'nfs', '4'];
     } else {
 	$cmd = ['/sbin/showmount', '--no-headers', '--exports', $server];
     }
