@@ -228,7 +228,7 @@ sub clone_image {
     my $volumepath = "gluster://$server/$glustervolume/images/$vmid/$name";
 
     my $cmd = ['/usr/bin/qemu-img', 'create', '-b', "../$basevmid/$basename",
-	       '-f', 'qcow2', $volumepath];
+	       '-F', $format, '-f', 'qcow2', $volumepath];
 
     run_command($cmd, errmsg => "unable to create image");
 

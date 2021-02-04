@@ -708,7 +708,7 @@ sub clone_image {
 	local $CWD = $imagedir;
 
 	my $cmd = ['/usr/bin/qemu-img', 'create', '-b', "../$basevmid/$basename",
-		   '-f', 'qcow2', $path];
+		   '-F', $format, '-f', 'qcow2', $path];
 
 	run_command($cmd);
     };
