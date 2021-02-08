@@ -8,6 +8,7 @@ use warnings;
 use Fcntl qw(F_GETFD F_SETFD FD_CLOEXEC);
 use IO::File;
 use JSON;
+use MIME::Base64 qw(decode_base64);
 use POSIX qw(strftime ENOENT);
 
 use PVE::APIClient::LWP;
@@ -43,6 +44,10 @@ sub properties {
 	    description => "Encryption key. Use 'autogen' to generate one automatically without passphrase.",
 	    type => 'string',
 	},
+	'master-pubkey' => {
+	    description => "Base64-encoded, PEM-formatted public RSA key. Used tp encrypt a copy of the encryption-key which will be added to each encrypted backup.",
+	    type => 'string',
+	},
 	port => {
 	    description => "For non default port.",
 	    type => 'integer',
@@ -64,6 +69,7 @@ sub options {
 	username => { optional => 1 },
 	password => { optional => 1 },
 	'encryption-key' => { optional => 1 },
+	'master-pubkey' => { optional => 1 },
 	maxfiles => { optional => 1 },
 	'prune-backups' => { optional => 1 },
 	fingerprint => { optional => 1 },
@@ -153,6 +159,56 @@ sub pbs_open_encryption_key {
     return $keyfd;
 }
 
+sub pbs_master_pubkey_file_name {
+    my ($scfg, $storeid) = @_;
+
+    return "/etc/pve/priv/storage/${storeid}.master.pem";
+}
+
+sub pbs_set_master_pubkey {
+    my ($scfg, $storeid, $key) = @_;
+
+    my $pwfile = pbs_master_pubkey_file_name($scfg, $storeid);
+    mkdir "/etc/pve/priv/storage";
+
+    PVE::Tools::file_set_contents($pwfile, "$key\n");
+}
+
+sub pbs_delete_master_pubkey {
+    my ($scfg, $storeid) = @_;
+
+    my $pwfile = pbs_master_pubkey_file_name($scfg, $storeid);
+
+    if (!unlink $pwfile) {
+	return if $! == ENOENT;
+	die "failed to delete master public key! $!\n";
+    }
+    delete $scfg->{'master-pubkey'};
+}
+
+sub pbs_get_master_pubkey {
+    my ($scfg, $storeid) = @_;
+
+    my $pwfile = pbs_master_pubkey_file_name($scfg, $storeid);
+
+    return PVE::Tools::file_get_contents($pwfile);
+}
+
+# Returns a file handle if there is a master key, or `undef` if there is not. Dies on error.
+sub pbs_open_master_pubkey {
+    my ($scfg, $storeid) = @_;
+
+    my $master_pubkey_file = pbs_master_pubkey_file_name($scfg, $storeid);
+
+    my $keyfd;
+    if (!open($keyfd, '<', $master_pubkey_file)) {
+	return undef if $! == ENOENT;
+	die "failed to open master public key: $master_pubkey_file: $!\n";
+    }
+
+    return $keyfd;
+}
+
 sub print_volid {
     my ($storeid, $btype, $bid, $btime) = @_;
 
@@ -168,10 +224,15 @@ my $USE_CRYPT_PARAMS = {
     'upload-log' => 1,
 };
 
+my $USE_MASTER_KEY = {
+    backup => 1,
+};
+
 my sub do_raw_client_cmd {
     my ($scfg, $storeid, $client_cmd, $param, %opts) = @_;
 
     my $use_crypto = $USE_CRYPT_PARAMS->{$client_cmd};
+    my $use_master = $USE_MASTER_KEY->{$client_cmd};
 
     my $client_exe = '/usr/bin/proxmox-backup-client';
     die "executable not found '$client_exe'! Proxmox backup client not installed?\n"
@@ -188,7 +249,7 @@ my sub do_raw_client_cmd {
     push @$cmd, $client_exe, $client_cmd;
 
     # This must live in the top scope to not get closed before the `run_command`
-    my $keyfd;
+    my ($keyfd, $master_fd);
     if ($use_crypto) {
 	if (defined($keyfd = pbs_open_encryption_key($scfg, $storeid))) {
 	    my $flags = fcntl($keyfd, F_GETFD, 0)
@@ -196,6 +257,13 @@ my sub do_raw_client_cmd {
 	    fcntl($keyfd, F_SETFD, $flags & ~FD_CLOEXEC)
 		or die "failed to remove FD_CLOEXEC from encryption key file descriptor\n";
 	    push @$cmd, '--crypt-mode=encrypt', '--keyfd='.fileno($keyfd);
+	    if ($use_master && defined($master_fd = pbs_open_master_pubkey($scfg, $storeid))) {
+		my $flags = fcntl($master_fd, F_GETFD, 0)
+		    // die "failed to get file descriptor flags: $!\n";
+		fcntl($master_fd, F_SETFD, $flags & ~FD_CLOEXEC)
+		    or die "failed to remove FD_CLOEXEC from master public key file descriptor\n";
+		push @$cmd, '--master-pubkey-fd='.fileno($master_fd);
+	    }
 	} else {
 	    push @$cmd, '--crypt-mode=none';
 	}
@@ -394,6 +462,17 @@ sub on_add_hook {
 	pbs_delete_encryption_key($scfg, $storeid);
     }
 
+    if (defined(my $master_key = delete $param{'master-pubkey'})) {
+	die "'master-pubkey' can only be used together with 'encryption-key'\n"
+	    if !defined($scfg->{'encryption-key'});
+
+	my $decoded = decode_base64($master_key);
+	pbs_set_master_pubkey($scfg, $storeid, $decoded);
+	$scfg->{'master-pubkey'} = 1;
+    } else {
+	pbs_delete_master_pubkey($scfg, $storeid);
+    }
+
     return $res;
 }
 
@@ -427,6 +506,18 @@ sub on_update_hook {
 	    $scfg->{'encryption-key'} = $decoded_key->{fingerprint} || 1;
 	} else {
 	    pbs_delete_encryption_key($scfg, $storeid);
+	    delete $scfg->{'encryption-key'};
+	}
+    }
+
+    if (exists($param{'master-pubkey'})) {
+	if (defined(my $master_key = delete($param{'master-pubkey'}))) {
+	    my $decoded = decode_base64($master_key);
+
+	    pbs_set_master_pubkey($scfg, $storeid, $decoded);
+	    $scfg->{'master-pubkey'} = 1;
+	} else {
+	    pbs_delete_master_pubkey($scfg, $storeid);
 	}
     }
 
@@ -438,6 +529,7 @@ sub on_delete_hook {
 
     pbs_delete_password($scfg, $storeid);
     pbs_delete_encryption_key($scfg, $storeid);
+    pbs_delete_master_pubkey($scfg, $storeid);
 
     return;
 }

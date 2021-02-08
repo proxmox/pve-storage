@@ -6,6 +6,7 @@ use warnings;
 use POSIX qw(O_RDONLY O_WRONLY O_CREAT O_TRUNC);
 use Fcntl ':flock';
 use File::Path;
+use MIME::Base64 qw(encode_base64);
 
 use IO::Socket::IP;
 use IO::Socket::UNIX;
@@ -54,13 +55,22 @@ sub param_mapping {
 	}
     };
 
+    my $master_key_map = {
+	name => 'master-pubkey',
+	desc => 'a file containing a PEM-formatted master public key',
+	func => sub {
+	    my ($value) = @_;
+	    return encode_base64(PVE::Tools::file_get_contents($value), '');
+	}
+    };
+
 
     my $mapping = {
 	'cifsscan' => [ $password_map ],
 	'cifs' => [ $password_map ],
 	'pbs' => [ $password_map ],
-	'create' => [ $password_map, $enc_key_map ],
-	'update' => [ $password_map, $enc_key_map ],
+	'create' => [ $password_map, $enc_key_map, $master_key_map ],
+	'update' => [ $password_map, $enc_key_map, $master_key_map ],
     };
     return $mapping->{$name};
 }
