@@ -668,6 +668,7 @@ sub get_disks {
 	    $partitions->{$part}->{devpath} = "$partpath/$part";
 	    $partitions->{$part}->{parent} = "$devpath";
 	    $partitions->{$part}->{gpt} = $data->{gpt};
+	    $partitions->{$part}->{type} = 'partition';
 	    $partitions->{$part}->{size} =
 		get_sysdir_size("$sysdir/$part") // 0;
 	    $partitions->{$part}->{used} =
