@@ -244,6 +244,8 @@ $diskmanage_module->mock('dir_is_empty' => sub {
 	return 1;
     });
 print("\tMocked dir_is_empty\n");
+$diskmanage_module->mock('check_bin' => sub { return 1; });
+print("\tMocked check_bin\n");
 my $tools_module= new Test::MockModule('PVE::ProcFSTools', no_auto => 1);
 $tools_module->mock('parse_proc_mounts' => \&mocked_parse_proc_mounts);
 print("\tMocked parse_proc_mounts\n");

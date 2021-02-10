@@ -19,6 +19,12 @@ my $PVS = "/sbin/pvs";
 my $LVS = "/sbin/lvs";
 my $LSBLK = "/bin/lsblk";
 
+sub check_bin {
+    my ($path) = @_;
+
+    return -x $path;
+}
+
 sub verify_blockdev_path {
     my ($rel_path) = @_;
 
@@ -201,7 +207,7 @@ sub get_zfs_devices {
     my ($lsblk_info) = @_;
     my $res = {};
 
-    return {} if ! -x $ZPOOL;
+    return {} if !check_bin($ZPOOL);
 
     # use zpool and parttype uuid,
     # because log and cache do not have
