@@ -758,8 +758,14 @@ sub storage_migrate {
 		or die "receive command failed: $!\n";
 	    close($input);
 
-	    my ($ip) = <$info> =~ /^($PVE::Tools::IPRE)$/ or die "no tunnel IP received\n";
-	    my ($port) = <$info> =~ /^(\d+)$/ or die "no tunnel port received\n";
+	    my $try_ip = <$info> // '';
+	    my ($ip) = $try_ip =~ /^($PVE::Tools::IPRE)$/ # untaint
+		or die "no tunnel IP received, got '$try_ip'\n";
+
+	    my $try_port = <$info> // '';
+	    my ($port) = $try_port =~ /^(\d+)$/ # untaint
+		or die "no tunnel port received, got '$try_port'\n";
+
 	    my $socket = IO::Socket::IP->new(PeerHost => $ip, PeerPort => $port, Type => SOCK_STREAM)
 		or die "failed to connect to tunnel at $ip:$port\n";
 	    # we won't be reading from the socket
