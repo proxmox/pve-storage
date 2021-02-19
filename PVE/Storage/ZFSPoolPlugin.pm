@@ -556,12 +556,14 @@ sub activate_storage {
     };
 
     if (!$dataset_mounted->()) {
-	# import can only be done if not yet imported!
-	my @param = ('-d', '/dev/disk/by-id/', '-o', 'cachefile=none', $pool);
-	eval { $class->zfs_request($scfg, undef, 'zpool_import', @param) };
-	if (my $err = $@) {
-	    # just could've raced with another import, so recheck if it is imported
-	    die "could not activate storage '$storeid', $err\n" if !$pool_imported->();
+	if (!$pool_imported->()) {
+	    # import can only be done if not yet imported!
+	    my @param = ('-d', '/dev/disk/by-id/', '-o', 'cachefile=none', $pool);
+	    eval { $class->zfs_request($scfg, undef, 'zpool_import', @param) };
+	    if (my $err = $@) {
+		# just could've raced with another import, so recheck if it is imported
+		die "could not activate storage '$storeid', $err\n" if !$pool_imported->();
+	    }
 	}
 	eval { $class->zfs_request($scfg, undef, 'mount', '-a') };
 	die "could not activate storage '$storeid', $@\n" if $@;
