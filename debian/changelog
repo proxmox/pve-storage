@@ -1,3 +1,12 @@
+libpve-storage-perl (6.3-7) pve; urgency=medium
+
+  * ZFS: check if pool is imported and mounted, as a pool can be imported but
+    not mounted. Try to mount in that case.
+
+  * storage migration: improve logging when IP or port cannot be detected
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 19 Feb 2021 15:49:15 +0100
+
 libpve-storage-perl (6.3-6) pve; urgency=medium
 
   * fix checking connection for NFSv4 only server
