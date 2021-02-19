@@ -7,6 +7,7 @@ use IO::File;
 use Net::IP;
 use POSIX;
 
+use PVE::ProcFSTools;
 use PVE::RPCEnvironment;
 use PVE::Storage::Plugin;
 use PVE::Tools qw(run_command);
@@ -525,8 +526,26 @@ sub activate_storage {
     my ($class, $storeid, $scfg, $cache) = @_;
 
     # Note: $scfg->{pool} can include dataset <pool>/<dataset>
-    my $pool = $scfg->{pool};
-    $pool =~ s!/.*$!!;
+    my $dataset = $scfg->{pool};
+    my $pool = ($dataset =~ s!/.*$!!r);
+
+    my $dataset_mounted = sub {
+	my $mounted = 0;
+	my $dataset_dec = PVE::ProcFSTools::decode_mount($dataset);
+	my $mounts = eval { PVE::ProcFSTools::parse_proc_mounts() };
+	warn "$@\n" if $@;
+	foreach my $mp (@$mounts) {
+	    my ($what, $dir, $fs) = @$mp;
+	    next if $fs ne 'zfs';
+	    # check for root-dataset of storage or any child-dataset.
+	    # root-dataset could have 'canmount=off'. If any child is mounted
+	    # heuristically assume that `zfs mount -a` was successful
+	    next if $what !~ m!^$dataset_dec(?:/|$)!;
+	    $mounted = 1;
+	    last;
+	}
+	return $mounted;
+    };
 
     my $pool_imported = sub {
 	my @param = ('-o', 'name', '-H', $pool);
@@ -536,7 +555,7 @@ sub activate_storage {
 	return defined($res) && $res =~ m/$pool/;
     };
 
-    if (!$pool_imported->()) {
+    if (!$dataset_mounted->()) {
 	# import can only be done if not yet imported!
 	my @param = ('-d', '/dev/disk/by-id/', '-o', 'cachefile=none', $pool);
 	eval { $class->zfs_request($scfg, undef, 'zpool_import', @param) };
@@ -544,6 +563,8 @@ sub activate_storage {
 	    # just could've raced with another import, so recheck if it is imported
 	    die "could not activate storage '$storeid', $err\n" if !$pool_imported->();
 	}
+	eval { $class->zfs_request($scfg, undef, 'mount', '-a') };
+	die "could not activate storage '$storeid', $@\n" if $@;
     }
     return 1;
 }
