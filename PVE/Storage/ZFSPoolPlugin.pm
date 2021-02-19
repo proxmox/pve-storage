@@ -530,8 +530,7 @@ sub activate_storage {
     my $pool = ($dataset =~ s!/.*$!!r);
 
     my $dataset_mounted = sub {
-	my $mounts = eval { PVE::ProcFSTools::parse_proc_mounts() };
-	warn "$@\n" if $@;
+	my $mounts = PVE::ProcFSTools::parse_proc_mounts();
 	foreach my $mp (@$mounts) {
 	    my ($what, $dir, $fs) = @$mp;
 	    next if $fs ne 'zfs';
