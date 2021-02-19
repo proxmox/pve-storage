@@ -522,6 +522,21 @@ sub volume_snapshot_list {
     return $snaps;
 }
 
+my sub dataset_mounted_heuristic {
+    my ($dataset) = @_;
+
+    my $mounts = PVE::ProcFSTools::parse_proc_mounts();
+    for my $mp (@$mounts) {
+	my ($what, $dir, $fs) = $mp->@*;
+	next if $fs ne 'zfs';
+	# check for root-dataset or any child-dataset (root-dataset could have 'canmount=off')
+	# If any child is mounted heuristically assume that `zfs mount -a` was successful
+	next if $what !~ m!^$dataset(?:/|$)!;
+	return 1;
+    }
+    return 0;
+}
+
 sub activate_storage {
     my ($class, $storeid, $scfg, $cache) = @_;
 
@@ -529,19 +544,7 @@ sub activate_storage {
     my $dataset = $scfg->{pool};
     my $pool = ($dataset =~ s!/.*$!!r);
 
-    my $dataset_mounted = sub {
-	my $mounts = PVE::ProcFSTools::parse_proc_mounts();
-	foreach my $mp (@$mounts) {
-	    my ($what, $dir, $fs) = @$mp;
-	    next if $fs ne 'zfs';
-	    # check for root-dataset of storage or any child-dataset.
-	    # root-dataset could have 'canmount=off'. If any child is mounted
-	    # heuristically assume that `zfs mount -a` was successful
-	    next if $what !~ m!^$dataset(?:/|$)!;
-	    return 1;
-	}
-	return 0;
-    };
+    return 1 if dataset_mounted_heuristic($dataset); # early return
 
     my $pool_imported = sub {
 	my @param = ('-o', 'name', '-H', $pool);
@@ -551,19 +554,17 @@ sub activate_storage {
 	return defined($res) && $res =~ m/$pool/;
     };
 
-    if (!$dataset_mounted->()) {
-	if (!$pool_imported->()) {
-	    # import can only be done if not yet imported!
-	    my @param = ('-d', '/dev/disk/by-id/', '-o', 'cachefile=none', $pool);
-	    eval { $class->zfs_request($scfg, undef, 'zpool_import', @param) };
-	    if (my $err = $@) {
-		# just could've raced with another import, so recheck if it is imported
-		die "could not activate storage '$storeid', $err\n" if !$pool_imported->();
-	    }
+    if (!$pool_imported->()) {
+	# import can only be done if not yet imported!
+	my @param = ('-d', '/dev/disk/by-id/', '-o', 'cachefile=none', $pool);
+	eval { $class->zfs_request($scfg, undef, 'zpool_import', @param) };
+	if (my $err = $@) {
+	    # just could've raced with another import, so recheck if it is imported
+	    die "could not activate storage '$storeid', $err\n" if !$pool_imported->();
 	}
-	eval { $class->zfs_request($scfg, undef, 'mount', '-a') };
-	die "could not activate storage '$storeid', $@\n" if $@;
     }
+    eval { $class->zfs_request($scfg, undef, 'mount', '-a') };
+    die "could not activate storage '$storeid', $@\n" if $@;
     return 1;
 }
 
