@@ -530,8 +530,6 @@ sub activate_storage {
     my $pool = ($dataset =~ s!/.*$!!r);
 
     my $dataset_mounted = sub {
-	my $mounted = 0;
-
 	my $mounts = eval { PVE::ProcFSTools::parse_proc_mounts() };
 	warn "$@\n" if $@;
 	foreach my $mp (@$mounts) {
@@ -541,10 +539,9 @@ sub activate_storage {
 	    # root-dataset could have 'canmount=off'. If any child is mounted
 	    # heuristically assume that `zfs mount -a` was successful
 	    next if $what !~ m!^$dataset(?:/|$)!;
-	    $mounted = 1;
-	    last;
+	    return 1;
 	}
-	return $mounted;
+	return 0;
     };
 
     my $pool_imported = sub {
