@@ -529,22 +529,20 @@ sub activate_storage {
     $pool =~ s!/.*$!!;
 
     my $pool_imported = sub {
-	my @param = ('-o', 'name', '-H', "$pool");
+	my @param = ('-o', 'name', '-H', $pool);
 	my $res = eval { $class->zfs_request($scfg, undef, 'zpool_list', @param) };
-	if ($@) {
-	    warn "$@\n";
-	    return undef;
-	}
+	warn "$@\n" if $@;
+
 	return defined($res) && $res =~ m/$pool/;
     };
 
     if (!$pool_imported->()) {
 	# import can only be done if not yet imported!
-	my @param = ('-d', '/dev/disk/by-id/', '-o', 'cachefile=none', "$pool");
+	my @param = ('-d', '/dev/disk/by-id/', '-o', 'cachefile=none', $pool);
 	eval { $class->zfs_request($scfg, undef, 'zpool_import', @param) };
 	if (my $err = $@) {
 	    # just could've raced with another import, so recheck if it is imported
-	    die "could not activate storage '$storeid', $@\n" if !$pool_imported->();
+	    die "could not activate storage '$storeid', $err\n" if !$pool_imported->();
 	}
     }
     return 1;
