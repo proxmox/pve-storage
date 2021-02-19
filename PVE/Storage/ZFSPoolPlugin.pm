@@ -531,7 +531,7 @@ sub activate_storage {
 
     my $dataset_mounted = sub {
 	my $mounted = 0;
-	my $dataset_dec = PVE::ProcFSTools::decode_mount($dataset);
+
 	my $mounts = eval { PVE::ProcFSTools::parse_proc_mounts() };
 	warn "$@\n" if $@;
 	foreach my $mp (@$mounts) {
@@ -540,7 +540,7 @@ sub activate_storage {
 	    # check for root-dataset of storage or any child-dataset.
 	    # root-dataset could have 'canmount=off'. If any child is mounted
 	    # heuristically assume that `zfs mount -a` was successful
-	    next if $what !~ m!^$dataset_dec(?:/|$)!;
+	    next if $what !~ m!^$dataset(?:/|$)!;
 	    $mounted = 1;
 	    last;
 	}
