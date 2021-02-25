@@ -163,6 +163,7 @@ __PACKAGE__->register_method ({
 		description => 'Information about the recommended action to fix the state.',
 	    },
 	    scan => {
+		optional => 1,
 		type => 'string',
 		description => 'Information about the last/current scrub.',
 	    },
