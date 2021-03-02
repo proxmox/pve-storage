@@ -12,6 +12,7 @@ Build-Depends: debhelper (>= 10~),
                perl (>= 5.10.0-19),
                pve-cluster (>= 5.0-32),
                pve-doc-generator (>= 5.3-3),
+               pve-qemu-kvm | qemu-utils,
                zfsutils-linux,
 Standards-Version: 4.3.0
 Homepage: https://www.proxmox.com
