@@ -82,7 +82,10 @@ __PACKAGE__->register_method ({
     protected => 1,
     proxyto => 'node',
     permissions => {
-	check => ['perm', '/', ['Sys.Audit', 'Datastore.Audit'], any => 1],
+	check => ['or',
+	    ['perm', '/', ['Sys.Audit', 'Datastore.Audit'], any => 1],
+	    ['perm', '/nodes/{node}', ['Sys.Audit', 'Datastore.Audit'], any => 1],
+	],
     },
     parameters => {
 	additionalProperties => 0,
