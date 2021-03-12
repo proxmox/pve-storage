@@ -2714,7 +2714,10 @@ for (my $i = $start_test; $i <= $end_test; $i++) {
     eval {
 	$tests->{$i}();
     };
-    warn $@ if $@;
+    if (my $err = $@) {
+	warn $err;
+	$count++;
+    }
     cleanup_zfs();
 }
 
