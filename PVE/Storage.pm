@@ -938,7 +938,7 @@ sub vdisk_list {
 
     storage_check_enabled($cfg, $storeid) if ($storeid);
 
-    my $res = {};
+    my $res = { map { $_ => [] } keys %{$ids} };
 
     # prepare/activate/refresh all storages
 
@@ -964,9 +964,8 @@ sub vdisk_list {
 
     activate_storage_list($cfg, $storage_list, $cache);
 
-    foreach my $sid (keys %$ids) {
+    foreach my $sid (@{$storage_list}) {
 	next if $storeid && $storeid ne $sid;
-	next if !storage_check_enabled($cfg, $sid, undef, 1);
 
 	my $scfg = $ids->{$sid};
 	my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
