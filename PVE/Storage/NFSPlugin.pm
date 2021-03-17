@@ -5,6 +5,8 @@ use warnings;
 use IO::File;
 use Net::IP;
 use File::Path;
+
+use PVE::Network;
 use PVE::Tools qw(run_command);
 use PVE::ProcFSTools;
 use PVE::Storage::Plugin;
@@ -164,9 +166,16 @@ sub check_connection {
 
     my $cmd;
     if (defined($opts) && $opts =~ /vers=4.*/) {
+	my $ip = PVE::JSONSchema::pve_verify_ip($server, 1);
+	if (!defined($ip)) {
+	    $ip = PVE::Network::get_ip_from_hostname($server);
+	}
+
+	my $transport = PVE::JSONSchema::pve_verify_ipv4($ip, 1) ? 'tcp' : 'tcp6';
+
 	# nfsv4 uses a pseudo-filesystem always beginning with /
 	# no exports are listed
-	$cmd = ['/usr/sbin/rpcinfo', '-T', 'tcp', $server, 'nfs', '4'];
+	$cmd = ['/usr/sbin/rpcinfo', '-T', $transport, $ip, 'nfs', '4'];
     } else {
 	$cmd = ['/sbin/showmount', '--no-headers', '--exports', $server];
     }
