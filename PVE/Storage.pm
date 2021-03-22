@@ -932,7 +932,7 @@ sub vdisk_free {
 }
 
 sub vdisk_list {
-    my ($cfg, $storeid, $vmid, $vollist) = @_;
+    my ($cfg, $storeid, $vmid, $vollist, $ctype) = @_;
 
     my $ids = $cfg->{ids};
 
@@ -955,6 +955,7 @@ sub vdisk_list {
 	    next if $storeid && $storeid ne $sid;
 	    next if !storage_check_enabled($cfg, $sid, undef, 1);
 	    my $content = $ids->{$sid}->{content};
+	    next if defined($ctype) && !$content->{$ctype};
 	    next if !($content->{rootdir} || $content->{images});
 	    push @$storage_list, $sid;
 	}
@@ -965,7 +966,9 @@ sub vdisk_list {
     activate_storage_list($cfg, $storage_list, $cache);
 
     # FIXME PVE 7.0: only scan storages with the correct content types
-    foreach my $sid (keys %$ids) {
+    my $scan = defined($ctype) ? $storage_list : [ keys %{$ids} ];
+
+    foreach my $sid (@{$scan}) {
 	next if $storeid && $storeid ne $sid;
 	next if !storage_check_enabled($cfg, $sid, undef, 1);
 
