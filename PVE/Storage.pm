@@ -938,7 +938,7 @@ sub vdisk_list {
 
     storage_check_enabled($cfg, $storeid) if ($storeid);
 
-    my $res = { map { $_ => [] } keys %{$ids} };
+    my $res = {};
 
     # prepare/activate/refresh all storages
 
@@ -964,8 +964,10 @@ sub vdisk_list {
 
     activate_storage_list($cfg, $storage_list, $cache);
 
-    foreach my $sid (@{$storage_list}) {
+    # FIXME PVE 7.0: only scan storages with the correct content types
+    foreach my $sid (keys %$ids) {
 	next if $storeid && $storeid ne $sid;
+	next if !storage_check_enabled($cfg, $sid, undef, 1);
 
 	my $scfg = $ids->{$sid};
 	my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
