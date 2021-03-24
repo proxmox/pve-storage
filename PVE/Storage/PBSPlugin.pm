@@ -527,7 +527,7 @@ my sub snapshot_files_encrypted {
 	my $crypt = $file->{'crypt-mode'};
 
 	$all = 0 if !$crypt || $crypt ne 'encrypt';
-	$any ||= $crypt eq 'encrypt';
+	$any ||= defined($crypt) && $crypt eq 'encrypt';
     }
     return $any && $all;
 }
