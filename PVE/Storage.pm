@@ -609,22 +609,22 @@ sub path {
 }
 
 sub abs_filesystem_path {
-    my ($cfg, $volid) = @_;
+    my ($cfg, $volid, $allow_blockdev) = @_;
 
     my $path;
     if (parse_volume_id ($volid, 1)) {
 	activate_volumes($cfg, [ $volid ]);
 	$path = PVE::Storage::path($cfg, $volid);
     } else {
-	if (-f $volid) {
+	if (-f $volid || ($allow_blockdev && -b $volid)) {
 	    my $abspath = abs_path($volid);
 	    if ($abspath && $abspath =~ m|^(/.+)$|) {
 		$path = $1; # untaint any path
 	    }
 	}
     }
-
-    die "can't find file '$volid'\n" if !($path && -f $path);
+    die "can't find file '$volid'\n"
+	if !($path && (-f $path || ($allow_blockdev && -b $path)));
 
     return $path;
 }
