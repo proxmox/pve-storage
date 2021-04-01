@@ -1,3 +1,20 @@
+libpve-storage-perl (6.3-8) pve; urgency=medium
+
+  * api: disks: zfs: "scan" property is optional
+
+  * api: disks: allow listing also if an Sys.Audit permission for the node is
+    present
+
+  * fix #3354: support backup-notes on cephfs storage
+
+  * fix #3363: avoid undef-warning  when checking for encryption in Proxmox
+    Backup Server snapshots
+
+  * fix #3348: NFS: select correct IPv4/IPv6 transport when checking the
+    connection to the remote
+
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 01 Apr 2021 14:58:49 +0200
+
 libpve-storage-perl (6.3-7) pve; urgency=medium
 
   * ZFS: check if pool is imported and mounted, as a pool can be imported but
