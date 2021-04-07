@@ -1034,11 +1034,13 @@ my $get_subdir_files = sub {
 	    $info = { volid => "$sid:vztmpl/$1", format => "t$2" };
 
 	} elsif ($tt eq 'backup') {
-	    next if defined($vmid) && $fn !~  m/\S+-$vmid-\S+/;
 	    next if $fn !~ m!/([^/]+\.(tgz|(?:(?:tar|vma)(?:\.(${\COMPRESSOR_RE}))?)))$!;
 	    my $original = $fn;
 	    my $format = $2;
 	    $fn = $1;
+
+	    next if defined($vmid) && $fn !~ m/\S+-$vmid-\S+/;
+
 	    $info = { volid => "$sid:backup/$fn", format => $format };
 
 	    my $archive_info = eval { PVE::Storage::archive_info($fn) } // {};
