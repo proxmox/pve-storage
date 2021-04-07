@@ -25,6 +25,8 @@ my $get_parent_image_name = sub {
 my $get_rbd_path = sub {
     my ($scfg, $volume) = @_;
     my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
+
+    return "${pool}/$scfg->{namespace}/${volume}" if defined($scfg->{namespace});
     return "${pool}/${volume}";
 };
 
@@ -35,6 +37,14 @@ my $build_cmd = sub {
     my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
 
     my $cmd = [$binary, '-p', $pool];
+
+    # some subcommands will fail if the --namespace parameter is present
+    my $no_namespace_parameter = {
+	unmap => 1,
+    };
+
+    push @$cmd, '--namespace', $scfg->{namespace}
+	if ($scfg->{namespace} && !$no_namespace_parameter->{$op});
 
     push @$cmd, '-c', $cmd_option->{ceph_conf} if ($cmd_option->{ceph_conf});
     push @$cmd, '-m', $cmd_option->{mon_host} if ($cmd_option->{mon_host});
@@ -152,6 +162,7 @@ sub rbd_ls {
 
     my $cmd = &$rbd_cmd($scfg, $storeid, 'ls', '-l', '--format', 'json');
     my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
+    $pool .= "/$scfg->{namespace}" if defined($scfg->{namespace});
 
     my $raw = '';
     my $parser = sub { $raw .= shift };
@@ -279,6 +290,10 @@ sub properties {
 	    description => "Pool.",
 	    type => 'string',
 	},
+	namespace=> {
+	    description => "RBD Namespace.",
+	    type => 'string',
+	},
 	username => {
 	    description => "RBD Id.",
 	    type => 'string',
@@ -300,6 +315,7 @@ sub options {
 	disable => { optional => 1 },
 	monhost => { optional => 1},
 	pool => { optional => 1 },
+	namespace => { optional => 1 },
 	username => { optional => 1 },
 	content => { optional => 1 },
 	krbd => { optional => 1 },
@@ -368,6 +384,7 @@ sub find_free_diskname {
     my ($class, $storeid, $scfg, $vmid, $fmt, $add_fmt_suffix) = @_;
 
     my $cmd = &$rbd_cmd($scfg, $storeid, 'ls');
+
     my $disk_list = [];
 
     my $parser = sub {
@@ -498,6 +515,7 @@ sub free_image {
     my ($vtype, $name, $vmid, undef, undef, undef) =
 	$class->parse_volname($volname);
 
+
     my $snaps = rbd_ls_snap($scfg, $storeid, $name);
     foreach my $snap (keys %$snaps) {
 	if ($snaps->{$snap}->{protected}) {
@@ -522,6 +540,7 @@ sub list_images {
 
     $cache->{rbd} = rbd_ls($scfg, $storeid) if !$cache->{rbd};
     my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
+    $pool .= "/$scfg->{namespace}" if defined($scfg->{namespace});
 
     my $res = [];
 
