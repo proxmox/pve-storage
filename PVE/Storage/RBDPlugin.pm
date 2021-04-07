@@ -22,12 +22,10 @@ my $get_parent_image_name = sub {
     return $parent->{image} . "@" . $parent->{snapshot};
 };
 
-my $add_pool_to_disk = sub {
-    my ($scfg, $disk) = @_;
-
+my $get_rbd_path = sub {
+    my ($scfg, $volume) = @_;
     my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
-
-    return "$pool/$disk";
+    return "${pool}/${volume}";
 };
 
 my $build_cmd = sub {
@@ -348,10 +346,10 @@ sub path {
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
     $name .= '@'.$snapname if $snapname;
 
-    my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
-    return ("/dev/rbd/$pool/$name", $vmid, $vtype) if $scfg->{krbd};
+    my $rbd_path = &$get_rbd_path($scfg, $name);
+    return ("/dev/rbd/${rbd_path}", $vmid, $vtype) if $scfg->{krbd};
 
-    my $path = "rbd:$pool/$name";
+    my $path = "rbd:${rbd_path}";
 
     $path .= ":conf=$cmd_option->{ceph_conf}" if $cmd_option->{ceph_conf};
     if (defined($scfg->{monhost})) {
@@ -412,7 +410,13 @@ sub create_base {
 
     my $newvolname = $basename ? "$basename/$newname" : "$newname";
 
-    my $cmd = &$rbd_cmd($scfg, $storeid, 'rename', &$add_pool_to_disk($scfg, $name), &$add_pool_to_disk($scfg, $newname));
+    my $cmd = &$rbd_cmd(
+	$scfg,
+	$storeid,
+	'rename',
+	&$get_rbd_path($scfg, $name),
+	&$get_rbd_path($scfg, $newname),
+    );
     run_rbd_command($cmd, errmsg => "rbd rename '$name' error");
 
     my $running  = undef; #fixme : is create_base always offline ?
@@ -458,8 +462,15 @@ sub clone_image {
     my $newvol = "$basename/$name";
     $newvol = $name if length($snapname);
 
-    my $cmd = &$rbd_cmd($scfg, $storeid, 'clone', &$add_pool_to_disk($scfg, $basename), 
-			'--snap', $snap, &$add_pool_to_disk($scfg, $name));
+    my $cmd = &$rbd_cmd(
+	$scfg,
+	$storeid,
+	'clone',
+	&$get_rbd_path($scfg, $basename),
+	'--snap',
+	$snap,
+	&$get_rbd_path($scfg, $name),
+    );
 
     run_rbd_command($cmd, errmsg => "rbd clone '$basename' error");
 
@@ -575,9 +586,10 @@ sub deactivate_storage {
 }
 
 my $get_kernel_device_name = sub {
-    my ($pool, $name) = @_;
+    my ($scfg, $name) = @_;
 
-    return "/dev/rbd/$pool/$name";
+    my $rbd_path = &$get_rbd_path($scfg, $name);
+    return "/dev/rbd/${rbd_path}";
 };
 
 sub map_volume {
@@ -588,9 +600,7 @@ sub map_volume {
     my $name = $img_name;
     $name .= '@'.$snapname if $snapname;
 
-    my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
-
-    my $kerneldev = $get_kernel_device_name->($pool, $name);
+    my $kerneldev = $get_kernel_device_name->($scfg, $name);
 
     return $kerneldev if -b $kerneldev; # already mapped
 
@@ -609,9 +619,7 @@ sub unmap_volume {
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
     $name .= '@'.$snapname if $snapname;
 
-    my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
-
-    my $kerneldev = $get_kernel_device_name->($pool, $name);
+    my $kerneldev = $get_kernel_device_name->($scfg, $name);
 
     if (-b $kerneldev) {
 	my $cmd = &$rbd_cmd($scfg, $storeid, 'unmap', $kerneldev);
