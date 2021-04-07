@@ -1233,9 +1233,9 @@ sub prune_backups {
 
     foreach my $backup (@{$backups}) {
 	my $volid = $backup->{volid};
-	my $backup_vmid = $backup->{vmid};
 	my $archive_info = eval { PVE::Storage::archive_info($volid) } // {};
 	my $backup_type = $archive_info->{type} // 'unknown';
+	my $backup_vmid = $archive_info->{vmid} // $backup->{vmid};
 
 	next if defined($type) && $type ne $backup_type;
 
@@ -1248,6 +1248,9 @@ sub prune_backups {
 	$prune_entry->{vmid} = $backup_vmid if defined($backup_vmid);
 
 	if ($archive_info->{is_std_name}) {
+	    die "internal error - got no vmid\n" if !defined($backup_vmid);
+	    die "internal error - got wrong vmid\n" if defined($vmid) && $backup_vmid ne $vmid;
+
 	    $prune_entry->{ctime} = $archive_info->{ctime};
 	    my $group = "$backup_type/$backup_vmid";
 	    push @{$backup_groups->{$group}}, $prune_entry;
