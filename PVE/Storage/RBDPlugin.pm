@@ -545,7 +545,7 @@ sub list_images {
     my $res = [];
 
     if (my $dat = $cache->{rbd}->{$pool}) {
-	foreach my $image (keys %$dat) {
+	for my $image (sort keys %$dat) {
 
 	    my $info = $dat->{$image};
 
