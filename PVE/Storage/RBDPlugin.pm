@@ -160,13 +160,13 @@ sub run_rbd_command {
 sub rbd_ls {
     my ($scfg, $storeid) = @_;
 
-    my $cmd = &$rbd_cmd($scfg, $storeid, 'ls', '-l', '--format', 'json');
     my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
     $pool .= "/$scfg->{namespace}" if defined($scfg->{namespace});
 
     my $raw = '';
     my $parser = sub { $raw .= shift };
 
+    my $cmd = $rbd_cmd->($scfg, $storeid, 'ls', '-l', '--format', 'json');
     eval {
 	run_rbd_command($cmd, errmsg => "rbd error", errfunc => sub {}, outfunc => $parser);
     };
@@ -207,7 +207,7 @@ sub rbd_ls {
 sub rbd_ls_snap {
     my ($scfg, $storeid, $name) = @_;
 
-    my $cmd = &$rbd_cmd($scfg, $storeid, 'snap', 'ls', $name, '--format', 'json');
+    my $cmd = $rbd_cmd->($scfg, $storeid, 'snap', 'ls', $name, '--format', 'json');
 
     my $raw = '';
     run_rbd_command($cmd, errmsg => "rbd error", errfunc => sub {}, outfunc => sub { $raw .= shift; });
@@ -246,7 +246,7 @@ sub rbd_volume_info {
 	push @options, '--snap', $snap;
     }
 
-    $cmd = &$rbd_cmd($scfg, $storeid, @options);
+    $cmd = $rbd_cmd->($scfg, $storeid, @options);
 
     my $raw = '';
     my $parser = sub { $raw .= shift };
@@ -383,7 +383,7 @@ sub path {
 sub find_free_diskname {
     my ($class, $storeid, $scfg, $vmid, $fmt, $add_fmt_suffix) = @_;
 
-    my $cmd = &$rbd_cmd($scfg, $storeid, 'ls');
+    my $cmd = $rbd_cmd->($scfg, $storeid, 'ls');
 
     my $disk_list = [];
 
@@ -427,7 +427,7 @@ sub create_base {
 
     my $newvolname = $basename ? "$basename/$newname" : "$newname";
 
-    my $cmd = &$rbd_cmd(
+    my $cmd = $rbd_cmd->(
 	$scfg,
 	$storeid,
 	'rename',
@@ -443,7 +443,7 @@ sub create_base {
     my (undef, undef, undef, $protected) = rbd_volume_info($scfg, $storeid, $newname, $snap);
 
     if (!$protected){
-	my $cmd = &$rbd_cmd($scfg, $storeid, 'snap', 'protect', $newname, '--snap', $snap);
+	my $cmd = $rbd_cmd->($scfg, $storeid, 'snap', 'protect', $newname, '--snap', $snap);
 	run_rbd_command($cmd, errmsg => "rbd protect $newname snap '$snap' error");
     }
 
@@ -471,7 +471,7 @@ sub clone_image {
 	my (undef, undef, undef, $protected) = rbd_volume_info($scfg, $storeid, $volname, $snapname);
 
 	if (!$protected) {
-	    my $cmd = &$rbd_cmd($scfg, $storeid, 'snap', 'protect', $volname, '--snap', $snapname);
+	    my $cmd = $rbd_cmd->($scfg, $storeid, 'snap', 'protect', $volname, '--snap', $snapname);
 	    run_rbd_command($cmd, errmsg => "rbd protect $volname snap $snapname error");
 	}
     }
@@ -479,7 +479,7 @@ sub clone_image {
     my $newvol = "$basename/$name";
     $newvol = $name if length($snapname);
 
-    my $cmd = &$rbd_cmd(
+    my $cmd = $rbd_cmd->(
 	$scfg,
 	$storeid,
 	'clone',
@@ -503,7 +503,7 @@ sub alloc_image {
 
     $name = $class->find_free_diskname($storeid, $scfg, $vmid) if !$name;
 
-    my $cmd = &$rbd_cmd($scfg, $storeid, 'create', '--image-format' , 2, '--size', int(($size+1023)/1024), $name);
+    my $cmd = $rbd_cmd->($scfg, $storeid, 'create', '--image-format' , 2, '--size', int(($size+1023)/1024), $name);
     run_rbd_command($cmd, errmsg => "rbd create $name' error");
 
     return $name;
@@ -519,17 +519,17 @@ sub free_image {
     my $snaps = rbd_ls_snap($scfg, $storeid, $name);
     foreach my $snap (keys %$snaps) {
 	if ($snaps->{$snap}->{protected}) {
-	    my $cmd = &$rbd_cmd($scfg, $storeid, 'snap', 'unprotect', $name, '--snap', $snap);
+	    my $cmd = $rbd_cmd->($scfg, $storeid, 'snap', 'unprotect', $name, '--snap', $snap);
 	    run_rbd_command($cmd, errmsg => "rbd unprotect $name snap '$snap' error");
 	}
     }
 
     $class->deactivate_volume($storeid, $scfg, $volname);
 
-    my $cmd = &$rbd_cmd($scfg, $storeid, 'snap', 'purge',  $name);
+    my $cmd = $rbd_cmd->($scfg, $storeid, 'snap', 'purge',  $name);
     run_rbd_command($cmd, errmsg => "rbd snap purge '$volname' error");
 
-    $cmd = &$rbd_cmd($scfg, $storeid, 'rm', $name);
+    $cmd = $rbd_cmd->($scfg, $storeid, 'rm', $name);
     run_rbd_command($cmd, errmsg => "rbd rm '$volname' error");
 
     return undef;
@@ -578,8 +578,7 @@ sub list_images {
 sub status {
     my ($class, $storeid, $scfg, $cache) = @_;
 
-
-    my $rados = &$librados_connect($scfg, $storeid);
+    my $rados = $librados_connect->($scfg, $storeid);
     my $df = $rados->mon_command({ prefix => 'df', format => 'json' });
 
     my ($d) = grep { $_->{name} eq $scfg->{pool} } @{$df->{pools}};
@@ -624,7 +623,7 @@ sub map_volume {
     # features can only be enabled/disabled for image, not for snapshot!
     $krbd_feature_update->($scfg, $storeid, $img_name);
 
-    my $cmd = &$rbd_cmd($scfg, $storeid, 'map', $name);
+    my $cmd = $rbd_cmd->($scfg, $storeid, 'map', $name);
     run_rbd_command($cmd, errmsg => "can't map rbd volume $name");
 
     return $kerneldev;
@@ -639,7 +638,7 @@ sub unmap_volume {
     my $kerneldev = $get_kernel_device_name->($scfg, $name);
 
     if (-b $kerneldev) {
-	my $cmd = &$rbd_cmd($scfg, $storeid, 'unmap', $kerneldev);
+	my $cmd = $rbd_cmd->($scfg, $storeid, 'unmap', $kerneldev);
 	run_rbd_command($cmd, errmsg => "can't unmap rbd device $kerneldev");
     }
 
@@ -677,7 +676,7 @@ sub volume_resize {
 
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
 
-    my $cmd = &$rbd_cmd($scfg, $storeid, 'resize', '--allow-shrink', '--size', ($size/1024/1024), $name);
+    my $cmd = $rbd_cmd->($scfg, $storeid, 'resize', '--allow-shrink', '--size', ($size/1024/1024), $name);
     run_rbd_command($cmd, errmsg => "rbd resize '$volname' error");
     return undef;
 }
@@ -687,7 +686,7 @@ sub volume_snapshot {
 
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
 
-    my $cmd = &$rbd_cmd($scfg, $storeid, 'snap', 'create', '--snap', $snap, $name);
+    my $cmd = $rbd_cmd->($scfg, $storeid, 'snap', 'create', '--snap', $snap, $name);
     run_rbd_command($cmd, errmsg => "rbd snapshot '$volname' error");
     return undef;
 }
@@ -697,7 +696,7 @@ sub volume_snapshot_rollback {
 
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
 
-    my $cmd = &$rbd_cmd($scfg, $storeid, 'snap', 'rollback', '--snap', $snap, $name);
+    my $cmd = $rbd_cmd->($scfg, $storeid, 'snap', 'rollback', '--snap', $snap, $name);
     run_rbd_command($cmd, errmsg => "rbd snapshot $volname to '$snap' error");
 }
 
@@ -712,11 +711,11 @@ sub volume_snapshot_delete {
 
     my (undef, undef, undef, $protected) = rbd_volume_info($scfg, $storeid, $name, $snap);
     if ($protected){
-	my $cmd = &$rbd_cmd($scfg, $storeid, 'snap', 'unprotect', $name, '--snap', $snap);
+	my $cmd = $rbd_cmd->($scfg, $storeid, 'snap', 'unprotect', $name, '--snap', $snap);
 	run_rbd_command($cmd, errmsg => "rbd unprotect $name snap '$snap' error");
     }
 
-    my $cmd = &$rbd_cmd($scfg, $storeid, 'snap', 'rm', '--snap', $snap, $name);
+    my $cmd = $rbd_cmd->($scfg, $storeid, 'snap', 'rm', '--snap', $snap, $name);
 
     run_rbd_command($cmd, errmsg => "rbd snapshot '$volname' error");
 
