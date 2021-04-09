@@ -24,11 +24,10 @@ my $get_parent_image_name = sub {
 
 my sub get_rbd_path {
     my ($scfg, $volume) = @_;
-    my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
-    my $namespace = $scfg->{namespace};
-
-    return "${pool}/${namespace}/${volume}" if defined($namespace);
-    return "${pool}/${volume}";
+    my $path = $scfg->{pool} ? $scfg->{pool} : 'rbd';
+    $path .= "/$scfg->{namespace}" if defined($scfg->{namespace});
+    $path .= "/$volume" if defined($volume);
+    return $path;
 };
 
 my $build_cmd = sub {
@@ -540,10 +539,7 @@ sub list_images {
 
     $cache->{rbd} = rbd_ls($scfg, $storeid) if !$cache->{rbd};
 
-    my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
-    $pool .= "/$scfg->{namespace}" if defined($scfg->{namespace});
-
-    my $dat = $cache->{rbd}->{$pool};
+    my $dat = $cache->{rbd}->{get_rbd_path($scfg)};
     return [] if !$dat; # nothing found
 
     my $res = [];
