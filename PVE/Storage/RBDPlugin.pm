@@ -39,14 +39,13 @@ my $build_cmd = sub {
 
     my $cmd = [$binary, '-p', $pool];
 
-    # some subcommands will fail if the --namespace parameter is present
-    my $no_namespace_parameter = {
-	unmap => 1,
-    };
-
-    push @$cmd, '--namespace', $scfg->{namespace}
-	if ($scfg->{namespace} && !$no_namespace_parameter->{$op});
-
+    if (defined(my $namespace = $scfg->{namespace})) {
+	# some subcommands will fail if the --namespace parameter is present
+	my $no_namespace_parameter = {
+	    unmap => 1,
+	};
+	push @$cmd, '--namespace', "$namespace" if !$no_namespace_parameter->{$op};
+    }
     push @$cmd, '-c', $cmd_option->{ceph_conf} if ($cmd_option->{ceph_conf});
     push @$cmd, '-m', $cmd_option->{mon_host} if ($cmd_option->{mon_host});
     push @$cmd, '--auth_supported', $cmd_option->{auth_supported} if ($cmd_option->{auth_supported});
