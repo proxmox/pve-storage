@@ -147,7 +147,7 @@ sub run_rbd_command {
 	    *STDERR->flush();
 	};
     }
-    
+
     eval { run_command($cmd, %args); };
     if (my $err = $@) {
 	die $errmsg . $lasterr if length($lasterr);
@@ -290,7 +290,7 @@ sub properties {
 	    description => "Pool.",
 	    type => 'string',
 	},
-	namespace=> {
+	namespace => {
 	    description => "RBD Namespace.",
 	    type => 'string',
 	},
@@ -723,7 +723,6 @@ sub volume_snapshot_delete {
 }
 
 sub volume_snapshot_needs_fsfreeze {
-
     return 1;
 }
 
@@ -738,14 +737,13 @@ sub volume_has_feature {
 	sparseinit => { base => 1, current => 1},
     };
 
-    my ($vtype, $name, $vmid, $basename, $basevmid, $isBase) =
-        $class->parse_volname($volname);
+    my ($vtype, $name, $vmid, $basename, $basevmid, $isBase) = $class->parse_volname($volname);
 
     my $key = undef;
-    if($snapname){
+    if ($snapname){
 	$key = 'snap';
-    }else{
-	$key =  $isBase ? 'base' : 'current';
+    } else {
+	$key = $isBase ? 'base' : 'current';
     }
     return 1 if $features->{$feature}->{$key};
 
