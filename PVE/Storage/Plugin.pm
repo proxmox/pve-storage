@@ -1039,6 +1039,7 @@ my $get_subdir_files = sub {
 	    my $format = $2;
 	    $fn = $1;
 
+	    # only match for VMID now, to avoid false positives (VMID in parent directory name)
 	    next if defined($vmid) && $fn !~ m/\S+-$vmid-\S+/;
 
 	    $info = { volid => "$sid:backup/$fn", format => $format };
