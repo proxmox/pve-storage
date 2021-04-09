@@ -1249,8 +1249,9 @@ sub prune_backups {
 	$prune_entry->{vmid} = $backup_vmid if defined($backup_vmid);
 
 	if ($archive_info->{is_std_name}) {
-	    die "internal error - got no vmid\n" if !defined($backup_vmid);
-	    die "internal error - got wrong vmid\n" if defined($vmid) && $backup_vmid ne $vmid;
+	    die "internal error - got no VMID\n" if !defined($backup_vmid);
+	    die "internal error - got wrong VMID '$backup_vmid' != '$vmid'\n"
+		if defined($vmid) && $backup_vmid ne $vmid;
 
 	    $prune_entry->{ctime} = $archive_info->{ctime};
 	    my $group = "$backup_type/$backup_vmid";
