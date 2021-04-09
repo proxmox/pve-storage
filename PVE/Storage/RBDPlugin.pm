@@ -539,39 +539,36 @@ sub list_images {
     my ($class, $storeid, $scfg, $vmid, $vollist, $cache) = @_;
 
     $cache->{rbd} = rbd_ls($scfg, $storeid) if !$cache->{rbd};
+
     my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
     $pool .= "/$scfg->{namespace}" if defined($scfg->{namespace});
 
+    my $dat = $cache->{rbd}->{$pool};
+    return [] if !$dat; # nothing found
+
     my $res = [];
+    for my $image (sort keys %$dat) {
+	my $info = $dat->{$image};
+	my ($volname, $parent, $owner) = $info->@{'name', 'parent', 'vmid'};
 
-    if (my $dat = $cache->{rbd}->{$pool}) {
-	for my $image (sort keys %$dat) {
-
-	    my $info = $dat->{$image};
-
-	    my $volname = $info->{name};
-	    my $parent = $info->{parent};
-	    my $owner = $info->{vmid};
-
-	    if ($parent && $parent =~ m/^(base-\d+-\S+)\@__base__$/) {
-		$info->{volid} = "$storeid:$1/$volname";
-	    } else {
-		$info->{volid} = "$storeid:$volname";
-	    }
-
-	    if ($vollist) {
-		my $found = grep { $_ eq $info->{volid} } @$vollist;
-		next if !$found;
-	    } else {
-		next if defined ($vmid) && ($owner ne $vmid);
-	    }
-
-	    $info->{format} = 'raw';
-
-	    push @$res, $info;
+	if ($parent && $parent =~ m/^(base-\d+-\S+)\@__base__$/) {
+	    $info->{volid} = "$storeid:$1/$volname";
+	} else {
+	    $info->{volid} = "$storeid:$volname";
 	}
+
+	if ($vollist) {
+	    my $found = grep { $_ eq $info->{volid} } @$vollist;
+	    next if !$found;
+	} else {
+	    next if defined ($vmid) && ($owner ne $vmid);
+	}
+
+	$info->{format} = 'raw';
+
+	push @$res, $info;
     }
-    
+
     return $res;
 }
 
