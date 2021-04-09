@@ -22,11 +22,12 @@ my $get_parent_image_name = sub {
     return $parent->{image} . "@" . $parent->{snapshot};
 };
 
-my $get_rbd_path = sub {
+my sub get_rbd_path {
     my ($scfg, $volume) = @_;
     my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
+    my $namespace = $scfg->{namespace};
 
-    return "${pool}/$scfg->{namespace}/${volume}" if defined($scfg->{namespace});
+    return "${pool}/${namespace}/${volume}" if defined($namespace);
     return "${pool}/${volume}";
 };
 
@@ -362,7 +363,7 @@ sub path {
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
     $name .= '@'.$snapname if $snapname;
 
-    my $rbd_path = &$get_rbd_path($scfg, $name);
+    my $rbd_path = get_rbd_path($scfg, $name);
     return ("/dev/rbd/${rbd_path}", $vmid, $vtype) if $scfg->{krbd};
 
     my $path = "rbd:${rbd_path}";
@@ -431,8 +432,8 @@ sub create_base {
 	$scfg,
 	$storeid,
 	'rename',
-	&$get_rbd_path($scfg, $name),
-	&$get_rbd_path($scfg, $newname),
+	get_rbd_path($scfg, $name),
+	get_rbd_path($scfg, $newname),
     );
     run_rbd_command($cmd, errmsg => "rbd rename '$name' error");
 
@@ -483,10 +484,10 @@ sub clone_image {
 	$scfg,
 	$storeid,
 	'clone',
-	&$get_rbd_path($scfg, $basename),
+	get_rbd_path($scfg, $basename),
 	'--snap',
 	$snap,
-	&$get_rbd_path($scfg, $name),
+	get_rbd_path($scfg, $name),
     );
 
     run_rbd_command($cmd, errmsg => "rbd clone '$basename' error");
@@ -606,9 +607,7 @@ sub deactivate_storage {
 
 my $get_kernel_device_name = sub {
     my ($scfg, $name) = @_;
-
-    my $rbd_path = &$get_rbd_path($scfg, $name);
-    return "/dev/rbd/${rbd_path}";
+    return "/dev/rbd/" . get_rbd_path($scfg, $name);
 };
 
 sub map_volume {
