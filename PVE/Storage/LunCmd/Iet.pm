@@ -145,6 +145,7 @@ my $parser = sub {
                 # start colect info
                 die "$line: Parse error [$_]" if $SETTINGS;
                 $SETTINGS->{target} = $1;
+                $SETTINGS->{pool} = $scfg->{pool};
                 $cfg_target = 1;
             } elsif ($1 eq $scfg->{target} && $cfg_target) {
                 die "$line: Parse error [$_]";
@@ -202,7 +203,7 @@ my $update_config = sub {
     my $config = '';
 
     while ((my $option, my $value) = each(%$SETTINGS)) {
-        next if ($option eq 'include' || $option eq 'luns' || $option eq 'Path' || $option eq 'text' || $option eq 'used');
+        next if ($option eq 'pool' || $option eq 'include' || $option eq 'luns' || $option eq 'Path' || $option eq 'text' || $option eq 'used');
         if ($option eq 'target') {
             $config = "\n\nTarget " . $SETTINGS->{target} . "\n" . $config;
         } else {
@@ -212,7 +213,7 @@ my $update_config = sub {
     foreach my $lun (@{$SETTINGS->{luns}}) {
         my $lun_opt = '';
         while ((my $option, my $value) = each(%$lun)) {
-            next if ($option eq 'include' || $option eq 'lun' || $option eq 'Path');
+            next if ($option eq 'pool' || $option eq 'include' || $option eq 'lun' || $option eq 'Path');
             if ($lun_opt eq '') {
             $lun_opt = $option . '=' . $value;
             } else {
@@ -464,6 +465,10 @@ sub run_lun_command {
     my ($scfg, $timeout, $method, @params) = @_;
 
     $parser->($scfg) unless $SETTINGS;
+    if ($SETTINGS->{pool} ne $scfg->{pool}) {
+        $SETTINGS=undef;
+        $parser->($scfg);
+    }
     my $cmdmap = $get_lun_cmd_map->($method);
     my $msg = $cmdmap->{cmd}->($scfg, $timeout, $method, @params);
 
