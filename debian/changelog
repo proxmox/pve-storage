@@ -1,3 +1,16 @@
+libpve-storage-perl (6.3-9) pve; urgency=medium
+
+  * backup files: don't match the VMID against the full path, but the file name
+    only, to avoid false positives
+
+  * fix #3286: rbd: add basic namespace support
+
+  * fix #3345: zfs: restore container volume to ZFS with size 0
+
+  * volume export/import: allow uppercase letters in snapshot names
+
+ -- Proxmox Support Team <support@proxmox.com>  Mon, 12 Apr 2021 16:14:31 +0200
+
 libpve-storage-perl (6.3-8) pve; urgency=medium
 
   * api: disks: zfs: "scan" property is optional
