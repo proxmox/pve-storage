@@ -244,14 +244,14 @@ __PACKAGE__->register_method ({
 	    base => {
 		description => "Snapshot to start an incremental stream from",
 		type => 'string',
-		pattern => qr/[a-z0-9_\-]{1,40}/,
+		pattern => qr/[a-z0-9_\-]{1,40}/i,
 		maxLength => 40,
 		optional => 1,
 	    },
 	    snapshot => {
 		description => "Snapshot to export",
 		type => 'string',
-		pattern => qr/[a-z0-9_\-]{1,40}/,
+		pattern => qr/[a-z0-9_\-]{1,40}/i,
 		maxLength => 40,
 		optional => 1,
 	    },
@@ -321,7 +321,7 @@ __PACKAGE__->register_method ({
 	    base => {
 		description => "Base snapshot of an incremental stream",
 		type => 'string',
-		pattern => qr/[a-z0-9_\-]{1,40}/,
+		pattern => qr/[a-z0-9_\-]{1,40}/i,
 		maxLength => 40,
 		optional => 1,
 	    },
@@ -335,7 +335,7 @@ __PACKAGE__->register_method ({
 	    'delete-snapshot' => {
 		description => "A snapshot to delete on success",
 		type => 'string',
-		pattern => qr/[a-z0-9_\-]{1,80}/,
+		pattern => qr/[a-z0-9_\-]{1,80}/i,
 		maxLength => 80,
 		optional => 1,
 	    },
