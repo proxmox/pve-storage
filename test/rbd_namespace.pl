@@ -120,7 +120,7 @@ sub run_test_cmd {
 }
 
 sub prepare {
-    print "Preparing test environent\n";
+    print "Preparing test environment\n";
 
     my $pools = run_cmd("ceph osd pool ls --format json", 1);
 
