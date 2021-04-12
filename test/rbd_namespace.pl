@@ -36,7 +36,7 @@ my $DEBUG = 0;
 my $helpstring = "To override default values, set them as named parameters:
 
 --pool		pool name, default: ${pool}
---use_existing  use existing pool, default: 0, needs --pool set
+--use-existing  use existing pool, default: 0, needs --pool set
 --namespace	rbd namespace, default: ${namespace}
 --vmid		VMID of the test VM, default: ${vmid}
 --cleanup	Remove the storage definitions, namespaces and VMs
@@ -44,7 +44,7 @@ my $helpstring = "To override default values, set them as named parameters:
 
 GetOptions (
 	"pool=s" => \$pool,
-	"use_existing" => \$use_existing,
+	"use-existing" => \$use_existing,
 	"namespace=s" => \$namespace,
 	"vmid=i" => \$vmid,
 	"help" => \$showhelp,
