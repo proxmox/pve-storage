@@ -63,8 +63,10 @@ my $vmid_clone = int($vmid) - 1;
 my $vmid_linked_clone = int($vmid) - 2;
 
 sub jp {
-    return if !$DEBUG;
     print to_json($_[0], { utf8 => 8, pretty => 1, canonical => 1 }) . "\n";
+}
+sub dbgvar {
+    jp(@_) if $DEBUG;
 }
 
 sub run_cmd {
@@ -128,9 +130,9 @@ sub prepare {
 	if !$use_existing;
 
     my $namespaces = run_cmd(['rbd', '-p', ${pool}, 'namespace', 'ls', '--format', 'json'], 1);
+    dbgvar($namespace);
     my $ns_found = 0;
     for my $i (@$namespaces) {
-	#print Dumper $i;
 	$ns_found = 1 if $i->{name} eq $namespace;
     }
 
@@ -140,7 +142,7 @@ sub prepare {
     }
 
     my $storages = run_cmd(['pvesh', 'get', 'storage', '--output-format', 'json'], 1);
-    #print Dumper $storages;
+    dbgvar($storages);
     my $rbd_found = 0;
     my $pool_found = 0;
 
