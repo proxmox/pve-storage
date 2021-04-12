@@ -33,15 +33,17 @@ my $vmid = 999999;
 my $cleanup = undef;
 my $DEBUG = 0;
 
-my $helpstring = "To override default values, set them as named parameters:
+my $helpstring = "usage: $0 [OPTIONS]
 
---pool		pool name, default: ${pool}
---use-existing  use existing pool, default: 0, needs --pool set
---namespace	rbd namespace, default: ${namespace}
---vmid		VMID of the test VM, default: ${vmid}
---cleanup	Remove the storage definitions, namespaces and VMs
--d, --debug	Enable debug output
--h, --help	Print this help message
+Known options are:
+
+ --pool <name>		pool name, default: ${pool}
+ --use-existing		use existing pool, default: 0, needs --pool set
+ --namespace <name>	rbd namespace, default: ${namespace}
+ --vmid <id>		VMID of the test VM, default: ${vmid}
+ --cleanup		Remove the storage definitions, namespaces and VM afterwards
+ -d, --debug		Enable debug output
+ -h, --help		Print this help message
 ";
 
 GetOptions (
