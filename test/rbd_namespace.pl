@@ -47,12 +47,15 @@ GetOptions (
 	"use-existing" => \$use_existing,
 	"namespace=s" => \$namespace,
 	"vmid=i" => \$vmid,
-	"help" => \$showhelp,
+	"h|help" => \$showhelp,
 	"cleanup" => \$cleanup,
 	"debug" => \$DEBUG,
 ) or die ($helpstring);
 
-die $helpstring if $showhelp;
+if ($showhelp) {
+    warn $helpstring;
+    exit(0);
+}
 
 my $storage_name = "${pool}-${namespace}";
 
