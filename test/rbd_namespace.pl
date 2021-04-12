@@ -40,16 +40,18 @@ my $helpstring = "To override default values, set them as named parameters:
 --namespace	rbd namespace, default: ${namespace}
 --vmid		VMID of the test VM, default: ${vmid}
 --cleanup	Remove the storage definitions, namespaces and VMs
---debug		Enable debug output\n";
+-d, --debug	Enable debug output
+-h, --help	Print this help message
+";
 
 GetOptions (
-	"pool=s" => \$pool,
-	"use-existing" => \$use_existing,
-	"namespace=s" => \$namespace,
-	"vmid=i" => \$vmid,
-	"h|help" => \$showhelp,
-	"cleanup" => \$cleanup,
-	"debug" => \$DEBUG,
+    "pool=s" => \$pool,
+    "use-existing" => \$use_existing,
+    "namespace=s" => \$namespace,
+    "vmid=i" => \$vmid,
+    "h|help" => \$showhelp,
+    "cleanup" => \$cleanup,
+    "d|debug" => \$DEBUG,
 ) or die ($helpstring);
 
 if ($showhelp) {
