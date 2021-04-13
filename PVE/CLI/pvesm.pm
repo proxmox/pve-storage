@@ -7,6 +7,10 @@ use POSIX qw(O_RDONLY O_WRONLY O_CREAT O_TRUNC);
 use Fcntl ':flock';
 use File::Path;
 
+use IO::Socket::IP;
+use IO::Socket::UNIX;
+use Socket qw(SOCK_STREAM);
+
 use PVE::SafeSyslog;
 use PVE::Cluster;
 use PVE::INotify;
@@ -314,7 +318,8 @@ __PACKAGE__->register_method ({
 	    },
 	    filename => {
 		description => "Source file name. For '-' stdin is used, the " .
-		  "tcp://<IP-or-CIDR> format allows to use a TCP connection as input. " .
+		  "tcp://<IP-or-CIDR> format allows to use a TCP connection, " .
+		  "the unix://PATH-TO-SOCKET format a UNIX socket as input." .
 		  "Else, the file is treated as common file.",
 		type => 'string',
 	    },
@@ -383,6 +388,25 @@ __PACKAGE__->register_method ({
 	        or die "failed to open socket: $!\n";
 
 	    print "$ip\n$port\n"; # tell remote where to connect
+	    *STDOUT->flush();
+
+	    my $prev_alarm = alarm 0;
+	    local $SIG{ALRM} = sub { die "timed out waiting for client\n" };
+	    alarm 30;
+	    my $client = $socket->accept; # Wait for a client
+	    alarm $prev_alarm;
+	    close($socket);
+
+	    $infh = \*$client;
+	} elsif ($filename =~ m!^unix://(.*)$!) {
+	    my $socket_path = $1;
+	    my $socket = IO::Socket::UNIX->new(
+		Type => SOCK_STREAM(),
+		Local => $socket_path,
+		Listen => 1,
+	    ) or die "failed to open socket: $!\n";
+
+	    print "ready\n";
 	    *STDOUT->flush();
 
 	    my $prev_alarm = alarm 0;
