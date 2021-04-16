@@ -1628,6 +1628,8 @@ sub prune_backups {
 	$keep = PVE::JSONSchema::parse_property_string('prune-backups', $scfg->{'prune-backups'});
     }
 
+    activate_storage($cfg, $storeid);
+
     my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
     return $plugin->prune_backups($scfg, $storeid, $keep, $vmid, $type, $dryrun, $logfunc);
 }
