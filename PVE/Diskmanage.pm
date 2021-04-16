@@ -713,6 +713,9 @@ sub get_disks {
 		next if $partitions->{$part}->{used} eq 'partition';
 		$used //= $partitions->{$part}->{used};
 	    }
+	} else {
+	    # fstype might be set even if there are partitions, but showing that is confusing
+	    $used = 'partitions' if scalar(keys %{$partitions});
 	}
 	$used //= 'partitions' if scalar(keys %{$partitions});
 	# multipath, software raid, etc.
