@@ -750,7 +750,9 @@ sub get_partnum {
 
     my $st = stat($part_path);
 
-    next if !$st->mode || !S_ISBLK($st->mode) || !$st->rdev;
+    die "error detecting block device '$part_path'\n"
+	if !$st || !$st->mode || !S_ISBLK($st->mode) || !$st->rdev;
+
     my $major = PVE::Tools::dev_t_major($st->rdev);
     my $minor = PVE::Tools::dev_t_minor($st->rdev);
     my $partnum_path = "/sys/dev/block/$major:$minor/";
