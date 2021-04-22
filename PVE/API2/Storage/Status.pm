@@ -12,6 +12,7 @@ use PVE::RRD;
 use PVE::Storage;
 use PVE::API2::Storage::Content;
 use PVE::API2::Storage::PruneBackups;
+use PVE::API2::Storage::FileRestore;
 use PVE::RESTHandler;
 use PVE::RPCEnvironment;
 use PVE::JSONSchema qw(get_standard_option);
@@ -30,6 +31,11 @@ __PACKAGE__->register_method ({
     # IDs may contain a slash '/'
     fragmentDelimiter => '',
     path => '{storage}/content',
+});
+
+__PACKAGE__->register_method ({
+   subclass => "PVE::API2::Storage::FileRestore",
+   path => '{storage}/file-restore',
 });
 
 __PACKAGE__->register_method ({
