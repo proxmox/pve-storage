@@ -848,6 +848,30 @@ sub append_partition {
     return $partition;
 }
 
+# Check if a disk or any of its partitions has a holder.
+# Can also be called with a partition.
+# Expected to be called with a result of verify_blockdev_path().
+sub has_holder {
+    my ($devpath) = @_;
+
+    my $sysdir = "/sys/class/block/";
+
+    my $dev = $devpath;
+    $dev =~ s|^/dev/||;
+
+    return $devpath if !dir_is_empty("${sysdir}/${dev}/holders");
+
+    my $found;
+
+    dir_glob_foreach("/sys/block/${dev}", "${dev}.+", sub {
+	my ($part) = @_;
+
+	$found = "/dev/${part}" if !dir_is_empty("${sysdir}/${part}/holders");
+    });
+
+    return $found;
+}
+
 # Basic check if a disk or any of its partitions is mounted.
 # Can also be called with a partition.
 # Expected to be called with a result of verify_blockdev_path().
