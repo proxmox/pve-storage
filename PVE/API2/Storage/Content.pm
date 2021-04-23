@@ -230,7 +230,7 @@ my $real_volume_id = sub {
     if ($volume =~ m/:/) {
 	eval {
 	    my ($sid, $volname) = PVE::Storage::parse_volume_id ($volume);
-	    die "storage ID missmatch ($sid != $storeid)\n"
+	    die "storage ID mismatch ($sid != $storeid)\n"
 		if $storeid && $sid ne $storeid;
 	    $volid = $volume;
 	    $storeid = $sid;
