@@ -4,6 +4,7 @@ use strict;
 use warnings;
 
 use MIME::Base64;
+use PVE::Exception qw(raise_param_exc);
 use PVE::JSONSchema qw(get_standard_option);
 use PVE::PBSClient;
 use PVE::Storage;
@@ -11,6 +12,26 @@ use PVE::Tools qw(extract_param);
 
 use PVE::RESTHandler;
 use base qw(PVE::RESTHandler);
+
+my $parse_volname_or_id = sub {
+    my ($storeid, $volume) = @_;
+
+    my $volid;
+    my ($sid, $volname) = PVE::Storage::parse_volume_id($volume, 1);
+
+    if (defined($sid)) {
+	raise_param_exc({ volume => "storage ID mismatch ($sid != $storeid)." })
+	    if $sid ne $storeid;
+
+	$volid = $volume;
+    } elsif ($volume =~ m/^backup\//) {
+	$volid = "$storeid:$volume";
+    } else {
+	$volid = "$storeid:backup/$volume";
+    }
+
+    return $volid;
+};
 
 __PACKAGE__->register_method ({
     name => 'list',
@@ -26,10 +47,13 @@ __PACKAGE__->register_method ({
 	additionalProperties => 0,
 	properties => {
 	    node => get_standard_option('pve-node'),
-	    storage => get_standard_option('pve-storage-id'),
-	    snapshot => {
-		description => "Backup snapshot identifier.",
+	    storage => get_standard_option('pve-storage-id', {
+		completion => \&PVE::Storage::complete_storage_enabled,
+	    }),
+	    volume => {
+		description => "Backup volume ID or name. Currently only PBS snapshots are supported.",
 		type => 'string',
+		completion => \&PVE::Storage::complete_volume,
 	    },
 	    filepath => {
 		description => 'base64-path to the directory or file being listed, or "/".',
@@ -80,17 +104,24 @@ __PACKAGE__->register_method ({
 
 	my $path = extract_param($param, 'filepath') || "/";
 	my $base64 = $path ne "/";
-	my $snap = extract_param($param, 'snapshot');
+
 	my $storeid = extract_param($param, 'storage');
+
+	my $volid = $parse_volname_or_id->($storeid, $param->{volume});
 	my $cfg = PVE::Storage::config();
 	my $scfg = PVE::Storage::storage_config($cfg, $storeid);
 
-	my $volid = "$storeid:backup/$snap";
 	PVE::Storage::check_volume_access($rpcenv, $user, $cfg, undef, $volid);
+
+	raise_param_exc({'storage' => "Only PBS storages supported for file-restore."})
+	    if $scfg->{type} ne 'pbs';
+
+	my ($vtype, $snap) = PVE::Storage::parse_volname($cfg, $volid);
+	raise_param_exc({'volume' => 'Not a backup archive.'})
+	    if $vtype ne 'backup';
 
 	my $client = PVE::PBSClient->new($scfg, $storeid);
 	my $ret = $client->file_restore_list($snap, $path, $base64);
-
 
 	# 'leaf' is a proper JSON boolean, map to perl-y bool
 	# TODO: make PBSClient decode all bools always as 1/0?
@@ -115,10 +146,13 @@ __PACKAGE__->register_method ({
 	additionalProperties => 0,
 	properties => {
 	    node => get_standard_option('pve-node'),
-	    storage => get_standard_option('pve-storage-id'),
-	    snapshot => {
-		description => "Backup snapshot identifier.",
+	    storage => get_standard_option('pve-storage-id', {
+		completion => \&PVE::Storage::complete_storage_enabled,
+	    }),
+	    volume => {
+		description => "Backup volume ID or name. Currently only PBS snapshots are supported.",
 		type => 'string',
+		completion => \&PVE::Storage::complete_volume,
 	    },
 	    filepath => {
 		description => 'base64-path to the directory or file to download.',
@@ -137,13 +171,20 @@ __PACKAGE__->register_method ({
 	my $user = $rpcenv->get_user();
 
 	my $path = extract_param($param, 'filepath');
-	my $snap = extract_param($param, 'snapshot');
 	my $storeid = extract_param($param, 'storage');
+	my $volid = $parse_volname_or_id->($storeid, $param->{volume});
+
 	my $cfg = PVE::Storage::config();
 	my $scfg = PVE::Storage::storage_config($cfg, $storeid);
 
-	my $volid = "$storeid:backup/$snap";
 	PVE::Storage::check_volume_access($rpcenv, $user, $cfg, undef, $volid);
+
+	raise_param_exc({'storage' => "Only PBS storages supported for file-restore."})
+	    if $scfg->{type} ne 'pbs';
+
+	my ($vtype, $snap) = PVE::Storage::parse_volname($cfg, $volid);
+	raise_param_exc({'volume' => 'Not a backup archive.'})
+	    if $vtype ne 'backup';
 
 	my $client = PVE::PBSClient->new($scfg, $storeid);
 	my $fifo = $client->file_restore_extract_prepare();
