@@ -56,7 +56,7 @@ __PACKAGE__->register_method ({
 		},
 		leaf => {
 		    description => "If this entry is a leaf in the directory graph.",
-		    type => 'any', # JSON::PP::Boolean gets passed through
+		    type => 'boolean',
 		},
 		size => {
 		    description => "Entry file size.",
@@ -90,6 +90,13 @@ __PACKAGE__->register_method ({
 
 	my $client = PVE::PBSClient->new($scfg, $storeid);
 	my $ret = $client->file_restore_list($snap, $path, $base64);
+
+
+	# 'leaf' is a proper JSON boolean, map to perl-y bool
+	# TODO: make PBSClient decode all bools always as 1/0?
+	foreach my $item (@$ret) {
+	    $item->{leaf} = $item->{leaf} ? 1 : 0;
+	}
 
 	return $ret;
     }});
