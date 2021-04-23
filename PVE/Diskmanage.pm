@@ -481,10 +481,7 @@ my sub is_ssdlike {
     return $type eq 'ssd' || $type eq 'nvme';
 }
 
-sub get_disks {
-    my ($disks, $nosmart, $include_partitions) = @_;
-    my $disklist = {};
-
+sub mounted_blockdevs {
     my $mounted = {};
 
     my $mounts = PVE::ProcFSTools::parse_proc_mounts();
@@ -493,6 +490,15 @@ sub get_disks {
 	next if $mount->[0] !~ m|^/dev/|;
 	$mounted->{abs_path($mount->[0])} = $mount->[1];
     };
+
+    return $mounted;
+}
+
+sub get_disks {
+    my ($disks, $nosmart, $include_partitions) = @_;
+    my $disklist = {};
+
+    my $mounted = mounted_blockdevs();
 
     my $lsblk_info = get_lsblk_info();
 
