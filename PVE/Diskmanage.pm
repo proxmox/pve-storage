@@ -7,6 +7,7 @@ use PVE::ProcFSTools;
 use Data::Dumper;
 use Cwd qw(abs_path);
 use Fcntl ':mode';
+use File::Basename;
 use File::stat;
 use JSON;
 
@@ -839,6 +840,32 @@ sub append_partition {
     });
 
     return $partition;
+}
+
+# Wipes all labels and the first 200 MiB of a disk/partition (or the whole if it is smaller).
+# Expected to be called with a result of verify_blockdev_path().
+sub wipe_blockdev {
+    my ($devpath) = @_;
+
+    my $wipefs_cmd = ['wipefs', '--all', $devpath];
+
+    my $dd_cmd = ['dd', 'if=/dev/zero', "of=${devpath}", 'bs=1M', 'conv=fdatasync'];
+
+    my $devname = basename($devpath);
+    my $dev_size = PVE::Tools::file_get_contents("/sys/class/block/$devname/size");
+
+    ($dev_size) = $dev_size =~ m|(\d+)|; # untaint $dev_size
+    die "Couldn't get the size of the device $devname\n" if !defined($dev_size);
+
+    my $size = ($dev_size * 512 / 1024 / 1024);
+    my $count = ($size < 200) ? $size : 200;
+
+    push @{$dd_cmd}, "count=${count}";
+
+    print "wiping disk/partition: ${devpath}\n";
+
+    run_command($wipefs_cmd, errmsg => "error wiping labels for '${devpath}'");
+    run_command($dd_cmd, errmsg => "error wiping '${devpath}'");
 }
 
 1;
