@@ -1,3 +1,15 @@
+libpve-storage-perl (6.4-1) pve; urgency=medium
+
+  * import: allow storage import from UNIX socket
+
+  * diskmanage: improve detecting usage for whole disk with include-partitions
+
+  * Proxmox Backup Server: allow setting up a master key
+
+  * add FileRestore API for Proxmox Backup Server
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 23 Apr 2021 16:18:43 +0200
+
 libpve-storage-perl (6.3-9) pve; urgency=medium
 
   * backup files: don't match the VMID against the full path, but the file name
