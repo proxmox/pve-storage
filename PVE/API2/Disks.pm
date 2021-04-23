@@ -3,6 +3,7 @@ package PVE::API2::Disks;
 use strict;
 use warnings;
 
+use File::Basename;
 use HTTP::Status qw(:constants);
 
 use PVE::Diskmanage;
@@ -68,6 +69,7 @@ __PACKAGE__->register_method ({
 	    { name => 'lvm' },
 	    { name => 'lvmthin' },
 	    { name => 'directory' },
+	    { name => 'wipedisk' },
 	    { name => 'zfs' },
 	];
 
@@ -265,6 +267,46 @@ __PACKAGE__->register_method ({
 	my $diskid = $disk;
 	$diskid =~ s|^.*/||; # remove all up to the last slash
 	return $rpcenv->fork_worker('diskinit', $diskid, $authuser, $worker);
+    }});
+
+__PACKAGE__->register_method ({
+    name => 'wipe_disk',
+    path => 'wipedisk',
+    method => 'PUT',
+    description => "Wipe a disk or partition.",
+    proxyto => 'node',
+    protected => 1,
+    parameters => {
+	additionalProperties => 0,
+	properties => {
+	    node => get_standard_option('pve-node'),
+	    disk => {
+		type => 'string',
+		description => "Block device name",
+		pattern => '^/dev/[a-zA-Z0-9\/]+$',
+	    },
+	},
+    },
+    returns => { type => 'string' },
+    code => sub {
+	my ($param) = @_;
+
+	my $disk = PVE::Diskmanage::verify_blockdev_path($param->{disk});
+
+	my $mounted = PVE::Diskmanage::is_mounted($disk);
+	die "disk/partition '${mounted}' is mounted\n" if $mounted;
+
+	my $held = PVE::Diskmanage::has_holder($disk);
+	die "disk/partition '${held}' has a holder\n" if $held;
+
+	my $rpcenv = PVE::RPCEnvironment::get();
+	my $authuser = $rpcenv->get_user();
+
+	my $worker = sub { PVE::Diskmanage::wipe_blockdev($disk); };
+
+	my $basename = basename($disk); # avoid '/' in the ID
+
+	return $rpcenv->fork_worker('wipedisk', $basename, $authuser, $worker);
     }});
 
 1;
