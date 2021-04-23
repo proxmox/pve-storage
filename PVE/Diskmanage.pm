@@ -848,6 +848,32 @@ sub append_partition {
     return $partition;
 }
 
+# Basic check if a disk or any of its partitions is mounted.
+# Can also be called with a partition.
+# Expected to be called with a result of verify_blockdev_path().
+sub is_mounted {
+    my ($devpath) = @_;
+
+    my $mounted = mounted_blockdevs();
+
+    return $devpath if $mounted->{$devpath};
+
+    my $dev = $devpath;
+    $dev =~ s|^/dev/||;
+
+    my $found;
+
+    dir_glob_foreach("/sys/block/${dev}", "${dev}.+", sub {
+	my ($part) = @_;
+
+	my $partpath = "/dev/${part}";
+
+	$found = $partpath if $mounted->{$partpath};
+    });
+
+    return $found;
+}
+
 # Wipes all labels and the first 200 MiB of a disk/partition (or the whole if it is smaller).
 # Expected to be called with a result of verify_blockdev_path().
 sub wipe_blockdev {
