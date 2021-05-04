@@ -73,13 +73,10 @@ sub iscsi_discovery {
 
     check_iscsi_support ();
 
-    my $cmd = [$ISCSIADM, '--mode', 'discovery', '--type', 'sendtargets',
-	       '--portal', $portal];
-
     my $res = {};
-
     return $res if !iscsi_test_portal($portal); # fixme: raise exception here?
 
+    my $cmd = [$ISCSIADM, '--mode', 'discovery', '--type', 'sendtargets', '--portal', $portal];
     run_command($cmd, outfunc => sub {
 	my $line = shift;
 
@@ -97,22 +94,20 @@ sub iscsi_discovery {
 sub iscsi_login {
     my ($target, $portal_in) = @_;
 
-    check_iscsi_support ();
+    check_iscsi_support();
 
-    eval { iscsi_discovery ($portal_in); };
+    eval { iscsi_discovery($portal_in); };
     warn $@ if $@;
 
-    my $cmd = [$ISCSIADM, '--mode', 'node', '--targetname',  $target, '--login'];
-    run_command($cmd);
+    run_command([$ISCSIADM, '--mode', 'node', '--targetname',  $target, '--login']);
 }
 
 sub iscsi_logout {
     my ($target, $portal) = @_;
 
-    check_iscsi_support ();
+    check_iscsi_support();
 
-    my $cmd = [$ISCSIADM, '--mode', 'node', '--targetname', $target, '--logout'];
-    run_command($cmd);
+    run_command([$ISCSIADM, '--mode', 'node', '--targetname', $target, '--logout']);
 }
 
 my $rescan_filename = "/var/run/pve-iscsi-rescan.lock";
