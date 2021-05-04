@@ -670,8 +670,16 @@ sub volume_import {
 	$class->volume_import_write($fh, $file);
     };
     if (my $err = $@) {
-	eval { $class->free_image($storeid, $scfg, $volname, 0) };
+	my $cleanup_worker = eval { $class->free_image($storeid, $scfg, $volname, 0) };
 	warn $@ if $@;
+
+	if ($cleanup_worker) {
+	    my $rpcenv = PVE::RPCEnvironment::get();
+	    my $authuser = $rpcenv->get_user();
+
+	    $rpcenv->fork_worker('imgdel', undef, $authuser, $cleanup_worker);
+	}
+
 	die $err;
     }
 
