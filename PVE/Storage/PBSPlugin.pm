@@ -595,6 +595,8 @@ sub free_image {
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
 
     run_client_cmd($scfg, $storeid, "forget", [ $name ], 1);
+
+    return;
 }
 
 
