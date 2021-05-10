@@ -14,7 +14,7 @@ Build-Depends: debhelper (>= 12~),
                pve-doc-generator (>= 5.3-3),
                pve-qemu-kvm | qemu-utils,
                zfsutils-linux,
-Standards-Version: 4.3.0
+Standards-Version: 4.5.1
 Homepage: https://www.proxmox.com
 
 Package: libpve-storage-perl
