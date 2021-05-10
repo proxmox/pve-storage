@@ -2,7 +2,7 @@ Source: libpve-storage-perl
 Section: perl
 Priority: optional
 Maintainer: Proxmox Support Team <support@proxmox.com>
-Build-Depends: debhelper (>= 10~),
+Build-Depends: debhelper (>= 12~),
                libfile-chdir-perl,
                libpve-cluster-perl,
                libpve-common-perl (>= 6.3-2),
