@@ -1,3 +1,12 @@
+libpve-storage-perl (7.0-1) pve; urgency=medium
+
+  * remove the old, internal and unmaintained, DRBD plugin which was replaced
+    by an external maintained version already in PVE 5.
+
+  * bump for for Debian 11 Bullseye based releases
+
+ -- Proxmox Support Team <support@proxmox.com>  Wed, 12 May 2021 13:01:40 +0200
+
 libpve-storage-perl (6.4-1) pve; urgency=medium
 
   * import: allow storage import from UNIX socket
