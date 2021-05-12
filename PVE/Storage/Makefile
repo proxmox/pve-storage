@@ -11,7 +11,6 @@ SOURCES= \
 	GlusterfsPlugin.pm \
 	ZFSPoolPlugin.pm \
 	ZFSPlugin.pm \
-	DRBDPlugin.pm \
 	PBSPlugin.pm \
 	LvmThinPlugin.pm
 
