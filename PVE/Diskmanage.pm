@@ -22,7 +22,6 @@ my $LSBLK = "/bin/lsblk";
 
 sub check_bin {
     my ($path) = @_;
-
     return -x $path;
 }
 
@@ -848,25 +847,26 @@ sub append_partition {
     return $partition;
 }
 
+my sub strip_dev :prototype($) {
+    my ($devpath) = @_;
+    $devpath =~ s|^/dev/||;
+    return $devpath;
+}
+
 # Check if a disk or any of its partitions has a holder.
 # Can also be called with a partition.
 # Expected to be called with a result of verify_blockdev_path().
 sub has_holder {
     my ($devpath) = @_;
 
-    my $sysdir = "/sys/class/block/";
+    my $dev = strip_dev($devpath);
 
-    my $dev = $devpath;
-    $dev =~ s|^/dev/||;
-
-    return $devpath if !dir_is_empty("${sysdir}/${dev}/holders");
+    return $devpath if !dir_is_empty("/sys/class/block/${dev}/holders");
 
     my $found;
-
     dir_glob_foreach("/sys/block/${dev}", "${dev}.+", sub {
 	my ($part) = @_;
-
-	$found = "/dev/${part}" if !dir_is_empty("${sysdir}/${part}/holders");
+	$found = "/dev/${part}" if !dir_is_empty("/sys/class/block/${part}/holders");
     });
 
     return $found;
@@ -882,14 +882,11 @@ sub is_mounted {
 
     return $devpath if $mounted->{$devpath};
 
-    my $dev = $devpath;
-    $dev =~ s|^/dev/||;
+    my $dev = strip_dev($devpath);
 
     my $found;
-
     dir_glob_foreach("/sys/block/${dev}", "${dev}.+", sub {
 	my ($part) = @_;
-
 	my $partpath = "/dev/${part}";
 
 	$found = $partpath if $mounted->{$partpath};
