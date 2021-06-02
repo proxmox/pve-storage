@@ -900,10 +900,6 @@ sub is_mounted {
 sub wipe_blockdev {
     my ($devpath) = @_;
 
-    my $wipefs_cmd = ['wipefs', '--all', $devpath];
-
-    my $dd_cmd = ['dd', 'if=/dev/zero', "of=${devpath}", 'bs=1M', 'conv=fdatasync'];
-
     my $devname = basename($devpath);
     my $dev_size = PVE::Tools::file_get_contents("/sys/class/block/$devname/size");
 
@@ -913,12 +909,14 @@ sub wipe_blockdev {
     my $size = ($dev_size * 512 / 1024 / 1024);
     my $count = ($size < 200) ? $size : 200;
 
-    push @{$dd_cmd}, "count=${count}";
-
     print "wiping disk/partition: ${devpath}\n";
 
-    run_command($wipefs_cmd, errmsg => "error wiping labels for '${devpath}'");
-    run_command($dd_cmd, errmsg => "error wiping '${devpath}'");
+    run_command(['wipefs', '--all', $devpath], errmsg => "error wiping '${devpath}'");
+
+    run_command(
+	['dd', 'if=/dev/zero', "of=${devpath}", 'bs=1M', 'conv=fdatasync', "count=${count}"],
+	errmsg => "error wiping '${devpath}'",
+    );
 }
 
 1;
