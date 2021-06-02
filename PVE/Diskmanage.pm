@@ -909,9 +909,20 @@ sub wipe_blockdev {
     my $size = ($dev_size * 512 / 1024 / 1024);
     my $count = ($size < 200) ? $size : 200;
 
-    print "wiping disk/partition: ${devpath}\n";
+    my $to_wipe = [];
+    dir_glob_foreach("/sys/class/block/${devname}", "${devname}.+", sub {
+	my ($part) = @_;
+	push $to_wipe->@*, "/dev/${part}" if -b "/dev/${part}";
+    });
 
-    run_command(['wipefs', '--all', $devpath], errmsg => "error wiping '${devpath}'");
+    if (scalar($to_wipe->$#*) > 0) {
+	print "found child partitions to wipe: ". join($to_wipe->@*, ',') ."\n";
+    }
+    push $to_wipe->@*, $devpath; # put actual device last
+
+    print "wiping block device ${devpath}\n";
+
+    run_command(['wipefs', '--all', $to_wipe->@*], errmsg => "error wiping '${devpath}'");
 
     run_command(
 	['dd', 'if=/dev/zero', "of=${devpath}", 'bs=1M', 'conv=fdatasync', "count=${count}"],
