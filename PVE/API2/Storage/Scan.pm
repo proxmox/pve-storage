@@ -48,8 +48,6 @@ __PACKAGE__->register_method({
 	    { method => 'lvm' },
 	    { method => 'nfs' },
 	    { method => 'pbs' },
-	    # FIXME: remove with 7.0 (replaced by /nodes/<node>/hardware/usb)
-	    { method => 'usb' },
 	    { method => 'zfs' },
 	];
 
@@ -446,49 +444,6 @@ __PACKAGE__->register_method({
 	my ($param) = @_;
 
 	return PVE::Storage::scan_zfs();
-    }});
-
-# FIXME: remove with 7.0 (replaced by /nodes/<node>/hardware/usb)
-__PACKAGE__->register_method({
-    name => 'usbscan',
-    path => 'usb',
-    method => 'GET',
-    description => "List local USB devices.",
-    protected => 1,
-    proxyto => "node",
-    permissions => {
-	check => ['perm', '/', ['Sys.Modify']],
-    },
-    parameters => {
-	additionalProperties => 0,
-	properties => {
-	    node => get_standard_option('pve-node'),
-	},
-    },
-    returns => {
-	type => 'array',
-	items => {
-	    type => "object",
-	    properties => {
-		busnum => { type => 'integer'},
-		class => { type => 'integer'},
-		devnum => { type => 'integer'},
-		level => { type => 'integer'},
-		manufacturer => { type => 'string', optional => 1 },
-		port => { type => 'integer'},
-		prodid => { type => 'string'},
-		product => { type => 'string', optional => 1 },
-		serial => { type => 'string', optional => 1 },
-		speed => { type => 'string'},
-		usbpath => { type => 'string', optional => 1},
-		vendid => { type => 'string'},
-	    },
-	},
-    },
-    code => sub {
-	my ($param) = @_;
-
-	return PVE::SysFSTools::scan_usb();
     }});
 
 1;
