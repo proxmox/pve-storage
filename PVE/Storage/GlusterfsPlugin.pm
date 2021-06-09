@@ -215,7 +215,7 @@ sub clone_image {
 
     mkpath $imagedir;
 
-    my $name = $class->find_free_diskname($imagedir, $scfg, $vmid, "qcow2", 1);
+    my $name = $class->find_free_diskname($storeid, $scfg, $vmid, "qcow2", 1);
 
     warn "clone $volname: $vtype, $name, $vmid to $name (base=../$basevmid/$basename)\n";
 
@@ -243,7 +243,7 @@ sub alloc_image {
 
     mkpath $imagedir;
 
-    $name = $class->find_free_diskname($imagedir, $scfg, $vmid, $fmt, 1) if !$name;
+    $name = $class->find_free_diskname($storeid, $scfg, $vmid, $fmt, 1) if !$name;
 
     my (undef, $tmpfmt) = parse_name_dir($name);
 
