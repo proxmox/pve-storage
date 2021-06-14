@@ -915,7 +915,7 @@ sub wipe_blockdev {
 	push $to_wipe->@*, "/dev/${part}" if -b "/dev/${part}";
     });
 
-    if (scalar($to_wipe->$#*) > 0) {
+    if (scalar($to_wipe->@*) > 0) {
 	print "found child partitions to wipe: ". join(', ', $to_wipe->@*) ."\n";
     }
     push $to_wipe->@*, $devpath; # put actual device last
