@@ -1,0 +1,33 @@
+#!/bin/sh
+
+set -e
+
+#DEBHELPER#
+
+case "$1" in
+  configure)
+    if test -n "$2"; then
+
+        # TODO: remove once PVE 8.0 is released
+        if dpkg --compare-versions "$2" 'lt' '7.0-3'; then
+            for file in /etc/pve/priv/*.cred; do
+                if [ -f "$file" ]; then
+                    echo "Info: found CIFS credentials using old path: $file" >&2
+                    mkdir -p "/etc/pve/priv/storage" || (echo "Warning: failed to move old CIFS credential file, cluster not quorate?" && continue)
+                    base=$(basename --suffix=".cred" "$file")
+                    target="/etc/pve/priv/storage/$base.pw"
+                    if [ -f "$target" ]; then
+                        echo "Warning: not renaming $file, because $target already exists!" >&2
+                    else
+                        echo "Info: renaming $file to $target" >&2
+                        mv "$file" "$target" || (echo "Warning: failed to move old CIFS credential file, cluster not quorate?" && continue)
+                    fi
+                fi
+            done
+        fi
+    fi
+    ;;
+
+esac
+
+exit 0

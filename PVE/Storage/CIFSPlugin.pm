@@ -59,9 +59,6 @@ sub get_cred_file {
 
     if (-e $cred_file) {
 	return $cred_file;
-    } elsif (-e "/etc/pve/priv/${storeid}.cred") {
-	# FIXME: remove fallback with 7.0 by doing a rename on upgrade from 6.x
-	return "/etc/pve/priv/${storeid}.cred";
     }
     return undef;
 }
