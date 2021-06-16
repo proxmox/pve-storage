@@ -38,8 +38,7 @@ sub cephfs_is_mounted {
     return undef;
 }
 
-# FIXME: remove in PVE 7.0 where systemd is recent enough to not have those
-#        local-fs/remote-fs dependency cycles generated for _netdev mounts...
+# FIXME: remove once it's possible to specify _netdev for fuse.ceph mounts
 sub systemd_netmount {
     my ($where, $type, $what, $opts) = @_;
 
