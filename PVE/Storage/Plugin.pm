@@ -133,7 +133,8 @@ my $defaultData = {
 	    optional => 1,
 	},
 	maxfiles => {
-	    description => "Maximal number of backup files per VM. Use '0' for unlimted.",
+	    description => "Deprecated: use 'prune-backups' instead. " .
+		"Maximal number of backup files per VM. Use '0' for unlimted.",
 	    type => 'integer',
 	    minimum => 0,
 	    optional => 1,
@@ -402,7 +403,7 @@ sub parse_config {
 	    type => 'dir',
 	    priority => 0, # force first entry
 	    path => '/var/lib/vz',
-	    maxfiles => 0,
+	    'prune-backups' => 'keep-all=1',
 	    content => { images => 1, rootdir => 1, vztmpl => 1, iso => 1, snippets => 1},
 	};
     }

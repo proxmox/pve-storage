@@ -125,7 +125,7 @@ sub lock_storage_config {
     }
 }
 
-# FIXME remove maxfiles for PVE 7.0
+# FIXME remove maxfiles for PVE 8.0 or PVE 9.0
 my $convert_maxfiles_to_prune_backups = sub {
     my ($scfg) = @_;
 
