@@ -98,10 +98,7 @@ sub cephfs_mount {
     } else {
 	push @opts, "name=$cmd_option->{userid}";
 	push @opts, "secretfile=$secretfile" if defined($secretfile);
-
-	# FIXME: remove version check in PVE 7.0, only needed for Luminous -> Nautilus
-	my ($subversions) = PVE::CephConfig::local_ceph_version();
-	push @opts, "conf=$configfile" if defined($configfile) && @$subversions[0] > 12;
+	push @opts, "conf=$configfile" if defined($configfile);
     }
 
     push @opts, $scfg->{options} if $scfg->{options};
