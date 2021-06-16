@@ -454,8 +454,9 @@ __PACKAGE__->register_method ({
 
 	    if (!$currently_deleting) {
 		my $status = PVE::Tools::upid_read_status($upid);
+		chomp $status;
 		return undef if $status eq 'OK';
-		die $status;
+		die "$status\n";
 	    }
 	}
 	return $upid;
