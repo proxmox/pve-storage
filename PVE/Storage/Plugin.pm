@@ -404,7 +404,14 @@ sub parse_config {
 	    priority => 0, # force first entry
 	    path => '/var/lib/vz',
 	    'prune-backups' => 'keep-all=1',
-	    content => { images => 1, rootdir => 1, vztmpl => 1, iso => 1, snippets => 1},
+	    content => {
+		backup => 1,
+		images => 1,
+		iso => 1,
+		rootdir => 1,
+		snippets => 1,
+		vztmpl => 1,
+	    },
 	};
     }
 
