@@ -10,17 +10,18 @@ case "$1" in
 
         # TODO: remove once PVE 8.0 is released
         if dpkg --compare-versions "$2" 'lt' '7.0-3'; then
+            warning="Warning: failed to move old CIFS credential file, cluster not quorate?"
             for file in /etc/pve/priv/*.cred; do
                 if [ -f "$file" ]; then
                     echo "Info: found CIFS credentials using old path: $file" >&2
-                    mkdir -p "/etc/pve/priv/storage" || (echo "Warning: failed to move old CIFS credential file, cluster not quorate?" && continue)
+                    mkdir -p "/etc/pve/priv/storage" || { echo "$warning" && continue; }
                     base=$(basename --suffix=".cred" "$file")
                     target="/etc/pve/priv/storage/$base.pw"
                     if [ -f "$target" ]; then
                         echo "Warning: not renaming $file, because $target already exists!" >&2
                     else
                         echo "Info: renaming $file to $target" >&2
-                        mv "$file" "$target" || (echo "Warning: failed to move old CIFS credential file, cluster not quorate?" && continue)
+                        mv "$file" "$target" || { echo "$warning" && continue; }
                     fi
                 fi
             done
