@@ -18,7 +18,12 @@ case "$1" in
                     base=$(basename --suffix=".cred" "$file")
                     target="/etc/pve/priv/storage/$base.pw"
                     if [ -f "$target" ]; then
-                        echo "Warning: not renaming $file, because $target already exists!" >&2
+                        if diff "$file" "$target" >&2 > /dev/null; then
+                            echo "Info: removing $file, because it is identical to $target" >&2
+                            rm "$file" || { echo "$warning" && continue; }
+                        else
+                            echo "Warning: not renaming $file, because $target already exists and differs!" >&2
+                        fi
                     else
                         echo "Info: renaming $file to $target" >&2
                         mv "$file" "$target" || { echo "$warning" && continue; }
