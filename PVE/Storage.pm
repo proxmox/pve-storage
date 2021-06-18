@@ -73,10 +73,8 @@ if ( -d '/usr/share/perl5/PVE/Storage/Custom' ) {
 	    require $file;
 
 	    # Check perl interface:
-	    die "not derived from PVE::Storage::Plugin\n"
-		if !$modname->isa('PVE::Storage::Plugin');
-	    die "does not provide an api() method\n"
-		if !$modname->can('api');
+	    die "not derived from PVE::Storage::Plugin\n" if !$modname->isa('PVE::Storage::Plugin');
+	    die "does not provide an api() method\n" if !$modname->can('api');
 	    # Check storage API version and that file is really storage plugin.
 	    my $version = $modname->api();
 	    die "implements an API version newer than current ($version > " . APIVER . ")\n"
@@ -84,11 +82,11 @@ if ( -d '/usr/share/perl5/PVE/Storage/Custom' ) {
 	    my $min_version = (APIVER - APIAGE);
 	    die "API version too old, please update the plugin ($version < $min_version)\n"
 		if $version < $min_version;
+	    # all OK, do import and register (i.e., "use")
 	    import $file;
 	    $modname->register();
 
-	    # If we got this far and the API version is not the same, make some
-	    # noise:
+	    # If we got this far and the API version is not the same, make some noise:
 	    warn "Plugin \"$modname\" is implementing an older storage API, an upgrade is recommended\n"
 		if $version != APIVER;
 	};
