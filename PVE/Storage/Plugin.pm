@@ -345,6 +345,10 @@ sub decode_value {
 	    die "unable to combine 'none' with other content types\n";
 	}
 
+	if (scalar(keys $res->%*) == 0 && !$valid_content->{none}) {
+	    die "storage does not support content type 'none'\n";
+	}
+
 	return $res;
     } elsif ($key eq 'format') {
 	my $valid_formats = $def->{format}->[0];
