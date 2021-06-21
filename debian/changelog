@@ -1,3 +1,23 @@
+libpve-storage-perl (7.0-3) bullseye; urgency=medium
+
+  * api: get rid of moved usb call, moved to manager
+
+  * config: add backup content type to default local storage
+
+  * config: mention that maxfiles is deprecated
+
+  * postinst: move old cifs credential files into new subdirectory upon update
+
+  * prune backups: always activate storage
+
+  * api: status: sort index and add missing "file-restore"
+
+  * lvm: volume import: handle worker returned by free_image
+
+  * vdisk_list: only scan storages with the correct content type(s)
+
+ -- Proxmox Support Team <support@proxmox.com>  Mon, 21 Jun 2021 11:27:22 +0200
+
 libpve-storage-perl (7.0-2) bullseye; urgency=medium
 
   * api: add wipedisk endpoint
