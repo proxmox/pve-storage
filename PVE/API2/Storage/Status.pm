@@ -221,12 +221,13 @@ __PACKAGE__->register_method ({
 	my ($param) = @_;
 
 	my $res = [
-	    { subdir => 'status' },
 	    { subdir => 'content' },
-	    { subdir => 'upload' },
+	    { subdir => 'file-restore' },
+	    { subdir => 'prunebackups' },
 	    { subdir => 'rrd' },
 	    { subdir => 'rrddata' },
-	    { subdir => 'prunebackups' },
+	    { subdir => 'status' },
+	    { subdir => 'upload' },
 	];
 
 	return $res;
