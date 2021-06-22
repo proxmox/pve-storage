@@ -38,6 +38,7 @@ use PVE::Storage::GlusterfsPlugin;
 use PVE::Storage::ZFSPoolPlugin;
 use PVE::Storage::ZFSPlugin;
 use PVE::Storage::PBSPlugin;
+use PVE::Storage::BTRFSPlugin;
 
 # Storage API version. Increment it on changes in storage API interface.
 use constant APIVER => 8;
@@ -60,6 +61,7 @@ PVE::Storage::GlusterfsPlugin->register();
 PVE::Storage::ZFSPoolPlugin->register();
 PVE::Storage::ZFSPlugin->register();
 PVE::Storage::PBSPlugin->register();
+PVE::Storage::BTRFSPlugin->register();
 
 # load third-party plugins
 if ( -d '/usr/share/perl5/PVE/Storage/Custom' ) {
