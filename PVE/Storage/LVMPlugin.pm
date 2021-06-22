@@ -603,7 +603,7 @@ sub volume_has_feature {
 sub volume_export_formats {
     my ($class, $scfg, $storeid, $volname, $snapshot, $base_snapshot, $with_snapshots) = @_;
     return () if defined($snapshot); # lvm-thin only
-    return volume_import_formats($class, $scfg, $storeid, $volname, $base_snapshot, $with_snapshots);
+    return volume_import_formats($class, $scfg, $storeid, $volname, $snapshot, $base_snapshot, $with_snapshots);
 }
 
 sub volume_export {
@@ -627,14 +627,14 @@ sub volume_export {
 }
 
 sub volume_import_formats {
-    my ($class, $scfg, $storeid, $volname, $base_snapshot, $with_snapshots) = @_;
+    my ($class, $scfg, $storeid, $volname, $snapshot, $base_snapshot, $with_snapshots) = @_;
     return () if $with_snapshots; # not supported
     return () if defined($base_snapshot); # not supported
     return ('raw+size');
 }
 
 sub volume_import {
-    my ($class, $scfg, $storeid, $fh, $volname, $format, $base_snapshot, $with_snapshots, $allow_rename) = @_;
+    my ($class, $scfg, $storeid, $fh, $volname, $format, $snapshot, $base_snapshot, $with_snapshots, $allow_rename) = @_;
     die "volume import format $format not available for $class\n"
 	if $format ne 'raw+size';
     die "cannot import volumes together with their snapshots in $class\n"

@@ -747,7 +747,7 @@ sub volume_export_formats {
 }
 
 sub volume_import {
-    my ($class, $scfg, $storeid, $fh, $volname, $format, $base_snapshot, $with_snapshots, $allow_rename) = @_;
+    my ($class, $scfg, $storeid, $fh, $volname, $format, $snapshot, $base_snapshot, $with_snapshots, $allow_rename) = @_;
 
     die "unsupported import stream format for $class: $format\n"
 	if $format ne 'zfs';
@@ -784,9 +784,9 @@ sub volume_import {
 }
 
 sub volume_import_formats {
-    my ($class, $scfg, $storeid, $volname, $base_snapshot, $with_snapshots) = @_;
+    my ($class, $scfg, $storeid, $volname, $snapshot, $base_snapshot, $with_snapshots) = @_;
 
-    return $class->volume_export_formats($scfg, $storeid, $volname, undef, $base_snapshot, $with_snapshots);
+    return $class->volume_export_formats($scfg, $storeid, $volname, $snapshot, $base_snapshot, $with_snapshots);
 }
 
 1;

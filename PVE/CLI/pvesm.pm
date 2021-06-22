@@ -276,11 +276,22 @@ __PACKAGE__->register_method ({
 		optional => 1,
 		default => 0,
 	    },
+	    'snapshot-list' => {
+		description => "Ordered list of snapshots to transfer",
+		type => 'string',
+		format => 'string-list',
+		optional => 1,
+	    },
 	},
     },
     returns => { type => 'null' },
     code => sub {
 	my ($param) = @_;
+
+	my $with_snapshots = $param->{'with-snapshots'};
+	if (defined(my $list = $param->{'snapshot-list'})) {
+	    $with_snapshots = PVE::Tools::split_list($list);
+	}
 
 	my $filename = $param->{filename};
 
@@ -295,7 +306,7 @@ __PACKAGE__->register_method ({
 	eval {
 	    my $cfg = PVE::Storage::config();
 	    PVE::Storage::volume_export($cfg, $outfh, $param->{volume}, $param->{format},
-		$param->{snapshot}, $param->{base}, $param->{'with-snapshots'});
+		$param->{snapshot}, $param->{base}, $with_snapshots);
 	};
 	my $err = $@;
 	if ($filename ne '-') {
@@ -360,6 +371,13 @@ __PACKAGE__->register_method ({
 		type => 'boolean',
 		optional => 1,
 		default => 0,
+	    },
+	    snapshot => {
+		description => "The current-state snapshot if the stream contains snapshots",
+		type => 'string',
+		pattern => qr/[a-z0-9_\-]{1,40}/i,
+		maxLength => 40,
+		optional => 1,
 	    },
 	},
     },
@@ -436,7 +454,8 @@ __PACKAGE__->register_method ({
 	my $volume = $param->{volume};
 	my $delete = $param->{'delete-snapshot'};
 	my $imported_volid = PVE::Storage::volume_import($cfg, $infh, $volume, $param->{format},
-	    $param->{base}, $param->{'with-snapshots'}, $param->{'allow-rename'});
+	    $param->{snapshot}, $param->{base}, $param->{'with-snapshots'},
+	    $param->{'allow-rename'});
 	PVE::Storage::volume_snapshot_delete($cfg, $imported_volid, $delete)
 	    if defined($delete);
 	return $imported_volid;

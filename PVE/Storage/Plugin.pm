@@ -1411,7 +1411,7 @@ sub volume_export_formats {
 
 # Import data from a stream, creating a new or replacing or adding to an existing volume.
 sub volume_import {
-    my ($class, $scfg, $storeid, $fh, $volname, $format, $base_snapshot, $with_snapshots, $allow_rename) = @_;
+    my ($class, $scfg, $storeid, $fh, $volname, $format, $snapshot, $base_snapshot, $with_snapshots, $allow_rename) = @_;
 
     die "volume import format '$format' not available for $class\n"
 	if $format !~ /^(raw|tar|qcow2|vmdk)\+size$/;
@@ -1471,7 +1471,7 @@ sub volume_import {
 }
 
 sub volume_import_formats {
-    my ($class, $scfg, $storeid, $volname, $base_snapshot, $with_snapshots) = @_;
+    my ($class, $scfg, $storeid, $volname, $snapshot, $base_snapshot, $with_snapshots) = @_;
     if ($scfg->{path} && !defined($base_snapshot)) {
 	my $format = ($class->parse_volname($volname))[6];
 	if ($with_snapshots) {

@@ -41,11 +41,11 @@ use PVE::Storage::PBSPlugin;
 use PVE::Storage::BTRFSPlugin;
 
 # Storage API version. Increment it on changes in storage API interface.
-use constant APIVER => 8;
+use constant APIVER => 9;
 # Age is the number of versions we're backward compatible with.
 # This is like having 'current=APIVER' and age='APIAGE' in libtool,
 # see https://www.gnu.org/software/libtool/manual/html_node/Libtool-versioning.html
-use constant APIAGE => 7;
+use constant APIAGE => 0;
 
 # load standard plugins
 PVE::Storage::DirPlugin->register();
@@ -716,7 +716,8 @@ sub storage_migrate {
     my $send = ['pvesm', 'export', $volid, $format, '-', '-with-snapshots', $with_snapshots];
     my $recv = [@$ssh, '--', 'pvesm', 'import', $target_volid, $format, $import_fn, '-with-snapshots', $with_snapshots];
     if (defined($snapshot)) {
-	push @$send, '-snapshot', $snapshot
+	push @$send, '-snapshot', $snapshot;
+	push @$recv, '-snapshot', $snapshot;
     }
     if ($migration_snapshot) {
 	push @$recv, '-delete-snapshot', $snapshot;
@@ -726,7 +727,7 @@ sub storage_migrate {
     if (defined($base_snapshot)) {
 	# Check if the snapshot exists on the remote side:
 	push @$send, '-base', $base_snapshot;
-	push @$recv, '-base', $base_snapshot;
+	push @$recv, '-base', $base_snapshot if $target_apiver >= 9;
     }
 
     my $new_volid;
@@ -1714,7 +1715,7 @@ sub prune_mark_backup_group {
     }
 }
 
-sub volume_export {
+sub volume_export : prototype($$$$$$$) {
     my ($cfg, $fh, $volid, $format, $snapshot, $base_snapshot, $with_snapshots) = @_;
 
     my ($storeid, $volname) = parse_volume_id($volid, 1);
@@ -1725,18 +1726,27 @@ sub volume_export {
                                   $snapshot, $base_snapshot, $with_snapshots);
 }
 
-sub volume_import {
-    my ($cfg, $fh, $volid, $format, $base_snapshot, $with_snapshots, $allow_rename) = @_;
+sub volume_import : prototype($$$$$$$$) {
+    my ($cfg, $fh, $volid, $format, $snapshot, $base_snapshot, $with_snapshots, $allow_rename) = @_;
 
     my ($storeid, $volname) = parse_volume_id($volid, 1);
     die "cannot import into volume '$volid'\n" if !$storeid;
     my $scfg = storage_config($cfg, $storeid);
     my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
-    return $plugin->volume_import($scfg, $storeid, $fh, $volname, $format,
-                                  $base_snapshot, $with_snapshots, $allow_rename) // $volid;
+    return $plugin->volume_import(
+	$scfg,
+	$storeid,
+	$fh,
+	$volname,
+	$format,
+	$snapshot,
+	$base_snapshot,
+	$with_snapshots,
+	$allow_rename,
+    ) // $volid;
 }
 
-sub volume_export_formats {
+sub volume_export_formats : prototype($$$$$) {
     my ($cfg, $volid, $snapshot, $base_snapshot, $with_snapshots) = @_;
 
     my ($storeid, $volname) = parse_volume_id($volid, 1);
@@ -1748,21 +1758,27 @@ sub volume_export_formats {
                                           $with_snapshots);
 }
 
-sub volume_import_formats {
-    my ($cfg, $volid, $base_snapshot, $with_snapshots) = @_;
+sub volume_import_formats : prototype($$$$$) {
+    my ($cfg, $volid, $snapshot, $base_snapshot, $with_snapshots) = @_;
 
     my ($storeid, $volname) = parse_volume_id($volid, 1);
     return if !$storeid;
     my $scfg = storage_config($cfg, $storeid);
     my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
-    return $plugin->volume_import_formats($scfg, $storeid, $volname,
-                                          $base_snapshot, $with_snapshots);
+    return $plugin->volume_import_formats(
+	$scfg,
+	$storeid,
+	$volname,
+	$snapshot,
+	$base_snapshot,
+	$with_snapshots,
+    );
 }
 
 sub volume_transfer_formats {
     my ($cfg, $src_volid, $dst_volid, $snapshot, $base_snapshot, $with_snapshots) = @_;
     my @export_formats = volume_export_formats($cfg, $src_volid, $snapshot, $base_snapshot, $with_snapshots);
-    my @import_formats = volume_import_formats($cfg, $dst_volid, $base_snapshot, $with_snapshots);
+    my @import_formats = volume_import_formats($cfg, $dst_volid, $snapshot, $base_snapshot, $with_snapshots);
     my %import_hash = map { $_ => 1 } @import_formats;
     my @common = grep { $import_hash{$_} } @export_formats;
     return @common;

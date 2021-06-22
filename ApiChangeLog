@@ -1,0 +1,25 @@
+# API Versioning ChangeLog
+
+Our API versioning contains an `APIVER` and an `APIAGE`.
+The `APIAGE` is the number of versions we're backward compatible with. (iow.  things got added
+without breaking anything unaware of it.)
+
+Future changes should be documented in here.
+
+##  Version 9: (AGE resets to 0):
+
+* volume_import_formats gets a new parameter *inserted*:
+
+  Old signature:
+      sub($plugin, $scfg, $storeid, $volname, $base_snapshot, $with_snapshots)
+  New signature:
+      sub($plugin, $scfg, $storeid, $volname, $snapshot, $base_snapshot, $with_snapshots)
+
+  This is now the same as `volume_export_formats`.
+
+  The same goes for calls to `PVE::Storage::volume_import_formats`, which now
+  takes a `$snapshot` parameter in the same place.
+
+* $with_snapshots *may* now be an array reference containing an ordered list of
+  snapshots, but *may* also just be a boolean, and the contained list *may* be
+  ignored, so it can still be treated as a boolean.
