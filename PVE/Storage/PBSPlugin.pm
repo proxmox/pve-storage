@@ -811,7 +811,9 @@ sub volume_size_info {
 
     my $size = 0;
     foreach my $info (@$data) {
-	$size += $info->{size} if $info->{size};
+	if ($info->{size} && $info->{size} =~ /^(\d+)$/) {
+	    $size += $1;
+	}
     }
 
     my $used = $size;

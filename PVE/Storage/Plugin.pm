@@ -837,6 +837,12 @@ sub file_size_info {
 
     my ($size, $format, $used, $parent) = $info->@{qw(virtual-size format actual-size backing-filename)};
 
+    ($size) = ($size =~ /^(\d+)$/); #untaint
+    ($used) = ($used =~ /^(\d+)$/); #untaint
+    ($format) = ($format =~ /^([-\w]+)$/); #untaint
+    if (defined($parent)) {
+	($parent) = ($parent =~ /^(.*)$/); #untaint
+    }
     return wantarray ? ($size, $format, $used, $parent, $st->ctime) : $size;
 }
 
