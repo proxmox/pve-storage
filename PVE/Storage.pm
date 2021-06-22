@@ -1945,4 +1945,16 @@ sub assert_sid_unused {
     return undef;
 }
 
+# removes leading/trailing spaces and (back)slashes completely
+# substitutes every non-ASCII-alphanumerical char with '_', except '_.-'
+sub normalize_content_filename {
+    my ($filename) = @_;
+
+    chomp $filename;
+    $filename =~ s/^.*[\/\\]//;
+    $filename =~ s/[^a-zA-Z0-9_.-]/_/g;
+
+    return $filename;
+}
+
 1;

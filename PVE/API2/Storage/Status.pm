@@ -413,11 +413,7 @@ __PACKAGE__->register_method ({
 	my $size = -s $tmpfilename;
 	die "temporary file '$tmpfilename' does not exist\n" if !defined($size);
 
-	my $filename = $param->{filename};
-
-	chomp $filename;
-	$filename =~ s/^.*[\/\\]//;
-	$filename =~ s/[^-a-zA-Z0-9_.]/_/g;
+	my $filename = PVE::Storage::normalize_content_filename($param->{filename});
 
 	my $path;
 
