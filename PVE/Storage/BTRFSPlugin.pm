@@ -9,8 +9,9 @@ use Fcntl qw(S_ISDIR O_WRONLY O_CREAT O_EXCL);
 use File::Basename qw(dirname);
 use File::Path qw(mkpath);
 use IO::Dir;
+use POSIX qw(EEXIST);
 
-use PVE::Tools qw(run_command);
+use PVE::Tools qw(run_command dir_glob_foreach);
 
 use PVE::Storage::DirPlugin;
 
@@ -612,23 +613,250 @@ sub list_images {
     return $res;
 }
 
-# For now we don't implement `btrfs send/recv` as it needs some updates to our import/export API
-# first!
-
 sub volume_export_formats {
-    return PVE::Storage::DirPlugin::volume_export_formats(@_);
-}
+    my ($class, $scfg, $storeid, $volname, $snapshot, $base_snapshot, $with_snapshots) = @_;
 
-sub volume_export {
-    return PVE::Storage::DirPlugin::volume_export(@_);
+    # We can do whatever `DirPlugin` can do.
+    my @result = PVE::Storage::Plugin::volume_export_formats(@_);
+
+    # `btrfs send` only works on snapshots:
+    return @result if !defined $snapshot;
+
+    # Incremental stream with snapshots is only supported if the snapshots are listed (new api):
+    return @result if defined($base_snapshot) && $with_snapshots && ref($with_snapshots) ne 'ARRAY';
+
+    # Otherwise we do also support `with_snapshots`.
+
+    # Finally, `btrfs send` only works on formats where we actually use btrfs subvolumes:
+    my $format = ($class->parse_volname($volname))[6];
+    return @result if $format ne 'raw' && $format ne 'subvol';
+
+    return ('btrfs', @result);
 }
 
 sub volume_import_formats {
-    return PVE::Storage::DirPlugin::volume_import_formats(@_);
+    my ($class, $scfg, $storeid, $volname, $snapshot, $base_snapshot, $with_snapshots) = @_;
+
+    # Same as export-formats, beware the parameter order:
+    return volume_export_formats(
+	$class,
+	$scfg,
+	$storeid,
+	$volname,
+	$snapshot,
+	$base_snapshot,
+	$with_snapshots,
+    );
+}
+
+sub volume_export {
+    my (
+	$class,
+	$scfg,
+	$storeid,
+	$fh,
+	$volname,
+	$format,
+	$snapshot,
+	$base_snapshot,
+	$with_snapshots,
+    ) = @_;
+
+    if ($format ne 'btrfs') {
+	return PVE::Storage::Plugin::volume_export(@_);
+    }
+
+    die "format 'btrfs' only works on snapshots\n"
+	if !defined $snapshot;
+
+    die "'btrfs' format in incremental mode requires snapshots to be listed explicitly\n"
+	if defined($base_snapshot) && $with_snapshots && ref($with_snapshots) ne 'ARRAY';
+
+    my $volume_format = ($class->parse_volname($volname))[6];
+
+    die "btrfs-sending volumes of type $volume_format ('$volname') is not supported\n"
+	if $volume_format ne 'raw' && $volume_format ne 'subvol';
+
+    my $path = $class->path($scfg, $volname, $storeid);
+
+    if ($volume_format eq 'raw') {
+	$path = raw_file_to_subvol($path);
+    }
+
+    my $cmd = ['btrfs', '-q', 'send', '-e'];
+    if ($base_snapshot) {
+	my $base = $class->path($scfg, $volname, $storeid, $base_snapshot);
+	if ($volume_format eq 'raw') {
+	    $base = raw_file_to_subvol($base);
+	}
+	push @$cmd, '-p', $base;
+    }
+    push @$cmd, '--';
+    if (ref($with_snapshots) eq 'ARRAY') {
+	push @$cmd, (map { "$path\@$_" } ($with_snapshots // [])->@*), $path;
+    } else {
+	dir_glob_foreach(dirname($path), $BTRFS_VOL_REGEX, sub {
+	    push @$cmd, "$path\@$_[2]" if !(defined($snapshot) && $_[2] eq $snapshot);
+	});
+    }
+    $path .= "\@$snapshot" if defined($snapshot);
+    push @$cmd, $path;
+
+    run_command($cmd, output => '>&'.fileno($fh));
+    return;
 }
 
 sub volume_import {
-    return PVE::Storage::DirPlugin::volume_import(@_);
+    my (
+	$class,
+	$scfg,
+	$storeid,
+	$fh,
+	$volname,
+	$format,
+	$snapshot,
+	$base_snapshot,
+	$with_snapshots,
+	$allow_rename,
+    ) = @_;
+
+    if ($format ne 'btrfs') {
+	return PVE::Storage::Plugin::volume_import(@_);
+    }
+
+    die "format 'btrfs' only works on snapshots\n"
+	if !defined $snapshot;
+
+    my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $volume_format) =
+	$class->parse_volname($volname);
+
+    die "btrfs-receiving volumes of type $volume_format ('$volname') is not supported\n"
+	if $volume_format ne 'raw' && $volume_format ne 'subvol';
+
+    if (defined($base_snapshot)) {
+	my $path = $class->path($scfg, $volname, $storeid, $base_snapshot);
+	die "base snapshot '$base_snapshot' not found - no such directory '$path'\n"
+	    if !path_is_subvolume($path);
+    }
+
+    my $destination = $class->filesystem_path($scfg, $volname);
+    if ($volume_format eq 'raw') {
+	$destination = raw_file_to_subvol($destination);
+    }
+
+    if (!defined($base_snapshot) && -e $destination) {
+	die "volume $volname already exists\n" if !$allow_rename;
+	$volname = $class->find_free_diskname($storeid, $scfg, $vmid, $volume_format, 1);
+    }
+
+    my $imagedir = $class->get_subdir($scfg, $vtype);
+    $imagedir .= "/$vmid" if $vtype eq 'images';
+
+    my $tmppath = "$imagedir/recv.$vmid.tmp";
+    mkdir($imagedir); # FIXME: if $scfg->{mkdir};
+    if (!mkdir($tmppath)) {
+	die "temp receive directory already exists at '$tmppath', incomplete concurrent import?\n"
+	    if $! == EEXIST;
+	die "failed to create temporary receive directory at '$tmppath' - $!\n";
+    }
+
+    my $dh = IO::Dir->new($tmppath)
+	or die "failed to open temporary receive directory '$tmppath' - $!\n";
+    eval {
+	run_command(['btrfs', '-q', 'receive', '-e', '--', $tmppath], input => '<&'.fileno($fh));
+
+	# Analyze the received subvolumes;
+	my ($diskname, $found_snapshot, @snapshots);
+	$dh->rewind;
+	while (defined(my $entry = $dh->read)) {
+	    next if $entry eq '.' || $entry eq '..';
+	    next if $entry !~ /^$BTRFS_VOL_REGEX$/;
+	    my ($cur_diskname, $cur_snapshot) = ($1, $2);
+
+	    die "send stream included a non-snapshot subvolume\n"
+		if !defined($cur_snapshot);
+
+	    if (!defined($diskname)) {
+		$diskname = $cur_diskname;
+	    } else {
+		die "multiple disks contained in stream ('$diskname' vs '$cur_diskname')\n"
+		    if $diskname ne $cur_diskname;
+	    }
+
+	    if ($cur_snapshot eq $snapshot) {
+		$found_snapshot = 1;
+	    } else {
+		push @snapshots, $cur_snapshot;
+	    }
+	}
+
+	die "send stream did not contain the expected current snapshot '$snapshot'\n"
+	    if !$found_snapshot;
+
+	# Rotate the disk into place, first the current state:
+	# Note that read-only subvolumes cannot be moved into different directories, but for the
+	# "current" state we also want a writable copy, so start with that:
+	$class->btrfs_cmd(['property', 'set', "$tmppath/$diskname\@$snapshot", 'ro', 'false']);
+	PVE::Tools::renameat2(
+	    -1,
+	    "$tmppath/$diskname\@$snapshot",
+	    -1,
+	    $destination,
+	    &PVE::Tools::RENAME_NOREPLACE,
+	) or die "failed to move received snapshot '$tmppath/$diskname\@$snapshot'"
+	    . " into place at '$destination' - $!\n";
+
+	# Now recreate the actual snapshot:
+	$class->btrfs_cmd([
+	    'subvolume',
+	    'snapshot',
+	    '-r',
+	    '--',
+	    $destination,
+	    "$destination\@$snapshot",
+	]);
+
+	# Now go through the remaining snapshots (if any)
+	foreach my $snap (@snapshots) {
+	    $class->btrfs_cmd(['property', 'set', "$tmppath/$diskname\@$snap", 'ro', 'false']);
+	    PVE::Tools::renameat2(
+		-1,
+		"$tmppath/$diskname\@$snap",
+		-1,
+		"$destination\@$snap",
+		&PVE::Tools::RENAME_NOREPLACE,
+	    ) or die "failed to move received snapshot '$tmppath/$diskname\@$snap'"
+		. " into place at '$destination\@$snap' - $!\n";
+	    eval { $class->btrfs_cmd(['property', 'set', "$destination\@$snap", 'ro', 'true']) };
+	    warn "failed to make $destination\@$snap read-only - $!\n" if $@;
+	}
+    };
+    my $err = $@;
+
+    eval {
+	# Cleanup all the received snapshots we did not move into place, so we can remove the temp
+	# directory.
+	if ($dh) {
+	    $dh->rewind;
+	    while (defined(my $entry = $dh->read)) {
+		next if $entry eq '.' || $entry eq '..';
+		eval { $class->btrfs_cmd(['subvolume', 'delete', '--', "$tmppath/$entry"]) };
+		warn $@ if $@;
+	    }
+	    $dh->close; undef $dh;
+	}
+	if (!rmdir($tmppath)) {
+	    warn "failed to remove temporary directory '$tmppath' - $!\n"
+	}
+    };
+    warn $@ if $@;
+    if ($err) {
+	# clean up if the directory ended up being empty after an error
+	rmdir($tmppath);
+	die $err;
+    }
+
+    return "$storeid:$volname";
 }
 
 1

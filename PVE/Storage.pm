@@ -692,7 +692,7 @@ sub storage_migrate {
 
     my $migration_snapshot;
     if (!defined($snapshot)) {
-	if ($scfg->{type} eq 'zfspool') {
+	if ($scfg->{type} eq 'zfspool' || $scfg->{type} eq 'btrfs') {
 	    $migration_snapshot = 1;
 	    $snapshot = '__migration__';
 	}

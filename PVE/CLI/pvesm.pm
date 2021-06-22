@@ -30,7 +30,7 @@ use PVE::CLIHandler;
 
 use base qw(PVE::CLIHandler);
 
-my $KNOWN_EXPORT_FORMATS = ['raw+size', 'tar+size', 'qcow2+size', 'vmdk+size', 'zfs'];
+my $KNOWN_EXPORT_FORMATS = ['raw+size', 'tar+size', 'qcow2+size', 'vmdk+size', 'zfs', 'btrfs'];
 
 my $nodename = PVE::INotify::nodename();
 
