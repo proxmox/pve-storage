@@ -222,6 +222,7 @@ __PACKAGE__->register_method ({
 
 	my $res = [
 	    { subdir => 'content' },
+	    { subdir => 'download-url' },
 	    { subdir => 'file-restore' },
 	    { subdir => 'prunebackups' },
 	    { subdir => 'rrd' },
@@ -493,5 +494,120 @@ __PACKAGE__->register_method ({
 
 	return $upid;
    }});
+
+__PACKAGE__->register_method({
+    name => 'download_url',
+    path => '{storage}/download-url',
+    method => 'POST',
+    description => "Download templates and ISO images by using an URL.",
+    proxyto => 'node',
+    permissions => {
+	check => [ 'and',
+	    ['perm', '/storage/{storage}', [ 'Datastore.AllocateTemplate' ]],
+	    ['perm', '/', [ 'Sys.Audit', 'Sys.Modify' ]],
+	],
+    },
+    protected => 1,
+    parameters => {
+	additionalProperties => 0,
+	properties => {
+	    node => get_standard_option('pve-node'),
+	    storage => get_standard_option('pve-storage-id'),
+	    url => {
+		description => "The URL to download the file from.",
+		type => 'string',
+		pattern => 'https?://.*',
+	    },
+	    content => {
+		description => "Content type.",
+		type => 'string', format => 'pve-storage-content',
+		enum => ['iso', 'vztmpl'],
+	    },
+	    filename => {
+		description => "The name of the file to create. Caution: This will be normalized!",
+		type => 'string',
+	    },
+	    checksum => {
+		description => "The expected checksum of the file.",
+		type => 'string',
+		requires => 'checksum-algorithm',
+		optional => 1,
+	    },
+	    'checksum-algorithm' => {
+		description => "The algorithm to calculate the checksum of the file.",
+		type => 'string',
+		enum => ['md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512'],
+		requires => 'checksum',
+		optional => 1,
+	    },
+	    'verify-certificates' => {
+		description => "If false, no SSL/TLS certificates will be verified.",
+		type => 'boolean',
+		optional => 1,
+		default => 1,
+	    }
+	},
+    },
+    returns => {
+	type => "string"
+    },
+    code => sub {
+	my ($param) = @_;
+
+	my $rpcenv = PVE::RPCEnvironment::get();
+	my $user = $rpcenv->get_user();
+
+	my $cfg = PVE::Storage::config();
+
+	my ($node, $storage) = $param->@{'node', 'storage'};
+	my $scfg = PVE::Storage::storage_check_enabled($cfg, $storage, $node);
+
+	die "can't upload to storage type '$scfg->{type}', not a file based storage!\n"
+	    if !defined($scfg->{path});
+
+	my ($content, $url) = $param->@{'content', 'url'};
+
+	die "storage '$storage' is not configured for content-type '$content'\n"
+	    if !$scfg->{content}->{$content};
+
+	my $filename = PVE::Storage::normalize_content_filename($param->{filename});
+
+	my $path;
+	if ($content eq 'iso') {
+	    if ($filename !~ m![^/]+$PVE::Storage::iso_extension_re$!) {
+		raise_param_exc({ filename => "wrong file extension" });
+	    }
+	    $path = PVE::Storage::get_iso_dir($cfg, $storage);
+	} elsif ($content eq 'vztmpl') {
+	    if ($filename !~ m![^/]+$PVE::Storage::vztmpl_extension_re$!) {
+		raise_param_exc({ filename => "wrong file extension" });
+	    }
+	    $path = PVE::Storage::get_vztmpl_dir($cfg, $storage);
+	} else {
+	    raise_param_exc({ content => "upload content-type '$content' is not allowed" });
+	}
+
+	PVE::Storage::activate_storage($cfg, $storage);
+	File::Path::make_path($path);
+
+	my $dccfg = PVE::Cluster::cfs_read_file('datacenter.cfg');
+	my $opts = {
+	    hash_required => 0,
+	    verify_certificates => $param->{'verify-certificates'} // 1,
+	    http_proxy => $dccfg->{http_proxy},
+	};
+
+	my ($checksum, $checksum_algorithm) = $param->@{'checksum', 'checksum-algorithm'};
+	if ($checksum) {
+	    $opts->{"${checksum_algorithm}sum"} = $checksum;
+	    $opts->{hash_required} = 1;
+	}
+
+	my $worker = sub {
+	    PVE::Tools::download_file_from_url("$path/$filename", $url, $opts);
+	};
+
+	return $rpcenv->fork_worker('download', $filename, $user, $worker);;
+    }});
 
 1;
