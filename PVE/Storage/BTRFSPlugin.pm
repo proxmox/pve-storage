@@ -46,6 +46,19 @@ sub plugindata {
     };
 }
 
+sub properties {
+    return {
+	nocow => {
+	    description => "Set the NOCOW flag on files."
+		. " Disables data checksumming and causes data errors to be unrecoverable from"
+		. " while allowing direct I/O. Only use this if data does not need to be any more"
+		. " safe than on a single ext4 formatted disk with no underlying raid system.",
+	    type => 'boolean',
+	    default => 0,
+	},
+    };
+}
+
 sub options {
     return {
 	path => { fixed => 1 },
@@ -56,6 +69,7 @@ sub options {
 	content => { optional => 1 },
 	format => { optional => 1 },
 	is_mountpoint => { optional => 1 },
+	nocow => { optional => 1 },
 	# TODO: The new variant of mkdir with  `populate` vs `create`...
     };
 }
@@ -311,7 +325,7 @@ sub alloc_image {
 	} elsif ($fmt eq 'raw') {
 	    sysopen my $fh, $path, O_WRONLY | O_CREAT | O_EXCL
 		or die "failed to create raw file '$path' - $!\n";
-	    chattr($fh, ~FS_NOCOW_FL, FS_NOCOW_FL);
+	    chattr($fh, ~FS_NOCOW_FL, FS_NOCOW_FL) if $scfg->{nocow};
 	    truncate($fh, $size * 1024)
 		or die "failed to set file size for '$path' - $!\n";
 	    close($fh);
