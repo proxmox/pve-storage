@@ -833,7 +833,10 @@ sub file_size_info {
     warn $@ if $@;
 
     my $info = eval { decode_json($json) };
-    warn "could not parse qemu-img info command output for '$filename'\n" if $@;
+    if (my $err = $@) {
+	warn "could not parse qemu-img info command output for '$filename' - $err\n";
+	return wantarray ? (undef, undef, undef, undef, $st->ctime) : undef;
+    }
 
     my ($size, $format, $used, $parent) = $info->@{qw(virtual-size format actual-size backing-filename)};
 
