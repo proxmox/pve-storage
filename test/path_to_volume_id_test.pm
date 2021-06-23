@@ -166,12 +166,13 @@ my @tests = (
 	    'local:snippets/hookscript.pl',
 	],
     },
-
-    # no matches
     {
 	description => 'CT template, tar.xz',
 	volname     => "$storage_dir/template/cache/debian-10.0-standard_10.0-1_amd64.tar.xz",
-	expected    => [''],
+	expected    => [
+	    'vztmpl',
+	    'local:vztmpl/debian-10.0-standard_10.0-1_amd64.tar.xz',
+	],
     },
 
     # no matches, path or files with failures

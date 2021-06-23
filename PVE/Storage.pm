@@ -101,6 +101,8 @@ PVE::Storage::Plugin->init();
 
 our $iso_extension_re = qr/\.(?:iso|img)/i;
 
+our $vztmpl_extension_re = qr/\.tar\.([gx]z)/i;
+
 #  PVE::Storage utility functions
 
 sub config {
@@ -573,7 +575,7 @@ sub path_to_volume_id {
 	} elsif ($path =~ m!^$isodir/([^/]+$iso_extension_re)$!) {
 	    my $name = $1;
 	    return ('iso', "$sid:iso/$name");
-	} elsif ($path =~ m!^$tmpldir/([^/]+\.tar\.gz)$!) {
+	} elsif ($path =~ m!^$tmpldir/([^/]+$vztmpl_extension_re)$!) {
 	    my $name = $1;
 	    return ('vztmpl', "$sid:vztmpl/$name");
 	} elsif ($path =~ m!^$privatedir/(\d+)$!) {
