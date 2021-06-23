@@ -18,7 +18,7 @@ my $vtype_subdirs = PVE::Storage::Plugin::get_vtype_subdirs();
 my $tests = [
     # failed matches
     [ $scfg_with_path, 'none', "unknown vtype 'none'\n" ],
-    [ {}, 'iso', "storage definintion has no path\n" ],
+    [ {}, 'iso', "storage definition has no path\n" ],
 ];
 
 # creates additional positive tests

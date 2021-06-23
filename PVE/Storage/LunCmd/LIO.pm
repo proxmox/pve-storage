@@ -358,7 +358,7 @@ my $delete_lun = sub {
 	# step 3: save to be safe ...
 	$execute_remote_command->($scfg, $timeout, $targetcli, 'saveconfig');
 
-	# update interal cache
+	# update internal cache
 	$free_lu_name->($scfg, $volname);
 
 	last;

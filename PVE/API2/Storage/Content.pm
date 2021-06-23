@@ -238,7 +238,7 @@ my $real_volume_id = sub {
 	raise_param_exc({ volume => $@ }) if $@;
 
     } else {
-	raise_param_exc({ volume => "no storage speficied - incomplete volume ID" })
+	raise_param_exc({ volume => "no storage specified - incomplete volume ID" })
 	    if !$storeid;
 
 	$volid = "$storeid:$volume";
@@ -435,7 +435,7 @@ __PACKAGE__->register_method ({
 	    if ($vtype eq 'backup'
 		&& $path =~ /(.*\/vzdump-\w+-\d+-\d{4}_\d{2}_\d{2}-\d{2}_\d{2}_\d{2})[^\/]+$/) {
 		my $logpath = "$1.log";
-		# try to cleanup our backup log file too, if still exisiting, #318
+		# try to cleanup our backup log file too, if still existing, #318
 		unlink($logpath) if -e $logpath;
 	    }
 	};
@@ -512,7 +512,7 @@ __PACKAGE__->register_method ({
 
 	# do all parameter checks first
 
-	# then do all short running task (to raise errors befor we go to background)
+	# then do all short running task (to raise errors before we go to background)
 
 	# then start the worker task
 	my $worker = sub  {

@@ -123,7 +123,7 @@ sub get_monaddr_list {
 
     my $monhostlist = {};
 
-    # get all ip adresses from mon_host
+    # get all ip addresses from mon_host
     my $monhosts = [ split (/[ ,;]+/, $config->{global}->{mon_host} // "") ];
 
     foreach my $monhost (@$monhosts) {

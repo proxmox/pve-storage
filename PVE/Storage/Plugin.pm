@@ -133,7 +133,7 @@ my $defaultData = {
 	    optional => 1,
 	},
 	maxfiles => {
-	    description => "Maximal number of backup files per VM. Use '0' for unlimted.",
+	    description => "Maximal number of backup files per VM. Use '0' for unlimited.",
 	    type => 'integer',
 	    minimum => 0,
 	    optional => 1,
@@ -433,7 +433,7 @@ sub parse_config {
 # Storage implementation
 
 # called during addition of storage (before the new storage config got written)
-# die to abort additon if there are (grave) problems
+# die to abort addition if there are (grave) problems
 # NOTE: runs in a storage config *locked* context
 sub on_add_hook {
     my ($class, $storeid, $scfg, %param) = @_;
@@ -541,7 +541,7 @@ sub get_subdir {
 
     my $path = $scfg->{path};
 
-    die "storage definintion has no path\n" if !$path;
+    die "storage definition has no path\n" if !$path;
 
     my $subdir = $vtype_subdirs->{$vtype};
 
@@ -677,7 +677,7 @@ sub clone_image {
     my ($class, $scfg, $storeid, $volname, $vmid, $snap) = @_;
 
     # this only works for file based storage types
-    die "storage definintion has no path\n" if !$scfg->{path};
+    die "storage definition has no path\n" if !$scfg->{path};
 
     my ($vtype, $basename, $basevmid, undef, undef, $isBase, $format) =
 	$class->parse_volname($volname);
@@ -1130,7 +1130,7 @@ sub status {
 
     my $path = $scfg->{path};
 
-    die "storage definintion has no path\n" if !$path;
+    die "storage definition has no path\n" if !$path;
 
     my $timeout = 2;
     my $res = PVE::Tools::df($path, $timeout);
@@ -1154,7 +1154,7 @@ sub activate_storage {
 
     my $path = $scfg->{path};
 
-    die "storage definintion has no path\n" if !$path;
+    die "storage definition has no path\n" if !$path;
 
     # this path test may hang indefinitely on unresponsive mounts
     my $timeout = 2;

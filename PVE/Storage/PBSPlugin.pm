@@ -565,7 +565,7 @@ sub path {
 
     my $repo = PVE::PBSClient::get_repository($scfg);
 
-    # artifical url - we currently do not use that anywhere
+    # artificial url - we currently do not use that anywhere
     my $path = "pbs://$repo/$name";
 
     return ($path, $vmid, $vtype);
@@ -756,7 +756,7 @@ sub activate_storage {
 	}
     }
 
-    die "$storeid: Cannot find datastore '$datastore', check permissions and existance!\n";
+    die "$storeid: Cannot find datastore '$datastore', check permissions and existence!\n";
 }
 
 sub deactivate_storage {

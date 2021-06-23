@@ -194,7 +194,7 @@ sub storage_check_enabled {
 
 # storage_can_replicate:
 # return true if storage supports replication
-# (volumes alocated with vdisk_alloc() has replication feature)
+# (volumes allocated with vdisk_alloc() has replication feature)
 sub storage_can_replicate {
     my ($cfg, $storeid, $format) = @_;
 
@@ -1852,7 +1852,7 @@ sub get_bandwidth_limit {
     my ($operation, $storage_list, $override) = @_;
 
     # called for each limit (global, per-storage) with the 'default' and the
-    # $operation limit and should udpate $override for every limit affecting
+    # $operation limit and should update $override for every limit affecting
     # us.
     my $use_global_limits = 0;
     my $apply_limit = sub {
