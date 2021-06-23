@@ -809,7 +809,7 @@ sub volume_size_info {
 
     my $size = 0;
     foreach my $info (@$data) {
-	if ($info->{size} && $info->{size} =~ /^(\d+)$/) {
+	if ($info->{size} && $info->{size} =~ /^(\d+)$/) { # untaints
 	    $size += $1;
 	}
     }

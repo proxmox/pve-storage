@@ -825,11 +825,11 @@ sub file_size_info {
 
     my ($size, $format, $used, $parent) = $info->@{qw(virtual-size format actual-size backing-filename)};
 
-    ($size) = ($size =~ /^(\d+)$/); #untaint
-    ($used) = ($used =~ /^(\d+)$/); #untaint
-    ($format) = ($format =~ /^([-\w]+)$/); #untaint
+    ($size) = ($size =~ /^(\d+)$/) or die "size '$size' not an integer\n"; # untaint
+    ($used) = ($used =~ /^(\d+)$/) or die "used '$used' not an integer\n"; # untaint
+    ($format) = ($format =~ /^(\S+)$/) or die "format '$format' includes whitespace\n"; # untaint
     if (defined($parent)) {
-	($parent) = ($parent =~ /^(.*)$/); #untaint
+	($parent) = ($parent =~ /^(\S+)$/) or die "parent '$parent' includes whitespace\n"; # untaint
     }
     return wantarray ? ($size, $format, $used, $parent, $st->ctime) : $size;
 }
