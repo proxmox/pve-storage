@@ -42,7 +42,7 @@ sub plugindata {
 	    },
 	    { images => 1, rootdir => 1 },
 	],
-	format => [ { raw => 1, qcow2 => 1, vmdk => 1, subvol => 1 }, 'raw', ],
+	format => [ { raw => 1, subvol => 1 }, 'raw', ],
     };
 }
 
