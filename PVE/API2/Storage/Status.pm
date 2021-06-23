@@ -519,7 +519,7 @@ __PACKAGE__->register_method({
 		pattern => 'https?://.*',
 	    },
 	    content => {
-		description => "Content type.",
+		description => "Content type.", # TODO: could be optional & detected in most cases
 		type => 'string', format => 'pve-storage-content',
 		enum => ['iso', 'vztmpl'],
 	    },
@@ -545,7 +545,7 @@ __PACKAGE__->register_method({
 		type => 'boolean',
 		optional => 1,
 		default => 1,
-	    }
+	    },
 	},
     },
     returns => {
@@ -607,7 +607,7 @@ __PACKAGE__->register_method({
 	    PVE::Tools::download_file_from_url("$path/$filename", $url, $opts);
 	};
 
-	return $rpcenv->fork_worker('download', $filename, $user, $worker);;
+	return $rpcenv->fork_worker('download', $filename, $user, $worker);
     }});
 
 1;
