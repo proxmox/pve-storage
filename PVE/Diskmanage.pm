@@ -251,7 +251,7 @@ sub get_lvm_devices {
     };
 
     # if something goes wrong, we do not want
-    # to give up, but indicate an error has occured
+    # to give up, but indicate an error has occurred
     warn "$@\n" if $@;
 
     my $uuids = {
@@ -794,7 +794,7 @@ sub get_blockdev {
     die "No valid block device\n" if index($dev, $block_dev) == -1;
 
     $block_dev = "/dev/$block_dev";
-    die "Block device does not exsists\n" if !(-b $block_dev);
+    die "Block device does not exists\n" if !(-b $block_dev);
 
     return $block_dev;
 }
@@ -836,7 +836,7 @@ sub append_partition {
 
     my $partition;
 
-    # loop again to detect the real partiton device which does not always follow
+    # loop again to detect the real partition device which does not always follow
     # a strict $devname$partition scheme like /dev/nvme0n1 -> /dev/nvme0n1p1
     dir_glob_foreach("/sys/block/$devname", qr/\Q$devname\E.*$newpartid/, sub {
 	my ($part) = @_;

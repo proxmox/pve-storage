@@ -44,7 +44,7 @@ sub systemd_netmount {
 
 # don't do default deps, systemd v241 generator produces ordering deps on both
 # local-fs(-pre) and remote-fs(-pre) targets if we use the required _netdev
-# option. Over thre corners this gets us an ordering cycle on shutdown, which
+# option. Over three corners this gets us an ordering cycle on shutdown, which
 # may make shutdown hang if the random cycle breaking hits the "wrong" unit to
 # delete.
     my $unit =  <<"EOF";

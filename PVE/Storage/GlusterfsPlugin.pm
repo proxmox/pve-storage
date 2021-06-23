@@ -197,7 +197,7 @@ sub path {
 sub clone_image {
     my ($class, $scfg, $storeid, $volname, $vmid, $snap) = @_;
 
-    die "storage definintion has no path\n" if !$scfg->{path};
+    die "storage definition has no path\n" if !$scfg->{path};
 
     my ($vtype, $basename, $basevmid, undef, undef, $isBase, $format) =
 	$class->parse_volname($volname);
