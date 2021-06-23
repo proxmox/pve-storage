@@ -1,3 +1,20 @@
+libpve-storage-perl (7.0-4) bullseye; urgency=medium
+
+  * tree-wide: fix typos in comments and error messages
+
+  * plugins: untaint volume_size_info returned data
+
+  * add BTRFS storage plugin as technology preview
+
+  * bump storage API: update import/export methods, APIAGE was reset
+
+  * api: content: correctly handle warnings status for delayed task
+
+  * status: add download-url endpoint for downloading a HTTP(s) ISO or CT
+    template image to a storage directly.
+
+ -- Proxmox Support Team <support@proxmox.com>  Wed, 23 Jun 2021 22:50:57 +0200
+
 libpve-storage-perl (7.0-3) bullseye; urgency=medium
 
   * api: get rid of moved usb call, moved to manager
