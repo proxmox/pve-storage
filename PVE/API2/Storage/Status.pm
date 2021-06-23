@@ -525,6 +525,7 @@ __PACKAGE__->register_method({
 	    },
 	    filename => {
 		description => "The name of the file to create. Caution: This will be normalized!",
+		maxLength => 255,
 		type => 'string',
 	    },
 	    checksum => {
@@ -607,7 +608,9 @@ __PACKAGE__->register_method({
 	    PVE::Tools::download_file_from_url("$path/$filename", $url, $opts);
 	};
 
-	return $rpcenv->fork_worker('download', $filename, $user, $worker);
+	my $worker_id = PVE::Tools::encode_text($filename); # must not pass : or the like as w-ID
+
+	return $rpcenv->fork_worker('download', $worker_id, $user, $worker);
     }});
 
 1;
