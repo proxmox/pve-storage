@@ -71,6 +71,7 @@ sub options {
 	format => { optional => 1 },
 	is_mountpoint => { optional => 1 },
 	nocow => { optional => 1 },
+	mkdir => { optional => 1 },
 	# TODO: The new variant of mkdir with  `populate` vs `create`...
     };
 }
