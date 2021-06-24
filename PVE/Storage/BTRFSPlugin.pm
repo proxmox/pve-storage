@@ -112,8 +112,21 @@ my sub assert_btrfs($) {
 
 sub activate_storage {
     my ($class, $storeid, $scfg, $cache) = @_;
-    PVE::Storage::DirPlugin::activate_storage($class, $storeid, $scfg, $cache);
-    assert_btrfs($scfg->{path});
+
+    my $path = $scfg->{path};
+    if (!defined($scfg->{mkdir}) || $scfg->{mkdir}) {
+	mkpath $path;
+    }
+
+    my $mp = PVE::Storage::DirPlugin::parse_is_mountpoint($scfg);
+    if (defined($mp) && !path_is_mounted($mp, $cache->{mountdata})) {
+	die "unable to activate storage '$storeid' - directory is expected to be a mount point but"
+	." is not mounted: '$mp'\n";
+    }
+
+    assert_btrfs($path); # only assert this stuff now, ensures $path is there and better UX
+
+    $class->SUPER::activate_storage($storeid, $scfg, $cache);
 }
 
 sub status {
