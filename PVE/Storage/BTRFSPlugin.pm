@@ -20,6 +20,7 @@ use constant {
     FS_NOCOW_FL => 0x00800000,
     FS_IOC_GETFLAGS => 0x40086602,
     FS_IOC_SETFLAGS => 0x80086601,
+    BTRFS_MAGIC => 0x9123683e,
 };
 
 # Configuration (similar to DirPlugin)
@@ -89,9 +90,30 @@ sub check_config {
     return PVE::Storage::DirPlugin::check_config($self, $sectionId, $config, $create, $skipSchemaCheck);
 }
 
+my sub getfsmagic($) {
+    my ($path) = @_;
+    # The field type sizes in `struct statfs` are defined in a rather annoying way, and we only
+    # need the first field, which is a `long` for our supported platforms.
+    # Should be moved to pve-rs, so this can be the problem of the `libc` crate ;-)
+    # Just round up and extract what we need:
+    my $buf = pack('x160');
+    if (0 != syscall(&PVE::Syscall::SYS_statfs, $path, $buf)) {
+	die "statfs on '$path' failed - $!\n";
+    }
+
+    return unpack('L!', $buf);
+}
+
+my sub assert_btrfs($) {
+    my ($path) = @_;
+    die "'$path' is not a btrfs file system\n"
+	if getfsmagic($path) != BTRFS_MAGIC;
+}
+
 sub activate_storage {
     my ($class, $storeid, $scfg, $cache) = @_;
-    return PVE::Storage::DirPlugin::activate_storage($class, $storeid, $scfg, $cache);
+    PVE::Storage::DirPlugin::activate_storage($class, $storeid, $scfg, $cache);
+    assert_btrfs($scfg->{path});
 }
 
 sub status {
