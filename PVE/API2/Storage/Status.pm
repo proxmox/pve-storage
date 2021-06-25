@@ -448,6 +448,7 @@ __PACKAGE__->register_method ({
 	# we simply overwrite the destination file if it already exists
 
 	my $cmd;
+	my $err_cmd;
 	if ($node ne 'localhost' && $node ne PVE::INotify::nodename()) {
 	    my $remip = PVE::Cluster::remote_node_ip($node);
 
@@ -466,10 +467,12 @@ __PACKAGE__->register_method ({
 				    errmsg => "mkdir failed");
  
 	    $cmd = ['/usr/bin/scp', @ssh_options, '-p', '--', $tmpfilename, "[$remip]:" . PVE::Tools::shell_quote($dest)];
+	    $err_cmd = [@remcmd, 'unlink', '--', $dest];
 	} else {
 	    PVE::Storage::activate_storage($cfg, $param->{storage});
 	    File::Path::make_path($dirname);
 	    $cmd = ['cp', '--', $tmpfilename, $dest];
+	    $err_cmd = ['unlink', '--', $dest];
 	}
 
 	my $worker = sub {
@@ -483,7 +486,7 @@ __PACKAGE__->register_method ({
 
 	    eval { PVE::Tools::run_command($cmd, errmsg => 'import failed'); };
 	    if (my $err = $@) {
-		unlink $dest;
+		eval { PVE::Tools::run_command($err_cmd); };
 		die $err;
 	    }
 	    print "finished file import successfully\n";
