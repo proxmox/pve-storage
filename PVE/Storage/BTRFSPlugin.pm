@@ -121,7 +121,7 @@ sub activate_storage {
     }
 
     my $mp = PVE::Storage::DirPlugin::parse_is_mountpoint($scfg);
-    if (defined($mp) && !path_is_mounted($mp, $cache->{mountdata})) {
+    if (defined($mp) && !PVE::Storage::DirPlugin::path_is_mounted($mp, $cache->{mountdata})) {
 	die "unable to activate storage '$storeid' - directory is expected to be a mount point but"
 	." is not mounted: '$mp'\n";
     }
