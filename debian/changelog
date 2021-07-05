@@ -1,3 +1,9 @@
+libpve-storage-perl (7.0-7) bullseye; urgency=medium
+
+  * btrfs: fix "path is mounted" invocation
+
+ -- Proxmox Support Team <support@proxmox.com>  Mon, 05 Jul 2021 19:01:10 +0200
+
 libpve-storage-perl (7.0-6) bullseye; urgency=medium
 
   * btrfs: support newer prune-backups for backup retention
