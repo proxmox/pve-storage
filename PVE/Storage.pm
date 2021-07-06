@@ -1560,7 +1560,7 @@ sub extract_vzdump_config_vma {
 	my $errstring;
 	my $err = sub {
 	    my $output = shift;
-	    if ($output =~ m/lzop: Broken pipe: <stdout>/ || $output =~ m/gzip: stdout: Broken pipe/ || $output =~ m/zstd: error 70 : Write error : Broken pipe/) {
+	    if ($output =~ m/lzop: Broken pipe: <stdout>/ || $output =~ m/gzip: stdout: Broken pipe/ || $output =~ m/zstd: error 70 : Write error.*Broken pipe/) {
 		$broken_pipe = 1;
 	    } elsif (!defined ($errstring) && $output !~ m/^\s*$/) {
 		$errstring = "Failed to extract config from VMA archive: $output\n";
