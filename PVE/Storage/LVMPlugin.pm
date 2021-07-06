@@ -330,7 +330,7 @@ sub lvcreate {
 	$size .= "k"; # default to kilobytes
     }
 
-    my $cmd = ['/sbin/lvcreate', '-aly', '--size', $size, '--name', $name];
+    my $cmd = ['/sbin/lvcreate', '-aly', '-Wy', '--yes', '--size', $size, '--name', $name];
     for my $tag (@$tags) {
 	push @$cmd, '--addtag', $tag;
     }
