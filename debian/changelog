@@ -1,9 +1,11 @@
-libpve-storage-perl (7.0-8) UNRELEASED; urgency=medium
+libpve-storage-perl (7.0-9) bullseye; urgency=medium
 
   * lvm: tell lvcreate to always wipe any existing traces of signatures
     for new LVs
 
- -- Proxmox Support Team <support@proxmox.com>  Tue, 06 Jul 2021 12:41:27 +0200
+  * extract backup config: less precise matching for broken pipe detection
+
+ -- Proxmox Support Team <support@proxmox.com>  Tue, 06 Jul 2021 16:28:44 +0200
 
 libpve-storage-perl (7.0-7) bullseye; urgency=medium
 
