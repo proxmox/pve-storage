@@ -155,10 +155,10 @@ sub check_config {
 # Storage implementation
 
 sub on_add_hook {
-    my ($class, $storeid, $scfg, %param) = @_;
+    my ($class, $storeid, $scfg, %sensitive) = @_;
 
-    if (defined($param{password})) {
-	cifs_set_credentials($param{password}, $storeid);
+    if (defined($sensitive{password})) {
+	cifs_set_credentials($sensitive{password}, $storeid);
 	if (!exists($scfg->{username})) {
 	    warn "ignoring password parameter\n";
 	}
@@ -170,12 +170,12 @@ sub on_add_hook {
 }
 
 sub on_update_hook {
-    my ($class, $storeid, $scfg, %param) = @_;
+    my ($class, $storeid, $scfg, %sensitive) = @_;
 
-    return if !exists($param{password});
+    return if !exists($sensitive{password});
 
-    if (defined($param{password})) {
-	cifs_set_credentials($param{password}, $storeid);
+    if (defined($sensitive{password})) {
+	cifs_set_credentials($sensitive{password}, $storeid);
 	if (!exists($scfg->{username})) {
 	    warn "ignoring password parameter\n";
 	}
