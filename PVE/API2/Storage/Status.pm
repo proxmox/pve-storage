@@ -378,6 +378,7 @@ __PACKAGE__->register_method ({
 	    content => {
 		description => "Content type.",
 		type => 'string', format => 'pve-storage-content',
+		enum => ['iso', 'vztmpl'],
 	    },
 	    filename => {
 		description => "The name of the file to create.",
