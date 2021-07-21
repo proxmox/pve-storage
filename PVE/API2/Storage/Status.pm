@@ -381,7 +381,8 @@ __PACKAGE__->register_method ({
 		enum => ['iso', 'vztmpl'],
 	    },
 	    filename => {
-		description => "The name of the file to create.",
+		description => "The name of the file to create. Caution: This will be normalized!",
+		maxLength => 255,
 		type => 'string',
 	    },
 	    tmpfilename => {
