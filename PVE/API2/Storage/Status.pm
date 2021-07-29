@@ -13,7 +13,7 @@ use PVE::JSONSchema qw(get_standard_option);
 use PVE::RESTHandler;
 use PVE::RPCEnvironment;
 use PVE::RRD;
-use PVE::Tools;
+use PVE::Tools qw(run_command);
 
 use PVE::API2::Storage::Content;
 use PVE::API2::Storage::FileRestore;
@@ -456,15 +456,15 @@ __PACKAGE__->register_method ({
 
 	    my @remcmd = ('/usr/bin/ssh', @ssh_options, $remip, '--');
 
-	    eval {
-		# activate remote storage
-		PVE::Tools::run_command([@remcmd, '/usr/sbin/pvesm', 'status',
-					 '--storage', $param->{storage}]);
+	    eval { # activate remote storage
+		run_command([@remcmd, '/usr/sbin/pvesm', 'status', '--storage', $param->{storage}]);
 	    };
 	    die "can't activate storage '$param->{storage}' on node '$node': $@\n" if $@;
 
-	    PVE::Tools::run_command([@remcmd, '/bin/mkdir', '-p', '--', PVE::Tools::shell_quote($dirname)],
-				    errmsg => "mkdir failed");
+	    run_command(
+		[@remcmd, '/bin/mkdir', '-p', '--', PVE::Tools::shell_quote($dirname)],
+		errmsg => "mkdir failed",
+	    );
  
 	    $cmd = ['/usr/bin/scp', @ssh_options, '-p', '--', $tmpfilename, "[$remip]:" . PVE::Tools::shell_quote($dest)];
 	    $err_cmd = [@remcmd, 'unlink', '--', $dest];
@@ -484,9 +484,9 @@ __PACKAGE__->register_method ({
 	    print "file size is: $size\n";
 	    print "command: " . join(' ', @$cmd) . "\n";
 
-	    eval { PVE::Tools::run_command($cmd, errmsg => 'import failed'); };
+	    eval { run_command($cmd, errmsg => 'import failed'); };
 	    if (my $err = $@) {
-		eval { PVE::Tools::run_command($err_cmd); };
+		eval { run_command($err_cmd) };
 		die $err;
 	    }
 	    print "finished file import successfully\n";
