@@ -3,20 +3,22 @@ package PVE::API2::Storage::Status;
 use strict;
 use warnings;
 
-use File::Path;
 use File::Basename;
-use PVE::Tools;
-use PVE::INotify;
+use File::Path;
+
 use PVE::Cluster;
-use PVE::RRD;
-use PVE::Storage;
-use PVE::API2::Storage::Content;
-use PVE::API2::Storage::PruneBackups;
-use PVE::API2::Storage::FileRestore;
+use PVE::Exception qw(raise_param_exc);
+use PVE::INotify;
+use PVE::JSONSchema qw(get_standard_option);
 use PVE::RESTHandler;
 use PVE::RPCEnvironment;
-use PVE::JSONSchema qw(get_standard_option);
-use PVE::Exception qw(raise_param_exc);
+use PVE::RRD;
+use PVE::Tools;
+
+use PVE::API2::Storage::Content;
+use PVE::API2::Storage::FileRestore;
+use PVE::API2::Storage::PruneBackups;
+use PVE::Storage;
 
 use base qw(PVE::RESTHandler);
 
