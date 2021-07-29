@@ -5,6 +5,7 @@ use warnings;
 
 use File::Basename;
 use File::Path;
+use POSIX qw(ENOENT);
 
 use PVE::Cluster;
 use PVE::Exception qw(raise_param_exc);
@@ -445,10 +446,9 @@ __PACKAGE__->register_method ({
 	# best effort to match apl_download behaviour
 	chmod 0644, $tmpfilename;
 
-	# we simply overwrite the destination file if it already exists
+	my $err_cleanup = sub { unlink $dest, $tmpfilename; die "cleanup failed: $!" if $! && $! != ENOENT };
 
 	my $cmd;
-	my $err_cmd;
 	if ($node ne 'localhost' && $node ne PVE::INotify::nodename()) {
 	    my $remip = PVE::Cluster::remote_node_ip($node);
 
@@ -467,14 +467,15 @@ __PACKAGE__->register_method ({
 	    );
  
 	    $cmd = ['/usr/bin/scp', @ssh_options, '-p', '--', $tmpfilename, "[$remip]:" . PVE::Tools::shell_quote($dest)];
-	    $err_cmd = [@remcmd, 'unlink', '--', $dest];
+
+	    $err_cleanup = sub { run_command([@remcmd, 'rm', '-f', '--', $dest, $tmpfilename]) };
 	} else {
 	    PVE::Storage::activate_storage($cfg, $param->{storage});
 	    File::Path::make_path($dirname);
 	    $cmd = ['cp', '--', $tmpfilename, $dest];
-	    $err_cmd = ['unlink', '--', $dest];
 	}
 
+	# NOTE: we simply overwrite the destination file if it already exists
 	my $worker = sub {
 	    my $upid = shift;
 
@@ -486,7 +487,8 @@ __PACKAGE__->register_method ({
 
 	    eval { run_command($cmd, errmsg => 'import failed'); };
 	    if (my $err = $@) {
-		eval { run_command($err_cmd) };
+		eval { $err_cleanup->() };
+		warn "$@" if $@;
 		die $err;
 	    }
 	    print "finished file import successfully\n";
