@@ -410,7 +410,7 @@ sub free_image {
 	$class->parse_volname($volname);
 
     if ($format ne 'subvol' && $format ne 'raw') {
-	return PVE::Storage::DirPlugin::free_image(@_);
+	return PVE::Storage::DirPlugin->free_image($storeid, $scfg, $volname, $isBase, $_format);
     }
 
     my $path = $class->filesystem_path($scfg, $volname);
