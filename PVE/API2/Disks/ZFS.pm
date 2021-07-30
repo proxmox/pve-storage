@@ -316,7 +316,7 @@ __PACKAGE__->register_method ({
 	    compression => {
 		type => 'string',
 		description => 'The compression algorithm to use.',
-		enum => ['on', 'off', 'gzip', 'lz4', 'lzjb', 'zle'],
+		enum => ['on', 'off', 'gzip', 'lz4', 'lzjb', 'zle', 'zstd'],
 		optional => 1,
 		default => 'on',
 	    },
