@@ -1,3 +1,16 @@
+libpve-storage-perl (7.0-10) bullseye; urgency=medium
+
+  * fix #3555: BTRFS: call the free_image method from the base plugin correctly
+
+  * api: disks: allow zstd compression when creating zfs pools
+
+  * api: status: fix unlink on file upload when we copied to another, proxied
+    node
+
+  * status: add max length and disclaimer to file upload's filename
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 30 Jul 2021 15:23:14 +0200
+
 libpve-storage-perl (7.0-9) bullseye; urgency=medium
 
   * lvm: tell lvcreate to always wipe any existing traces of signatures
