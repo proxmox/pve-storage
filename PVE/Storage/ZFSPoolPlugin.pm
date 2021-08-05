@@ -477,7 +477,10 @@ sub volume_snapshot_rollback {
     # caches, they get mounted in activate volume again
     # see zfs bug #10931 https://github.com/openzfs/zfs/issues/10931
     if ($format eq 'subvol') {
-	$class->zfs_request($scfg, undef, 'unmount', "$scfg->{pool}/$vname");
+	eval { $class->zfs_request($scfg, undef, 'unmount', "$scfg->{pool}/$vname"); };
+	if (my $err = $@) {
+	    die $err if $err !~ m/not currently mounted$/;
+	}
     }
 
     return $msg;
