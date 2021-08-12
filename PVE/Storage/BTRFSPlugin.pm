@@ -516,7 +516,7 @@ sub volume_snapshot {
 }
 
 sub volume_rollback_is_possible {
-    my ($class, $scfg, $storeid, $volname, $snap) = @_; 
+    my ($class, $scfg, $storeid, $volname, $snap, $blockers) = @_;
 
     return 1; 
 }

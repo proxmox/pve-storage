@@ -948,8 +948,11 @@ sub volume_snapshot {
     return undef;
 }
 
+# Asserts that a rollback to $snap on $volname is possible.
+# If certain snapshots are preventing the rollback and $blockers is an array
+# reference, the snapshot names can be pushed onto $blockers prior to dying.
 sub volume_rollback_is_possible {
-    my ($class, $scfg, $storeid, $volname, $snap) = @_;
+    my ($class, $scfg, $storeid, $volname, $snap, $blockers) = @_;
 
     return 1;
 }

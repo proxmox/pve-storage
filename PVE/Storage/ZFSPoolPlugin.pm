@@ -483,18 +483,29 @@ sub volume_snapshot_rollback {
 }
 
 sub volume_rollback_is_possible {
-    my ($class, $scfg, $storeid, $volname, $snap) = @_;
+    my ($class, $scfg, $storeid, $volname, $snap, $blockers) = @_;
 
     # can't use '-S creation', because zfs list won't reverse the order when the
     # creation time is the same second, breaking at least our tests.
     my $snapshots = $class->zfs_get_sorted_snapshot_list($scfg, $volname, ['-s', 'creation']);
-    my $recentsnap = $snapshots->[-1];
 
-    die "can't rollback, no snapshots exist at all\n"
-	if !defined($recentsnap);
+    my $found;
+    $blockers //= []; # not guaranteed to be set by caller
+    for my $snapshot ($snapshots->@*) {
+	if ($snapshot eq $snap) {
+	    $found = 1;
+	} elsif ($found) {
+	    push $blockers->@*, $snapshot;
+	}
+    }
 
-    die "can't rollback, '$snap' is not most recent snapshot\n"
-	if $snap ne $recentsnap;
+    my $volid = "${storeid}:${volname}";
+
+    die "can't rollback, snapshot '$snap' does not exist on '$volid'\n"
+	if !$found;
+
+    die "can't rollback, '$snap' is not most recent snapshot on '$volid'\n"
+	if scalar($blockers->@*) > 0;
 
     return 1;
 }
