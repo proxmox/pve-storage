@@ -1362,10 +1362,21 @@ my $test6 = sub {
 
     eval {
 	PVE::Storage::volume_snapshot($cfg, "$storagename:$vmdisk", 'snap1');
-	if ( 1 !=
-	     PVE::Storage::volume_rollback_is_possible($cfg, "$storagename:$vmdisk", 'snap1')) {
+
+	my $blockers = [];
+	my $res = PVE::Storage::volume_rollback_is_possible(
+	    $cfg,
+	    "$storagename:$vmdisk",
+	    'snap1',
+	    $blockers,
+	);
+	if ($res != 1) {
 	    $count++;
-	    warn "Test6 a: Rollback sould possible"
+	    warn "Test6 a: Rollback should be possible";
+	}
+	if (scalar($blockers->@*) != 0) {
+	    $count++;
+	    warn "Test6 a: 'blockers' should be empty";
 	}
     };
     if ($@) {
@@ -1378,7 +1389,7 @@ my $test6 = sub {
 	if ( 1 !=
 	     PVE::Storage::volume_rollback_is_possible($cfg, "$storagename:$vmbase", 'snap1')) {
 	    $count++;
-	    warn "Test6 b: Rollback sould possible"
+	    warn "Test6 b: Rollback should be possible";
 	}
     };
     if ($@) {
@@ -1391,7 +1402,7 @@ my $test6 = sub {
 	if ( 1 !=
 	     PVE::Storage::volume_rollback_is_possible($cfg, "$storagename:$vmbase\/$vmlinked", 'snap1')) {
 	    $count++;
-	    warn "Test6 c: Rollback sould possible"
+	    warn "Test6 c: Rollback should be possible";
 	}
     };
     if ($@) {
@@ -1404,7 +1415,7 @@ my $test6 = sub {
 	if ( 1 !=
 	     PVE::Storage::volume_rollback_is_possible($cfg, "$storagename:$ctdisk", 'snap1')) {
 	    $count++;
-	    warn "Test6 d: Rollback sould possible"
+	    warn "Test6 d: Rollback should be possible";
 	}
     };
     if ($@) {
@@ -1417,7 +1428,7 @@ my $test6 = sub {
 	if ( 1 !=
 	     PVE::Storage::volume_rollback_is_possible($cfg, "$storagename:$ctbase", 'snap1')) {
 	    $count++;
-	    warn "Test6 e: Rollback sould possible"
+	    warn "Test6 e: Rollback should be possible";
 	}
     };
     if ($@) {
@@ -1430,7 +1441,7 @@ my $test6 = sub {
 	if ( 1 !=
 	     PVE::Storage::volume_rollback_is_possible($cfg, "$storagename:$ctbase\/$ctlinked", 'snap1')) {
 	    $count++;
-	    warn "Test6 f: Rollback sould possible"
+	    warn "Test6 f: Rollback should be possible";
 	}
     };
     if ($@) {
@@ -1438,23 +1449,45 @@ my $test6 = sub {
 	warn "Test6 f: $@";
     }
 
+    my $blockers = [];
     eval {
 	PVE::Storage::volume_snapshot($cfg, "$storagename:$vmdisk", 'snap2');
-	PVE::Storage::volume_rollback_is_possible($cfg, "$storagename:$vmdisk", 'snap1');
+	PVE::Storage::volume_rollback_is_possible($cfg, "$storagename:$vmdisk", 'snap1', $blockers);
     };
     if (!$@) {
 	$count++;
-	warn "Test6 g: Rollback should not possible";
+	warn "Test6 g: Rollback should not be possible";
+    } elsif (scalar($blockers->@*) != 1 || $blockers->[0] ne 'snap2') {
+	$count++;
+	warn "Test6 g: 'blockers' should be ['snap2']";
     }
+    undef $blockers;
 
+    $blockers = [];
     eval {
 	PVE::Storage::volume_snapshot($cfg, "$storagename:$vmbase", 'snap2');
-	PVE::Storage::volume_rollback_is_possible($cfg, "$storagename:$vmbase", 'snap1');
+	PVE::Storage::volume_snapshot($cfg, "$storagename:$vmbase", 'snap3');
+	PVE::Storage::volume_rollback_is_possible($cfg, "$storagename:$vmbase", 'snap1', $blockers);
     };
     if (!$@) {
 	$count++;
-	warn "Test6 h: Rollback should not possible";
+	warn "Test6 h: Rollback should not be possible";
+    } else {
+	if (scalar($blockers->@*) != 2) {
+	    $count++;
+	    warn "Test6 g: 'blockers' should contain two elements";
+	}
+	my $blockers_hash = { map { $_ => 1 } $blockers->@* };
+	if (!$blockers_hash->{'snap2'}) {
+	    $count++;
+	    warn "Test6 g: 'blockers' should contain 'snap2'";
+	}
+	if (!$blockers_hash->{'snap3'}) {
+	    $count++;
+	    warn "Test6 g: 'blockers' should contain 'snap3'";
+	}
     }
+    undef $blockers;
 
     eval {
 	PVE::Storage::volume_snapshot($cfg, "$storagename:$vmlinked", 'snap2');
@@ -1462,7 +1495,7 @@ my $test6 = sub {
     };
     if (!$@) {
 	$count++;
-	warn "Test6 j: Rollback should not possible";
+	warn "Test6 j: Rollback should not be possible";
     }
 
     eval {
@@ -1471,7 +1504,7 @@ my $test6 = sub {
     };
     if (!$@) {
 	$count++;
-	warn "Test6 k: Rollback should not possible";
+	warn "Test6 k: Rollback should not be possible";
     }
 
     eval {
@@ -1480,7 +1513,7 @@ my $test6 = sub {
     };
     if (!$@) {
 	$count++;
-	warn "Test6 l: Rollback should not possible";
+	warn "Test6 l: Rollback should not be possible";
     }
 
     eval {
@@ -1489,7 +1522,7 @@ my $test6 = sub {
     };
     if (!$@) {
 	$count++;
-	warn "Test6 m: Rollback should not possible";
+	warn "Test6 m: Rollback should not be possible";
     }
 };
 $tests->{6} = $test6;
