@@ -395,25 +395,21 @@ sub zfs_list_zvol {
     return $list;
 }
 
-sub zfs_get_latest_snapshot {
-    my ($class, $scfg, $volname) = @_;
+sub zfs_get_sorted_snapshot_list {
+    my ($class, $scfg, $volname, $sort_params) = @_;
 
     my $vname = ($class->parse_volname($volname))[1];
 
-    # abort rollback if snapshot is not the latest
-    my @params = ('-t', 'snapshot', '-o', 'name', '-s', 'creation');
+    my @params = ('-H', '-t', 'snapshot', '-o', 'name', $sort_params->@*, "$scfg->{pool}\/$vname");
     my $text = $class->zfs_request($scfg, undef, 'list', @params);
     my @snapshots = split(/\n/, $text);
 
-    my $recentsnap;
-    foreach (@snapshots) {
-        if (/$scfg->{pool}\/$vname/) {
-            s/^.*@//;
-            $recentsnap = $_;
-        }
+    my $snap_names = [];
+    for my $snapshot (@snapshots) {
+	(my $snap_name = $snapshot) =~ s/^.*@//;
+	push $snap_names->@*, $snap_name;
     }
-
-    return $recentsnap;
+    return $snap_names;
 }
 
 sub status {
@@ -489,7 +485,10 @@ sub volume_snapshot_rollback {
 sub volume_rollback_is_possible {
     my ($class, $scfg, $storeid, $volname, $snap) = @_;
 
-    my $recentsnap = $class->zfs_get_latest_snapshot($scfg, $volname);
+    # can't use '-S creation', because zfs list won't reverse the order when the
+    # creation time is the same second, breaking at least our tests.
+    my $snapshots = $class->zfs_get_sorted_snapshot_list($scfg, $volname, ['-s', 'creation']);
+    my $recentsnap = $snapshots->[-1];
 
     die "can't rollback, no snapshots exist at all\n"
 	if !defined($recentsnap);
@@ -503,26 +502,9 @@ sub volume_rollback_is_possible {
 sub volume_snapshot_list {
     my ($class, $scfg, $storeid, $volname) = @_;
 
-    my ($vtype, $name, $vmid) = $class->parse_volname($volname);
-
-    my $zpath = "$scfg->{pool}/$name";
-
     my $snaps = [];
-
-    my $cmd = ['zfs', 'list', '-r', '-H', '-S', 'name', '-t', 'snap', '-o',
-	       'name', $zpath];
-
-    my $outfunc = sub {
-	my $line = shift;
-
-	if ($line =~ m/^\Q$zpath\E@(.*)$/) {
-	    push @$snaps, $1;
-	}
-    };
-
-    eval { run_command( [$cmd], outfunc => $outfunc , errfunc => sub{}); };
-
     # return an empty array if dataset does not exist.
+    eval { $snaps = $class->zfs_get_sorted_snapshot_list($scfg, $volname, ['-S', 'name']); };
     return $snaps;
 }
 
