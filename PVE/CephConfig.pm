@@ -212,7 +212,7 @@ sub ceph_connect_option {
 }
 
 sub ceph_create_keyfile {
-    my ($type, $storeid) = @_;
+    my ($type, $storeid, $secret) = @_;
 
     my $extension = 'keyring';
     $extension = 'secret' if ($type eq 'cephfs');
@@ -221,17 +221,20 @@ sub ceph_create_keyfile {
     my $ceph_storage_keyring = "/etc/pve/priv/ceph/${storeid}.$extension";
 
     die "ceph authx keyring file for storage '$storeid' already exists!\n"
-	if -e $ceph_storage_keyring;
+	if -e $ceph_storage_keyring && !defined($secret);
 
-    if (-e $ceph_admin_keyring) {
+    if (-e $ceph_admin_keyring || defined($secret)) {
 	eval {
-	    if ($type eq 'rbd') {
+	    if (defined($secret)) {
+		mkdir '/etc/pve/priv/ceph';
+		PVE::Tools::file_set_contents($ceph_storage_keyring, $secret, 0400);
+	    } elsif ($type eq 'rbd') {
 		mkdir '/etc/pve/priv/ceph';
 		PVE::Tools::file_copy($ceph_admin_keyring, $ceph_storage_keyring);
 	    } elsif ($type eq 'cephfs') {
-		my $secret = $ceph_get_key->($ceph_admin_keyring, 'admin');
+		my $cephfs_secret = $ceph_get_key->($ceph_admin_keyring, 'admin');
 		mkdir '/etc/pve/priv/ceph';
-		PVE::Tools::file_set_contents($ceph_storage_keyring, $secret, 0400);
+		PVE::Tools::file_set_contents($ceph_storage_keyring, $cephfs_secret, 0400);
 	   }
 	};
 	if (my $err = $@) {
