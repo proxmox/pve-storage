@@ -64,13 +64,21 @@ sub param_mapping {
 	}
     };
 
+    my $keyring_map = {
+	name => 'keyring',
+	desc => 'file containing the keyring to authenticate in the Ceph cluster',
+	func => sub {
+	    my ($value) = @_;
+	    return PVE::Tools::file_get_contents($value);
+	},
+    };
 
     my $mapping = {
 	'cifsscan' => [ $password_map ],
 	'cifs' => [ $password_map ],
 	'pbs' => [ $password_map ],
-	'create' => [ $password_map, $enc_key_map, $master_key_map ],
-	'update' => [ $password_map, $enc_key_map, $master_key_map ],
+	'create' => [ $password_map, $enc_key_map, $master_key_map, $keyring_map ],
+	'update' => [ $password_map, $enc_key_map, $master_key_map, $keyring_map ],
     };
     return $mapping->{$name};
 }

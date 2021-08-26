@@ -112,7 +112,7 @@ __PACKAGE__->register_method ({
 	return &$api_storage_config($cfg, $param->{storage});
     }});
 
-my $sensitive_params = [qw(password encryption-key master-pubkey)];
+my $sensitive_params = [qw(password encryption-key master-pubkey keyring)];
 
 __PACKAGE__->register_method ({
     name => 'create',

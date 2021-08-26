@@ -146,6 +146,7 @@ sub options {
 	fuse => { optional => 1 },
 	bwlimit => { optional => 1 },
 	maxfiles => { optional => 1 },
+	keyring => { optional => 1 },
 	'prune-backups' => { optional => 1 },
     };
 }
@@ -163,20 +164,29 @@ sub check_config {
 sub on_add_hook {
     my ($class, $storeid, $scfg, %param) = @_;
 
-    return if defined($scfg->{monhost}); # nothing to do if not pve managed ceph
+    my $secret = $param{keyring} if defined $param{keyring} // undef;
+    PVE::CephConfig::ceph_create_keyfile($scfg->{type}, $storeid, $secret);
 
-    PVE::CephConfig::ceph_create_keyfile($scfg->{type}, $storeid);
+    return;
+}
+
+sub on_update_hook {
+    my ($class, $storeid, $scfg, %param) = @_;
+
+    if (exists($param{keyring})) {
+	if (defined($param{keyring})) {
+	    PVE::CephConfig::ceph_create_keyfile($scfg->{type}, $storeid, $param{keyring});
+	} else {
+	    PVE::CephConfig::ceph_remove_keyfile($scfg->{type}, $storeid);
+	}
+    }
 
     return;
 }
 
 sub on_delete_hook {
     my ($class, $storeid, $scfg) = @_;
-
-    return if defined($scfg->{monhost}); # nothing to do if not pve managed ceph
-
     PVE::CephConfig::ceph_remove_keyfile($scfg->{type}, $storeid);
-
     return;
 }
 
