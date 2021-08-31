@@ -459,7 +459,7 @@ __PACKAGE__->register_method ({
 	# best effort to match apl_download behaviour
 	chmod 0644, $tmpfilename;
 
-	my $err_cleanup = sub { unlink $dest, $tmpfilename; die "cleanup failed: $!" if $! && $! != ENOENT };
+	my $err_cleanup = sub { unlink $dest; die "cleanup failed: $!\n" if $! && $! != ENOENT };
 
 	my $cmd;
 	if ($node ne 'localhost' && $node ne PVE::INotify::nodename()) {
@@ -481,7 +481,7 @@ __PACKAGE__->register_method ({
  
 	    $cmd = ['/usr/bin/scp', @ssh_options, '-p', '--', $tmpfilename, "[$remip]:" . PVE::Tools::shell_quote($dest)];
 
-	    $err_cleanup = sub { run_command([@remcmd, 'rm', '-f', '--', $dest, $tmpfilename]) };
+	    $err_cleanup = sub { run_command([@remcmd, 'rm', '-f', '--', $dest]) };
 	} else {
 	    PVE::Storage::activate_storage($cfg, $param->{storage});
 	    File::Path::make_path($dirname);
