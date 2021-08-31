@@ -486,6 +486,12 @@ __PACKAGE__->register_method ({
 	    print "command: " . join(' ', @$cmd) . "\n";
 
 	    eval { run_command($cmd, errmsg => 'import failed'); };
+
+	    # unlinks only the temporary file from the http server
+	    unlink $tmpfilename;
+	    warn "unable to clean up temporary file '$tmpfilename' - $!\n"
+		if $! && $! != ENOENT;
+
 	    if (my $err = $@) {
 		eval { $err_cleanup->() };
 		warn "$@" if $@;
