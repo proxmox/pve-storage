@@ -388,6 +388,19 @@ __PACKAGE__->register_method ({
 		maxLength => 255,
 		type => 'string',
 	    },
+	    checksum => {
+		description => "The expected checksum of the file.",
+		type => 'string',
+		requires => 'checksum-algorithm',
+		optional => 1,
+	    },
+	    'checksum-algorithm' => {
+		description => "The algorithm to calculate the checksum of the file.",
+		type => 'string',
+		enum => ['md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512'],
+		requires => 'checksum',
+		optional => 1,
+	    },
 	    tmpfilename => {
 		description => "The source file name. This parameter is usually set by the REST handler. You can only overwrite it when connecting to the trusted port on localhost.",
 		type => 'string',
@@ -480,6 +493,30 @@ __PACKAGE__->register_method ({
 	    my $upid = shift;
 
 	    print "starting file import from: $tmpfilename\n";
+
+	    eval {
+		my ($checksum, $checksum_algorithm) = $param->@{'checksum', 'checksum-algorithm'};
+		if ($checksum_algorithm) {
+		    print "calculating checksum...";
+
+		    my $checksum_got = PVE::Tools::get_file_hash($checksum_algorithm, $tmpfilename);
+
+		    if (lc($checksum_got) eq lc($checksum)) {
+			print "OK, checksum verified\n";
+		    } else {
+			print "\n";  # the front end expects the error to reside at the last line without any noise
+			die "checksum mismatch: got '$checksum_got' != expect '$checksum'\n";
+		    }
+		}
+	    };
+	    if (my $err = $@) {
+		# unlinks only the temporary file from the http server
+		unlink $tmpfilename;
+		warn "unable to clean up temporory file '$tmpfilename' - $!\n"
+		    if $! && $! != ENOENT;
+		die $err;
+	    }
+
 	    print "target node: $node\n";
 	    print "target file: $dest\n";
 	    print "file size is: $size\n";
