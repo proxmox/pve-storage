@@ -487,10 +487,8 @@ __PACKAGE__->register_method ({
 
 	    eval { run_command($cmd, errmsg => 'import failed'); };
 
-	    # unlinks only the temporary file from the http server
-	    unlink $tmpfilename;
-	    warn "unable to clean up temporary file '$tmpfilename' - $!\n"
-		if $! && $! != ENOENT;
+	    unlink $tmpfilename; # the temporary file got only uploaded locally, no need to rm remote
+	    warn "unable to clean up temporary file '$tmpfilename' - $!\n" if $! && $! != ENOENT;
 
 	    if (my $err = $@) {
 		eval { $err_cleanup->() };
