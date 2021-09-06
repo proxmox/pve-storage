@@ -1,3 +1,16 @@
+libpve-storage-perl (7.0-11) bullseye; urgency=medium
+
+  * zfs: avoid dying on unmount when the dataset is already unmounted
+
+  * ceph: rbd/cephfs: add keyring parameter for external clusters
+
+  * btrfs: fix call convention of alloc_image from DirPlugin for a special case
+
+  * upload: remove the temporary uploaded local file directly in the API
+    endpoint instead of the HTTP server code as special case
+
+ -- Proxmox Support Team <support@proxmox.com>  Mon, 06 Sep 2021 08:40:33 +0200
+
 libpve-storage-perl (7.0-10) bullseye; urgency=medium
 
   * fix #3555: BTRFS: call the free_image method from the base plugin correctly
