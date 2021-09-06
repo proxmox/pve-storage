@@ -309,7 +309,7 @@ sub alloc_image {
     my ($class, $storeid, $scfg, $vmid, $fmt, $name, $size) = @_;
 
     if ($fmt ne 'raw' && $fmt ne 'subvol') {
-	return PVE::Storage::DirPlugin::alloc_image(@_);
+	return $class->SUPER::alloc_image($storeid, $scfg, $vmid, $fmt, $name, $size)
     }
 
     # From Plugin.pm:
