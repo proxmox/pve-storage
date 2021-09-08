@@ -180,13 +180,13 @@ sub filesystem_path {
 
     $path .= "/$vmid" if $vtype eq 'images';
 
-    if ($format eq 'raw') {
+    if (defined($format) && $format eq 'raw') {
 	my $dir = raw_name_to_dir($name);
 	if ($snapname) {
 	    $dir .= "\@$snapname";
 	}
 	$path .= "/$dir/disk.raw";
-    } elsif ($format eq 'subvol') {
+    } elsif (defined($format) && $format eq 'subvol') {
 	$path .= "/$name";
 	if ($snapname) {
 	    $path .= "\@$snapname";
@@ -409,7 +409,7 @@ sub free_image {
     my (undef, undef, $vmid, undef, undef, undef, $format) =
 	$class->parse_volname($volname);
 
-    if ($format ne 'subvol' && $format ne 'raw') {
+    if (!defined($format) || ($format ne 'subvol' && $format ne 'raw')) {
 	return PVE::Storage::DirPlugin->free_image($storeid, $scfg, $volname, $isBase, $_format);
     }
 
@@ -465,7 +465,7 @@ sub volume_size_info {
 
     my $format = ($class->parse_volname($volname))[6];
 
-    if ($format eq 'subvol') {
+    if (defined($format) && $format eq 'subvol') {
 	my $ctime = (stat($path))[10];
 	my ($used, $size) = (0, 0);
 	#my ($used, $size) = btrfs_subvol_quota($class, $path); # uses wantarray
