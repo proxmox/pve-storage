@@ -1666,10 +1666,9 @@ my $prune_mark = sub {
 sub prune_mark_backup_group {
     my ($backup_group, $keep) = @_;
 
-    my $keep_all = delete $keep->{'keep-all'};
+    my @positive_opts = grep { $_ ne 'keep-all' && $keep->{$_} > 0 } keys $keep->%*;
 
-    if ($keep_all || !scalar(grep {$_ > 0} values %{$keep})) {
-	$keep = { 'keep-all' => 1 } if $keep_all;
+    if ($keep->{'keep-all'} || scalar(@positive_opts) == 0) {
 	foreach my $prune_entry (@{$backup_group}) {
 	    $prune_entry->{mark} = 'keep';
 	}
