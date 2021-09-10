@@ -93,16 +93,17 @@ PVE::JSONSchema::register_format('prune-backups', $prune_backups_format, \&valid
 sub validate_prune_backups {
     my ($prune_backups) = @_;
 
-    my @positive_opts =
-	grep { $_ ne 'keep-all' && $prune_backups->{$_} > 0 } keys $prune_backups->%*;
+    my $res = { $prune_backups->%* };
 
-    if (scalar(@positive_opts) == 0) {
-	$prune_backups = { 'keep-all' => 1 };
-    } elsif ($prune_backups->{'keep-all'}) {
+    my $keep_all = delete $res->{'keep-all'};
+
+    if (scalar(grep { $_ > 0 } values %{$res}) == 0) {
+	$res = { 'keep-all' => 1 };
+    } elsif ($keep_all) {
 	die "keep-all cannot be set together with other options.\n";
     }
 
-    return $prune_backups;
+    return $res;
 }
 register_standard_option('prune-backups', {
     description => "The retention options with shorter intervals are processed first " .
