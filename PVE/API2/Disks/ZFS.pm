@@ -240,8 +240,8 @@ __PACKAGE__->register_method ({
 		$config = 1;
 	    } elsif ($config && $line =~ m/^(\s+)(\S+)\s*(\S+)?(?:\s+(\S+)\s+(\S+)\s+(\S+))?\s*(.*)$/) {
 		my ($space, $name, $state, $read, $write, $cksum, $msg) = ($1, $2, $3, $4, $5, $6, $7);
-		if ($name ne "NAME" and $name ne $param->{name}) {
-		    my $lvl= int(length($space)/2); # two spaces per level
+		if ($name ne "NAME") {
+		    my $lvl = int(length($space) / 2) + 1; # two spaces per level
 		    my $vdev = {
 			name => $name,
 			msg => $msg,
