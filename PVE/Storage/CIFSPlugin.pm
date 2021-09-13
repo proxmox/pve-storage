@@ -117,7 +117,7 @@ sub properties {
 	smbversion => {
 	    description => "SMB protocol version",
 	    type => 'string',
-	    enum => ['2.0', '2.1', '3.0'],
+	    enum => ['2.0', '2.1', '3.0', '3.11'],
 	    optional => 1,
 	},
     };
