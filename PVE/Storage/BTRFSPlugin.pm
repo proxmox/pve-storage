@@ -6,7 +6,7 @@ use warnings;
 use base qw(PVE::Storage::Plugin);
 
 use Fcntl qw(S_ISDIR O_WRONLY O_CREAT O_EXCL);
-use File::Basename qw(dirname);
+use File::Basename qw(basename dirname);
 use File::Path qw(mkpath);
 use IO::Dir;
 use POSIX qw(EEXIST);
@@ -421,9 +421,11 @@ sub free_image {
     }
 
     my $dir = dirname($subvol);
+    my $basename = basename($subvol);
     my @snapshot_vols;
     foreach_subvol($dir, sub {
 	my ($volume, $name, $snapshot) = @_;
+	return if $name ne $basename;
 	return if !defined $snapshot;
 	push @snapshot_vols, "$dir/$volume";
     });
