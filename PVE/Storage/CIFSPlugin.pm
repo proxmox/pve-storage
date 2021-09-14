@@ -78,7 +78,7 @@ sub cifs_mount {
 	push @$cmd, 'guest,username=guest';
     }
 
-    push @$cmd, '-o', defined($smbver) ? "vers=$smbver" : "vers=3.0";
+    push @$cmd, '-o', defined($smbver) ? "vers=$smbver" : "vers=default";
 
     run_command($cmd, errmsg => "mount error");
 }
@@ -115,8 +115,10 @@ sub properties {
 	    maxLength => 256,
 	},
 	smbversion => {
-	    description => "SMB protocol version",
+	    description => "SMB protocol version. 'default' if not set, negotiates the highest SMB2+"
+	        ." version supported by both the client and server.",
 	    type => 'string',
+	    default => 'default',
 	    enum => ['default', '2.0', '2.1', '3', '3.0', '3.11'],
 	    optional => 1,
 	},
@@ -255,9 +257,12 @@ sub check_connection {
 
     my $servicename = '//'.$scfg->{server}.'/'.$scfg->{share};
 
-    my $cmd = ['/usr/bin/smbclient', $servicename, '-d', '0', '-m'];
+    my $cmd = ['/usr/bin/smbclient', $servicename, '-d', '0'];
 
-    push @$cmd, $scfg->{smbversion} ? "smb".int($scfg->{smbversion}) : 'smb3';
+    if (defined($scfg->{smbversion}) && $scfg->{smbversion} ne 'default') {
+	# max-protocol version, so basically only relevant for smb2 vs smb3
+	push @$cmd, '-m', "smb" . int($scfg->{smbversion});
+    }
 
     if (my $cred_file = get_cred_file($storeid)) {
 	push @$cmd, '-U', $scfg->{username}, '-A', $cred_file;
