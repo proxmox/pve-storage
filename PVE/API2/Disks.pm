@@ -9,6 +9,7 @@ use HTTP::Status qw(:constants);
 use PVE::Diskmanage;
 use PVE::JSONSchema qw(get_standard_option);
 use PVE::SafeSyslog;
+use PVE::Tools qw(run_command);
 
 use PVE::API2::Disks::Directory;
 use PVE::API2::Disks::LVM;
@@ -302,7 +303,15 @@ __PACKAGE__->register_method ({
 	my $rpcenv = PVE::RPCEnvironment::get();
 	my $authuser = $rpcenv->get_user();
 
-	my $worker = sub { PVE::Diskmanage::wipe_blockdev($disk); };
+	my $worker = sub {
+	    PVE::Diskmanage::wipe_blockdev($disk);
+
+	    # FIXME: Remove once we depend on systemd >= v249.
+	    # Work around udev bug https://github.com/systemd/systemd/issues/18525 to ensure the
+	    # udev database is updated.
+	    eval { run_command(['udevadm', 'trigger', $disk]); };
+	    warn $@ if $@;
+	};
 
 	my $basename = basename($disk); # avoid '/' in the ID
 

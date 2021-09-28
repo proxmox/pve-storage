@@ -7,7 +7,7 @@ use PVE::Storage::LVMPlugin;
 use PVE::Diskmanage;
 use PVE::JSONSchema qw(get_standard_option);
 use PVE::API2::Storage::Config;
-use PVE::Tools qw(lock_file);
+use PVE::Tools qw(lock_file run_command);
 
 use PVE::RPCEnvironment;
 use PVE::RESTHandler;
@@ -157,6 +157,12 @@ __PACKAGE__->register_method ({
 		PVE::Diskmanage::assert_disk_unused($dev);
 
 		PVE::Storage::LVMPlugin::lvm_create_volume_group($dev, $name);
+
+		# FIXME: Remove once we depend on systemd >= v249.
+		# Work around udev bug https://github.com/systemd/systemd/issues/18525 to ensure the
+		# udev database is updated.
+		eval { run_command(['udevadm', 'trigger', $dev]); };
+		warn $@ if $@;
 
 		if ($param->{add_storage}) {
 		    my $storage_params = {

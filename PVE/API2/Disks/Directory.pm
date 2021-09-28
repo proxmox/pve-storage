@@ -266,6 +266,12 @@ __PACKAGE__->register_method ({
 
 		$write_ini->($ini, $mountunitpath);
 
+		# FIXME: Remove once we depend on systemd >= v249.
+		# Work around udev bug https://github.com/systemd/systemd/issues/18525 to ensure the
+		# udev database is updated and the $uuid_path symlink is actually created!
+		eval { run_command(['udevadm', 'trigger', $part]); };
+		warn $@ if $@;
+
 		run_command(['systemctl', 'daemon-reload']);
 		run_command(['systemctl', 'enable', $mountunitname]);
 		run_command(['systemctl', 'start', $mountunitname]);

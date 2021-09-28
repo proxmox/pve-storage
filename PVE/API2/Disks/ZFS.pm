@@ -406,6 +406,12 @@ __PACKAGE__->register_method ({
 		    run_command($cmd);
 		}
 
+		# FIXME: Remove once we depend on systemd >= v249.
+		# Work around udev bug https://github.com/systemd/systemd/issues/18525 to ensure the
+		# udev database is updated.
+		eval { run_command(['udevadm', 'trigger', $devs->@*]); };
+		warn $@ if $@;
+
 		if ($param->{add_storage}) {
 		    my $storage_params = {
 			type => 'zfspool',
