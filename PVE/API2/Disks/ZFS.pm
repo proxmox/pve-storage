@@ -345,9 +345,6 @@ __PACKAGE__->register_method ({
 	foreach my $dev (@$devs) {
 	    $dev = PVE::Diskmanage::verify_blockdev_path($dev);
 	    PVE::Diskmanage::assert_disk_unused($dev);
-	    my $sysfsdev = $dev =~ s!^/dev/!/sys/block/!r;
-	    my $udevinfo = PVE::Diskmanage::get_udev_info($sysfsdev);
-	    $dev = $udevinfo->{by_id_link} if defined($udevinfo->{by_id_link});
 	}
 
 	PVE::Storage::assert_sid_unused($name) if $param->{add_storage};
@@ -374,6 +371,13 @@ __PACKAGE__->register_method ({
 
 	my $worker = sub {
 	    PVE::Diskmanage::locked_disk_action(sub {
+		for my $dev (@$devs) {
+		    PVE::Diskmanage::assert_disk_unused($dev);
+		    my $sysfsdev = $dev =~ s!^/dev/!/sys/block/!r;
+		    my $udevinfo = PVE::Diskmanage::get_udev_info($sysfsdev);
+		    $dev = $udevinfo->{by_id_link} if defined($udevinfo->{by_id_link});
+		}
+
 		# create zpool with desired raidlevel
 
 		my $cmd = [$ZPOOL, 'create', '-o', "ashift=$ashift", $name];

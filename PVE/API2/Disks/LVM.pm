@@ -154,6 +154,8 @@ __PACKAGE__->register_method ({
 
 	my $worker = sub {
 	    PVE::Diskmanage::locked_disk_action(sub {
+		PVE::Diskmanage::assert_disk_unused($dev);
+
 		PVE::Storage::LVMPlugin::lvm_create_volume_group($dev, $name);
 
 		if ($param->{add_storage}) {

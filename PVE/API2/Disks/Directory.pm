@@ -212,6 +212,8 @@ __PACKAGE__->register_method ({
 	    my $mountunitpath = "/etc/systemd/system/$mountunitname";
 
 	    PVE::Diskmanage::locked_disk_action(sub {
+		PVE::Diskmanage::assert_disk_unused($dev);
+
 		# create partition
 		my $cmd = [$SGDISK, '-n1', '-t1:8300', $dev];
 		print "# ", join(' ', @$cmd), "\n";
