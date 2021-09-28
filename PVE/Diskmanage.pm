@@ -327,7 +327,7 @@ sub get_udev_info {
     warn $@ if $@;
     return undef if !$info;
 
-    return undef if $info !~ m/^E: DEVTYPE=disk$/m;
+    return undef if $info !~ m/^E: DEVTYPE=(disk|partition)$/m;
     return undef if $info =~ m/^E: ID_CDROM/m;
 
     # we use this, because some disks are not simply in /dev
