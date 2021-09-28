@@ -20,6 +20,12 @@ my $PVS = "/sbin/pvs";
 my $LVS = "/sbin/lvs";
 my $LSBLK = "/bin/lsblk";
 
+my sub strip_dev :prototype($) {
+    my ($devpath) = @_;
+    $devpath =~ s|^/dev/||;
+    return $devpath;
+}
+
 sub check_bin {
     my ($path) = @_;
     return -x $path;
@@ -518,6 +524,14 @@ sub get_disks {
 	# we get cciss/c0d0 but need cciss!c0d0
 	$_ =~ s|cciss/|cciss!| for @$disks;
 
+	if ($include_partitions) {
+	    # Proper blockdevice is needed for the regex, use parent for partitions.
+	    for my $disk ($disks->@*) {
+		next if !is_partition("/dev/$disk");
+		$disk = strip_dev(get_blockdev("/dev/$disk"));
+	    }
+	}
+
 	$disk_regex = "(?:" . join('|', @$disks) . ")";
     }
 
@@ -845,12 +859,6 @@ sub append_partition {
     });
 
     return $partition;
-}
-
-my sub strip_dev :prototype($) {
-    my ($devpath) = @_;
-    $devpath =~ s|^/dev/||;
-    return $devpath;
 }
 
 # Check if a disk or any of its partitions has a holder.
