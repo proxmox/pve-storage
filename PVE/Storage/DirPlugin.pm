@@ -5,6 +5,7 @@ use warnings;
 
 use Cwd;
 use File::Path;
+use IO::File;
 use POSIX;
 
 use PVE::Storage::Plugin;
@@ -133,6 +134,14 @@ sub get_volume_attribute {
 	return $class->get_volume_notes($scfg, $storeid, $volname);
     }
 
+    my ($vtype) = $class->parse_volname($volname);
+    return if $vtype ne 'backup';
+
+    if ($attribute eq 'protected') {
+	my $path = $class->filesystem_path($scfg, $volname);
+	return -e PVE::Storage::protection_file_path($path) ? 1 : 0;
+    }
+
     return;
 }
 
@@ -141,6 +150,27 @@ sub update_volume_attribute {
 
     if ($attribute eq 'notes') {
 	return $class->update_volume_notes($scfg, $storeid, $volname, $value);
+    }
+
+    my ($vtype) = $class->parse_volname($volname);
+    die "only backups support attribute '$attribute'\n" if $vtype ne 'backup';
+
+    if ($attribute eq 'protected') {
+	my $path = $class->filesystem_path($scfg, $volname);
+	my $protection_path = PVE::Storage::protection_file_path($path);
+
+	return if !((-e $protection_path) xor $value); # protection status already correct
+
+	if ($value) {
+	    my $fh = IO::File->new($protection_path, O_CREAT, 0644)
+		or die "unable to create protection file '$protection_path' - $!\n";
+	    close($fh);
+	} else {
+	    unlink $protection_path or $! == ENOENT
+		or die "could not delete protection file '$protection_path' - $!\n";
+	}
+
+	return;
     }
 
     die "attribute '$attribute' is not supported for storage type '$scfg->{type}'\n";

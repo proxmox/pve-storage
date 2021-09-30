@@ -828,6 +828,9 @@ sub alloc_image {
 sub free_image {
     my ($class, $storeid, $scfg, $volname, $isBase, $format) = @_;
 
+    die "cannot remove protected volume '$volname' on '$storeid'\n"
+	if $class->get_volume_attribute($scfg, $storeid, $volname, 'protected');
+
     my $path = $class->filesystem_path($scfg, $volname);
 
     if ($isBase) {
@@ -917,6 +920,7 @@ sub update_volume_notes {
 # Should die if there is an error fetching the attribute.
 # Possible attributes:
 # notes     - user-provided comments/notes.
+# protected - not to be removed by free_image, and for backups, ignored when pruning.
 sub get_volume_attribute {
     my ($class, $scfg, $storeid, $volname, $attribute) = @_;
 
@@ -1164,6 +1168,7 @@ my $get_subdir_files = sub {
 		$info->{notes} = $notes if defined($notes);
 	    }
 
+	    $info->{protected} = 1 if -e PVE::Storage::protection_file_path($original);
 	} elsif ($tt eq 'snippets') {
 
 	    $info = {
@@ -1369,6 +1374,8 @@ sub prune_backups {
 	    # ignore backups that don't use the standard naming scheme
 	    $prune_entry->{mark} = 'protected';
 	}
+
+	$prune_entry->{mark} = 'protected' if $backup->{protected};
 
 	push @{$prune_list}, $prune_entry;
     }

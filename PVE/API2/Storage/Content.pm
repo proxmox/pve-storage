@@ -113,6 +113,11 @@ __PACKAGE__->register_method ({
 		    },
 		    optional => 1,
 		},
+		protected => {
+		    description => "Protection status. Currently only supported for backups.",
+		    type => 'boolean',
+		    optional => 1,
+		},
 	    },
 	},
 	links => [ { rel => 'child', href => "{volid}" } ],
@@ -295,7 +300,12 @@ __PACKAGE__->register_method ({
 		description => "Optional notes.",
 		optional => 1,
 		type => 'string',
-	    }
+	    },
+	    protected => {
+		description => "Protection status. Currently only supported for backups.",
+		type => 'boolean',
+		optional => 1,
+	    },
 	},
     },
     code => sub {
@@ -321,12 +331,14 @@ __PACKAGE__->register_method ({
 	    format => $format,
 	};
 
-	# keep going if fetching an optional attribute fails
-	eval {
-	    my $notes = PVE::Storage::get_volume_attribute($cfg, $volid, 'notes');
-	    $entry->{notes} = $notes if defined($notes);
-	};
-	warn $@ if $@;
+	for my $attribute (qw(notes protected)) {
+	    # keep going if fetching an optional attribute fails
+	    eval {
+		my $value = PVE::Storage::get_volume_attribute($cfg, $volid, $attribute);
+		$entry->{$attribute} = $value if defined($value);
+	    };
+	    warn $@ if $@;
+	}
 
 	return $entry;
     }});
@@ -356,6 +368,11 @@ __PACKAGE__->register_method ({
 		type => 'string',
 		optional => 1,
 	    },
+	    protected => {
+		description => "Protection status. Currently only supported for backups.",
+		type => 'boolean',
+		optional => 1,
+	    },
 	},
     },
     returns => { type => 'null' },
@@ -371,8 +388,10 @@ __PACKAGE__->register_method ({
 
 	PVE::Storage::check_volume_access($rpcenv, $authuser, $cfg, undef, $volid);
 
-	if (exists $param->{notes}) {
-	    PVE::Storage::update_volume_attribute($cfg, $volid, 'notes', $param->{notes});
+	for my $attr (qw(notes protected)) {
+	    if (exists $param->{$attr}) {
+		PVE::Storage::update_volume_attribute($cfg, $volid, $attr, $param->{$attr});
+	    }
 	}
 
 	return undef;

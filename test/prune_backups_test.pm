@@ -30,6 +30,12 @@ foreach my $vmid (@vmids) {
 	    'vmid'  => $vmid,
 	},
 	{
+	    'volid' => "$storeid:backup/vzdump-qemu-$vmid-2019_12_31-11_18_51.tar.zst",
+	    'ctime' => $basetime - 24*60*60 - 60*60 + 30,
+	    'vmid'  => $vmid,
+	    'protected' => 1,
+	},
+	{
 	    'volid' => "$storeid:backup/vzdump-qemu-$vmid-2019_12_31-11_19_21.tar.zst",
 	    'ctime' => $basetime - 24*60*60 - 60*60 + 60,
 	    'vmid'  => $vmid,
@@ -138,6 +144,13 @@ sub generate_expected {
 		'type'  => 'qemu',
 		'ctime' => $basetime - 24*60*60 - 60*60,
 		'mark'  => $marks->[1],
+		'vmid'  => $vmid,
+	    },
+	    {
+		'volid' => "$storeid:backup/vzdump-qemu-$vmid-2019_12_31-11_18_51.tar.zst",
+		'type'  => 'qemu',
+		'ctime' => $basetime - 24*60*60 - 60*60 + 30,
+		'mark'  => 'protected',
 		'vmid'  => $vmid,
 	    },
 	    {

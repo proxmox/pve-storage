@@ -1456,6 +1456,12 @@ sub decompressor_info {
     return $info;
 }
 
+sub protection_file_path {
+    my ($path) = @_;
+
+    return "${path}.protected";
+}
+
 sub archive_info {
     my ($archive) = shift;
     my $info;
@@ -1486,6 +1492,9 @@ sub archive_info {
 
 sub archive_remove {
     my ($archive_path) = @_;
+
+    die "cannot remove protected archive '$archive_path'\n"
+	if -e protection_file_path($archive_path);
 
     my $dirname = dirname($archive_path);
     my $archive_info = eval { archive_info($archive_path) } // {};
