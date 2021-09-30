@@ -215,24 +215,24 @@ sub file_size_info {
     return PVE::Storage::Plugin::file_size_info($filename, $timeout);
 }
 
-sub get_volume_notes {
-    my ($cfg, $volid, $timeout) = @_;
+sub get_volume_attribute {
+    my ($cfg, $volid, $attribute) = @_;
 
     my ($storeid, $volname) = parse_volume_id($volid);
     my $scfg = storage_config($cfg, $storeid);
     my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
 
-    return $plugin->get_volume_notes($scfg, $storeid, $volname, $timeout);
+    return $plugin->get_volume_attribute($scfg, $storeid, $volname, $attribute);
 }
 
-sub update_volume_notes {
-    my ($cfg, $volid, $notes, $timeout) = @_;
+sub update_volume_attribute {
+    my ($cfg, $volid, $attribute, $value) = @_;
 
     my ($storeid, $volname) = parse_volume_id($volid);
     my $scfg = storage_config($cfg, $storeid);
     my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
 
-    $plugin->update_volume_notes($scfg, $storeid, $volname, $notes, $timeout);
+    return $plugin->update_volume_attribute($scfg, $storeid, $volname, $attribute, $value);
 }
 
 sub volume_size_info {

@@ -287,13 +287,26 @@ sub check_connection {
     return 1;
 }
 
+# FIXME remove on the next APIAGE reset.
+# Deprecated, use get_volume_attribute instead.
 sub get_volume_notes {
     my $class = shift;
     PVE::Storage::DirPlugin::get_volume_notes($class, @_);
 }
+
+# FIXME remove on the next APIAGE reset.
+# Deprecated, use update_volume_attribute instead.
 sub update_volume_notes {
     my $class = shift;
     PVE::Storage::DirPlugin::update_volume_notes($class, @_);
+}
+
+sub get_volume_attribute {
+    return PVE::Storage::DirPlugin::get_volume_attribute(@_);
+}
+
+sub update_volume_attribute {
+    return PVE::Storage::DirPlugin::update_volume_attribute(@_);
 }
 
 1;

@@ -321,11 +321,12 @@ __PACKAGE__->register_method ({
 	    format => $format,
 	};
 
-	# not all storages/types support notes, so ignore errors here
+	# keep going if fetching an optional attribute fails
 	eval {
-	    my $notes = PVE::Storage::get_volume_notes($cfg, $volid);
+	    my $notes = PVE::Storage::get_volume_attribute($cfg, $volid, 'notes');
 	    $entry->{notes} = $notes if defined($notes);
 	};
+	warn $@ if $@;
 
 	return $entry;
     }});
@@ -371,7 +372,7 @@ __PACKAGE__->register_method ({
 	PVE::Storage::check_volume_access($rpcenv, $authuser, $cfg, undef, $volid);
 
 	if (exists $param->{notes}) {
-	    PVE::Storage::update_volume_notes($cfg, $volid, $param->{notes});
+	    PVE::Storage::update_volume_attribute($cfg, $volid, 'notes', $param->{notes});
 	}
 
 	return undef;

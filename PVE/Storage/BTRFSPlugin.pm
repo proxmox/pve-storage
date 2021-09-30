@@ -137,9 +137,9 @@ sub status {
     return PVE::Storage::DirPlugin::status($class, $storeid, $scfg, $cache);
 }
 
-# TODO: sub get_volume_notes {}
+# TODO: sub get_volume_attribute {}
 
-# TODO: sub update_volume_notes {}
+# TODO: sub update_volume_attribute {}
 
 # croak would not include the caller from within this module
 sub __error {

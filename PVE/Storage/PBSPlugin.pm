@@ -782,6 +782,8 @@ sub deactivate_volume {
     return 1;
 }
 
+# FIXME remove on the next APIAGE reset.
+# Deprecated, use get_volume_attribute instead.
 sub get_volume_notes {
     my ($class, $scfg, $storeid, $volname, $timeout) = @_;
 
@@ -792,6 +794,8 @@ sub get_volume_notes {
     return $data->{notes};
 }
 
+# FIXME remove on the next APIAGE reset.
+# Deprecated, use update_volume_attribute instead.
 sub update_volume_notes {
     my ($class, $scfg, $storeid, $volname, $notes, $timeout) = @_;
 
@@ -800,6 +804,26 @@ sub update_volume_notes {
     run_client_cmd($scfg, $storeid, "snapshot", [ "notes", "update", $name, $notes ], 1);
 
     return undef;
+}
+
+sub get_volume_attribute {
+    my ($class, $scfg, $storeid, $volname, $attribute) = @_;
+
+    if ($attribute eq 'notes') {
+	return $class->get_volume_notes($scfg, $storeid, $volname);
+    }
+
+    return;
+}
+
+sub update_volume_attribute {
+    my ($class, $scfg, $storeid, $volname, $attribute, $value) = @_;
+
+    if ($attribute eq 'notes') {
+	return $class->update_volume_notes($scfg, $storeid, $volname, $value);
+    }
+
+    die "attribute '$attribute' is not supported for storage type '$scfg->{type}'\n";
 }
 
 sub volume_size_info {

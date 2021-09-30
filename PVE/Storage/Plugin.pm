@@ -897,16 +897,50 @@ sub file_size_info {
     return wantarray ? ($size, $format, $used, $parent, $st->ctime) : $size;
 }
 
+# FIXME remove on the next APIAGE reset.
+# Deprecated, use get_volume_attribute instead.
 sub get_volume_notes {
     my ($class, $scfg, $storeid, $volname, $timeout) = @_;
 
     die "volume notes are not supported for $class";
 }
 
+# FIXME remove on the next APIAGE reset.
+# Deprecated, use update_volume_attribute instead.
 sub update_volume_notes {
     my ($class, $scfg, $storeid, $volname, $notes, $timeout) = @_;
 
     die "volume notes are not supported for $class";
+}
+
+# Returns undef if the attribute is not supported for the volume.
+# Should die if there is an error fetching the attribute.
+# Possible attributes:
+# notes     - user-provided comments/notes.
+sub get_volume_attribute {
+    my ($class, $scfg, $storeid, $volname, $attribute) = @_;
+
+    if ($attribute eq 'notes') {
+	 my $notes = eval { $class->get_volume_notes($scfg, $storeid, $volname); };
+	 if (my $err = $@) {
+	     return if $err =~ m/^volume notes are not supported/;
+	     die $err;
+	 }
+	 return $notes;
+    }
+
+    return;
+}
+
+# Dies if the attribute is not supported for the volume.
+sub update_volume_attribute {
+    my ($class, $scfg, $storeid, $volname, $attribute, $value) = @_;
+
+    if ($attribute eq 'notes') {
+	$class->update_volume_notes($scfg, $storeid, $volname, $value);
+    }
+
+    die "attribute '$attribute' is not supported for storage type '$scfg->{type}'\n";
 }
 
 sub volume_size_info {
@@ -1147,6 +1181,8 @@ my $get_subdir_files = sub {
     return $res;
 };
 
+# If attributes are set on a volume, they should be included in the result.
+# See get_volume_attribute for a list of possible attributes.
 sub list_volumes {
     my ($class, $storeid, $scfg, $vmid, $content_types) = @_;
 

@@ -91,6 +91,8 @@ sub parse_is_mountpoint {
     return $is_mp; # contains a path
 }
 
+# FIXME remove on the next APIAGE reset.
+# Deprecated, use get_volume_attribute instead.
 sub get_volume_notes {
     my ($class, $scfg, $storeid, $volname, $timeout) = @_;
 
@@ -105,6 +107,8 @@ sub get_volume_notes {
     return '';
 }
 
+# FIXME remove on the next APIAGE reset.
+# Deprecated, use update_volume_attribute instead.
 sub update_volume_notes {
     my ($class, $scfg, $storeid, $volname, $notes, $timeout) = @_;
 
@@ -120,6 +124,26 @@ sub update_volume_notes {
 	unlink $path or $! == ENOENT or die "could not delete notes - $!\n";
     }
     return;
+}
+
+sub get_volume_attribute {
+    my ($class, $scfg, $storeid, $volname, $attribute) = @_;
+
+    if ($attribute eq 'notes') {
+	return $class->get_volume_notes($scfg, $storeid, $volname);
+    }
+
+    return;
+}
+
+sub update_volume_attribute {
+    my ($class, $scfg, $storeid, $volname, $attribute, $value) = @_;
+
+    if ($attribute eq 'notes') {
+	return $class->update_volume_notes($scfg, $storeid, $volname, $value);
+    }
+
+    die "attribute '$attribute' is not supported for storage type '$scfg->{type}'\n";
 }
 
 sub status {
