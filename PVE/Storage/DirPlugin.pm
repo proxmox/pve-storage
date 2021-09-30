@@ -2,8 +2,11 @@ package PVE::Storage::DirPlugin;
 
 use strict;
 use warnings;
+
 use Cwd;
 use File::Path;
+use POSIX;
+
 use PVE::Storage::Plugin;
 use PVE::JSONSchema qw(get_standard_option);
 
@@ -111,7 +114,7 @@ sub update_volume_notes {
     if (defined($notes) && $notes ne '') {
 	PVE::Tools::file_set_contents($path, $notes);
     } else {
-	unlink $path or die "could not delete notes - $!\n";
+	unlink $path or $! == ENOENT or die "could not delete notes - $!\n";
     }
     return;
 }
