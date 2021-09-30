@@ -9,7 +9,8 @@ use Fcntl qw(F_GETFD F_SETFD FD_CLOEXEC);
 use IO::File;
 use JSON;
 use MIME::Base64 qw(decode_base64);
-use POSIX qw(strftime ENOENT);
+use POSIX qw(mktime strftime ENOENT);
+use POSIX::strptime;
 
 use PVE::APIClient::LWP;
 use PVE::JSONSchema qw(get_standard_option);
@@ -218,6 +219,36 @@ sub print_volid {
     return "${storeid}:${volname}";
 }
 
+# essentially the inverse of print_volid
+sub api_param_from_volname {
+    my ($class, $volname) = @_;
+
+    my $name = ($class->parse_volname($volname))[1];
+
+    my ($btype, $bid, $timestr) = split('/', $name);
+
+    my @tm = (POSIX::strptime($timestr, "%FT%TZ"));
+    # expect sec, min, hour, mday, mon, year
+    die "error parsing time from '$volname'" if grep { !defined($_) } @tm[0..5];
+
+    my $btime;
+    {
+	local $ENV{TZ} = 'UTC'; # $timestr is UTC
+
+	# Fill in isdst to avoid undef warning. No daylight saving time for UTC.
+	$tm[8] //= 0;
+
+	my $since_epoch = mktime(@tm) or die "error converting time from '$volname'\n";
+	$btime = int($since_epoch);
+    }
+
+    return {
+	'backup-type' => $btype,
+	'backup-id' => $bid,
+	'backup-time' => $btime,
+    };
+}
+
 my $USE_CRYPT_PARAMS = {
     backup => 1,
     restore => 1,
@@ -403,9 +434,12 @@ sub prune_backups {
 		my $vmid = $backup->{'backup-id'};
 		my $volid = print_volid($storeid, $type, $vmid, $ctime);
 
+		my $mark = $backup->{keep} ? 'keep' : 'remove';
+		$mark = 'protected' if $backup->{protected};
+
 		push @{$prune_list}, {
 		    ctime => $ctime,
-		    mark => $backup->{keep} ? 'keep' : 'remove',
+		    mark => $mark,
 		    type => $type eq 'vm' ? 'qemu' : 'lxc',
 		    vmid => $vmid,
 		    volid => $volid,
@@ -658,6 +692,7 @@ sub list_volumes {
 
 	$info->{verification} = $item->{verification} if defined($item->{verification});
 	$info->{notes} = $item->{comment} if defined($item->{comment});
+	$info->{protected} = 1 if $item->{protected};
 	if (defined($item->{fingerprint})) {
 	    $info->{encrypted} = $item->{fingerprint};
 	} elsif (snapshot_files_encrypted($item->{files})) {
@@ -813,6 +848,21 @@ sub get_volume_attribute {
 	return $class->get_volume_notes($scfg, $storeid, $volname);
     }
 
+    if ($attribute eq 'protected') {
+	my $param = $class->api_param_from_volname($volname);
+
+	my $password = pbs_get_password($scfg, $storeid);
+	my $conn = pbs_api_connect($scfg, $password);
+	my $datastore = $scfg->{datastore};
+
+	my $res = eval { $conn->get("/api2/json/admin/datastore/$datastore/$attribute", $param); };
+	if (my $err = $@) {
+	    return if $err->{code} == 404; # not supported
+	    die $err;
+	}
+	return $res;
+    }
+
     return;
 }
 
@@ -821,6 +871,18 @@ sub update_volume_attribute {
 
     if ($attribute eq 'notes') {
 	return $class->update_volume_notes($scfg, $storeid, $volname, $value);
+    }
+
+    if ($attribute eq 'protected') {
+	my $param = $class->api_param_from_volname($volname);
+	$param->{$attribute} = $value;
+
+	my $password = pbs_get_password($scfg, $storeid);
+	my $conn = pbs_api_connect($scfg, $password);
+	my $datastore = $scfg->{datastore};
+
+	$conn->put("/api2/json/admin/datastore/$datastore/$attribute", $param);
+	return;
     }
 
     die "attribute '$attribute' is not supported for storage type '$scfg->{type}'\n";
