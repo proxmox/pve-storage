@@ -94,6 +94,9 @@ sub parse_is_mountpoint {
 sub get_volume_notes {
     my ($class, $scfg, $storeid, $volname, $timeout) = @_;
 
+    my ($vtype) = $class->parse_volname($volname);
+    return if $vtype ne 'backup';
+
     my $path = $class->filesystem_path($scfg, $volname);
     $path .= $class->SUPER::NOTES_EXT;
 
