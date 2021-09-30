@@ -61,9 +61,10 @@ __PACKAGE__->register_method ({
 		    type => 'integer',
 		},
 		'mark' => {
-		    description => "Whether the backup would be kept or removed. For backups that don't " .
-				   "use the standard naming scheme, it's 'protected'.",
+		    description => "Whether the backup would be kept or removed. Backups that are" .
+			" protected or don't use the standard naming scheme are not removed.",
 		    type => 'string',
+		    enum => ['keep', 'remove', 'protected', 'renamed'],
 		},
 		type => {
 		    description => "One of 'qemu', 'lxc', 'openvz' or 'unknown'.",

@@ -1372,7 +1372,7 @@ sub prune_backups {
 	    push @{$backup_groups->{$group}}, $prune_entry;
 	} else {
 	    # ignore backups that don't use the standard naming scheme
-	    $prune_entry->{mark} = 'protected';
+	    $prune_entry->{mark} = 'renamed';
 	}
 
 	$prune_entry->{mark} = 'protected' if $backup->{protected};

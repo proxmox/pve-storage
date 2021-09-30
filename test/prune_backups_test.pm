@@ -189,7 +189,7 @@ sub generate_expected {
 		'volid' => "$storeid:backup/vzdump-$vmid-renamed.tar.zst",
 		'type'  => 'unknown',
 		'ctime' => 1234,
-		'mark'  => 'protected',
+		'mark'  => 'renamed',
 		'vmid'  => $vmid,
 	    },
 	) if !defined($type);
@@ -375,7 +375,7 @@ my $tests = [
 	    {
 		'volid' => "$storeid:backup/vzdump-lxc-novmid.tar.gz",
 		'ctime' => 1234,
-		'mark'  => 'protected',
+		'mark'  => 'renamed',
 		'type'  => 'lxc',
 	    },
 	],
