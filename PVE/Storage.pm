@@ -1663,6 +1663,8 @@ sub prune_mark_backup_group {
 
     if ($keep->{'keep-all'} || scalar(@positive_opts) == 0) {
 	foreach my $prune_entry (@{$backup_group}) {
+	    # preserve additional information like 'protected'
+	    next if $prune_entry->{mark} && $prune_entry->{mark} ne 'remove';
 	    $prune_entry->{mark} = 'keep';
 	}
 	return;
