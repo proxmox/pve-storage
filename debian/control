@@ -20,6 +20,7 @@ Homepage: https://www.proxmox.com
 Package: libpve-storage-perl
 Architecture: all
 Breaks: libpve-guest-common-perl (<< 3.0-7),
+        libpve-http-server-perl (<< 4.0-3),
         pve-container (<< 3.1-2),
         pve-manager (<< 5.2-12),
         qemu-server (<< 6.1-14),
