@@ -1,3 +1,28 @@
+libpve-storage-perl (7.0-12) bullseye; urgency=medium
+
+  * btrfs: avoid undef warnings with format
+
+  * prune: validate, mark: preserve input parameter
+
+  * fix #3610: properly build ZFS detail tree
+
+  * fix #3609: cifs: add support to SMB 3.11
+
+  * cifs: allow "3" and "default" for version parameter
+
+  * cifs: do not pass an explicity version by default to negotiate the highest
+    common SMB2+ version supported by both, server and client
+
+  * api: disk: work around udev bug to ensure its database is updated
+
+  * status: can now remove sleep(1) hack in file upload
+
+  * fix #3505: status: add checksum and algorithm to file upload
+
+  * import: don't check for 1K aligned size
+
+ -- Proxmox Support Team <support@proxmox.com>  Tue, 05 Oct 2021 06:25:04 +0200
+
 libpve-storage-perl (7.0-11) bullseye; urgency=medium
 
   * zfs: avoid dying on unmount when the dataset is already unmounted
