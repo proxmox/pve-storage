@@ -661,7 +661,7 @@ sub get_disks {
 	    # for devices, this check is done explicitly later
 	    return 'Device Mapper' if !dir_is_empty("$sysdir/holders");
 
-	    return 'partition';
+	    return; # unused partition
 	};
 
 	my $collect_ceph_info = sub {
@@ -730,7 +730,6 @@ sub get_disks {
 	my $used = $determine_usage->($devpath, $sysdir, 0);
 	if (!$include_partitions) {
 	    foreach my $part (sort keys %{$partitions}) {
-		next if $partitions->{$part}->{used} eq 'partition';
 		$used //= $partitions->{$part}->{used};
 	    }
 	} else {
