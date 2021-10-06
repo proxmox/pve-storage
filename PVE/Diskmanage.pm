@@ -813,6 +813,12 @@ sub get_blockdev {
     return $block_dev;
 }
 
+sub is_partition {
+    my ($dev_path) = @_;
+
+    return defined(eval { get_partnum($dev_path) });
+}
+
 sub locked_disk_action {
     my ($sub) = @_;
     my $res = PVE::Tools::lock_file('/run/lock/pve-diskmanage.lck', undef, $sub);
@@ -901,6 +907,23 @@ sub is_mounted {
     });
 
     return $found;
+}
+
+# Currently only supports GPT-partitioned disks.
+sub change_parttype {
+    my ($partpath, $parttype) = @_;
+
+    my $err = "unable to change partition type for $partpath";
+
+    my $partnum = get_partnum($partpath);
+    my $blockdev = get_blockdev($partpath);
+    my $dev = strip_dev($blockdev);
+
+    my $info = get_disks($dev, 1);
+    die "$err - unable to get disk info for '$blockdev'\n" if !defined($info->{$dev});
+    die "$err - disk '$blockdev' is not GPT partitioned\n" if !$info->{$dev}->{gpt};
+
+    run_command(['sgdisk', "-t${partnum}:${parttype}", $blockdev], errmsg => $err);
 }
 
 # Wipes all labels and the first 200 MiB of a disk/partition (or the whole if it is smaller).
