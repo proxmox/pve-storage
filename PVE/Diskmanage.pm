@@ -63,8 +63,8 @@ sub init_disk {
 
     assert_blockdev($disk);
 
-    # we should already have checked if it is in use in the api call
-    # but we check again for safety
+    # we should already have checked these in the api call, but we check again for safety
+    die "$disk is a partition\n" if is_partition($disk);
     die "disk $disk is already in use\n" if disk_is_used($disk);
 
     my $id = $uuid || 'R';

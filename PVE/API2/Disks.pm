@@ -260,6 +260,7 @@ __PACKAGE__->register_method ({
 
 	my $authuser = $rpcenv->get_user();
 
+	die "$disk is a partition\n" if PVE::Diskmanage::is_partition($disk);
 	die "disk $disk already in use\n" if PVE::Diskmanage::disk_is_used($disk);
 	my $worker = sub {
 	    PVE::Diskmanage::init_disk($disk, $param->{uuid});
