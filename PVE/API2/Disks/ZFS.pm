@@ -373,7 +373,16 @@ __PACKAGE__->register_method ({
 	    PVE::Diskmanage::locked_disk_action(sub {
 		for my $dev (@$devs) {
 		    PVE::Diskmanage::assert_disk_unused($dev);
-		    my $sysfsdev = $dev =~ s!^/dev/!/sys/block/!r;
+
+		    my $is_partition = PVE::Diskmanage::is_partition($dev);
+		    my $sysfsdev = $is_partition ? PVE::Diskmanage::get_blockdev($dev) : $dev;
+
+		    $sysfsdev =~ s!^/dev/!/sys/block/!;
+		    if ($is_partition) {
+			my $part = $dev =~ s!^/dev/!!r;
+			$sysfsdev .= "/${part}";
+		    }
+
 		    my $udevinfo = PVE::Diskmanage::get_udev_info($sysfsdev);
 		    $dev = $udevinfo->{by_id_link} if defined($udevinfo->{by_id_link});
 		}

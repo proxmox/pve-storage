@@ -78,7 +78,7 @@ sub disk_is_used {
     my $dev = $disk;
     $dev =~ s|^/dev/||;
 
-    my $disklist = get_disks($dev, 1);
+    my $disklist = get_disks($dev, 1, 1);
 
     die "'$disk' is not a valid local disk\n" if !defined($disklist->{$dev});
     return 1 if $disklist->{$dev}->{used};

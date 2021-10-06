@@ -214,20 +214,24 @@ __PACKAGE__->register_method ({
 	    PVE::Diskmanage::locked_disk_action(sub {
 		PVE::Diskmanage::assert_disk_unused($dev);
 
-		# create partition
-		my $cmd = [$SGDISK, '-n1', '-t1:8300', $dev];
-		print "# ", join(' ', @$cmd), "\n";
-		run_command($cmd);
+		my $part = $dev;
 
-		my ($devname) = $dev =~ m|^/dev/(.*)$|;
-		my $part = "/dev/";
-		dir_glob_foreach("/sys/block/$devname", qr/\Q$devname\E.+/, sub {
-		    my ($partition) = @_;
-		    $part .= $partition;
-		});
+		if (!PVE::Diskmanage::is_partition($dev)) {
+		    # create partition
+		    my $cmd = [$SGDISK, '-n1', '-t1:8300', $dev];
+		    print "# ", join(' ', @$cmd), "\n";
+		    run_command($cmd);
+
+		    my ($devname) = $dev =~ m|^/dev/(.*)$|;
+		    $part = "/dev/";
+		    dir_glob_foreach("/sys/block/$devname", qr/\Q$devname\E.+/, sub {
+			my ($partition) = @_;
+			$part .= $partition;
+		    });
+		}
 
 		# create filesystem
-		$cmd = [$MKFS, '-t', $type, $part];
+		my $cmd = [$MKFS, '-t', $type, $part];
 		print "# ", join(' ', @$cmd), "\n";
 		run_command($cmd);
 
