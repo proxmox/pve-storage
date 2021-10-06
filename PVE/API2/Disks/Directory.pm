@@ -216,7 +216,10 @@ __PACKAGE__->register_method ({
 
 		my $part = $dev;
 
-		if (!PVE::Diskmanage::is_partition($dev)) {
+		if (PVE::Diskmanage::is_partition($dev)) {
+		    eval { PVE::Diskmanage::change_parttype($dev, '8300'); };
+		    warn $@ if $@;
+		} else {
 		    # create partition
 		    my $cmd = [$SGDISK, '-n1', '-t1:8300', $dev];
 		    print "# ", join(' ', @$cmd), "\n";

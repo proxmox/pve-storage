@@ -110,6 +110,11 @@ __PACKAGE__->register_method ({
 	    PVE::Diskmanage::locked_disk_action(sub {
 		PVE::Diskmanage::assert_disk_unused($dev);
 
+		if (PVE::Diskmanage::is_partition($dev)) {
+		    eval { PVE::Diskmanage::change_parttype($dev, '8E00'); };
+		    warn $@ if $@;
+		}
+
 		PVE::Storage::LVMPlugin::lvm_create_volume_group($dev, $name);
 		my $pv = PVE::Storage::LVMPlugin::lvm_pv_info($dev);
 		# keep some free space just in case

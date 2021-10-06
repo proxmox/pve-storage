@@ -375,6 +375,17 @@ __PACKAGE__->register_method ({
 		    PVE::Diskmanage::assert_disk_unused($dev);
 
 		    my $is_partition = PVE::Diskmanage::is_partition($dev);
+
+		    if ($is_partition) {
+			eval {
+			    PVE::Diskmanage::change_parttype(
+				$dev,
+				'6a898cc3-1dd2-11b2-99a6-080020736631',
+			    );
+			};
+			warn $@ if $@;
+		    }
+
 		    my $sysfsdev = $is_partition ? PVE::Diskmanage::get_blockdev($dev) : $dev;
 
 		    $sysfsdev =~ s!^/dev/!/sys/block/!;
