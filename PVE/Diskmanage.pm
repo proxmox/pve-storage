@@ -927,6 +927,7 @@ sub change_parttype {
 }
 
 # Wipes all labels and the first 200 MiB of a disk/partition (or the whole if it is smaller).
+# If called with a partition, also sets the partition type to 0x83 'Linux filesystem'.
 # Expected to be called with a result of verify_blockdev_path().
 sub wipe_blockdev {
     my ($devpath) = @_;
@@ -959,6 +960,11 @@ sub wipe_blockdev {
 	['dd', 'if=/dev/zero', "of=${devpath}", 'bs=1M', 'conv=fdatasync', "count=${count}"],
 	errmsg => "error wiping '${devpath}'",
     );
+
+    if (is_partition($devpath)) {
+	eval { change_parttype($devpath, '8300'); };
+	warn $@ if $@;
+    }
 }
 
 1;
