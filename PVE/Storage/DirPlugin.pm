@@ -59,6 +59,7 @@ sub options {
 	mkdir => { optional => 1 },
 	is_mountpoint => { optional => 1 },
 	bwlimit => { optional => 1 },
+	preallocation => { optional => 1 },
    };
 }
 

@@ -41,6 +41,19 @@ our @SHARED_STORAGE = (
     'pbs',
 );
 
+our $QCOW2_PREALLOCATION = {
+    off => 1,
+    metadata => 1,
+    falloc => 1,
+    full => 1,
+};
+
+our $RAW_PREALLOCATION = {
+    off => 1,
+    falloc => 1,
+    full => 1,
+};
+
 our $MAX_VOLUMES_PER_GUEST = 1024;
 
 cfs_register_file ('storage.cfg',
@@ -150,6 +163,13 @@ my $defaultData = {
 	'format' => {
 	    description => "Default image format.",
 	    type => 'string', format => 'pve-storage-format',
+	    optional => 1,
+	},
+	preallocation => {
+	    description => "Preallocation mode for raw and qcow2 images. " .
+		"Using 'metadata' on raw images results in preallocation=off.",
+	    type => 'string', enum => ['off', 'metadata', 'falloc', 'full'],
+	    default => 'metadata',
 	    optional => 1,
 	},
     },
@@ -442,6 +462,31 @@ sub parse_config {
     }
 
     return $cfg;
+}
+
+sub preallocation_cmd_option {
+    my ($scfg, $fmt) = @_;
+
+    my $prealloc = $scfg->{preallocation};
+
+    if ($fmt eq 'qcow2') {
+	$prealloc = $prealloc // 'metadata';
+
+	die "preallocation mode '$prealloc' not supported by format '$fmt'\n"
+	    if !$QCOW2_PREALLOCATION->{$prealloc};
+
+	return "preallocation=$prealloc";
+    } elsif ($fmt eq 'raw') {
+	$prealloc = $prealloc // 'off';
+	$prealloc = 'off' if $prealloc eq 'metadata';
+
+	die "preallocation mode '$prealloc' not supported by format '$fmt'\n"
+	    if !$RAW_PREALLOCATION->{$prealloc};
+
+	return "preallocation=$prealloc";
+    }
+
+    return;
 }
 
 # Storage implementation
@@ -764,7 +809,8 @@ sub alloc_image {
     } else {
 	my $cmd = ['/usr/bin/qemu-img', 'create'];
 
-	push @$cmd, '-o', 'preallocation=metadata' if $fmt eq 'qcow2';
+	my $prealloc_opt = preallocation_cmd_option($scfg, $fmt);
+	push @$cmd, '-o', $prealloc_opt if defined($prealloc_opt);
 
 	push @$cmd, '-f', $fmt, $path, "${size}K";
 

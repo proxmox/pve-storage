@@ -137,6 +137,7 @@ sub options {
 	format => { optional => 1 },
 	mkdir => { optional => 1 },
 	bwlimit => { optional => 1 },
+	preallocation => { optional => 1 },
     };
 }
 
@@ -260,7 +261,8 @@ sub alloc_image {
 
     my $cmd = ['/usr/bin/qemu-img', 'create'];
 
-    push @$cmd, '-o', 'preallocation=metadata' if $fmt eq 'qcow2';
+    my $prealloc_opt = PVE::Storage::Plugin::preallocation_cmd_option($scfg, $fmt);
+    push @$cmd, '-o', $prealloc_opt if defined($prealloc_opt);
 
     push @$cmd, '-f', $fmt, $volumepath, "${size}K";
 
