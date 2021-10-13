@@ -103,7 +103,7 @@ PVE::Storage::Plugin->init();
 
 our $iso_extension_re = qr/\.(?:iso|img)/i;
 
-our $vztmpl_extension_re = qr/\.tar\.([gx]z)/i;
+our $vztmpl_extension_re = qr/\.tar\.(gz|xz|zst)/i;
 
 #  PVE::Storage utility functions
 
