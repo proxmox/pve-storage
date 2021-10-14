@@ -1,3 +1,20 @@
+libpve-storage-perl (7.0-13) bullseye; urgency=medium
+
+  * btrfs: free image: only remove snapshots for current subvol
+
+  * diskmanage: wipe blockdev: also change partition type
+
+  * diskmanage: don't set usage for unused partitions
+
+  * partially fix #2285: api: disks: allow partitions for creation paths
+
+  * ct templates: support zstd compressed archives
+
+  * fix #3580: plugins: make preallocation mode selectable for qcow2 and
+    raw images
+
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 14 Oct 2021 11:22:25 +0200
+
 libpve-storage-perl (7.0-12) bullseye; urgency=medium
 
   * btrfs: avoid undef warnings with format
