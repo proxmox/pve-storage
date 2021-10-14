@@ -514,6 +514,7 @@ plan tests => $plan + 1;
 		my @cmd = ( '/usr/bin/qemu-img', 'create', "$file", DEFAULT_SIZE );
 		push @cmd, ( '-f', $suffix ) if $suffix;
 		push @cmd, ( '-u', '-b', @$parent[$num] ) if $parent;
+		push @cmd, ( '-F', $suffix ) if $parent && $suffix;
 		$num++;
 
 		run_command([@cmd]);
