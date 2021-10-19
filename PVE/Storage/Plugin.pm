@@ -1212,6 +1212,16 @@ sub status {
     return ($res->{total}, $res->{avail}, $res->{used}, 1);
 }
 
+# Returns a hash with the snapshot names as keys and the following data:
+# id        - Unique id to distinguish different snapshots even if the have the same name.
+# timestamp - Creation time of the snapshot (seconds since epoch).
+# Returns an empty hash if the volume does not exist.
+sub volume_snapshot_info {
+    my ($class, $scfg, $storeid, $volname) = @_;
+
+    die "volume_snapshot_info is not implemented for $class";
+}
+
 sub volume_snapshot_list {
     my ($class, $scfg, $storeid, $volname) = @_;
 

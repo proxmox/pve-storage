@@ -371,6 +371,15 @@ sub volume_has_feature {
     }
 }
 
+sub volume_snapshot_info {
+    my ($cfg, $volid) = @_;
+
+    my ($storeid, $volname) = parse_volume_id($volid);
+    my $scfg = storage_config($cfg, $storeid);
+    my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
+    return $plugin->volume_snapshot_info($scfg, $storeid, $volname);
+}
+
 sub volume_snapshot_list {
     my ($cfg, $volid) = @_;
 

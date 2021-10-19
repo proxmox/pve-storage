@@ -510,6 +510,28 @@ sub volume_rollback_is_possible {
     return 1;
 }
 
+sub volume_snapshot_info {
+    my ($class, $scfg, $storeid, $volname) = @_;
+
+    my $vname = ($class->parse_volname($volname))[1];
+
+    my @params = ('-Hp', '-t', 'snapshot', '-o', 'name,guid,creation', "$scfg->{pool}\/$vname");
+    my $text = $class->zfs_request($scfg, undef, 'list', @params);
+    my @lines = split(/\n/, $text);
+
+    my $info = {};
+    for my $line (@lines) {
+	my ($snapshot, $guid, $creation) = split(/\s+/, $line);
+	(my $snap_name = $snapshot) =~ s/^.*@//;
+
+	$info->{$snap_name} = {
+	    id => $guid,
+	    timestamp => $creation,
+	};
+    }
+    return $info;
+}
+
 sub volume_snapshot_list {
     my ($class, $scfg, $storeid, $volname) = @_;
 
