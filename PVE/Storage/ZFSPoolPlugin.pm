@@ -532,15 +532,6 @@ sub volume_snapshot_info {
     return $info;
 }
 
-sub volume_snapshot_list {
-    my ($class, $scfg, $storeid, $volname) = @_;
-
-    my $snaps = [];
-    # return an empty array if dataset does not exist.
-    eval { $snaps = $class->zfs_get_sorted_snapshot_list($scfg, $volname, ['-S', 'name']); };
-    return $snaps;
-}
-
 my sub dataset_mounted_heuristic {
     my ($dataset) = @_;
 

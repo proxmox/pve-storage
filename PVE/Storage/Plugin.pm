@@ -1222,15 +1222,6 @@ sub volume_snapshot_info {
     die "volume_snapshot_info is not implemented for $class";
 }
 
-sub volume_snapshot_list {
-    my ($class, $scfg, $storeid, $volname) = @_;
-
-    # implement in subclass
-    die "Volume_snapshot_list is not implemented for $class";
-
-    # return an empty array if dataset does not exist.
-}
-
 sub activate_storage {
     my ($class, $storeid, $scfg, $cache) = @_;
 
