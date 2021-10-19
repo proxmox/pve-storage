@@ -41,11 +41,11 @@ use PVE::Storage::PBSPlugin;
 use PVE::Storage::BTRFSPlugin;
 
 # Storage API version. Increment it on changes in storage API interface.
-use constant APIVER => 9;
+use constant APIVER => 10;
 # Age is the number of versions we're backward compatible with.
 # This is like having 'current=APIVER' and age='APIAGE' in libtool,
 # see https://www.gnu.org/software/libtool/manual/html_node/Libtool-versioning.html
-use constant APIAGE => 0;
+use constant APIAGE => 1;
 
 # load standard plugins
 PVE::Storage::DirPlugin->register();

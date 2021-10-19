@@ -6,6 +6,21 @@ without breaking anything unaware of it.)
 
 Future changes should be documented in here.
 
+##  Version 10:
+
+* Replace `volume_snapshot_list` with `volume_snapshot_info`:
+
+  `volume_snapshot_list` was used exclusively by replication and currently, replication is only
+  allowed for the storage type `zfspool`. Thus, no external plugins should be affected by this
+  change and `APIAGE` is *not* reset.
+
+  `volume_snapshot_info` returns a hash with snapshot names as keys and `id` and `timestamp` data
+  for each snapshot, rather than just an array of snaphsot names like `volume_snapshot_list` did.
+
+* Add `blockers` parameter to `volume_rollback_is_possible`:
+
+  The parameter *can* be used to return a list of snapshots that is currently preventing rollback.
+
 ##  Version 9: (AGE resets to 0):
 
 * volume_import_formats gets a new parameter *inserted*:
@@ -23,3 +38,4 @@ Future changes should be documented in here.
 * $with_snapshots *may* now be an array reference containing an ordered list of
   snapshots, but *may* also just be a boolean, and the contained list *may* be
   ignored, so it can still be treated as a boolean.
+
