@@ -437,12 +437,12 @@ __PACKAGE__->register_method ({
 	my $path;
 
 	if ($content eq 'iso') {
-	    if ($filename !~ m![^/]+$PVE::Storage::iso_extension_re$!) {
+	    if ($filename !~ m![^/]+$PVE::Storage::ISO_EXT_RE_0$!) {
 		raise_param_exc({ filename => "wrong file extension" });
 	    }
 	    $path = PVE::Storage::get_iso_dir($cfg, $param->{storage});
 	} elsif ($content eq 'vztmpl') {
-	    if ($filename !~ m![^/]+$PVE::Storage::vztmpl_extension_re$!) {
+	    if ($filename !~ m![^/]+$PVE::Storage::VZTMPL_EXT_RE_1$!) {
 		raise_param_exc({ filename => "wrong file extension" });
 	    }
 	    $path = PVE::Storage::get_vztmpl_dir($cfg, $param->{storage});
@@ -618,12 +618,12 @@ __PACKAGE__->register_method({
 
 	my $path;
 	if ($content eq 'iso') {
-	    if ($filename !~ m![^/]+$PVE::Storage::iso_extension_re$!) {
+	    if ($filename !~ m![^/]+$PVE::Storage::ISO_EXT_RE_0$!) {
 		raise_param_exc({ filename => "wrong file extension" });
 	    }
 	    $path = PVE::Storage::get_iso_dir($cfg, $storage);
 	} elsif ($content eq 'vztmpl') {
-	    if ($filename !~ m![^/]+$PVE::Storage::vztmpl_extension_re$!) {
+	    if ($filename !~ m![^/]+$PVE::Storage::VZTMPL_EXT_RE_1$!) {
 		raise_param_exc({ filename => "wrong file extension" });
 	    }
 	    $path = PVE::Storage::get_vztmpl_dir($cfg, $storage);

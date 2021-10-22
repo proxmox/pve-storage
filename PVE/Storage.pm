@@ -101,9 +101,15 @@ if ( -d '/usr/share/perl5/PVE/Storage/Custom' ) {
 # initialize all plugins
 PVE::Storage::Plugin->init();
 
-our $iso_extension_re = qr/\.(?:iso|img)/i;
+# the following REs indicate the number or capture groups via the trailing digit
+# CAUTION don't forget to update the digits accordingly after messing with the capture groups
 
-our $vztmpl_extension_re = qr/\.tar\.(gz|xz|zst)/i;
+our $ISO_EXT_RE_0 = qr/\.(?:iso|img)/i;
+
+our $VZTMPL_EXT_RE_1 = qr/\.tar\.(gz|xz|zst)/i;
+
+# FIXME remove with PVE 8.0, add versioned breaks for pve-manager
+our $vztmpl_extension_re = $VZTMPL_EXT_RE_1;
 
 #  PVE::Storage utility functions
 
@@ -568,10 +574,10 @@ sub path_to_volume_id {
 		    return ('images', $info->{volid});
 		}
 	    }
-	} elsif ($path =~ m!^$isodir/([^/]+$iso_extension_re)$!) {
+	} elsif ($path =~ m!^$isodir/([^/]+$ISO_EXT_RE_0)$!) {
 	    my $name = $1;
 	    return ('iso', "$sid:iso/$name");
-	} elsif ($path =~ m!^$tmpldir/([^/]+$vztmpl_extension_re)$!) {
+	} elsif ($path =~ m!^$tmpldir/([^/]+$VZTMPL_EXT_RE_1)$!) {
 	    my $name = $1;
 	    return ('vztmpl', "$sid:vztmpl/$name");
 	} elsif ($path =~ m!^$privatedir/(\d+)$!) {
