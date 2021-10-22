@@ -569,7 +569,7 @@ sub parse_volname {
 	return ('vztmpl', $1);
     } elsif ($volname =~ m!^rootdir/(\d+)$!) {
 	return ('rootdir', $1, $1);
-    } elsif ($volname =~ m!^backup/([^/]+(?:\.(?:tgz|(?:(?:tar|vma)(?:\.(?:${\COMPRESSOR_RE}))?))))$!) {
+    } elsif ($volname =~ m!^backup/([^/]+$PVE::Storage::BACKUP_EXT_RE_2)$!) {
 	my $fn = $1;
 	if ($fn =~ m/^vzdump-(openvz|lxc|qemu)-(\d+)-.+/) {
 	    return ('backup', $fn, $2);
@@ -1151,7 +1151,7 @@ my $get_subdir_files = sub {
 	    $info = { volid => "$sid:vztmpl/$1", format => "t$2" };
 
 	} elsif ($tt eq 'backup') {
-	    next if $fn !~ m!/([^/]+\.(tgz|(?:(?:tar|vma)(?:\.(${\COMPRESSOR_RE}))?)))$!;
+	    next if $fn !~ m!/([^/]+$PVE::Storage::BACKUP_EXT_RE_2)$!;
 	    my $original = $fn;
 	    my $format = $2;
 	    $fn = $1;

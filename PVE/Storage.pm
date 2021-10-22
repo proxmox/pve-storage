@@ -108,6 +108,8 @@ our $ISO_EXT_RE_0 = qr/\.(?:iso|img)/i;
 
 our $VZTMPL_EXT_RE_1 = qr/\.tar\.(gz|xz|zst)/i;
 
+our $BACKUP_EXT_RE_2 = qr/\.(tgz|(?:tar|vma)(?:\.(${\PVE::Storage::Plugin::COMPRESSOR_RE}))?)/;
+
 # FIXME remove with PVE 8.0, add versioned breaks for pve-manager
 our $vztmpl_extension_re = $VZTMPL_EXT_RE_1;
 
@@ -583,7 +585,7 @@ sub path_to_volume_id {
 	} elsif ($path =~ m!^$privatedir/(\d+)$!) {
 	    my $vmid = $1;
 	    return ('rootdir', "$sid:rootdir/$vmid");
-	} elsif ($path =~ m!^$backupdir/([^/]+\.(?:tgz|(?:(?:tar|vma)(?:\.(?:${\PVE::Storage::Plugin::COMPRESSOR_RE}))?)))$!) {
+	} elsif ($path =~ m!^$backupdir/([^/]+$BACKUP_EXT_RE_2)$!) {
 	    my $name = $1;
 	    return ('backup', "$sid:backup/$name");
 	} elsif ($path =~ m!^$snippetsdir/([^/]+)$!) {
@@ -1509,15 +1511,15 @@ sub archive_info {
     my $info;
 
     my $volid = basename($archive);
-    if ($volid =~ /^(vzdump-(lxc|openvz|qemu)-.+\.(tgz$|tar|vma)(?:\.(${\PVE::Storage::Plugin::COMPRESSOR_RE}))?)$/) {
+    if ($volid =~ /^(vzdump-(lxc|openvz|qemu)-.+$BACKUP_EXT_RE_2)$/) {
 	my $filename = "$1"; # untaint
-	my ($type, $format, $comp) = ($2, $3, $4);
-	my $format_re = defined($comp) ? "$format.$comp" : "$format";
+	my ($type, $extension, $comp) = ($2, $3, $4);
+	(my $format = $extension) =~ s/\..*//;
 	$info = decompressor_info($format, $comp);
 	$info->{filename} = $filename;
 	$info->{type} = $type;
 
-	if ($volid =~ /^(vzdump-${type}-([1-9][0-9]{2,8})-(\d{4})_(\d{2})_(\d{2})-(\d{2})_(\d{2})_(\d{2}))\.${format_re}$/) {
+	if ($volid =~ /^(vzdump-${type}-([1-9][0-9]{2,8})-(\d{4})_(\d{2})_(\d{2})-(\d{2})_(\d{2})_(\d{2}))\.${extension}$/) {
 	    $info->{logfilename} = "$1.log";
 	    $info->{vmid} = int($2);
 	    $info->{ctime} = timelocal($8, $7, $6, $5, $4 - 1, $3);
