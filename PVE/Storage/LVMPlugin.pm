@@ -97,6 +97,17 @@ sub lvm_create_volume_group {
     run_command($cmd, errmsg => "vgcreate $vgname $device error", errfunc => $ignore_no_medium_warnings, outfunc => $ignore_no_medium_warnings);
 }
 
+sub lvm_destroy_volume_group {
+    my ($vgname) = @_;
+
+    run_command(
+	['vgremove', '-y', $vgname],
+	errmsg => "unable to remove volume group $vgname",
+	errfunc => $ignore_no_medium_warnings,
+	outfunc => $ignore_no_medium_warnings,
+    );
+}
+
 sub lvm_vgs {
     my ($includepvs) = @_;
 
