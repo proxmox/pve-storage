@@ -460,6 +460,13 @@ __PACKAGE__->register_method ({
 	properties => {
 	    node => get_standard_option('pve-node'),
 	    name => get_standard_option('pve-storage-id'),
+	    'cleanup-config' => {
+		description => "Marks associated storage(s) as not available on this node anymore ".
+		    "or removes them from the configuration (if configured for this node only).",
+		type => 'boolean',
+		optional => 1,
+		default => 0,
+	    },
 	    'cleanup-disks' => {
 		description => "Also wipe disks so they can be repurposed afterwards.",
 		type => 'boolean',
@@ -476,6 +483,7 @@ __PACKAGE__->register_method ({
 	my $user = $rpcenv->get_user();
 
 	my $name = $param->{name};
+	my $node = $param->{node};
 
 	my $worker = sub {
 	    PVE::Diskmanage::locked_disk_action(sub {
@@ -516,10 +524,22 @@ __PACKAGE__->register_method ({
 
 		run_command(['zpool', 'destroy', $name]);
 
+		my $config_err;
+		if ($param->{'cleanup-config'}) {
+		    my $match = sub {
+			my ($scfg) = @_;
+			return $scfg->{type} eq 'zfspool' && $scfg->{pool} eq $name;
+		    };
+		    eval { PVE::API2::Storage::Config->cleanup_storages_for_node($match, $node); };
+		    warn $config_err = $@ if $@;
+		}
+
 		eval { PVE::Diskmanage::wipe_blockdev($_) for $to_wipe->@*; };
 		my $err = $@;
 		PVE::Diskmanage::udevadm_trigger($to_wipe->@*);
 		die "cleanup failed - $err" if $err;
+
+		die "config cleanup failed - $config_err" if $config_err;
 	    });
 	};
 

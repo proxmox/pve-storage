@@ -314,6 +314,13 @@ __PACKAGE__->register_method ({
 	properties => {
 	    node => get_standard_option('pve-node'),
 	    name => get_standard_option('pve-storage-id'),
+	    'cleanup-config' => {
+		description => "Marks associated storage(s) as not available on this node anymore ".
+		    "or removes them from the configuration (if configured for this node only).",
+		type => 'boolean',
+		optional => 1,
+		default => 0,
+	    },
 	    'cleanup-disks' => {
 		description => "Also wipe disk so it can be repurposed afterwards.",
 		type => 'boolean',
@@ -330,6 +337,7 @@ __PACKAGE__->register_method ({
 	my $user = $rpcenv->get_user();
 
 	my $name = $param->{name};
+	my $node = $param->{node};
 
 	my $worker = sub {
 	    my $path = "/mnt/pve/$name";
@@ -357,10 +365,22 @@ __PACKAGE__->register_method ({
 
 		unlink $mountunitpath or $! == ENOENT or die "cannot remove $mountunitpath - $!\n";
 
+		my $config_err;
+		if ($param->{'cleanup-config'}) {
+		    my $match = sub {
+			my ($scfg) = @_;
+			return $scfg->{type} eq 'dir' && $scfg->{path} eq $path;
+		    };
+		    eval { PVE::API2::Storage::Config->cleanup_storages_for_node($match, $node); };
+		    warn $config_err = $@ if $@;
+		}
+
 		if ($to_wipe) {
 		    PVE::Diskmanage::wipe_blockdev($to_wipe);
 		    PVE::Diskmanage::udevadm_trigger($to_wipe);
 		}
+
+		die "config cleanup failed - $config_err" if $config_err;
 	    });
 	};
 

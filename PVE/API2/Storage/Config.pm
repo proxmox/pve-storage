@@ -38,6 +38,33 @@ my $api_storage_config = sub {
     return $scfg;
 };
 
+# For storages that $match->($scfg), update node restrictions to not include $node anymore and
+# in case no node remains, remove the storage altogether.
+sub cleanup_storages_for_node {
+    my ($self, $match, $node) = @_;
+
+    my $config = PVE::Storage::config();
+    my $cluster_nodes = PVE::Cluster::get_nodelist();
+
+    for my $storeid (keys $config->{ids}->%*) {
+	my $scfg = PVE::Storage::storage_config($config, $storeid);
+	next if !$match->($scfg);
+
+	my $nodes = $scfg->{nodes} || { map { $_ => 1 } $cluster_nodes->@* };
+	next if !$nodes->{$node}; # not configured on $node, so nothing to do
+	delete $nodes->{$node};
+
+	if (scalar(keys $nodes->%*) > 0) {
+	    $self->update({
+		nodes => join(',', sort keys $nodes->%*),
+		storage => $storeid,
+	    });
+	} else {
+	    $self->delete({storage => $storeid});
+	}
+    }
+}
+
 __PACKAGE__->register_method ({
     name => 'index',
     path => '',

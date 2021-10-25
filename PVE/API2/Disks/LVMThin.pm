@@ -177,6 +177,13 @@ __PACKAGE__->register_method ({
 	    node => get_standard_option('pve-node'),
 	    name => get_standard_option('pve-storage-id'),
 	    'volume-group' => get_standard_option('pve-storage-id'),
+	    'cleanup-config' => {
+		description => "Marks associated storage(s) as not available on this node anymore ".
+		    "or removes them from the configuration (if configured for this node only).",
+		type => 'boolean',
+		optional => 1,
+		default => 0,
+	    },
 	    'cleanup-disks' => {
 		description => "Also wipe disks so they can be repurposed afterwards.",
 		type => 'boolean',
@@ -194,6 +201,7 @@ __PACKAGE__->register_method ({
 
 	my $vg = $param->{'volume-group'};
 	my $lv = $param->{name};
+	my $node = $param->{node};
 
 	my $worker = sub {
 	    PVE::Diskmanage::locked_disk_action(sub {
@@ -203,6 +211,18 @@ __PACKAGE__->register_method ({
 		    if !grep { $_->{lv} eq $lv && $_->{vg} eq $vg } $thinpools->@*;
 
 		run_command(['lvremove', '-y', "${vg}/${lv}"]);
+
+		my $config_err;
+		if ($param->{'cleanup-config'}) {
+		    my $match = sub {
+			my ($scfg) = @_;
+			return $scfg->{type} eq 'lvmthin'
+			    && $scfg->{vgname} eq $vg
+			    && $scfg->{thinpool} eq $lv;
+		    };
+		    eval { PVE::API2::Storage::Config->cleanup_storages_for_node($match, $node); };
+		    warn $config_err = $@ if $@;
+		}
 
 		if ($param->{'cleanup-disks'}) {
 		    my $vgs = PVE::Storage::LVMPlugin::lvm_vgs(1);
@@ -222,6 +242,8 @@ __PACKAGE__->register_method ({
 		    PVE::Diskmanage::udevadm_trigger($wiped->@*);
 		    die "cleanup failed - $err" if $err;
 		}
+
+		die "config cleanup failed - $config_err" if $config_err;
 	    });
 	};
 
