@@ -177,6 +177,12 @@ __PACKAGE__->register_method ({
 	    node => get_standard_option('pve-node'),
 	    name => get_standard_option('pve-storage-id'),
 	    'volume-group' => get_standard_option('pve-storage-id'),
+	    'cleanup-disks' => {
+		description => "Also wipe disks so they can be repurposed afterwards.",
+		type => 'boolean',
+		optional => 1,
+		default => 0,
+	    },
 	},
     },
     returns => { type => 'string' },
@@ -197,6 +203,25 @@ __PACKAGE__->register_method ({
 		    if !grep { $_->{lv} eq $lv && $_->{vg} eq $vg } $thinpools->@*;
 
 		run_command(['lvremove', '-y', "${vg}/${lv}"]);
+
+		if ($param->{'cleanup-disks'}) {
+		    my $vgs = PVE::Storage::LVMPlugin::lvm_vgs(1);
+
+		    die "no such volume group '$vg'\n" if !$vgs->{$vg};
+		    die "volume group '$vg' still in use\n" if $vgs->{$vg}->{lvcount} > 0;
+
+		    my $wiped = [];
+		    eval {
+			for my $pv ($vgs->{$vg}->{pvs}->@*) {
+			    my $dev = PVE::Diskmanage::verify_blockdev_path($pv->{name});
+			    PVE::Diskmanage::wipe_blockdev($dev);
+			    push $wiped->@*, $dev;
+			}
+		    };
+		    my $err = $@;
+		    PVE::Diskmanage::udevadm_trigger($wiped->@*);
+		    die "cleanup failed - $err" if $err;
+		}
 	    });
 	};
 

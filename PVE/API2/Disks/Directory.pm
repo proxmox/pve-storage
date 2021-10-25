@@ -314,6 +314,12 @@ __PACKAGE__->register_method ({
 	properties => {
 	    node => get_standard_option('pve-node'),
 	    name => get_standard_option('pve-storage-id'),
+	    'cleanup-disks' => {
+		description => "Also wipe disk so it can be repurposed afterwards.",
+		type => 'boolean',
+		optional => 1,
+		default => 0,
+	    },
 	},
     },
     returns => { type => 'string' },
@@ -331,10 +337,30 @@ __PACKAGE__->register_method ({
 	    my $mountunitpath = "/etc/systemd/system/$mountunitname";
 
 	    PVE::Diskmanage::locked_disk_action(sub {
+		my $to_wipe;
+		if ($param->{'cleanup-disks'}) {
+		    my $unit = $read_ini->($mountunitpath);
+
+		    my $dev = PVE::Diskmanage::verify_blockdev_path($unit->{'Mount'}->{'What'});
+		    $to_wipe = $dev;
+
+		    # clean up whole device if this is the only partition
+		    $dev =~ s|^/dev/||;
+		    my $info = PVE::Diskmanage::get_disks($dev, 1, 1);
+		    die "unable to obtain information for disk '$dev'\n" if !$info->{$dev};
+		    $to_wipe = $info->{$dev}->{parent}
+			if $info->{$dev}->{parent} && scalar(keys $info->%*) == 2;
+		}
+
 		run_command(['systemctl', 'stop', $mountunitname]);
 		run_command(['systemctl', 'disable', $mountunitname]);
 
 		unlink $mountunitpath or $! == ENOENT or die "cannot remove $mountunitpath - $!\n";
+
+		if ($to_wipe) {
+		    PVE::Diskmanage::wipe_blockdev($to_wipe);
+		    PVE::Diskmanage::udevadm_trigger($to_wipe);
+		}
 	    });
 	};
 

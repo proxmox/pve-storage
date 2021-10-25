@@ -460,6 +460,12 @@ __PACKAGE__->register_method ({
 	properties => {
 	    node => get_standard_option('pve-node'),
 	    name => get_standard_option('pve-storage-id'),
+	    'cleanup-disks' => {
+		description => "Also wipe disks so they can be repurposed afterwards.",
+		type => 'boolean',
+		optional => 1,
+		default => 0,
+	    },
 	},
     },
     returns => { type => 'string' },
@@ -473,12 +479,47 @@ __PACKAGE__->register_method ({
 
 	my $worker = sub {
 	    PVE::Diskmanage::locked_disk_action(sub {
+		my $to_wipe = [];
+		if ($param->{'cleanup-disks'}) {
+		    # Using -o name does not only output the name in combination with -v.
+		    run_command(['zpool', 'list', '-vHPL', $name], outfunc => sub {
+			my ($line) = @_;
+
+			my ($name) = PVE::Tools::split_list($line);
+			return if $name !~ m|^/dev/.+|;
+
+			my $dev = PVE::Diskmanage::verify_blockdev_path($name);
+			my $wipe = $dev;
+
+			$dev =~ s|^/dev/||;
+			my $info = PVE::Diskmanage::get_disks($dev, 1, 1);
+			die "unable to obtain information for disk '$dev'\n" if !$info->{$dev};
+
+			# Wipe whole disk if usual ZFS layout with partition 9 as ZFS reserved.
+			my $parent = $info->{$dev}->{parent};
+			if ($parent && scalar(keys $info->%*) == 3) {
+			    $parent =~ s|^/dev/||;
+			    my $info9 = $info->{"${parent}9"};
+
+			    $wipe = $info->{$dev}->{parent} # need leading /dev/
+				if $info9 && $info9->{used} && $info9->{used} =~ m/^ZFS reserved/;
+			}
+
+			push $to_wipe->@*, $wipe;
+		    });
+		}
+
 		if (-e '/lib/systemd/system/zfs-import@.service') {
 		    my $importunit = 'zfs-import@' . PVE::Systemd::escape_unit($name) . '.service';
 		    run_command(['systemctl', 'disable', $importunit]);
 		}
 
 		run_command(['zpool', 'destroy', $name]);
+
+		eval { PVE::Diskmanage::wipe_blockdev($_) for $to_wipe->@*; };
+		my $err = $@;
+		PVE::Diskmanage::udevadm_trigger($to_wipe->@*);
+		die "cleanup failed - $err" if $err;
 	    });
 	};
 

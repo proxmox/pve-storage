@@ -198,6 +198,12 @@ __PACKAGE__->register_method ({
 	properties => {
 	    node => get_standard_option('pve-node'),
 	    name => get_standard_option('pve-storage-id'),
+	    'cleanup-disks' => {
+		description => "Also wipe disks so they can be repurposed afterwards.",
+		type => 'boolean',
+		optional => 1,
+		default => 0,
+	    },
 	},
     },
     returns => { type => 'string' },
@@ -211,7 +217,24 @@ __PACKAGE__->register_method ({
 
 	my $worker = sub {
 	    PVE::Diskmanage::locked_disk_action(sub {
+		my $vgs = PVE::Storage::LVMPlugin::lvm_vgs(1);
+		die "no such volume group '$name'\n" if !$vgs->{$name};
+
 		PVE::Storage::LVMPlugin::lvm_destroy_volume_group($name);
+
+		if ($param->{'cleanup-disks'}) {
+		    my $wiped = [];
+		    eval {
+			for my $pv ($vgs->{$name}->{pvs}->@*) {
+			    my $dev = PVE::Diskmanage::verify_blockdev_path($pv->{name});
+			    PVE::Diskmanage::wipe_blockdev($dev);
+			    push $wiped->@*, $dev;
+			}
+		    };
+		    my $err = $@;
+		    PVE::Diskmanage::udevadm_trigger($wiped->@*);
+		    die "cleanup failed - $err" if $err;
+		}
 	    });
 	};
 
