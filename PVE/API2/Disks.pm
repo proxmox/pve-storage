@@ -306,12 +306,7 @@ __PACKAGE__->register_method ({
 
 	my $worker = sub {
 	    PVE::Diskmanage::wipe_blockdev($disk);
-
-	    # FIXME: Remove once we depend on systemd >= v249.
-	    # Work around udev bug https://github.com/systemd/systemd/issues/18525 to ensure the
-	    # udev database is updated.
-	    eval { run_command(['udevadm', 'trigger', $disk]); };
-	    warn $@ if $@;
+	    PVE::Diskmanage::udevadm_trigger($disk);
 	};
 
 	my $basename = basename($disk); # avoid '/' in the ID

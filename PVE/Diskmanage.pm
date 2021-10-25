@@ -966,4 +966,15 @@ sub wipe_blockdev {
     }
 }
 
+# FIXME: Remove once we depend on systemd >= v249.
+# Work around udev bug https://github.com/systemd/systemd/issues/18525 ensuring database is updated.
+sub udevadm_trigger {
+    my @devs = @_;
+
+    return if scalar(@devs) == 0;
+
+    eval { run_command(['udevadm', 'trigger', @devs]); };
+    warn $@ if $@;
+}
+
 1;
