@@ -40,6 +40,10 @@ __PACKAGE__->register_method ({
 		    type => 'string',
 		    description => 'The name of the thinpool.',
 		},
+		vg => {
+		    type => 'string',
+		    description => 'The associated volume group.',
+		},
 		lv_size => {
 		    type => 'integer',
 		    description => 'The size of the thinpool in bytes.',

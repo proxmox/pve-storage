@@ -184,6 +184,7 @@ sub list_thinpools {
 	    next if $lvs->{$vg}->{$lvname}->{lv_type} ne 't';
 	    my $lv = $lvs->{$vg}->{$lvname};
 	    $lv->{lv} = $lvname;
+	    $lv->{vg} = $vg;
 	    push @$thinpools, $lv;
 	}
     }
