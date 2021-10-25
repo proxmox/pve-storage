@@ -449,4 +449,44 @@ __PACKAGE__->register_method ({
 	return $rpcenv->fork_worker('zfscreate', $name, $user, $worker);
     }});
 
+__PACKAGE__->register_method ({
+    name => 'delete',
+    path => '{name}',
+    method => 'DELETE',
+    proxyto => 'node',
+    protected => 1,
+    permissions => {
+	check => ['perm', '/', ['Sys.Modify', 'Datastore.Allocate']],
+    },
+    description => "Destroy a ZFS pool.",
+    parameters => {
+	additionalProperties => 0,
+	properties => {
+	    node => get_standard_option('pve-node'),
+	    name => get_standard_option('pve-storage-id'),
+	},
+    },
+    returns => { type => 'string' },
+    code => sub {
+	my ($param) = @_;
+
+	my $rpcenv = PVE::RPCEnvironment::get();
+	my $user = $rpcenv->get_user();
+
+	my $name = $param->{name};
+
+	my $worker = sub {
+	    PVE::Diskmanage::locked_disk_action(sub {
+		if (-e '/lib/systemd/system/zfs-import@.service') {
+		    my $importunit = 'zfs-import@' . PVE::Systemd::escape_unit($name) . '.service';
+		    run_command(['systemctl', 'disable', $importunit]);
+		}
+
+		run_command(['zpool', 'destroy', $name]);
+	    });
+	};
+
+	return $rpcenv->fork_worker('zfsremove', $name, $user, $worker);
+    }});
+
 1;

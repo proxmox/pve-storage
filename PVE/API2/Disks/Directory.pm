@@ -3,6 +3,8 @@ package PVE::API2::Disks::Directory;
 use strict;
 use warnings;
 
+use POSIX;
+
 use PVE::Diskmanage;
 use PVE::JSONSchema qw(get_standard_option);
 use PVE::RESTHandler;
@@ -299,6 +301,48 @@ __PACKAGE__->register_method ({
 	};
 
 	return $rpcenv->fork_worker('dircreate', $name, $user, $worker);
+    }});
+
+__PACKAGE__->register_method ({
+    name => 'delete',
+    path => '{name}',
+    method => 'DELETE',
+    proxyto => 'node',
+    protected => 1,
+    permissions => {
+	check => ['perm', '/', ['Sys.Modify', 'Datastore.Allocate']],
+    },
+    description => "Unmounts the storage and removes the mount unit.",
+    parameters => {
+	additionalProperties => 0,
+	properties => {
+	    node => get_standard_option('pve-node'),
+	    name => get_standard_option('pve-storage-id'),
+	},
+    },
+    returns => { type => 'string' },
+    code => sub {
+	my ($param) = @_;
+
+	my $rpcenv = PVE::RPCEnvironment::get();
+	my $user = $rpcenv->get_user();
+
+	my $name = $param->{name};
+
+	my $worker = sub {
+	    my $path = "/mnt/pve/$name";
+	    my $mountunitname = PVE::Systemd::escape_unit($path, 1) . ".mount";
+	    my $mountunitpath = "/etc/systemd/system/$mountunitname";
+
+	    PVE::Diskmanage::locked_disk_action(sub {
+		run_command(['systemctl', 'stop', $mountunitname]);
+		run_command(['systemctl', 'disable', $mountunitname]);
+
+		unlink $mountunitpath or $! == ENOENT or die "cannot remove $mountunitpath - $!\n";
+	    });
+	};
+
+	return $rpcenv->fork_worker('dirremove', $name, $user, $worker);
     }});
 
 1;

@@ -187,4 +187,39 @@ __PACKAGE__->register_method ({
 	return $rpcenv->fork_worker('lvmcreate', $name, $user, $worker);
     }});
 
+__PACKAGE__->register_method ({
+    name => 'delete',
+    path => '{name}',
+    method => 'DELETE',
+    proxyto => 'node',
+    protected => 1,
+    permissions => {
+	check => ['perm', '/', ['Sys.Modify', 'Datastore.Allocate']],
+    },
+    description => "Remove an LVM Volume Group.",
+    parameters => {
+	additionalProperties => 0,
+	properties => {
+	    node => get_standard_option('pve-node'),
+	    name => get_standard_option('pve-storage-id'),
+	},
+    },
+    returns => { type => 'string' },
+    code => sub {
+	my ($param) = @_;
+
+	my $rpcenv = PVE::RPCEnvironment::get();
+	my $user = $rpcenv->get_user();
+
+	my $name = $param->{name};
+
+	my $worker = sub {
+	    PVE::Diskmanage::locked_disk_action(sub {
+		PVE::Storage::LVMPlugin::lvm_destroy_volume_group($name);
+	    });
+	};
+
+	return $rpcenv->fork_worker('lvmremove', $name, $user, $worker);
+    }});
+
 1;
