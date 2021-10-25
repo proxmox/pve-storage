@@ -87,6 +87,7 @@ sub cephfs_mount {
     my $secretfile = $cmd_option->{keyring};
     my $server = $cmd_option->{mon_host} // PVE::CephConfig::get_monaddr_list($configfile);
     my $type = 'ceph';
+    my $fs_name = $scfg->{'fs-name'};
 
     my @opts = ();
     if ($scfg->{fuse}) {
@@ -94,10 +95,12 @@ sub cephfs_mount {
 	push @opts, "ceph.id=$cmd_option->{userid}";
 	push @opts, "ceph.keyfile=$secretfile" if defined($secretfile);
 	push @opts, "ceph.conf=$configfile" if defined($configfile);
+	push @opts, "ceph.client_fs=$fs_name" if defined($fs_name);
     } else {
 	push @opts, "name=$cmd_option->{userid}";
 	push @opts, "secretfile=$secretfile" if defined($secretfile);
 	push @opts, "conf=$configfile" if defined($configfile);
+	push @opts, "fs=$fs_name" if defined($fs_name);
     }
 
     push @opts, $scfg->{options} if $scfg->{options};
@@ -128,6 +131,10 @@ sub properties {
 	    description => "Subdir to mount.",
 	    type => 'string', format => 'pve-storage-path',
 	},
+	'fs-name' => {
+	    description => "The Ceph filesystem name.",
+	    type => 'string', format => 'pve-configid',
+	},
     };
 }
 
@@ -148,6 +155,7 @@ sub options {
 	maxfiles => { optional => 1 },
 	keyring => { optional => 1 },
 	'prune-backups' => { optional => 1 },
+	'fs-name' => { optional => 1 },
     };
 }
 
