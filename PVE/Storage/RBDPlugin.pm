@@ -540,10 +540,10 @@ sub free_image {
     $class->deactivate_volume($storeid, $scfg, $volname);
 
     my $cmd = $rbd_cmd->($scfg, $storeid, 'snap', 'purge',  $name);
-    run_rbd_command($cmd, errmsg => "rbd snap purge '$volname' error");
+    run_rbd_command($cmd, errmsg => "rbd snap purge '$name' error");
 
     $cmd = $rbd_cmd->($scfg, $storeid, 'rm', $name);
-    run_rbd_command($cmd, errmsg => "rbd rm '$volname' error");
+    run_rbd_command($cmd, errmsg => "rbd rm '$name' error");
 
     return undef;
 }
