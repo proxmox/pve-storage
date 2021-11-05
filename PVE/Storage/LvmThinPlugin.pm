@@ -195,23 +195,15 @@ sub list_thinpools {
 sub status {
     my ($class, $storeid, $scfg, $cache) = @_;
 
-    my $lvname = "$scfg->{vgname}/$scfg->{thinpool}";
+    my $lvs = $cache->{lvs} ||= PVE::Storage::LVMPlugin::lvm_list_volumes();
 
-    $cache->{lvs} = PVE::Storage::LVMPlugin::lvm_list_volumes() if !$cache->{lvs};
-
-    my $lvs = $cache->{lvs};
-
-    return undef if !$lvs->{$scfg->{vgname}};
+    return if !$lvs->{$scfg->{vgname}};
 
     my $info = $lvs->{$scfg->{vgname}}->{$scfg->{thinpool}};
 
-    return undef if !$info;
+    return if !$info || $info->{lv_type} ne 't' || !$info->{lv_size};
 
-    return undef if $info->{lv_type} ne 't';
-
-    return ($info->{lv_size}, $info->{lv_size} - $info->{used}, $info->{used}, 1) if $info->{lv_size};
-
-    return undef;
+    return ($info->{lv_size}, $info->{lv_size} - $info->{used}, $info->{used}, 1);
 }
 
 sub activate_volume {
