@@ -203,43 +203,61 @@ sub status {
 
     return if !$info || $info->{lv_type} ne 't' || !$info->{lv_size};
 
-    return ($info->{lv_size}, $info->{lv_size} - $info->{used}, $info->{used}, 1);
+    return (
+	$info->{lv_size},
+	$info->{lv_size} - $info->{used},
+	$info->{used},
+	$info->{lv_state} eq 'a' ? 1 : 0,
+    );
+}
+
+my $activate_lv = sub {
+    my ($vg, $lv, $cache) = @_;
+
+    my $lvs = $cache->{lvs} ||= PVE::Storage::LVMPlugin::lvm_list_volumes();
+
+    die "no such logical volume $vg/$lv" if !$lvs->{$vg} || !$lvs->{$vg}->{$lv};
+
+    return if $lvs->{$vg}->{$lv}->{lv_state} eq 'a';
+
+    run_command(['lvchange', '-ay', '-K', "$vg/$lv"], errmsg => "activating LV '$vg/$lv' failed");
+
+    $lvs->{$vg}->{$lv}->{lv_state} = 'a'; # update cache
+
+    return;
+};
+
+sub activate_storage {
+    my ($class, $storeid, $scfg, $cache) = @_;
+
+    $class->SUPER::activate_storage($storeid, $scfg, $cache);
+
+    $activate_lv->($scfg->{vgname}, $scfg->{thinpool}, $cache);
 }
 
 sub activate_volume {
     my ($class, $storeid, $scfg, $volname, $snapname, $cache) = @_;
 
     my $vg = $scfg->{vgname};
+    my $lv = $snapname ? "snap_${volname}_$snapname" : $volname;
 
-    # only snapshot volumes needs activation
-    if ($snapname) {
-	my $snapvol = "snap_${volname}_$snapname";
-	my $cmd = ['/sbin/lvchange', '-ay', '-K', "$vg/$snapvol"];
-	run_command($cmd, errmsg => "activate_volume '$vg/$snapvol' error");
-    } elsif ($volname =~ /^base-/) {
-	my $cmd = ['/sbin/lvchange', '-ay', '-K', "$vg/$volname"];
-	run_command($cmd, errmsg => "activate_volume '$vg/$volname' error");
-    } else {
-	# other volumes are active by default
-    }
+    $activate_lv->($vg, $lv, $cache);
 }
 
 sub deactivate_volume {
     my ($class, $storeid, $scfg, $volname, $snapname, $cache) = @_;
 
-    my $vg = $scfg->{vgname};
+    return if !$snapname && $volname !~ /^base-/; # other volumes are kept active
 
-    # we only deactivate snapshot volumes
-    if ($snapname) {
-	my $snapvol = "snap_${volname}_$snapname";
-	my $cmd = ['/sbin/lvchange', '-an', "$vg/$snapvol"];
-	run_command($cmd, errmsg => "deactivate_volume '$vg/$snapvol' error");
-    } elsif ($volname =~ /^base-/) {
-	my $cmd = ['/sbin/lvchange', '-an', "$vg/$volname"];
-	run_command($cmd, errmsg => "deactivate_volume '$vg/$volname' error");
-    } else {
-	# other volumes are kept active
-    }
+    my $vg = $scfg->{vgname};
+    my $lv = $snapname ? "snap_${volname}_$snapname" : $volname;
+
+    run_command(['lvchange', '-an', "$vg/$lv"], errmsg => "deactivate_volume '$vg/$lv' error");
+
+    $cache->{lvs}->{$vg}->{$lv}->{lv_state} = '-' # update cache
+	if $cache->{lvs} && $cache->{lvs}->{$vg} && $cache->{lvs}->{$vg}->{$lv};
+
+    return;
 }
 
 sub clone_image {

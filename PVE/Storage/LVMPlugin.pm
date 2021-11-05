@@ -184,6 +184,7 @@ sub lvm_list_volumes {
 
 	my $d = {
 	    lv_size => int($lv_size),
+	    lv_state => substr($lv_attr, 4, 1),
 	    lv_type => $lv_type,
 	};
 	$d->{pool_lv} = $pool_lv if $pool_lv;
