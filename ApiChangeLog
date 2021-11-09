@@ -8,6 +8,11 @@ Future changes should be documented in here.
 
 ##  Version 10:
 
+* a new `rename_volume` method has been added
+
+  Storage plugins with rename support need to enable
+  the `rename` feature flag; e.g. in the `volume_has_feature` method.
+
 * Replace `volume_snapshot_list` with `volume_snapshot_info`:
 
   `volume_snapshot_list` was used exclusively by replication and currently, replication is only

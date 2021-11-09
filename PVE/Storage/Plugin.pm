@@ -1049,12 +1049,15 @@ sub volume_has_feature {
 		  snap => {qcow2 => 1} },
 	sparseinit => { base => {qcow2 => 1, raw => 1, vmdk => 1},
 			current => {qcow2 => 1, raw => 1, vmdk => 1} },
+	rename => { current => {qcow2 => 1, raw => 1, vmdk => 1} },
     };
 
     # clone_image creates a qcow2 volume
     return 0 if $feature eq 'clone' &&
 		defined($opts->{valid_target_formats}) &&
 		!(grep { $_ eq 'qcow2' } @{$opts->{valid_target_formats}});
+
+    return 0 if $feature eq 'rename' && $class->can('api') && $class->api() < 10;
 
     my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $format) =
 	$class->parse_volname($volname);
@@ -1576,6 +1579,41 @@ sub volume_import_formats {
 	return ('raw+size');
     }
     return ();
+}
+
+sub rename_volume {
+    my ($class, $scfg, $storeid, $source_volname, $target_vmid, $target_volname) = @_;
+    die "not implemented in storage plugin '$class'\n" if $class->can('api') && $class->api() < 10;
+    die "no path found\n" if !$scfg->{path};
+
+    my (
+	undef,
+	$source_image,
+	$source_vmid,
+	$base_name,
+	$base_vmid,
+	undef,
+	$format
+    ) = $class->parse_volname($source_volname);
+
+    $target_volname = $class->find_free_diskname($storeid, $scfg, $target_vmid, $format, 1)
+	if !$target_volname;
+
+    my $basedir = $class->get_subdir($scfg, 'images');
+
+    mkpath "${basedir}/${target_vmid}";
+
+    my $old_path = "${basedir}/${source_vmid}/${source_image}";
+    my $new_path = "${basedir}/${target_vmid}/${target_volname}";
+
+    die "target volume '${target_volname}' already exists\n" if -e $new_path;
+
+    my $base = $base_name ? "${base_vmid}/${base_name}/" : '';
+
+    rename($old_path, $new_path) ||
+	die "rename '$old_path' to '$new_path' failed - $!\n";
+
+    return "${storeid}:${base}${target_vmid}/${target_volname}";
 }
 
 1;

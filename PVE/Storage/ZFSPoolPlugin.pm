@@ -696,6 +696,7 @@ sub volume_has_feature {
 	copy => { base => 1, current => 1},
 	sparseinit => { base => 1, current => 1},
 	replicate => { base => 1, current => 1},
+	rename => {current => 1},
     };
 
     my ($vtype, $name, $vmid, $basename, $basevmid, $isBase) =
@@ -796,6 +797,36 @@ sub volume_import_formats {
     my ($class, $scfg, $storeid, $volname, $snapshot, $base_snapshot, $with_snapshots) = @_;
 
     return $class->volume_export_formats($scfg, $storeid, $volname, $snapshot, $base_snapshot, $with_snapshots);
+}
+
+sub rename_volume {
+    my ($class, $scfg, $storeid, $source_volname, $target_vmid, $target_volname) = @_;
+
+    my (
+	undef,
+	$source_image,
+	$source_vmid,
+	$base_name,
+	$base_vmid,
+	undef,
+	$format
+    ) = $class->parse_volname($source_volname);
+    $target_volname = $class->find_free_diskname($storeid, $scfg, $target_vmid, $format)
+	if !$target_volname;
+
+    my $pool = $scfg->{pool};
+    my $source_zfspath = "${pool}/${source_image}";
+    my $target_zfspath = "${pool}/${target_volname}";
+
+    my $exists = 0 == run_command(['zfs', 'get', '-H', 'name', $target_zfspath],
+				  noerr => 1, quiet => 1);
+    die "target volume '${target_volname}' already exists\n" if $exists;
+
+    $class->zfs_request($scfg, 5, 'rename', ${source_zfspath}, ${target_zfspath});
+
+    $base_name = $base_name ? "${base_name}/" : '';
+
+    return "${storeid}:${base_name}${target_volname}";
 }
 
 1;

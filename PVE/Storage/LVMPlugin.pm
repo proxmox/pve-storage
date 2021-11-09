@@ -339,6 +339,15 @@ sub lvcreate {
     run_command($cmd, errmsg => "lvcreate '$vg/$name' error");
 }
 
+sub lvrename {
+    my ($vg, $oldname, $newname) = @_;
+
+    run_command(
+	['/sbin/lvrename', $vg, $oldname, $newname],
+	errmsg => "lvrename '${vg}/${oldname}' to '${newname}' error",
+    );
+}
+
 sub alloc_image {
     my ($class, $storeid, $scfg, $vmid, $fmt, $name, $size) = @_;
 
@@ -584,6 +593,7 @@ sub volume_has_feature {
 
     my $features = {
 	copy => { base => 1, current => 1},
+	rename => {current => 1},
     };
 
     my ($vtype, $name, $vmid, $basename, $basevmid, $isBase) =
@@ -690,6 +700,30 @@ sub volume_import_write {
     my ($class, $input_fh, $output_file) = @_;
     run_command(['dd', "of=$output_file", 'bs=64k'],
 	input => '<&'.fileno($input_fh));
+}
+
+sub rename_volume {
+    my ($class, $scfg, $storeid, $source_volname, $target_vmid, $target_volname) = @_;
+
+    my (
+	undef,
+	$source_image,
+	$source_vmid,
+	$base_name,
+	$base_vmid,
+	undef,
+	$format
+    ) = $class->parse_volname($source_volname);
+    $target_volname = $class->find_free_diskname($storeid, $scfg, $target_vmid, $format)
+	if !$target_volname;
+
+    my $vg = $scfg->{vgname};
+    my $lvs = lvm_list_volumes($vg);
+    die "target volume '${target_volname}' already exists\n"
+	if ($lvs->{$vg}->{$target_volname});
+
+    lvrename($vg, $source_volname, $target_volname);
+    return "${storeid}:${target_volname}";
 }
 
 1;

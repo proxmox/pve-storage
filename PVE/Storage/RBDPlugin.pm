@@ -742,6 +742,7 @@ sub volume_has_feature {
 	template => { current => 1},
 	copy => { base => 1, current => 1, snap => 1},
 	sparseinit => { base => 1, current => 1},
+	rename => {current => 1},
     };
 
     my ($vtype, $name, $vmid, $basename, $basevmid, $isBase) = $class->parse_volname($volname);
@@ -755,6 +756,39 @@ sub volume_has_feature {
     return 1 if $features->{$feature}->{$key};
 
     return undef;
+}
+
+sub rename_volume {
+    my ($class, $scfg, $storeid, $source_volname, $target_vmid, $target_volname) = @_;
+
+    my (
+	undef,
+	$source_image,
+	$source_vmid,
+	$base_name,
+	$base_vmid,
+	undef,
+	$format
+    ) = $class->parse_volname($source_volname);
+    $target_volname = $class->find_free_diskname($storeid, $scfg, $target_vmid, $format)
+	if !$target_volname;
+
+    eval {
+	my $cmd = $rbd_cmd->($scfg, $storeid, 'info', $target_volname);
+	run_rbd_command($cmd, errmsg => "exist check",  quiet => 1);
+    };
+    die "target volume '${target_volname}' already exists\n" if !$@;
+
+    my $cmd = $rbd_cmd->($scfg, $storeid, 'rename', $source_image, $target_volname);
+
+    run_rbd_command(
+	$cmd,
+	errmsg => "could not rename image '${source_image}' to '${target_volname}'",
+    );
+
+    $base_name = $base_name ? "${base_name}/" : '';
+
+    return "${storeid}:${base_name}${target_volname}";
 }
 
 1;

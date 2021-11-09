@@ -349,6 +349,7 @@ sub volume_snapshot_needs_fsfreeze {
 #            snapshot - taking a snapshot is possible
 #            sparseinit - volume is sparsely initialized
 #            template - conversion to base image is possible
+#            rename - renaming volumes is possible
 # $snap - check if the feature is supported for a given snapshot
 # $running - if the guest owning the volume is running
 # $opts - hash with further options:
@@ -1858,6 +1859,26 @@ sub complete_volume {
     }
 
     return $res;
+}
+
+sub rename_volume {
+    my ($cfg, $source_volid, $target_vmid, $target_volname) = @_;
+
+    die "no source volid provided\n" if !$source_volid;
+    die "no target VMID or target volname provided\n" if !$target_vmid && !$target_volname;
+
+    my ($storeid, $source_volname) = parse_volume_id($source_volid);
+
+    activate_storage($cfg, $storeid);
+
+    my $scfg = storage_config($cfg, $storeid);
+    my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
+
+    $target_vmid = ($plugin->parse_volname($source_volname))[3] if !$target_vmid;
+
+    return $plugin->cluster_lock_storage($storeid, $scfg->{shared}, undef, sub {
+	return $plugin->rename_volume($scfg, $storeid, $source_volname, $target_vmid, $target_volname);
+    });
 }
 
 # Various io-heavy operations require io/bandwidth limits which can be
