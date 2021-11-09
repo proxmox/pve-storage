@@ -21,6 +21,11 @@ Future changes should be documented in here.
 
   The parameter *can* be used to return a list of snapshots that is currently preventing rollback.
 
+* Replace get/update_volume_notes with generic get/update_volume_attribute
+
+  falling back to the old implementation for notes until we reset APIAGE. the
+  new method optionally also supports querying/setting a protected flag.
+
 ##  Version 9: (AGE resets to 0):
 
 * volume_import_formats gets a new parameter *inserted*:
