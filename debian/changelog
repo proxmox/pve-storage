@@ -1,3 +1,35 @@
+libpve-storage-perl (7.0-14) bullseye; urgency=medium
+
+  * rbd plugin: free image: use actual command in error message
+
+  * cephfs: add support for multiple ceph filesystems
+
+  * zfspool: support blockers parameter to volume_snapshot_is_possible
+
+  * plugin: add volume_snapshot_info function, replaces volume_snapshot_list
+
+  * dir plugin: improve notes handling
+
+  * add generalized functions to manage volume attributes
+
+  * prune mark: preserve additional information for the keep-all case
+
+  * fix #3307: make it possible to set protection for backups
+
+  * prune: mark renamed and protected backups differently
+
+  * pbs: integrate support for protected
+
+  * add rename volume feature
+
+  * bump plugin APIVER (10) and APIAGE (1):
+    - Add rename feature
+    - Replace `volume_snapshot_list` with `volume_snapshot_info`
+    - Add `blockers` parameter to `volume_rollback_is_possible`
+    - Replace get/update_volume_notes with generic get/update_volume_attribute
+
+ -- Proxmox Support Team <support@proxmox.com>  Tue, 9 Nov 2021 13:08:35 +0100
+
 libpve-storage-perl (7.0-13) bullseye; urgency=medium
 
   * btrfs: free image: only remove snapshots for current subvol
