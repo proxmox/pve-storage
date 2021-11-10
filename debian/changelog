@@ -1,3 +1,17 @@
+libpve-storage-perl (7.0-15) bullseye; urgency=medium
+
+  * api: disks: implement destroy for dir, lvm, lvmthin, zfs
+
+  * api: list thin pools: add volume group to properties
+
+  * api: disks: delete: add flag for wiping disks
+
+  * api: disks: delete: add flag for cleaning up storage config
+
+  * lvm thin: don't assume that a thin pool and its volumes are active
+
+ -- Proxmox Support Team <support@proxmox.com>  Wed, 10 Nov 2021 14:25:18 +0100
+
 libpve-storage-perl (7.0-14) bullseye; urgency=medium
 
   * rbd plugin: free image: use actual command in error message
