@@ -881,7 +881,12 @@ sub update_volume_attribute {
 	my $conn = pbs_api_connect($scfg, $password);
 	my $datastore = $scfg->{datastore};
 
-	$conn->put("/api2/json/admin/datastore/$datastore/$attribute", $param);
+	eval { $conn->put("/api2/json/admin/datastore/$datastore/$attribute", $param); };
+	if (my $err = $@) {
+	    die "Server is not recent enough to support feature '$attribute'\n"
+		if $err->{code} == 404;
+	    die $err;
+	}
 	return;
     }
 
