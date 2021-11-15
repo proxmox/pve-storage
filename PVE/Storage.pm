@@ -1099,7 +1099,8 @@ sub activate_storage {
 	activate_storage($cfg, $baseid, $cache);
     }
 
-    if (!$plugin->check_connection($storeid, $scfg)) {
+    if (! eval { $plugin->check_connection($storeid, $scfg) }) {
+	die "connection check for storage '$storeid' failed - $@\n" if $@;
 	die "storage '$storeid' is not online\n";
     }
 
