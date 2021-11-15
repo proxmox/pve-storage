@@ -280,7 +280,7 @@ sub check_connection {
 
     if (my $err = $@) {
 	die "$out_str\n" if defined($out_str) &&
-	    ($out_str =~ m/NT_STATUS_ACCESS_DENIED/);
+	    ($out_str =~ m/NT_STATUS_(ACCESS_DENIED|LOGON_FAILURE)/);
 	return 0;
     }
 
