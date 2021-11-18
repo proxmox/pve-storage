@@ -216,7 +216,7 @@ my $activate_lv = sub {
 
     my $lvs = $cache->{lvs} ||= PVE::Storage::LVMPlugin::lvm_list_volumes();
 
-    die "no such logical volume $vg/$lv" if !$lvs->{$vg} || !$lvs->{$vg}->{$lv};
+    die "no such logical volume $vg/$lv\n" if !$lvs->{$vg} || !$lvs->{$vg}->{$lv};
 
     return if $lvs->{$vg}->{$lv}->{lv_state} eq 'a';
 
