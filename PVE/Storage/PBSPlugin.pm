@@ -688,6 +688,7 @@ sub list_volumes {
 	    content => 'backup',
 	    vmid => int($bid),
 	    ctime => $epoch,
+	    subtype => $btype eq 'vm' ? 'qemu' : 'lxc', # convert to PVE backup type
 	};
 
 	$info->{verification} = $item->{verification} if defined($item->{verification});

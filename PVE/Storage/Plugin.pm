@@ -1164,6 +1164,7 @@ my $get_subdir_files = sub {
 	    my $archive_info = eval { PVE::Storage::archive_info($fn) } // {};
 
 	    $info->{ctime} = $archive_info->{ctime} if defined($archive_info->{ctime});
+	    $info->{subtype} = $archive_info->{type} // 'unknown';
 
 	    if (defined($vmid) || $fn =~ m!\-([1-9][0-9]{2,8})\-[^/]+\.${format}$!) {
 		$info->{vmid} = $vmid // $1;
