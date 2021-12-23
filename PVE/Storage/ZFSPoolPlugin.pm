@@ -178,7 +178,12 @@ sub zfs_request {
     my $msg = '';
     my $output = sub { $msg .= "$_[0]\n" };
 
-    $timeout = PVE::RPCEnvironment->is_worker() ? 60*60 : 5 if !$timeout;
+    if (PVE::RPCEnvironment->is_worker()) {
+	$timeout = 60*60 if !$timeout;
+	$timeout = 60*5 if $timeout < 60*5;
+    } else {
+	$timeout = 5 if !$timeout;
+    }
 
     run_command($cmd, errmsg => "zfs error", outfunc => $output, timeout => $timeout);
 
