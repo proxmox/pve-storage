@@ -398,9 +398,11 @@ sub zfs_list_zvol {
 sub zfs_get_sorted_snapshot_list {
     my ($class, $scfg, $volname, $sort_params) = @_;
 
-    my $vname = ($class->parse_volname($volname))[1];
+    my @params = ('-H', '-r', '-t', 'snapshot', '-o', 'name', $sort_params->@*);
 
-    my @params = ('-H', '-t', 'snapshot', '-o', 'name', $sort_params->@*, "$scfg->{pool}\/$vname");
+    my $vname = ($class->parse_volname($volname))[1];
+    push @params, "$scfg->{pool}\/$vname";
+
     my $text = $class->zfs_request($scfg, undef, 'list', @params);
     my @snapshots = split(/\n/, $text);
 
@@ -513,9 +515,11 @@ sub volume_rollback_is_possible {
 sub volume_snapshot_info {
     my ($class, $scfg, $storeid, $volname) = @_;
 
-    my $vname = ($class->parse_volname($volname))[1];
+    my @params = ('-Hp', '-r', '-t', 'snapshot', '-o', 'name,guid,creation');
 
-    my @params = ('-Hp', '-t', 'snapshot', '-o', 'name,guid,creation', "$scfg->{pool}\/$vname");
+    my $vname = ($class->parse_volname($volname))[1];
+    push @params, "$scfg->{pool}\/$vname";
+
     my $text = $class->zfs_request($scfg, undef, 'list', @params);
     my @lines = split(/\n/, $text);
 
