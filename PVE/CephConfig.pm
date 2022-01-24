@@ -227,14 +227,16 @@ sub ceph_create_keyfile {
 	eval {
 	    if (defined($secret)) {
 		mkdir '/etc/pve/priv/ceph';
-		PVE::Tools::file_set_contents($ceph_storage_keyring, $secret, 0400);
+		chomp $secret;
+		PVE::Tools::file_set_contents($ceph_storage_keyring, "${secret}\n", 0400);
 	    } elsif ($type eq 'rbd') {
 		mkdir '/etc/pve/priv/ceph';
 		PVE::Tools::file_copy($ceph_admin_keyring, $ceph_storage_keyring);
 	    } elsif ($type eq 'cephfs') {
 		my $cephfs_secret = $ceph_get_key->($ceph_admin_keyring, 'admin');
 		mkdir '/etc/pve/priv/ceph';
-		PVE::Tools::file_set_contents($ceph_storage_keyring, $cephfs_secret, 0400);
+		chomp $cephfs_secret;
+		PVE::Tools::file_set_contents($ceph_storage_keyring, "${cephfs_secret}\n", 0400);
 	   }
 	};
 	if (my $err = $@) {
