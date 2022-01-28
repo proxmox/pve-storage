@@ -289,6 +289,10 @@ sub properties {
 	    description => "Pool.",
 	    type => 'string',
 	},
+	'data-pool' => {
+	    description => "Data Pool (for erasure coding only)",
+	    type => 'string',
+	},
 	namespace => {
 	    description => "RBD Namespace.",
 	    type => 'string',
@@ -318,6 +322,7 @@ sub options {
 	disable => { optional => 1 },
 	monhost => { optional => 1},
 	pool => { optional => 1 },
+	'data-pool' => { optional => 1 },
 	namespace => { optional => 1 },
 	username => { optional => 1 },
 	content => { optional => 1 },
@@ -492,15 +497,10 @@ sub clone_image {
     my $newvol = "$basename/$name";
     $newvol = $name if length($snapname);
 
-    my $cmd = $rbd_cmd->(
-	$scfg,
-	$storeid,
-	'clone',
-	get_rbd_path($scfg, $basename),
-	'--snap',
-	$snap,
-	get_rbd_path($scfg, $name),
-    );
+    my @options = ('clone', get_rbd_path($scfg, $basename), '--snap', $snap);
+    push @options, ('--data-pool', $scfg->{'data-pool'}) if $scfg->{'data-pool'};
+    push @options, get_rbd_path($scfg, $name);
+    my $cmd = $rbd_cmd->($scfg, $storeid, @options);
 
     run_rbd_command($cmd, errmsg => "rbd clone '$basename' error");
 
@@ -516,7 +516,10 @@ sub alloc_image {
 
     $name = $class->find_free_diskname($storeid, $scfg, $vmid) if !$name;
 
-    my $cmd = $rbd_cmd->($scfg, $storeid, 'create', '--image-format' , 2, '--size', int(($size+1023)/1024), $name);
+    my @options = ('create', '--image-format' , 2, '--size', int(($size+1023)/1024));
+    push @options, ('--data-pool', $scfg->{'data-pool'}) if $scfg->{'data-pool'};
+    push @options, $name;
+    my $cmd = $rbd_cmd->($scfg, $storeid, @options);
     run_rbd_command($cmd, errmsg => "rbd create '$name' error");
 
     return $name;
