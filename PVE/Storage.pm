@@ -623,19 +623,20 @@ sub abs_filesystem_path {
     return $path;
 }
 
+# used as last resort to adapt volnames when migrating
 my $volname_for_storage = sub {
-    my ($cfg, $volid, $target_storeid) = @_;
+    my ($cfg, $storeid, $name, $vmid, $format) = @_;
 
-    my (undef, $name, $vmid, undef, undef, undef, $format) = parse_volname($cfg, $volid);
-    my $target_scfg = storage_config($cfg, $target_storeid);
+    my $scfg = storage_config($cfg, $storeid);
 
-    my (undef, $valid_formats) = PVE::Storage::Plugin::default_format($target_scfg);
+    my (undef, $valid_formats) = PVE::Storage::Plugin::default_format($scfg);
     my $format_is_valid = grep { $_ eq $format } @$valid_formats;
-    die "unsupported format '$format' for storage type $target_scfg->{type}\n" if !$format_is_valid;
+    die "unsupported format '$format' for storage type $scfg->{type}\n"
+	if !$format_is_valid;
 
     (my $name_without_extension = $name) =~ s/\.$format$//;
 
-    if ($target_scfg->{path}) {
+    if ($scfg->{path}) {
        return "$vmid/$name_without_extension.$format";
     } else {
        return "$name_without_extension";
@@ -667,7 +668,8 @@ sub storage_migrate {
     } elsif ($scfg->{type} eq $tcfg->{type}) {
 	$target_volname = $volname;
     } else {
-	$target_volname = $volname_for_storage->($cfg, $volid, $target_storeid);
+	my (undef, $name, $vmid, undef, undef, undef, $format) = parse_volname($cfg, $volid);
+	$target_volname = $volname_for_storage->($cfg, $target_storeid, $name, $vmid, $format);
     }
 
     my $target_volid = "${target_storeid}:${target_volname}";
