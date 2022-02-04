@@ -497,11 +497,13 @@ sub clone_image {
     my $newvol = "$basename/$name";
     $newvol = $name if length($snapname);
 
-    my @options = ('clone', get_rbd_path($scfg, $basename), '--snap', $snap);
+    my @options = (
+	get_rbd_path($scfg, $basename),
+	'--snap', $snap,
+    );
     push @options, ('--data-pool', $scfg->{'data-pool'}) if $scfg->{'data-pool'};
-    push @options, get_rbd_path($scfg, $name);
-    my $cmd = $rbd_cmd->($scfg, $storeid, @options);
 
+    my $cmd = $rbd_cmd->($scfg, $storeid, 'clone', @options, get_rbd_path($scfg, $name));
     run_rbd_command($cmd, errmsg => "rbd clone '$basename' error");
 
     return $newvol;
@@ -516,10 +518,13 @@ sub alloc_image {
 
     $name = $class->find_free_diskname($storeid, $scfg, $vmid) if !$name;
 
-    my @options = ('create', '--image-format' , 2, '--size', int(($size+1023)/1024));
+    my @options = (
+	'--image-format' , 2,
+	'--size', int(($size + 1023) / 1024),
+    );
     push @options, ('--data-pool', $scfg->{'data-pool'}) if $scfg->{'data-pool'};
-    push @options, $name;
-    my $cmd = $rbd_cmd->($scfg, $storeid, @options);
+
+    my $cmd = $rbd_cmd->($scfg, $storeid, 'create', @options, $name);
     run_rbd_command($cmd, errmsg => "rbd create '$name' error");
 
     return $name;
