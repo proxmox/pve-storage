@@ -1,3 +1,18 @@
+libpve-storage-perl (7.1-1) bullseye; urgency=medium
+
+  * pbs: update attribute: improve error message if remote PBS is to old to
+    support that
+
+  * zfs: use -r parameter when listing snapshots to fix a regression for ZFS
+    over iSCSI
+
+  * ceph: ensure that there's always a newline for the $secret as the RBD
+    library errors out if that's not the case
+
+  * fix #1816: rbd: add support for using erasure coded (EC) pools
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 04 Feb 2022 18:08:01 +0100
+
 libpve-storage-perl (7.0-15) bullseye; urgency=medium
 
   * api: disks: implement destroy for dir, lvm, lvmthin, zfs
