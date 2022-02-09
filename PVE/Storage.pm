@@ -651,15 +651,69 @@ sub storage_migrate_snapshot {
     return $scfg->{type} eq 'zfspool' || ($scfg->{type} eq 'btrfs' && $existing_snapshots);
 }
 
-sub storage_migrate {
-    my ($cfg, $volid, $target_sshinfo, $target_storeid, $opts, $logfunc) = @_;
+my $volume_import_prepare = sub {
+    my ($volid, $format, $path, $apiver, $opts) = @_;
 
     my $base_snapshot = $opts->{base_snapshot};
     my $snapshot = $opts->{snapshot};
-    my $ratelimit_bps = $opts->{ratelimit_bps};
-    my $insecure = $opts->{insecure};
     my $with_snapshots = $opts->{with_snapshots} ? 1 : 0;
+    my $migration_snapshot = $opts->{migration_snapshot} ? 1 : 0;
     my $allow_rename = $opts->{allow_rename} ? 1 : 0;
+
+    my $recv = ['pvesm', 'import', $volid, $format, $path, '-with-snapshots', $with_snapshots];
+    if (defined($snapshot)) {
+	push @$recv, '-snapshot', $snapshot;
+    }
+    if ($migration_snapshot) {
+	push @$recv, '-delete-snapshot', $snapshot;
+    }
+    push @$recv, '-allow-rename', $allow_rename if $apiver >= 5;
+
+    if (defined($base_snapshot)) {
+	# Check if the snapshot exists on the remote side:
+	push @$recv, '-base', $base_snapshot if $apiver >= 9;
+    }
+
+    return $recv;
+};
+
+my $volume_export_prepare = sub {
+    my ($cfg, $volid, $format, $logfunc, $opts) = @_;
+    my $base_snapshot = $opts->{base_snapshot};
+    my $snapshot = $opts->{snapshot};
+    my $with_snapshots = $opts->{with_snapshots} ? 1 : 0;
+    my $migration_snapshot = $opts->{migration_snapshot} ? 1 : 0;
+    my $ratelimit_bps = $opts->{ratelimit_bps};
+
+    my $send = ['pvesm', 'export', $volid, $format, '-', '-with-snapshots', $with_snapshots];
+    if (defined($snapshot)) {
+	push @$send, '-snapshot', $snapshot;
+    }
+    if (defined($base_snapshot)) {
+	push @$send, '-base', $base_snapshot;
+    }
+
+    my $cstream;
+    if (defined($ratelimit_bps)) {
+	$cstream = [ '/usr/bin/cstream', '-t', $ratelimit_bps ];
+	$logfunc->("using a bandwidth limit of $ratelimit_bps bps for transferring '$volid'") if $logfunc;
+    }
+
+    volume_snapshot($cfg, $volid, $snapshot) if $migration_snapshot;
+
+    if (defined($snapshot)) {
+	activate_volumes($cfg, [$volid], $snapshot);
+    } else {
+	activate_volumes($cfg, [$volid]);
+    }
+
+    return $cstream ? [ $send, $cstream ] : [ $send ];
+};
+
+sub storage_migrate {
+    my ($cfg, $volid, $target_sshinfo, $target_storeid, $opts, $logfunc) = @_;
+
+    my $insecure = $opts->{insecure};
 
     my ($storeid, $volname) = parse_volume_id($volid);
 
@@ -688,19 +742,12 @@ sub storage_migrate {
     my $ssh_base = PVE::SSHInfo::ssh_info_to_command_base($target_sshinfo);
     local $ENV{RSYNC_RSH} = PVE::Tools::cmd2string($ssh_base);
 
-    my @cstream;
-    if (defined($ratelimit_bps)) {
-	@cstream = ([ '/usr/bin/cstream', '-t', $ratelimit_bps ]);
-	$logfunc->("using a bandwidth limit of $ratelimit_bps bps for transferring '$volid'") if $logfunc;
+    if (!defined($opts->{snapshot})) {
+	$opts->{migration_snapshot} = storage_migrate_snapshot($cfg, $storeid, $opts->{with_snapshots});
+	$opts->{snapshot} = '__migration__' if $opts->{migration_snapshot};
     }
 
-    my $migration_snapshot;
-    if (!defined($snapshot)) {
-	$migration_snapshot = storage_migrate_snapshot($cfg, $storeid, $opts->{with_snapshots});
-	$snapshot = '__migration__' if $migration_snapshot;
-    }
-
-    my @formats = volume_transfer_formats($cfg, $volid, $target_volid, $snapshot, $base_snapshot, $with_snapshots);
+    my @formats = volume_transfer_formats($cfg, $volid, $target_volid, $opts->{snapshot}, $opts->{base_snapshot}, $opts->{with_snapshots});
     die "cannot migrate from storage type '$scfg->{type}' to '$tcfg->{type}'\n" if !@formats;
     my $format = $formats[0];
 
@@ -715,22 +762,7 @@ sub storage_migrate {
     my $match_api_version = sub { $target_apiver = $1 if $_[0] =~ m!^APIVER (\d+)$!; };
     eval { run_command($get_api_version, logfunc => $match_api_version); };
 
-    my $send = ['pvesm', 'export', $volid, $format, '-', '-with-snapshots', $with_snapshots];
-    my $recv = [@$ssh, '--', 'pvesm', 'import', $target_volid, $format, $import_fn, '-with-snapshots', $with_snapshots];
-    if (defined($snapshot)) {
-	push @$send, '-snapshot', $snapshot;
-	push @$recv, '-snapshot', $snapshot;
-    }
-    if ($migration_snapshot) {
-	push @$recv, '-delete-snapshot', $snapshot;
-    }
-    push @$recv, '-allow-rename', $allow_rename if $target_apiver >= 5;
-
-    if (defined($base_snapshot)) {
-	# Check if the snapshot exists on the remote side:
-	push @$send, '-base', $base_snapshot;
-	push @$recv, '-base', $base_snapshot if $target_apiver >= 9;
-    }
+    my $recv = [ @$ssh, '--', $volume_import_prepare->($target_volid, $format, $import_fn, $target_apiver, $opts)->@* ];
 
     my $new_volid;
     my $pattern = volume_imported_message(undef, 1);
@@ -745,19 +777,13 @@ sub storage_migrate {
 	}
     };
 
-    volume_snapshot($cfg, $volid, $snapshot) if $migration_snapshot;
-
-    if (defined($snapshot)) {
-	activate_volumes($cfg, [$volid], $snapshot);
-    } else {
-	activate_volumes($cfg, [$volid]);
-    }
+    my $cmds = $volume_export_prepare->($cfg, $volid, $format, $logfunc, $opts);
 
     eval {
 	if ($insecure) {
 	    my $input = IO::File->new();
 	    my $info = IO::File->new();
-	    open3($input, $info, $info, @{$recv})
+	    open3($input, $info, $info, @$recv)
 		or die "receive command failed: $!\n";
 	    close($input);
 
@@ -774,7 +800,7 @@ sub storage_migrate {
 	    # we won't be reading from the socket
 	    shutdown($socket, 0);
 
-	    eval { run_command([$send, @cstream], output => '>&'.fileno($socket), errfunc => $logfunc); };
+	    eval { run_command($cmds, output => '>&'.fileno($socket), errfunc => $logfunc); };
 	    my $send_error = $@;
 
 	    # don't close the connection entirely otherwise the receiving end
@@ -795,7 +821,8 @@ sub storage_migrate {
 
 	    die $send_error if $send_error;
 	} else {
-	    run_command([$send, @cstream, $recv], logfunc => $match_volid_and_log);
+	    push @$cmds, $recv;
+	    run_command($cmds, logfunc => $match_volid_and_log);
 	}
 
 	die "unable to get ID of the migrated volume\n"
@@ -803,8 +830,8 @@ sub storage_migrate {
     };
     my $err = $@;
     warn "send/receive failed, cleaning up snapshot(s)..\n" if $err;
-    if ($migration_snapshot) {
-	eval { volume_snapshot_delete($cfg, $volid, $snapshot, 0) };
+    if ($opts->{migration_snapshot}) {
+	eval { volume_snapshot_delete($cfg, $volid, $opts->{snapshot}, 0) };
 	warn "could not remove source snapshot: $@\n" if $@;
     }
     die $err if $err;
