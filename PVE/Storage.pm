@@ -1833,6 +1833,67 @@ sub volume_imported_message {
     }
 }
 
+# $format and $volname are requests and might be overruled depending on $opts
+# $opts:
+# - with_snapshots: passed to `pvesm import` and used to select import format
+# - allow_rename: passed to `pvesm import`
+# - export_formats: used to select common transport format
+# - unix: unix socket path
+sub volume_import_start {
+    my ($cfg, $storeid, $volname, $format, $vmid, $opts) = @_;
+
+    my $with_snapshots = $opts->{'with_snapshots'} ? 1 : 0;
+
+    $volname = $volname_for_storage->($cfg, $storeid, $volname, $vmid, $format);
+
+    my $volid = "$storeid:$volname";
+
+    # find common import/export format, like volume_transfer_formats
+    my @import_formats = PVE::Storage::volume_import_formats($cfg, $volid, $opts->{snapshot}, undef, $with_snapshots);
+    my @export_formats = PVE::Tools::split_list($opts->{export_formats});
+    my %import_hash = map { $_ => 1 } @import_formats;
+    my @common = grep { $import_hash{$_} } @export_formats;
+    die "no matching import/export format found for storage '$storeid'\n"
+	if !@common;
+    $format = $common[0];
+
+    my $input = IO::File->new();
+    my $info = IO::File->new();
+
+    my $unix = $opts->{unix} // "/run/pve/storage-migrate-$vmid.$$.unix";
+    my $import = $volume_import_prepare->($volid, $format, "unix://$unix", APIVER, $opts);
+
+    unlink $unix;
+    my $cpid = open3($input, $info, $info, @$import)
+	or die "failed to spawn disk-import child - $!\n";
+
+    my $ready;
+    eval {
+	PVE::Tools::run_with_timeout(5, sub { $ready = <$info>; });
+    };
+
+    die "failed to read readyness from disk import child: $@\n" if $@;
+
+    print "$ready\n";
+
+    return {
+	fh => $info,
+	pid => $cpid,
+	socket => $unix,
+	format => $format,
+    };
+}
+
+sub volume_export_start {
+    my ($cfg, $volid, $format, $log, $opts) = @_;
+
+    my $run_command_params = delete $opts->{cmd} // {};
+
+    my $cmds = $volume_export_prepare->($cfg, $volid, $format, $log, $opts);
+
+    PVE::Tools::run_command($cmds, %$run_command_params);
+}
+
 # bash completion helper
 
 sub complete_storage {
