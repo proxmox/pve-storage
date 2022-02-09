@@ -645,10 +645,10 @@ my $volname_for_storage = sub {
 
 # whether a migration snapshot is needed for a given storage
 sub storage_migrate_snapshot {
-    my ($cfg, $storeid) = @_;
+    my ($cfg, $storeid, $existing_snapshots) = @_;
     my $scfg = storage_config($cfg, $storeid);
 
-    return $scfg->{type} eq 'zfspool' || $scfg->{type} eq 'btrfs';
+    return $scfg->{type} eq 'zfspool' || ($scfg->{type} eq 'btrfs' && $existing_snapshots);
 }
 
 sub storage_migrate {
@@ -696,7 +696,7 @@ sub storage_migrate {
 
     my $migration_snapshot;
     if (!defined($snapshot)) {
-	$migration_snapshot = storage_migrate_snapshot($cfg, $storeid);
+	$migration_snapshot = storage_migrate_snapshot($cfg, $storeid, $opts->{with_snapshots});
 	$snapshot = '__migration__' if $migration_snapshot;
     }
 
