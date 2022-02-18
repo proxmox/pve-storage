@@ -139,7 +139,9 @@ __PACKAGE__->register_method ({
 	foreach my $item (@$vollist) {
 	    eval {  PVE::Storage::check_volume_access($rpcenv, $authuser, $cfg, undef, $item->{volid}); };
 	    next if $@;
-	    $item->{vmid} = int($item->{vmid}) if (defined($item->{vmid}));
+	    $item->{vmid} = int($item->{vmid}) if defined($item->{vmid});
+	    $item->{size} = int($item->{size}) if defined($item->{size});
+	    $item->{used} = int($item->{used}) if defined($item->{used});
 	    push @$res, $item;
 	}
 
@@ -326,8 +328,8 @@ __PACKAGE__->register_method ({
 
 	my $entry = {
 	    path => $path,
-	    size => $size,
-            used => $used,
+	    size => int($size), # cast to integer in case it was changed to a string previously
+	    used => int($used),
 	    format => $format,
 	};
 
