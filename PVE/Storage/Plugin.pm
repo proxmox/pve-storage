@@ -892,7 +892,11 @@ sub file_size_info {
     my ($size, $format, $used, $parent) = $info->@{qw(virtual-size format actual-size backing-filename)};
 
     ($size) = ($size =~ /^(\d+)$/) or die "size '$size' not an integer\n"; # untaint
+    # coerce back from string
+    $size = int($size);
     ($used) = ($used =~ /^(\d+)$/) or die "used '$used' not an integer\n"; # untaint
+    # coerce back from string
+    $used = int($used);
     ($format) = ($format =~ /^(\S+)$/) or die "format '$format' includes whitespace\n"; # untaint
     if (defined($parent)) {
 	($parent) = ($parent =~ /^(\S+)$/) or die "parent '$parent' includes whitespace\n"; # untaint
