@@ -770,7 +770,9 @@ sub volume_import {
     die "internal error: invalid file handle for volume_import\n"
 	if !defined($fd);
 
-    my (undef, $dataset, $vmid) = $class->parse_volname($volname);
+    my (undef, $dataset, $vmid, undef, undef, undef, $volume_format) =
+	$class->parse_volname($volname);
+
     my $zfspath = "$scfg->{pool}/$dataset";
     my $suffix = defined($base_snapshot) ? "\@$base_snapshot" : '';
     my $exists = 0 == run_command(['zfs', 'get', '-H', 'name', $zfspath.$suffix],
@@ -780,7 +782,7 @@ sub volume_import {
     } elsif ($exists) {
 	die "volume '$zfspath' already exists\n" if !$allow_rename;
 	warn "volume '$zfspath' already exists - importing with a different name\n";
-	$dataset = $class->find_free_diskname($storeid, $scfg, $vmid, $format);
+	$dataset = $class->find_free_diskname($storeid, $scfg, $vmid, $volume_format);
 	$zfspath = "$scfg->{pool}/$dataset";
     }
 
