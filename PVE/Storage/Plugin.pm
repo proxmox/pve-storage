@@ -3,6 +3,7 @@ package PVE::Storage::Plugin;
 use strict;
 use warnings;
 
+use Encode qw(decode);
 use Fcntl ':mode';
 use File::chdir;
 use File::Path;
@@ -1197,7 +1198,7 @@ my $get_subdir_files = sub {
 	    my $notes_fn = $original.NOTES_EXT;
 	    if (-f $notes_fn) {
 		my $notes = PVE::Tools::file_read_firstline($notes_fn);
-		$info->{notes} = $notes if defined($notes);
+		$info->{notes} = eval { decode('UTF-8', $notes, 1) } // $notes if defined($notes);
 	    }
 
 	    $info->{protected} = 1 if -e PVE::Storage::protection_file_path($original);

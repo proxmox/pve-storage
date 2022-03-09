@@ -4,6 +4,7 @@ use strict;
 use warnings;
 
 use Cwd;
+use Encode qw(decode encode);
 use File::Path;
 use IO::File;
 use POSIX;
@@ -104,7 +105,10 @@ sub get_volume_notes {
     my $path = $class->filesystem_path($scfg, $volname);
     $path .= $class->SUPER::NOTES_EXT;
 
-    return PVE::Tools::file_get_contents($path) if -f $path;
+    if (-f $path) {
+	my $data = PVE::Tools::file_get_contents($path);
+	return eval { decode('UTF-8', $data, 1) } // $data;
+    }
 
     return '';
 }
@@ -121,7 +125,8 @@ sub update_volume_notes {
     $path .= $class->SUPER::NOTES_EXT;
 
     if (defined($notes) && $notes ne '') {
-	PVE::Tools::file_set_contents($path, $notes);
+	my $encoded = encode('UTF-8', $notes);
+	PVE::Tools::file_set_contents($path, $encoded);
     } else {
 	unlink $path or $! == ENOENT or die "could not delete notes - $!\n";
     }
