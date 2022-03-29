@@ -211,6 +211,17 @@ sub storage_can_replicate {
     return $plugin->storage_can_replicate($scfg, $storeid, $format);
 }
 
+sub get_max_protected_backups {
+    my ($scfg, $storeid) = @_;
+
+    return $scfg->{'max-protected-backups'} if defined($scfg->{'max-protected-backups'});
+
+    my $rpcenv = PVE::RPCEnvironment::get();
+    my $authuser = $rpcenv->get_user();
+
+    return $rpcenv->check($authuser, "/storage/$storeid", ['Datastore.Allocate'], 1) ? -1 : 5;
+}
+
 sub storage_ids {
     my ($cfg) = @_;
 
@@ -239,6 +250,30 @@ sub update_volume_attribute {
     my ($storeid, $volname) = parse_volume_id($volid);
     my $scfg = storage_config($cfg, $storeid);
     my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
+
+    my ($vtype, undef, $vmid) = $plugin->parse_volname($volname);
+    my $max_protected_backups = get_max_protected_backups($scfg, $storeid);
+
+    if (
+	$vtype eq 'backup'
+	&& $vmid
+	&& $attribute eq 'protected'
+	&& $value
+	&& !$plugin->get_volume_attribute($scfg, $storeid, $volname, 'protected')
+	&& $max_protected_backups > -1 # -1 is unlimited
+    ) {
+	my $backups = $plugin->list_volumes($storeid, $scfg, $vmid, ['backup']);
+	my ($backup_type) = map { $_->{subtype} } grep { $_->{volid} eq $volid } $backups->@*;
+
+	my $protected_count = grep {
+	    $_->{protected} && (!$backup_type || ($_->{subtype} && $_->{subtype} eq $backup_type))
+	} $backups->@*;
+
+	if ($max_protected_backups <= $protected_count) {
+	    die "The number of protected backups per guest is limited to $max_protected_backups ".
+		"on storage '$storeid'\n";
+	}
+    }
 
     return $plugin->update_volume_attribute($scfg, $storeid, $volname, $attribute, $value);
 }

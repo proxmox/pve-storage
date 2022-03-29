@@ -85,6 +85,7 @@ sub options {
 	disable => { optional => 1 },
 	maxfiles => { optional => 1 },
 	'prune-backups' => { optional => 1 },
+	'max-protected-backups' => { optional => 1 },
 	options => { optional => 1 },
 	content => { optional => 1 },
 	format => { optional => 1 },

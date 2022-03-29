@@ -155,6 +155,13 @@ my $defaultData = {
 	    optional => 1,
 	},
 	'prune-backups' => get_standard_option('prune-backups'),
+	'max-protected-backups' => {
+	    description => "Maximal number of protected backups per guest. Use '-1' for unlimited.",
+	    type => 'integer',
+	    minimum => -1,
+	    optional => 1,
+	    default => "Unlimited for users with Datastore.Allocate privilege, 5 for other users",
+	},
 	shared => {
 	    description => "Mark storage as shared.",
 	    type => 'boolean',

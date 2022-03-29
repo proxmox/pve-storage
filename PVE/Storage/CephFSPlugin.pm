@@ -155,6 +155,7 @@ sub options {
 	maxfiles => { optional => 1 },
 	keyring => { optional => 1 },
 	'prune-backups' => { optional => 1 },
+	'max-protected-backups' => { optional => 1 },
 	'fs-name' => { optional => 1 },
     };
 }
