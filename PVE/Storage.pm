@@ -473,13 +473,18 @@ sub parse_volume_id {
 
 # test if we have read access to volid
 sub check_volume_access {
-    my ($rpcenv, $user, $cfg, $vmid, $volid) = @_;
+    my ($rpcenv, $user, $cfg, $vmid, $volid, $type) = @_;
 
     my ($sid, $volname) = parse_volume_id($volid, 1);
     if ($sid) {
+	my ($vtype, undef, $ownervm) = parse_volname($cfg, $volid);
+
+	# Need to allow 'images' when expecting 'rootdir' too - not cleanly separated in plugins.
+	die "unable to use volume $volid - content type needs to be '$type'\n"
+	    if defined($type) && $vtype ne $type && ($type ne 'rootdir' || $vtype ne 'images');
+
 	return if $rpcenv->check($user, "/storage/$sid", ['Datastore.Allocate'], 1);
 
-	my ($vtype, undef, $ownervm) = parse_volname($cfg, $volid);
 	if ($vtype eq 'iso' || $vtype eq 'vztmpl') {
 	    # require at least read access to storage, (custom) templates/ISOs could be sensitive
 	    $rpcenv->check_any($user, "/storage/$sid", ['Datastore.AllocateSpace', 'Datastore.Audit']);
