@@ -488,6 +488,9 @@ sub check_volume_access {
 	} elsif ($vtype eq 'backup' && $ownervm) {
 	    $rpcenv->check($user, "/storage/$sid", ['Datastore.AllocateSpace']);
 	    $rpcenv->check($user, "/vms/$ownervm", ['VM.Backup']);
+	} elsif (($vtype eq 'images' || $vtype eq 'rootdir') && $ownervm) {
+	    $rpcenv->check($user, "/storage/$sid", ['Datastore.Audit']);
+	    $rpcenv->check($user, "/vms/$ownervm", ['VM.Config.Disk']);
 	} else {
 	    die "missing privileges to access $volid\n";
 	}
