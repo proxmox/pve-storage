@@ -111,14 +111,12 @@ __PACKAGE__->register_method ({
 	my $cfg = PVE::Storage::config();
 	my $scfg = PVE::Storage::storage_config($cfg, $storeid);
 
-	PVE::Storage::check_volume_access($rpcenv, $user, $cfg, undef, $volid);
+	PVE::Storage::check_volume_access($rpcenv, $user, $cfg, undef, $volid, 'backup');
 
 	raise_param_exc({'storage' => "Only PBS storages supported for file-restore."})
 	    if $scfg->{type} ne 'pbs';
 
-	my ($vtype, $snap) = PVE::Storage::parse_volname($cfg, $volid);
-	raise_param_exc({'volume' => 'Not a backup archive.'})
-	    if $vtype ne 'backup';
+	my (undef, $snap) = PVE::Storage::parse_volname($cfg, $volid);
 
 	my $client = PVE::PBSClient->new($scfg, $storeid);
 	my $ret = $client->file_restore_list($snap, $path, $base64);
@@ -177,14 +175,12 @@ __PACKAGE__->register_method ({
 	my $cfg = PVE::Storage::config();
 	my $scfg = PVE::Storage::storage_config($cfg, $storeid);
 
-	PVE::Storage::check_volume_access($rpcenv, $user, $cfg, undef, $volid);
+	PVE::Storage::check_volume_access($rpcenv, $user, $cfg, undef, $volid, 'backup');
 
 	raise_param_exc({'storage' => "Only PBS storages supported for file-restore."})
 	    if $scfg->{type} ne 'pbs';
 
-	my ($vtype, $snap) = PVE::Storage::parse_volname($cfg, $volid);
-	raise_param_exc({'volume' => 'Not a backup archive.'})
-	    if $vtype ne 'backup';
+	my (undef, $snap) = PVE::Storage::parse_volname($cfg, $volid);
 
 	my $client = PVE::PBSClient->new($scfg, $storeid);
 	my $fifo = $client->file_restore_extract_prepare();
