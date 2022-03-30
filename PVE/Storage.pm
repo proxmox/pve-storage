@@ -477,6 +477,8 @@ sub check_volume_access {
 
     my ($sid, $volname) = parse_volume_id($volid, 1);
     if ($sid) {
+	return if $rpcenv->check($user, "/storage/$sid", ['Datastore.Allocate'], 1);
+
 	my ($vtype, undef, $ownervm) = parse_volname($cfg, $volid);
 	if ($vtype eq 'iso' || $vtype eq 'vztmpl') {
 	    # require at least read access to storage, (custom) templates/ISOs could be sensitive
@@ -487,8 +489,7 @@ sub check_volume_access {
 	    $rpcenv->check($user, "/storage/$sid", ['Datastore.AllocateSpace']);
 	    $rpcenv->check($user, "/vms/$ownervm", ['VM.Backup']);
 	} else {
-	    # allow if we are Datastore administrator
-	    $rpcenv->check($user, "/storage/$sid", ['Datastore.Allocate']);
+	    die "missing privileges to access $volid\n";
 	}
     } else {
 	die "Only root can pass arbitrary filesystem paths."
