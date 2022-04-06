@@ -338,15 +338,12 @@ __PACKAGE__->register_method ({
 	my $name = $param->{name};
 	my $devs = [PVE::Tools::split_list($param->{devices})];
 	my $raidlevel = $param->{raidlevel};
-	my $node = $param->{node};
-	my $ashift = $param->{ashift} // 12;
 	my $compression = $param->{compression} // 'on';
 
-	foreach my $dev (@$devs) {
+	for my $dev (@$devs) {
 	    $dev = PVE::Diskmanage::verify_blockdev_path($dev);
 	    PVE::Diskmanage::assert_disk_unused($dev);
 	}
-
 	PVE::Storage::assert_sid_unused($name) if $param->{add_storage};
 
 	my $numdisks = scalar(@$devs);
@@ -369,80 +366,78 @@ __PACKAGE__->register_method ({
 	die "$raidlevel needs at least $mindisks->{$raidlevel} disks\n"
 	    if $numdisks < $mindisks->{$raidlevel};
 
-	my $worker = sub {
-	    PVE::Diskmanage::locked_disk_action(sub {
-		for my $dev (@$devs) {
-		    PVE::Diskmanage::assert_disk_unused($dev);
+	my $code = sub {
+	    for my $dev (@$devs) {
+		PVE::Diskmanage::assert_disk_unused($dev);
 
-		    my $is_partition = PVE::Diskmanage::is_partition($dev);
+		my $is_partition = PVE::Diskmanage::is_partition($dev);
 
-		    if ($is_partition) {
-			eval {
-			    PVE::Diskmanage::change_parttype(
-				$dev,
-				'6a898cc3-1dd2-11b2-99a6-080020736631',
-			    );
-			};
-			warn $@ if $@;
-		    }
-
-		    my $sysfsdev = $is_partition ? PVE::Diskmanage::get_blockdev($dev) : $dev;
-
-		    $sysfsdev =~ s!^/dev/!/sys/block/!;
-		    if ($is_partition) {
-			my $part = $dev =~ s!^/dev/!!r;
-			$sysfsdev .= "/${part}";
-		    }
-
-		    my $udevinfo = PVE::Diskmanage::get_udev_info($sysfsdev);
-		    $dev = $udevinfo->{by_id_link} if defined($udevinfo->{by_id_link});
-		}
-
-		# create zpool with desired raidlevel
-
-		my $cmd = [$ZPOOL, 'create', '-o', "ashift=$ashift", $name];
-
-		if ($raidlevel eq 'raid10') {
-		    for (my $i = 0; $i < @$devs; $i+=2) {
-			push @$cmd, 'mirror', $devs->[$i], $devs->[$i+1];
-		    }
-		} elsif ($raidlevel eq 'single') {
-		    push @$cmd, $devs->[0];
-		} else {
-		    push @$cmd, $raidlevel, @$devs;
-		}
-
-		print "# ", join(' ', @$cmd), "\n";
-		run_command($cmd);
-
-		$cmd = [$ZFS, 'set', "compression=$compression", $name];
-		print "# ", join(' ', @$cmd), "\n";
-		run_command($cmd);
-
-		if (-e '/lib/systemd/system/zfs-import@.service') {
-		    my $importunit = 'zfs-import@'. PVE::Systemd::escape_unit($name, undef) . '.service';
-		    $cmd = ['systemctl', 'enable', $importunit];
-		    print "# ", join(' ', @$cmd), "\n";
-		    run_command($cmd);
-		}
-
-		PVE::Diskmanage::udevadm_trigger($devs->@*);
-
-		if ($param->{add_storage}) {
-		    my $storage_params = {
-			type => 'zfspool',
-			pool => $name,
-			storage => $name,
-			content => 'rootdir,images',
-			nodes => $node,
+		if ($is_partition) {
+		    eval {
+			PVE::Diskmanage::change_parttype($dev, '6a898cc3-1dd2-11b2-99a6-080020736631');
 		    };
-
-		    PVE::API2::Storage::Config->create($storage_params);
+		    warn $@ if $@;
 		}
-	    });
+
+		my $sysfsdev = $is_partition ? PVE::Diskmanage::get_blockdev($dev) : $dev;
+
+		$sysfsdev =~ s!^/dev/!/sys/block/!;
+		if ($is_partition) {
+		    my $part = $dev =~ s!^/dev/!!r;
+		    $sysfsdev .= "/${part}";
+		}
+
+		my $udevinfo = PVE::Diskmanage::get_udev_info($sysfsdev);
+		$dev = $udevinfo->{by_id_link} if defined($udevinfo->{by_id_link});
+	    }
+
+	    # create zpool with desired raidlevel
+	    my $ashift = $param->{ashift} // 12;
+
+	    my $cmd = [$ZPOOL, 'create', '-o', "ashift=$ashift", $name];
+
+	    if ($raidlevel eq 'raid10') {
+		for (my $i = 0; $i < @$devs; $i+=2) {
+		    push @$cmd, 'mirror', $devs->[$i], $devs->[$i+1];
+		}
+	    } elsif ($raidlevel eq 'single') {
+		push @$cmd, $devs->[0];
+	    } else {
+		push @$cmd, $raidlevel, @$devs;
+	    }
+
+	    print "# ", join(' ', @$cmd), "\n";
+	    run_command($cmd);
+
+	    $cmd = [$ZFS, 'set', "compression=$compression", $name];
+	    print "# ", join(' ', @$cmd), "\n";
+	    run_command($cmd);
+
+	    if (-e '/lib/systemd/system/zfs-import@.service') {
+		my $importunit = 'zfs-import@'. PVE::Systemd::escape_unit($name, undef) . '.service';
+		$cmd = ['systemctl', 'enable', $importunit];
+		print "# ", join(' ', @$cmd), "\n";
+		run_command($cmd);
+	    }
+
+	    PVE::Diskmanage::udevadm_trigger($devs->@*);
+
+	    if ($param->{add_storage}) {
+		my $storage_params = {
+		    type => 'zfspool',
+		    pool => $name,
+		    storage => $name,
+		    content => 'rootdir,images',
+		    nodes => $param->{node},
+		};
+
+		PVE::API2::Storage::Config->create($storage_params);
+	    }
 	};
 
-	return $rpcenv->fork_worker('zfscreate', $name, $user, $worker);
+	return $rpcenv->fork_worker('zfscreate', $name, $user, sub {
+	    PVE::Diskmanage::locked_disk_action($code);
+	});
     }});
 
 __PACKAGE__->register_method ({
