@@ -1,3 +1,29 @@
+libpve-storage-perl (7.1-2) bullseye; urgency=medium
+
+  * add volume_import/export_start helpers
+
+  * fix #3894: cast 'size' and 'used' to integer
+
+  * zfs: volume import: use correct format for renaming
+
+  * activate storage: improve error when check_connection dies
+
+  * cifs: check connection: bubble up NT_STATUS_LOGON_FAILURE
+
+  * list volumes: also return backup type for backups
+
+  * pvesm: extract config: check for VM.Backup privilege
+
+  * check volume access: improve checks
+
+  * check volume access: optionally check content type
+
+  * pvesm extract config / api file restore: check content type
+
+  * plugins: allow limiting the number of protected backups per guest
+
+ -- Proxmox Support Team <support@proxmox.com>  Wed, 6 Apr 2022 13:27:34 +0200
+
 libpve-storage-perl (7.1-1) bullseye; urgency=medium
 
   * pbs: update attribute: improve error message if remote PBS is to old to
