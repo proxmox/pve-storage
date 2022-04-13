@@ -41,6 +41,7 @@ install: PVE pvesm.1 pvesm.bash-completion pvesm.zsh-completion
 	install -d ${DESTDIR}${SBINDIR}
 	install -m 0755 pvesm ${DESTDIR}${SBINDIR}
 	make -C PVE install
+	make -C udev-rbd install
 	install -d ${DESTDIR}/usr/share/man/man1
 	install -m 0644 pvesm.1 ${DESTDIR}/usr/share/man/man1/
 	gzip -9 -n ${DESTDIR}/usr/share/man/man1/pvesm.1

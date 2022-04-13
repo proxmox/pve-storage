@@ -8,6 +8,7 @@ use JSON;
 use Net::IP;
 
 use PVE::CephConfig;
+use PVE::Cluster qw(cfs_read_file);;
 use PVE::JSONSchema qw(get_standard_option);
 use PVE::ProcFSTools;
 use PVE::RADOS;
@@ -22,6 +23,16 @@ my $get_parent_image_name = sub {
     return $parent->{image} . "@" . $parent->{snapshot};
 };
 
+my $librados_connect = sub {
+    my ($scfg, $storeid, $options) = @_;
+
+    my $librados_config = PVE::CephConfig::ceph_connect_option($scfg, $storeid);
+
+    my $rados = PVE::RADOS->new(%$librados_config);
+
+    return $rados;
+};
+
 my sub get_rbd_path {
     my ($scfg, $volume) = @_;
     my $path = $scfg->{pool} ? $scfg->{pool} : 'rbd';
@@ -29,6 +40,32 @@ my sub get_rbd_path {
     $path .= "/$volume" if defined($volume);
     return $path;
 };
+
+my sub get_rbd_dev_path {
+    my ($scfg, $storeid, $volume) = @_;
+
+    my $cluster_id = '';
+    if ($scfg->{monhost}) {
+	my $rados = $librados_connect->($scfg, $storeid);
+	$cluster_id = $rados->mon_command({ prefix => 'fsid', format => 'json' })->{fsid};
+    } else {
+	$cluster_id = cfs_read_file('ceph.conf')->{global}->{fsid};
+    }
+
+    my $uuid_pattern = "([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})";
+    if ($cluster_id =~ qr/^${uuid_pattern}$/is) {
+	$cluster_id = $1; # use untained value
+    } else {
+	die "cluster fsid has invalid format\n";
+    }
+
+    my $rbd_path = get_rbd_path($scfg, $volume);
+    my $pve_path = "/dev/rbd-pve/${cluster_id}/${rbd_path}";
+    my $path = "/dev/rbd/${rbd_path}";
+
+    return $path if -e $path && !-e $pve_path; # mapped before rbd-pve udev rule existed
+    return $pve_path;
+}
 
 my $build_cmd = sub {
     my ($binary, $scfg, $storeid, $op, @options) = @_;
@@ -68,16 +105,6 @@ my $rados_cmd = sub {
     my ($scfg, $storeid, $op, @options) = @_;
 
     return $build_cmd->('/usr/bin/rados', $scfg, $storeid, $op, @options);
-};
-
-my $librados_connect = sub {
-    my ($scfg, $storeid, $options) = @_;
-
-    my $librados_config = PVE::CephConfig::ceph_connect_option($scfg, $storeid);
-
-    my $rados = PVE::RADOS->new(%$librados_config);
-
-    return $rados;
 };
 
 # needed for volumes created using ceph jewel (or higher)
@@ -380,9 +407,10 @@ sub path {
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
     $name .= '@'.$snapname if $snapname;
 
-    my $rbd_path = get_rbd_path($scfg, $name);
-    return ("/dev/rbd/${rbd_path}", $vmid, $vtype) if $scfg->{krbd};
+    my $rbd_dev_path = get_rbd_dev_path($scfg, $storeid, $name);
+    return ($rbd_dev_path, $vmid, $vtype) if $scfg->{krbd};
 
+    my $rbd_path = get_rbd_path($scfg, $name);
     my $path = "rbd:${rbd_path}";
 
     $path .= ":conf=$cmd_option->{ceph_conf}" if $cmd_option->{ceph_conf};
@@ -619,8 +647,8 @@ sub deactivate_storage {
 }
 
 my sub get_kernel_device_path {
-    my ($scfg, $name) = @_;
-    return "/dev/rbd/" . get_rbd_path($scfg, $name);
+    my ($scfg, $storeid, $name) = @_;
+    return get_rbd_dev_path($scfg, $storeid, $name);
 };
 
 sub map_volume {
@@ -631,7 +659,7 @@ sub map_volume {
     my $name = $img_name;
     $name .= '@'.$snapname if $snapname;
 
-    my $kerneldev = get_kernel_device_path($scfg, $name);
+    my $kerneldev = get_kernel_device_path($scfg, $storeid, $name);
 
     return $kerneldev if -b $kerneldev; # already mapped
 
@@ -650,7 +678,7 @@ sub unmap_volume {
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
     $name .= '@'.$snapname if $snapname;
 
-    my $kerneldev = get_kernel_device_path($scfg, $name);
+    my $kerneldev = get_kernel_device_path($scfg, $storeid, $name);
 
     if (-b $kerneldev) {
 	my $cmd = $rbd_cmd->($scfg, $storeid, 'unmap', $kerneldev);

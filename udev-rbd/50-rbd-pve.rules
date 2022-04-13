@@ -1,0 +1,2 @@
+KERNEL=="rbd[0-9]*", ENV{DEVTYPE}=="disk", PROGRAM="/usr/libexec/ceph-rbdnamer-pve %k", SYMLINK+="rbd-pve/%c"
+KERNEL=="rbd[0-9]*", ENV{DEVTYPE}=="partition", PROGRAM="/usr/libexec/ceph-rbdnamer-pve %k", SYMLINK+="rbd-pve/%c-part%n"
