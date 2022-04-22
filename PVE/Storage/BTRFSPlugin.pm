@@ -593,18 +593,21 @@ sub volume_has_feature {
 	    current => { raw => 1 },
 	    snap => { raw => 1 },
 	},
-	template => { current => { qcow2 => 1, raw => 1, vmdk => 1, subvol => 1 } },
+	template => {
+	    current => { qcow2 => 1, raw => 1, vmdk => 1, subvol => 1 },
+	},
 	copy => {
 	    base => { qcow2 => 1, raw => 1, subvol => 1, vmdk => 1 },
 	    current => { qcow2 => 1, raw => 1, subvol => 1, vmdk => 1 },
 	    snap => { qcow2 => 1, raw => 1, subvol => 1 },
 	},
-	sparseinit => { base => {qcow2 => 1, raw => 1, vmdk => 1 },
-			current => {qcow2 => 1, raw => 1, vmdk => 1 } },
+	sparseinit => {
+	    base => { qcow2 => 1, raw => 1, vmdk => 1 },
+	    current => { qcow2 => 1, raw => 1, vmdk => 1 },
+	},
     };
 
-    my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $format) =
-	$class->parse_volname($volname);
+    my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $format) = $class->parse_volname($volname);
 
     my $key = undef;
     if ($snapname) {

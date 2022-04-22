@@ -1052,26 +1052,43 @@ sub volume_has_feature {
     my ($class, $scfg, $feature, $storeid, $volname, $snapname, $running, $opts) = @_;
 
     my $features = {
-	snapshot => { current => { qcow2 => 1}, snap => { qcow2 => 1} },
-	clone => { base => {qcow2 => 1, raw => 1, vmdk => 1} },
-	template => { current => {qcow2 => 1, raw => 1, vmdk => 1, subvol => 1} },
-	copy => { base => {qcow2 => 1, raw => 1, vmdk => 1},
-		  current => {qcow2 => 1, raw => 1, vmdk => 1},
-		  snap => {qcow2 => 1} },
-	sparseinit => { base => {qcow2 => 1, raw => 1, vmdk => 1},
-			current => {qcow2 => 1, raw => 1, vmdk => 1} },
-	rename => { current => {qcow2 => 1, raw => 1, vmdk => 1} },
+	snapshot => {
+	    current => { qcow2 => 1 },
+	    snap => { qcow2 => 1 },
+	},
+	clone => {
+	    base => { qcow2 => 1, raw => 1, vmdk => 1 },
+	},
+	template => {
+	    current => { qcow2 => 1, raw => 1, vmdk => 1, subvol => 1 },
+	},
+	copy => {
+	    base => { qcow2 => 1, raw => 1, vmdk => 1 },
+	    current => { qcow2 => 1, raw => 1, vmdk => 1 },
+	    snap => { qcow2 => 1 },
+	},
+	sparseinit => {
+	    base => { qcow2 => 1, raw => 1, vmdk => 1 },
+	    current => { qcow2 => 1, raw => 1, vmdk => 1 },
+	},
+	rename => {
+	    current => {qcow2 => 1, raw => 1, vmdk => 1},
+	},
     };
 
-    # clone_image creates a qcow2 volume
-    return 0 if $feature eq 'clone' &&
-		defined($opts->{valid_target_formats}) &&
-		!(grep { $_ eq 'qcow2' } @{$opts->{valid_target_formats}});
+    if ($feature eq 'clone') {
+	if (
+	    defined($opts->{valid_target_formats})
+	    && !(grep { $_ eq 'qcow2' } @{$opts->{valid_target_formats}})
+	) {
+	    return 0; # clone_image creates a qcow2 volume
+	}
+    } elsif ($feature eq 'rename') {
+	return 0 if $class->can('api') && $class->api() < 10;
+    }
 
-    return 0 if $feature eq 'rename' && $class->can('api') && $class->api() < 10;
 
-    my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $format) =
-	$class->parse_volname($volname);
+    my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $format) = $class->parse_volname($volname);
 
     my $key = undef;
     if($snapname){
