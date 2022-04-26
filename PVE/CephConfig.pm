@@ -178,21 +178,20 @@ sub ceph_connect_option {
     my ($scfg, $storeid, %options) = @_;
 
     my $cmd_option = {};
-    my $ceph_storeid_conf = "/etc/pve/priv/ceph/${storeid}.conf";
-    my $pveceph_config = '/etc/pve/ceph.conf';
     my $keyfile = "/etc/pve/priv/ceph/${storeid}.keyring";
     $keyfile = "/etc/pve/priv/ceph/${storeid}.secret" if ($scfg->{type} eq 'cephfs');
     my $pveceph_managed = !defined($scfg->{monhost});
 
-    $cmd_option->{ceph_conf} = $pveceph_config if $pveceph_managed;
+    $cmd_option->{ceph_conf} = '/etc/pve/ceph.conf' if $pveceph_managed;
 
     $ceph_check_keyfile->($keyfile, $scfg->{type});
 
-    if (-e $ceph_storeid_conf) {
+    if (-e "/etc/pve/priv/ceph/${storeid}.conf") {
+	# allow custom ceph configuration for external clusters
 	if ($pveceph_managed) {
 	    warn "ignoring custom ceph config for storage '$storeid', 'monhost' is not set (assuming pveceph managed cluster)!\n";
 	} else {
-	    $cmd_option->{ceph_conf} = $ceph_storeid_conf;
+	    $cmd_option->{ceph_conf} = "/etc/pve/priv/ceph/${storeid}.conf";
 	}
     }
 
