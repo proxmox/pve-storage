@@ -182,7 +182,7 @@ sub zfs_request {
 	$timeout = 60*60 if !$timeout;
 	$timeout = 60*5 if $timeout < 60*5;
     } else {
-	$timeout = 5 if !$timeout;
+	$timeout = 10 if !$timeout;
     }
 
     run_command($cmd, errmsg => "zfs error", outfunc => $output, timeout => $timeout);
