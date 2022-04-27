@@ -646,11 +646,6 @@ sub deactivate_storage {
     return 1;
 }
 
-my sub get_kernel_device_path {
-    my ($scfg, $storeid, $name) = @_;
-    return get_rbd_dev_path($scfg, $storeid, $name);
-};
-
 sub map_volume {
     my ($class, $storeid, $scfg, $volname, $snapname) = @_;
 
@@ -659,7 +654,7 @@ sub map_volume {
     my $name = $img_name;
     $name .= '@'.$snapname if $snapname;
 
-    my $kerneldev = get_kernel_device_path($scfg, $storeid, $name);
+    my $kerneldev = get_rbd_dev_path($scfg, $storeid, $name);
 
     return $kerneldev if -b $kerneldev; # already mapped
 
@@ -678,7 +673,7 @@ sub unmap_volume {
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
     $name .= '@'.$snapname if $snapname;
 
-    my $kerneldev = get_kernel_device_path($scfg, $storeid, $name);
+    my $kerneldev = get_rbd_dev_path($scfg, $storeid, $name);
 
     if (-b $kerneldev) {
 	my $cmd = $rbd_cmd->($scfg, $storeid, 'unmap', $kerneldev);
