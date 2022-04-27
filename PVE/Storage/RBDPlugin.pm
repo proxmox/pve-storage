@@ -63,7 +63,7 @@ my sub get_rbd_dev_path {
     my $pve_path = "/dev/rbd-pve/${cluster_id}/${rbd_path}";
     my $path = "/dev/rbd/${rbd_path}";
 
-    return $path if -e $path && !-e $pve_path; # mapped before rbd-pve udev rule existed
+    return $path if !-e $pve_path && -e $path; # mapped before rbd-pve udev rule existed
     return $pve_path;
 }
 
