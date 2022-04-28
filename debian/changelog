@@ -1,4 +1,4 @@
-libpve-storage-perl (7.2-1) bullseye; urgency=medium
+libpve-storage-perl (7.2-2) bullseye; urgency=medium
 
   * rbd: unmap volume after rename
 
@@ -11,7 +11,7 @@ libpve-storage-perl (7.2-1) bullseye; urgency=medium
   * fix #3803: ZFSPoolPlugin: zfs_request: increase minimum timeout in
     worker
 
- -- Proxmox Support Team <support@proxmox.com>  Thu, 28 Apr 2022 17:38:15 +0200
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 28 Apr 2022 18:19:47 +0200
 
 libpve-storage-perl (7.1-2) bullseye; urgency=medium
 
