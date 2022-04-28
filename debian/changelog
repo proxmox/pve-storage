@@ -1,3 +1,18 @@
+libpve-storage-perl (7.2-1) bullseye; urgency=medium
+
+  * rbd: unmap volume after rename
+
+  * fix #3969: rbd: add rbd dev paths with cluster info
+
+  * storage plugins: en/decode volume notes as UTF-8
+
+  * zfs pool: bump non-worker timeoiut default to 10s
+
+  * fix #3803: ZFSPoolPlugin: zfs_request: increase minimum timeout in
+    worker
+
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 28 Apr 2022 17:38:15 +0200
+
 libpve-storage-perl (7.1-2) bullseye; urgency=medium
 
   * add volume_import/export_start helpers
