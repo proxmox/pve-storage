@@ -45,7 +45,10 @@ my sub get_rbd_dev_path {
     my ($scfg, $storeid, $volume) = @_;
 
     my $cluster_id = '';
-    if ($scfg->{monhost}) {
+    if ($scfg->{fsid}) {
+	# NOTE: the config doesn't support this currently (but it could!), hack for qemu-server tests
+	$cluster_id = $scfg->{fsid};
+    } elsif ($scfg->{monhost}) {
 	my $rados = $librados_connect->($scfg, $storeid);
 	$cluster_id = $rados->mon_command({ prefix => 'fsid', format => 'json' })->{fsid};
     } else {
