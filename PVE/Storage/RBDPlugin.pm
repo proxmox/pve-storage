@@ -482,6 +482,9 @@ sub create_base {
     );
     run_rbd_command($cmd, errmsg => "rbd rename '$name' error");
 
+    eval { $class->unmap_volume($storeid, $scfg, $volname); };
+    warn $@ if $@;
+
     my $running  = undef; #fixme : is create_base always offline ?
 
     $class->volume_snapshot($scfg, $storeid, $newname, $snap, $running);
@@ -816,6 +819,9 @@ sub rename_volume {
 	$cmd,
 	errmsg => "could not rename image '${source_image}' to '${target_volname}'",
     );
+
+    eval { $class->unmap_volume($storeid, $scfg, $source_volname); };
+    warn $@ if $@;
 
     $base_name = $base_name ? "${base_name}/" : '';
 
