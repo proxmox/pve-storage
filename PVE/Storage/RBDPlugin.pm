@@ -630,7 +630,9 @@ sub status {
     my $rados = $librados_connect->($scfg, $storeid);
     my $df = $rados->mon_command({ prefix => 'df', format => 'json' });
 
-    my ($d) = grep { $_->{name} eq $scfg->{pool} } @{$df->{pools}};
+    my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
+
+    my ($d) = grep { $_->{name} eq $pool } @{$df->{pools}};
 
     # max_avail -> max available space for data w/o replication in the pool
     # bytes_used -> data w/o replication in the pool
