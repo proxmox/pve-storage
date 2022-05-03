@@ -634,6 +634,11 @@ sub status {
 
     my ($d) = grep { $_->{name} eq $pool } @{$df->{pools}};
 
+    if (!defined($d)) {
+	warn "could not get usage stats for pool '$pool'\n";
+	return;
+    }
+
     # max_avail -> max available space for data w/o replication in the pool
     # bytes_used -> data w/o replication in the pool
     my $free = $d->{stats}->{max_avail};
