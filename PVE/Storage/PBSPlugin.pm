@@ -63,6 +63,7 @@ sub options {
     return {
 	server => { fixed => 1 },
 	datastore => { fixed => 1 },
+	namespace => { optional => 1 },
 	port => { optional => 1 },
 	nodes => { optional => 1},
 	disable => { optional => 1},
@@ -220,9 +221,15 @@ sub print_volid {
     return "${storeid}:${volname}";
 }
 
+my sub ns : prototype($$) {
+    my ($scfg, $name) = @_;
+    my $ns = $scfg->{namespace};
+    return defined($ns) ? ($name, $ns) : ();
+}
+
 # essentially the inverse of print_volid
-sub api_param_from_volname {
-    my ($class, $volname) = @_;
+my sub api_param_from_volname : prototype($$$) {
+    my ($class, $scfg, $volname) = @_;
 
     my $name = ($class->parse_volname($volname))[1];
 
@@ -244,6 +251,7 @@ sub api_param_from_volname {
     }
 
     return {
+	(ns($scfg, 'backup-ns')),
 	'backup-type' => $btype,
 	'backup-id' => $bid,
 	'backup-time' => $btime,
@@ -304,6 +312,9 @@ my sub do_raw_client_cmd {
     push @$cmd, @$param if defined($param);
 
     push @$cmd, "--repository", $repo;
+    if ($client_cmd ne 'status' && defined(my $ns = $scfg->{namespace})) {
+	push @$cmd, '--ns', $ns;
+    }
 
     local $ENV{PBS_PASSWORD} = pbs_get_password($scfg, $storeid);
 
@@ -602,6 +613,10 @@ sub path {
 
     # artificial url - we currently do not use that anywhere
     my $path = "pbs://$repo/$name";
+    if (defined(my $ns = $scfg->{namespace})) {
+	$ns =~ s|/|%2f|g; # other characters to escape aren't allowed in the namespace schema
+	$path .= "?ns=$ns";
+    }
 
     return ($path, $vmid, $vtype);
 }
@@ -851,7 +866,7 @@ sub get_volume_attribute {
     }
 
     if ($attribute eq 'protected') {
-	my $param = $class->api_param_from_volname($volname);
+	my $param = api_param_from_volname($class, $scfg, $volname);
 
 	my $password = pbs_get_password($scfg, $storeid);
 	my $conn = pbs_api_connect($scfg, $password);
@@ -876,7 +891,7 @@ sub update_volume_attribute {
     }
 
     if ($attribute eq 'protected') {
-	my $param = $class->api_param_from_volname($volname);
+	my $param = api_param_from_volname($class, $scfg, $volname);
 	$param->{$attribute} = $value;
 
 	my $password = pbs_get_password($scfg, $storeid);

@@ -119,7 +119,7 @@ __PACKAGE__->register_method ({
 	my (undef, $snap) = PVE::Storage::parse_volname($cfg, $volid);
 
 	my $client = PVE::PBSClient->new($scfg, $storeid);
-	my $ret = $client->file_restore_list($snap, $path, $base64);
+	my $ret = $client->file_restore_list([$scfg->{namespace}, $snap], $path, $base64);
 
 	# 'leaf' is a proper JSON boolean, map to perl-y bool
 	# TODO: make PBSClient decode all bools always as 1/0?
@@ -188,7 +188,7 @@ __PACKAGE__->register_method ({
 	$rpcenv->fork_worker('pbs-download', undef, $user, sub {
 	    my $name = decode_base64($path);
 	    print "Starting download of file: $name\n";
-	    $client->file_restore_extract($fifo, $snap, $path, 1);
+	    $client->file_restore_extract($fifo, [$scfg->{namespace}, $snap], $path, 1);
 	});
 
 	my $ret = {

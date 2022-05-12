@@ -324,7 +324,7 @@ sub properties {
 	    type => 'string',
 	},
 	namespace => {
-	    description => "RBD Namespace.",
+	    description => "Namespace.",
 	    type => 'string',
 	},
 	username => {
