@@ -1,3 +1,13 @@
+libpve-storage-perl (7.2-4) bullseye; urgency=medium
+
+  * pbs: backup-ns parameter was renamed to ns
+
+  * rbd: add fallback default poolname 'rbd' to status
+
+  * rbd: warn if no stats for a pool could be gathered
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 13 May 2022 14:27:24 +0200
+
 libpve-storage-perl (7.2-3) bullseye; urgency=medium
 
   * pbs: namespace support
