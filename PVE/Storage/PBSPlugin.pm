@@ -251,7 +251,7 @@ my sub api_param_from_volname : prototype($$$) {
     }
 
     return {
-	(ns($scfg, 'backup-ns')),
+	(ns($scfg, 'ns')),
 	'backup-type' => $btype,
 	'backup-id' => $bid,
 	'backup-time' => $btime,
