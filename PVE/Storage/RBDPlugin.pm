@@ -630,7 +630,7 @@ sub status {
     my $rados = $librados_connect->($scfg, $storeid);
     my $df = $rados->mon_command({ prefix => 'df', format => 'json' });
 
-    my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
+    my $pool = $scfg->{'data-pool'} // $scfg->{pool} // 'rbd';
 
     my ($d) = grep { $_->{name} eq $pool } @{$df->{pools}};
 
