@@ -3,6 +3,7 @@ package PVE::Storage::RBDPlugin;
 use strict;
 use warnings;
 
+use Cwd qw(abs_path);
 use IO::File;
 use JSON;
 use Net::IP;
@@ -13,7 +14,7 @@ use PVE::JSONSchema qw(get_standard_option);
 use PVE::ProcFSTools;
 use PVE::RADOS;
 use PVE::Storage::Plugin;
-use PVE::Tools qw(run_command trim);
+use PVE::Tools qw(run_command trim file_read_firstline);
 
 use base qw(PVE::Storage::Plugin);
 
@@ -66,7 +67,13 @@ my sub get_rbd_dev_path {
     my $pve_path = "/dev/rbd-pve/${cluster_id}/${rbd_path}";
     my $path = "/dev/rbd/${rbd_path}";
 
-    return $path if !-e $pve_path && -e $path; # mapped before rbd-pve udev rule existed
+    if (!-e $pve_path && -e $path) {
+	# possibly mapped before rbd-pve rule existed
+	my $real_dev = abs_path($path);
+	my ($rbd_id) = ($real_dev =~ m|/dev/rbd([0-9]+)$|);
+	my $dev_cluster_id = file_read_firstline("/sys/devices/rbd/${rbd_id}/cluster_fsid");
+	return $path if $cluster_id eq $dev_cluster_id;
+    }
     return $pve_path;
 }
 
