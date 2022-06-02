@@ -138,9 +138,22 @@ sub status {
     return PVE::Storage::DirPlugin::status($class, $storeid, $scfg, $cache);
 }
 
-# TODO: sub get_volume_attribute {}
+sub get_volume_attribute {
+    my ($class, $scfg, $storeid, $volname, $attribute) = @_;
+    return PVE::Storage::DirPlugin::get_volume_attribute($class, $scfg, $storeid, $volname, $attribute);
+}
 
-# TODO: sub update_volume_attribute {}
+sub update_volume_attribute {
+    my ($class, $scfg, $storeid, $volname, $attribute, $value) = @_;
+    return PVE::Storage::DirPlugin::update_volume_attribute(
+	$class,
+	$scfg,
+	$storeid,
+	$volname,
+	$attribute,
+	$value,
+    );
+}
 
 # croak would not include the caller from within this module
 sub __error {
