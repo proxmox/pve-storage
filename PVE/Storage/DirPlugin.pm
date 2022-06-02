@@ -94,9 +94,8 @@ sub parse_is_mountpoint {
     return $is_mp; # contains a path
 }
 
-# FIXME remove on the next APIAGE reset.
-# Deprecated, use get_volume_attribute instead.
-sub get_volume_notes {
+# FIXME move into 'get_volume_attribute' when removing 'get_volume_notes'
+my $get_volume_notes_impl = sub {
     my ($class, $scfg, $storeid, $volname, $timeout) = @_;
 
     my ($vtype) = $class->parse_volname($volname);
@@ -111,11 +110,17 @@ sub get_volume_notes {
     }
 
     return '';
-}
+};
 
 # FIXME remove on the next APIAGE reset.
-# Deprecated, use update_volume_attribute instead.
-sub update_volume_notes {
+# Deprecated, use get_volume_attribute instead.
+sub get_volume_notes {
+    my ($class, $scfg, $storeid, $volname, $timeout) = @_;
+    return $get_volume_notes_impl->($class, $scfg, $storeid, $volname, $timeout);
+}
+
+# FIXME move into 'update_volume_attribute' when removing 'update_volume_notes'
+my $update_volume_notes_impl = sub {
     my ($class, $scfg, $storeid, $volname, $notes, $timeout) = @_;
 
     my ($vtype) = $class->parse_volname($volname);
@@ -131,13 +136,20 @@ sub update_volume_notes {
 	unlink $path or $! == ENOENT or die "could not delete notes - $!\n";
     }
     return;
+};
+
+# FIXME remove on the next APIAGE reset.
+# Deprecated, use update_volume_attribute instead.
+sub update_volume_notes {
+    my ($class, $scfg, $storeid, $volname, $notes, $timeout) = @_;
+    return $update_volume_notes_impl->($class, $scfg, $storeid, $volname, $notes, $timeout);
 }
 
 sub get_volume_attribute {
     my ($class, $scfg, $storeid, $volname, $attribute) = @_;
 
     if ($attribute eq 'notes') {
-	return $class->get_volume_notes($scfg, $storeid, $volname);
+	return $get_volume_notes_impl->($class, $scfg, $storeid, $volname);
     }
 
     my ($vtype) = $class->parse_volname($volname);
@@ -155,7 +167,7 @@ sub update_volume_attribute {
     my ($class, $scfg, $storeid, $volname, $attribute, $value) = @_;
 
     if ($attribute eq 'notes') {
-	return $class->update_volume_notes($scfg, $storeid, $volname, $value);
+	return $update_volume_notes_impl->($class, $scfg, $storeid, $volname, $value);
     }
 
     my ($vtype) = $class->parse_volname($volname);
