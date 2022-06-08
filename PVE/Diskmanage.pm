@@ -605,6 +605,7 @@ sub get_disks {
 	    size => $sysdata->{size},
 	    serial => $data->{serial},
 	    gpt => $data->{gpt},
+	    mounted => exists $mounted->{$devpath},
 	    rpm => $data->{rpm},
 	    type =>  $type,
 	    wwn => $data->{wwn},
@@ -650,10 +651,7 @@ sub get_disks {
 	    }
 
 	    my $fstype = $info->{fstype};
-	    if (defined($fstype)) {
-		return "${fstype} (mounted)" if $mounted->{$devpath};
-		return "${fstype}";
-	    }
+	    return "${fstype}" if defined($fstype);
 	    return 'mounted' if $mounted->{$devpath};
 
 	    return if !$is_partition;
@@ -693,6 +691,7 @@ sub get_disks {
 
 	    $partitions->{$part}->{devpath} = "$partpath/$part";
 	    $partitions->{$part}->{parent} = "$devpath";
+	    $partitions->{$part}->{mounted} = exists $mounted->{"$partpath/$part"};
 	    $partitions->{$part}->{gpt} = $data->{gpt};
 	    $partitions->{$part}->{type} = 'partition';
 	    $partitions->{$part}->{size} =

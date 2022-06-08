@@ -125,6 +125,7 @@ __PACKAGE__->register_method ({
 		},
 		used => { type => 'string', optional => 1 },
 		gpt => { type => 'boolean' },
+		mounted => { type => 'boolean' },
 		size => { type => 'integer'},
 		osdid => { type => 'integer'},
 		vendor =>  { type => 'string', optional => 1 },
