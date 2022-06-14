@@ -10,6 +10,9 @@ use Test::More;
 
 my $vmid = 16110;
 
+my $LOG_EXT = PVE::Storage::Plugin::LOG_EXT;
+my $NOTES_EXT = PVE::Storage::Plugin::NOTES_EXT;
+
 # an array of test cases, each test is comprised of the following keys:
 # description => to identify a single test
 # archive     => the input filename for archive_info
@@ -23,8 +26,8 @@ my $tests = [
 	archive     => "backup/vzdump-lxc-$vmid-3070_01_01-00_00_00.tgz",
 	expected    => {
 	    'filename'     => "vzdump-lxc-$vmid-3070_01_01-00_00_00.tgz",
-	    'logfilename'  => "vzdump-lxc-$vmid-3070_01_01-00_00_00.log",
-	    'notesfilename'=> "vzdump-lxc-$vmid-3070_01_01-00_00_00.tgz.notes",
+	    'logfilename'  => "vzdump-lxc-$vmid-3070_01_01-00_00_00".$LOG_EXT,
+	    'notesfilename'=> "vzdump-lxc-$vmid-3070_01_01-00_00_00.tgz".$NOTES_EXT,
 	    'type'         => 'lxc',
 	    'format'       => 'tar',
 	    'decompressor' => ['tar', '-z'],
@@ -39,8 +42,8 @@ my $tests = [
 	archive     => "backup/vzdump-lxc-$vmid-1970_01_01-02_00_30.tgz",
 	expected    => {
 	    'filename'     => "vzdump-lxc-$vmid-1970_01_01-02_00_30.tgz",
-	    'logfilename'  => "vzdump-lxc-$vmid-1970_01_01-02_00_30.log",
-	    'notesfilename'=> "vzdump-lxc-$vmid-1970_01_01-02_00_30.tgz.notes",
+	    'logfilename'  => "vzdump-lxc-$vmid-1970_01_01-02_00_30".$LOG_EXT,
+	    'notesfilename'=> "vzdump-lxc-$vmid-1970_01_01-02_00_30.tgz".$NOTES_EXT,
 	    'type'         => 'lxc',
 	    'format'       => 'tar',
 	    'decompressor' => ['tar', '-z'],
@@ -55,8 +58,8 @@ my $tests = [
 	archive     => "backup/vzdump-lxc-$vmid-2020_03_30-21_39_30.tgz",
 	expected    => {
 	    'filename'     => "vzdump-lxc-$vmid-2020_03_30-21_39_30.tgz",
-	    'logfilename'  => "vzdump-lxc-$vmid-2020_03_30-21_39_30.log",
-	    'notesfilename'=> "vzdump-lxc-$vmid-2020_03_30-21_39_30.tgz.notes",
+	    'logfilename'  => "vzdump-lxc-$vmid-2020_03_30-21_39_30".$LOG_EXT,
+	    'notesfilename'=> "vzdump-lxc-$vmid-2020_03_30-21_39_30.tgz".$NOTES_EXT,
 	    'type'         => 'lxc',
 	    'format'       => 'tar',
 	    'decompressor' => ['tar', '-z'],
@@ -71,8 +74,8 @@ my $tests = [
 	archive     => "backup/vzdump-openvz-$vmid-2020_03_30-21_39_30.tgz",
 	expected    => {
 	    'filename'     => "vzdump-openvz-$vmid-2020_03_30-21_39_30.tgz",
-	    'logfilename'  => "vzdump-openvz-$vmid-2020_03_30-21_39_30.log",
-	    'notesfilename'=> "vzdump-openvz-$vmid-2020_03_30-21_39_30.tgz.notes",
+	    'logfilename'  => "vzdump-openvz-$vmid-2020_03_30-21_39_30".$LOG_EXT,
+	    'notesfilename'=> "vzdump-openvz-$vmid-2020_03_30-21_39_30.tgz".$NOTES_EXT,
 	    'type'         => 'openvz',
 	    'format'       => 'tar',
 	    'decompressor' => ['tar', '-z'],
@@ -87,8 +90,8 @@ my $tests = [
 	archive     => "/here/be/Back-ups/vzdump-qemu-$vmid-2020_03_30-21_39_30.tgz",
 	expected    => {
 	    'filename'     => "vzdump-qemu-$vmid-2020_03_30-21_39_30.tgz",
-	    'logfilename'  => "vzdump-qemu-$vmid-2020_03_30-21_39_30.log",
-	    'notesfilename'=> "vzdump-qemu-$vmid-2020_03_30-21_39_30.tgz.notes",
+	    'logfilename'  => "vzdump-qemu-$vmid-2020_03_30-21_39_30".$LOG_EXT,
+	    'notesfilename'=> "vzdump-qemu-$vmid-2020_03_30-21_39_30.tgz".$NOTES_EXT,
 	    'type'         => 'qemu',
 	    'format'       => 'tar',
 	    'decompressor' => ['tar', '-z'],
@@ -135,15 +138,16 @@ my $bkp_suffix = {
 # create more test cases for backup files matches
 for my $virt (sort keys %$bkp_suffix) {
     my ($format, $decomp) = $bkp_suffix->{$virt}->@*;
+    my $archive_name = "vzdump-$virt-$vmid-2020_03_30-21_12_40";
 
     for my $suffix (sort keys %$decomp) {
 	push @$tests, {
 	    description => "Backup archive, $virt, $format.$suffix",
-	    archive     => "backup/vzdump-$virt-$vmid-2020_03_30-21_12_40.$format.$suffix",
+	    archive     => "backup/$archive_name.$format.$suffix",
 	    expected    => {
-		'filename'     => "vzdump-$virt-$vmid-2020_03_30-21_12_40.$format.$suffix",
-		'logfilename'  => "vzdump-$virt-$vmid-2020_03_30-21_12_40.log",
-		'notesfilename'=> "vzdump-$virt-$vmid-2020_03_30-21_12_40.$format.$suffix.notes",
+		'filename'     => "$archive_name.$format.$suffix",
+		'logfilename'  => $archive_name.$LOG_EXT,
+		'notesfilename'=> "$archive_name.$format.$suffix".$NOTES_EXT,
 		'type'         => "$virt",
 		'format'       => "$format",
 		'decompressor' => $decomp->{$suffix},

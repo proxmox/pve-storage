@@ -20,6 +20,7 @@ use base qw(PVE::SectionConfig);
 
 use constant COMPRESSOR_RE => 'gz|lzo|zst';
 
+use constant LOG_EXT => ".log";
 use constant NOTES_EXT => ".notes";
 
 our @COMMON_TAR_FLAGS = qw(

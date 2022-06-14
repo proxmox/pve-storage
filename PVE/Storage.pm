@@ -1566,8 +1566,8 @@ sub archive_info {
 	$info->{type} = $type;
 
 	if ($volid =~ /^(vzdump-${type}-([1-9][0-9]{2,8})-(\d{4})_(\d{2})_(\d{2})-(\d{2})_(\d{2})_(\d{2}))\.${extension}$/) {
-	    $info->{logfilename} = "$1.log";
-	    $info->{notesfilename} = "$filename.notes";
+	    $info->{logfilename} = "$1".PVE::Storage::Plugin::LOG_EXT;
+	    $info->{notesfilename} = "$filename".PVE::Storage::Plugin::NOTES_EXT;
 	    $info->{vmid} = int($2);
 	    $info->{ctime} = timelocal($8, $7, $6, $5, $4 - 1, $3);
 	    $info->{is_std_name} = 1;
