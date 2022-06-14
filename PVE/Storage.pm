@@ -1566,6 +1566,7 @@ sub archive_info {
 
 	if ($volid =~ /^(vzdump-${type}-([1-9][0-9]{2,8})-(\d{4})_(\d{2})_(\d{2})-(\d{2})_(\d{2})_(\d{2}))\.${extension}$/) {
 	    $info->{logfilename} = "$1.log";
+	    $info->{notesfilename} = "$filename.notes";
 	    $info->{vmid} = int($2);
 	    $info->{ctime} = timelocal($8, $7, $6, $5, $4 - 1, $3);
 	    $info->{is_std_name} = 1;
@@ -1585,16 +1586,23 @@ sub archive_remove {
     die "cannot remove protected archive '$archive_path'\n"
 	if -e protection_file_path($archive_path);
 
-    my $dirname = dirname($archive_path);
-    my $archive_info = eval { archive_info($archive_path) } // {};
-    my $logfn = $archive_info->{logfilename};
-
     unlink $archive_path or die "removing archive $archive_path failed: $!\n";
 
-    if (defined($logfn)) {
-	my $logpath = "$dirname/$logfn";
-	if (-e $logpath) {
-	    unlink $logpath or warn "removing log file $logpath failed: $!\n";
+    archive_auxiliaries_remove($archive_path);
+}
+
+sub archive_auxiliaries_remove {
+    my ($archive_path) = @_;
+
+    my $dirname = dirname($archive_path);
+    my $archive_info = eval { archive_info($archive_path) } // {};
+
+    for my $type (qw(log notes)) {
+	my $filename = $archive_info->{"${type}filename"} or next;
+	my $path = "$dirname/$filename";
+
+	if (-e $path) {
+	    unlink $path or warn "Removing $type file failed: $!\n";
 	}
     }
 }

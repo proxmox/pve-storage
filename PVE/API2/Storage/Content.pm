@@ -456,9 +456,8 @@ __PACKAGE__->register_method ({
 	    print "Removed volume '$volid'\n";
 	    if ($vtype eq 'backup'
 		&& $path =~ /(.*\/vzdump-\w+-\d+-\d{4}_\d{2}_\d{2}-\d{2}_\d{2}_\d{2})[^\/]+$/) {
-		my $logpath = "$1.log";
-		# try to cleanup our backup log file too, if still existing, #318
-		unlink($logpath) if -e $logpath;
+		# Remove log file #318 and notes file #3972 if they still exist
+		PVE::Storage::archive_auxiliaries_remove($path);
 	    }
 	};
 
