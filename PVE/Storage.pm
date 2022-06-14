@@ -1586,7 +1586,7 @@ sub archive_remove {
     die "cannot remove protected archive '$archive_path'\n"
 	if -e protection_file_path($archive_path);
 
-    unlink $archive_path or die "removing archive $archive_path failed: $!\n";
+    unlink $archive_path or $! == ENOENT or die "removing archive $archive_path failed: $!\n";
 
     archive_auxiliaries_remove($archive_path);
 }
@@ -1602,7 +1602,7 @@ sub archive_auxiliaries_remove {
 	my $path = "$dirname/$filename";
 
 	if (-e $path) {
-	    unlink $path or warn "Removing $type file failed: $!\n";
+	    unlink $path or $! == ENOENT or warn "Removing $type file failed: $!\n";
 	}
     }
 }
