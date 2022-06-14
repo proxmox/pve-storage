@@ -23,6 +23,7 @@ use PVE::JSONSchema;
 use PVE::INotify;
 use PVE::RPCEnvironment;
 use PVE::SSHInfo;
+use PVE::RESTEnvironment qw(log_warn);
 
 use PVE::Storage::Plugin;
 use PVE::Storage::DirPlugin;
@@ -1602,7 +1603,7 @@ sub archive_auxiliaries_remove {
 	my $path = "$dirname/$filename";
 
 	if (-e $path) {
-	    unlink $path or $! == ENOENT or warn "Removing $type file failed: $!\n";
+	    unlink $path or $! == ENOENT or log_warn("Removing $type file failed: $!");
 	}
     }
 }
