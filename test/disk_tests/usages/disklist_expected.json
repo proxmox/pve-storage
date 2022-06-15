@@ -49,6 +49,7 @@
     "sda" : {
 	"model" : "MODEL1",
 	"used" : "mounted",
+	"mounted": 1,
 	"wearout" : "N/A",
 	"health" : "UNKNOWN",
 	"gpt" : 1,
