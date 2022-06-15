@@ -605,7 +605,6 @@ sub get_disks {
 	    size => $sysdata->{size},
 	    serial => $data->{serial},
 	    gpt => $data->{gpt},
-	    mounted => exists $mounted->{$devpath},
 	    rpm => $data->{rpm},
 	    type =>  $type,
 	    wwn => $data->{wwn},
@@ -613,6 +612,7 @@ sub get_disks {
 	    devpath => $devpath,
 	    wearout => $wearout,
 	};
+	$disklist->{$dev}->{mounted} = 1 if exists $mounted->{$devpath};
 
 	my $by_id_link = $data->{by_id_link};
 	$disklist->{$dev}->{by_id_link} = $by_id_link if defined($by_id_link);
@@ -691,7 +691,7 @@ sub get_disks {
 
 	    $partitions->{$part}->{devpath} = "$partpath/$part";
 	    $partitions->{$part}->{parent} = "$devpath";
-	    $partitions->{$part}->{mounted} = exists $mounted->{"$partpath/$part"};
+	    $partitions->{$part}->{mounted} = 1 if exists $mounted->{"$partpath/$part"};
 	    $partitions->{$part}->{gpt} = $data->{gpt};
 	    $partitions->{$part}->{type} = 'partition';
 	    $partitions->{$part}->{size} =
