@@ -1,3 +1,13 @@
+libpve-storage-perl (7.2-5) bullseye; urgency=medium
+
+  * fix #4060: rbd: show data-pool usage when configured
+
+  * disks api: add 'mounted' boolean and drop '(mounted)' string from usage
+
+  * fix #3972: remove .notes file when deleting backups
+
+ -- Proxmox Support Team <support@proxmox.com>  Wed, 15 Jun 2022 10:52:48 +0200
+
 libpve-storage-perl (7.2-4) bullseye; urgency=medium
 
   * pbs: backup-ns parameter was renamed to ns
