@@ -676,6 +676,37 @@ my sub snapshot_files_encrypted {
     return $any && $all;
 }
 
+# TODO: use a client with native rust/proxmox-backup bindings to profit from
+# API schema checks and types
+my sub pbs_api_connect {
+    my ($scfg, $password) = @_;
+
+    my $params = {};
+
+    my $user = $scfg->{username} // 'root@pam';
+
+    if (my $tokenid = PVE::AccessControl::pve_verify_tokenid($user, 1)) {
+	$params->{apitoken} = "PBSAPIToken=${tokenid}:${password}";
+    } else {
+	$params->{password} = $password;
+	$params->{username} = $user;
+    }
+
+    if (my $fp = $scfg->{fingerprint}) {
+	$params->{cached_fingerprints}->{uc($fp)} = 1;
+    }
+
+    my $conn = PVE::APIClient::LWP->new(
+	%$params,
+	host => $scfg->{server},
+	port => $scfg->{port} // 8007,
+	timeout => 7, # cope with a 401 (3s api delay) and high latency
+	cookie_name => 'PBSAuthCookie',
+    );
+
+    return $conn;
+}
+
 sub list_volumes {
     my ($class, $storeid, $scfg, $vmid, $content_types) = @_;
 
@@ -683,7 +714,14 @@ sub list_volumes {
 
     return $res if !grep { $_ eq 'backup' } @$content_types;
 
-    my $data = run_client_cmd($scfg, $storeid, "snapshots");
+    my $password = pbs_get_password($scfg, $storeid);
+    my $conn = pbs_api_connect($scfg, $password);
+    my $datastore = $scfg->{datastore};
+
+    my $param = {};
+    $param->{'backup-id'} = "$vmid" if defined($vmid);
+    my $data = eval { $conn->get("/api2/json/admin/datastore/$datastore/snapshots", $param); };
+    die "error listing snapshots - $@" if $@;
 
     foreach my $item (@$data) {
 	my $btype = $item->{"backup-type"};
@@ -743,37 +781,6 @@ sub status {
     }
 
     return ($total, $free, $used, $active);
-}
-
-# TODO: use a client with native rust/proxmox-backup bindings to profit from
-# API schema checks and types
-my sub pbs_api_connect {
-    my ($scfg, $password) = @_;
-
-    my $params = {};
-
-    my $user = $scfg->{username} // 'root@pam';
-
-    if (my $tokenid = PVE::AccessControl::pve_verify_tokenid($user, 1)) {
-	$params->{apitoken} = "PBSAPIToken=${tokenid}:${password}";
-    } else {
-	$params->{password} = $password;
-	$params->{username} = $user;
-    }
-
-    if (my $fp = $scfg->{fingerprint}) {
-	$params->{cached_fingerprints}->{uc($fp)} = 1;
-    }
-
-    my $conn = PVE::APIClient::LWP->new(
-	%$params,
-	host => $scfg->{server},
-	port => $scfg->{port} // 8007,
-	timeout => 7, # cope with a 401 (3s api delay) and high latency
-	cookie_name => 'PBSAuthCookie',
-    );
-
-    return $conn;
 }
 
 # can also be used for not (yet) added storages, pass $scfg with
