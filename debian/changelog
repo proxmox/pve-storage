@@ -1,3 +1,14 @@
+libpve-storage-perl (7.2-6) bullseye; urgency=medium
+
+  * pbs: use vmid parameter in list_snapshots to avoid scanning to many
+    items on the remote unnecessarily
+
+  * btrfs plugin: reuse the update/get_volume_attribute methods of the
+    directory plugin, allowing one to set the protected status or notes on a
+    btrfs hosted backup
+
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 14 Jul 2022 13:47:11 +0200
+
 libpve-storage-perl (7.2-5) bullseye; urgency=medium
 
   * fix #4060: rbd: show data-pool usage when configured
