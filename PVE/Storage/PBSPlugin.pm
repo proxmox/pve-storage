@@ -720,6 +720,7 @@ sub list_volumes {
 
     my $param = {};
     $param->{'backup-id'} = "$vmid" if defined($vmid);
+    $param->{'ns'} = "$scfg->{namespace}" if defined($scfg->{namespace});
     my $data = eval { $conn->get("/api2/json/admin/datastore/$datastore/snapshots", $param); };
     die "error listing snapshots - $@" if $@;
 
