@@ -123,7 +123,9 @@ sub get_smart_data {
 		$entry->{name} = $2 if defined $2;
 		$entry->{flags} = $3 if defined $3;
 		# the +0 makes a number out of the strings
+		# fixme remove next line in major release, use normalized instead
 		$entry->{value} = $4+0 if defined $4;
+		$entry->{normalized} = $4+0 if defined $4;
 		$entry->{worst} = $5+0 if defined $5;
 		# some disks report the default threshold as --- instead of 000
 		if (defined($6) && $6 eq '---') {

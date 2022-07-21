@@ -7,11 +7,13 @@
 	    "name" : "Raw_Read_Error_Rate",
 	    "worst" : 63,
 	    "raw" : "215697022",
+	    "normalized" : 83,
 	    "value" : 83,
 	    "flags" : "POSR--"
 	},
 	{
 	    "flags" : "PO----",
+	    "normalized" : 92,
 	    "value" : 92,
 	    "id" : "  3",
 	    "raw" : "0",
@@ -23,6 +25,7 @@
 	{
 	    "fail" : "-",
 	    "threshold" : 20,
+	    "normalized" : 100,
 	    "value" : 100,
 	    "flags" : "-O--CK",
 	    "worst" : 100,
@@ -32,6 +35,7 @@
 	},
 	{
 	    "flags" : "PO--CK",
+	    "normalized" : 100,
 	    "value" : 100,
 	    "id" : "  5",
 	    "raw" : "0",
@@ -46,6 +50,7 @@
 	    "name" : "Seek_Error_Rate",
 	    "worst" : 60,
 	    "flags" : "POSR--",
+	    "normalized" : 91,
 	    "value" : 91,
 	    "threshold" : 30,
 	    "fail" : "-"
@@ -56,6 +61,7 @@
 	    "worst" : 89,
 	    "id" : "  9",
 	    "flags" : "-O--CK",
+	    "normalized" : 89,
 	    "value" : 89,
 	    "fail" : "-",
 	    "threshold" : 0
@@ -63,6 +69,7 @@
 	{
 	    "fail" : "-",
 	    "threshold" : 97,
+	    "normalized" : 100,
 	    "value" : 100,
 	    "flags" : "PO--C-",
 	    "worst" : 100,
@@ -78,6 +85,7 @@
 	    "name" : "Power_Cycle_Count",
 	    "worst" : 100,
 	    "flags" : "-O--CK",
+	    "normalized" : 100,
 	    "value" : 100
 	},
 	{
@@ -85,6 +93,7 @@
 	    "worst" : 100,
 	    "raw" : "0",
 	    "id" : "184",
+	    "normalized" : 100,
 	    "value" : 100,
 	    "flags" : "-O--CK",
 	    "fail" : "-",
@@ -98,6 +107,7 @@
 	    "name" : "Reported_Uncorrect",
 	    "worst" : 100,
 	    "flags" : "-O--CK",
+	    "normalized" : 100,
 	    "value" : 100
 	},
 	{
@@ -108,6 +118,7 @@
 	    "name" : "Command_Timeout",
 	    "worst" : 100,
 	    "flags" : "-O--CK",
+	    "normalized" : 100,
 	    "value" : 100
 	},
 	{
@@ -118,10 +129,12 @@
 	    "name" : "High_Fly_Writes",
 	    "id" : "189",
 	    "flags" : "-O--CK",
+	    "normalized" : 100,
 	    "value" : 100
 	},
 	{
 	    "flags" : "-O-RCK",
+	    "normalized" : 45,
 	    "value" : 45,
 	    "raw" : "55 (147 229 55 24 0)",
 	    "worst" : 36,
@@ -138,6 +151,7 @@
 	    "name" : "G-Sense_Error_Rate",
 	    "id" : "191",
 	    "flags" : "-O---K",
+	    "normalized" : 100,
 	    "value" : 100
 	},
 	{
@@ -148,11 +162,13 @@
 	    "worst" : 100,
 	    "name" : "Power-Off_Retract_Count",
 	    "flags" : "-O--CK",
+	    "normalized" : 100,
 	    "value" : 100
 	},
 	{
 	    "fail" : "-",
 	    "threshold" : 0,
+	    "normalized" : 100,
 	    "value" : 100,
 	    "flags" : "-O--CK",
 	    "name" : "Load_Cycle_Count",
@@ -164,6 +180,7 @@
 	    "threshold" : 0,
 	    "fail" : "-",
 	    "flags" : "-O--CK",
+	    "normalized" : 55,
 	    "value" : 55,
 	    "id" : "194",
 	    "raw" : "55 (0 16 0 0 0)",
@@ -177,6 +194,7 @@
 	    "name" : "Hardware_ECC_Recovered",
 	    "worst" : 13,
 	    "raw" : "215697022",
+	    "normalized" : 23,
 	    "value" : 23,
 	    "flags" : "-O---K"
 	},
@@ -185,6 +203,7 @@
 	    "name" : "Current_Pending_Sector",
 	    "raw" : "0",
 	    "id" : "197",
+	    "normalized" : 100,
 	    "value" : 100,
 	    "flags" : "-O--C-",
 	    "fail" : "-",
@@ -195,6 +214,7 @@
 	    "name" : "Offline_Uncorrectable",
 	    "raw" : "0",
 	    "id" : "198",
+	    "normalized" : 100,
 	    "value" : 100,
 	    "flags" : "----C-",
 	    "fail" : "-",
@@ -203,6 +223,7 @@
 	{
 	    "fail" : "-",
 	    "threshold" : 0,
+	    "normalized" : 200,
 	    "value" : 200,
 	    "flags" : "-OSRCK",
 	    "worst" : 200,

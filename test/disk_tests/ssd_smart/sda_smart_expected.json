@@ -10,6 +10,7 @@
 	    "flags" : "POSR-K",
 	    "raw" : "0",
 	    "fail" : "-",
+	    "normalized" : 100,
 	    "value" : 100
 	},
 	{
@@ -20,12 +21,14 @@
 	    "flags" : "-O--CK",
 	    "raw" : "0",
 	    "fail" : "-",
+	    "normalized" : 100,
 	    "value" : 100
 	},
 	{
 	    "name" : "Power_On_Hours",
 	    "threshold" : 0,
 	    "worst" : 100,
+	    "normalized" : 100,
 	    "value" : 100,
 	    "fail" : "-",
 	    "raw" : "1309",
@@ -40,9 +43,11 @@
 	    "flags" : "-O--CK",
 	    "fail" : "-",
 	    "id" : " 12",
+	    "normalized" : 100,
 	    "value" : 100
 	},
 	{
+	    "normalized" : 100,
 	    "value" : 100,
 	    "raw" : "0",
 	    "flags" : "-O--CK",
@@ -53,6 +58,7 @@
 	    "worst" : 100
 	},
 	{
+	    "normalized" : 100,
 	    "value" : 100,
 	    "id" : "172",
 	    "raw" : "0",
@@ -70,12 +76,14 @@
 	    "flags" : "-O--CK",
 	    "fail" : "-",
 	    "id" : "173",
+	    "normalized" : 100,
 	    "value" : 100
 	},
 	{
 	    "name" : "Unexpect_Power_Loss_Ct",
 	    "threshold" : 0,
 	    "worst" : 100,
+	    "normalized" : 100,
 	    "value" : 100,
 	    "fail" : "-",
 	    "raw" : "53",
@@ -87,6 +95,7 @@
 	    "flags" : "PO--CK",
 	    "fail" : "-",
 	    "id" : "180",
+	    "normalized" : 0,
 	    "value" : 0,
 	    "threshold" : 0,
 	    "name" : "Unused_Reserve_NAND_Blk",
@@ -100,6 +109,7 @@
 	    "raw" : "0",
 	    "flags" : "-O--CK",
 	    "id" : "183",
+	    "normalized" : 100,
 	    "value" : 100
 	},
 	{
@@ -110,12 +120,14 @@
 	    "flags" : "-O--CK",
 	    "raw" : "0",
 	    "fail" : "-",
+	    "normalized" : 100,
 	    "value" : 100
 	},
 	{
 	    "name" : "Reported_Uncorrect",
 	    "threshold" : 0,
 	    "worst" : 100,
+	    "normalized" : 100,
 	    "value" : 100,
 	    "fail" : "-",
 	    "flags" : "-O--CK",
@@ -130,6 +142,7 @@
 	    "fail" : "-",
 	    "flags" : "-O---K",
 	    "raw" : "32 (Min/Max 22/46)",
+	    "normalized" : 68,
 	    "value" : 68
 	},
 	{
@@ -137,6 +150,7 @@
 	    "flags" : "-O--CK",
 	    "fail" : "-",
 	    "id" : "196",
+	    "normalized" : 100,
 	    "value" : 100,
 	    "threshold" : 0,
 	    "name" : "Reallocated_Event_Count",
@@ -147,6 +161,7 @@
 	    "fail" : "-",
 	    "flags" : "-O--CK",
 	    "raw" : "0",
+	    "normalized" : 100,
 	    "value" : 100,
 	    "worst" : 100,
 	    "name" : "Current_Pending_Sector",
@@ -160,6 +175,7 @@
 	    "raw" : "0",
 	    "fail" : "-",
 	    "id" : "198",
+	    "normalized" : 100,
 	    "value" : 100
 	},
 	{
@@ -170,9 +186,11 @@
 	    "fail" : "-",
 	    "raw" : "0",
 	    "flags" : "-O--CK",
+	    "normalized" : 100,
 	    "value" : 100
 	},
 	{
+	    "normalized" : 100,
 	    "value" : 100,
 	    "id" : "202",
 	    "flags" : "----CK",
@@ -186,6 +204,7 @@
 	    "name" : "Write_Error_Rate",
 	    "threshold" : 0,
 	    "worst" : 100,
+	    "normalized" : 100,
 	    "value" : 100,
 	    "fail" : "-",
 	    "raw" : "0",
@@ -200,9 +219,11 @@
 	    "raw" : "0",
 	    "flags" : "-O--CK",
 	    "id" : "210",
+	    "normalized" : 100,
 	    "value" : 100
 	},
 	{
+	    "normalized" : 100,
 	    "value" : 100,
 	    "id" : "246",
 	    "fail" : "-",
@@ -220,9 +241,11 @@
 	    "raw" : "211228065",
 	    "flags" : "-O--CK",
 	    "id" : "247",
+	    "normalized" : 100,
 	    "value" : 100
 	},
 	{
+	    "normalized" : 100,
 	    "value" : 100,
 	    "fail" : "-",
 	    "raw" : "253276904",

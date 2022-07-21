@@ -3,6 +3,7 @@
     "health" : "PASSED",
     "attributes" : [
 	{
+	    "normalized" : 99,
 	    "value" : 99,
 	    "fail" : "-",
 	    "raw" : "34",

@@ -9,12 +9,14 @@
 	    "flags": "-O--CK",
 	    "name": "Raw_Read_Error_Rate",
 	    "threshold": 50,
+	    "normalized": 120,
 	    "value": 120,
 	    "worst": 120
 	},
 	{
 	    "id": "  5",
 	    "fail": "-",
+	    "normalized": 100,
 	    "value": 100,
 	    "worst": 100,
 	    "threshold": 3,
@@ -28,6 +30,7 @@
 	    "raw": "7963h+07m+54.620s",
 	    "flags": "-O--CK",
 	    "worst": 91,
+	    "normalized": 91,
 	    "value": 91,
 	    "name": "Power_On_Hours_and_Msec",
 	    "threshold": 0
@@ -38,6 +41,7 @@
 	    "threshold": 0,
 	    "name": "Power_Cycle_Count",
 	    "worst": 99,
+	    "normalized": 99,
 	    "value": 99,
 	    "flags": "-O--CK",
 	    "raw": "1153"
@@ -46,6 +50,7 @@
 	    "flags": "-O-R--",
 	    "raw": "0",
 	    "worst": 100,
+	    "normalized": 100,
 	    "value": 100,
 	    "threshold": 0,
 	    "name": "Program_Fail_Count",
@@ -60,6 +65,7 @@
 	    "name": "Erase_Fail_Count",
 	    "threshold": 0,
 	    "worst": 100,
+	    "normalized": 100,
 	    "value": 100
 	},
 	{
@@ -67,6 +73,7 @@
 	    "id": "174",
 	    "raw": "113",
 	    "flags": "----CK",
+	    "normalized": 0,
 	    "value": 0,
 	    "worst": 0,
 	    "threshold": 0,
@@ -75,6 +82,7 @@
 	{
 	    "id": "177",
 	    "fail": "-",
+	    "normalized": 0,
 	    "value": 0,
 	    "worst": 0,
 	    "name": "Wear_Range_Delta",
@@ -88,6 +96,7 @@
 	    "threshold": 0,
 	    "name": "Program_Fail_Count",
 	    "worst": 100,
+	    "normalized": 100,
 	    "value": 100,
 	    "fail": "-",
 	    "id": "181"
@@ -95,6 +104,7 @@
 	{
 	    "threshold": 0,
 	    "name": "Erase_Fail_Count",
+	    "normalized": 100,
 	    "value": 100,
 	    "worst": 100,
 	    "flags": "-O--CK",
@@ -105,6 +115,7 @@
 	{
 	    "flags": "-O--C-",
 	    "raw": "0",
+	    "normalized": 100,
 	    "value": 100,
 	    "worst": 100,
 	    "threshold": 0,
@@ -113,6 +124,7 @@
 	    "id": "187"
 	},
 	{
+	    "normalized": 27,
 	    "value": 27,
 	    "worst": 49,
 	    "name": "Airflow_Temperature_Cel",
@@ -126,6 +138,7 @@
 	    "threshold": 0,
 	    "name": "Temperature_Celsius",
 	    "worst": 49,
+	    "normalized": 27,
 	    "value": 27,
 	    "flags": "-O---K",
 	    "raw": "27 (Min/Max 2/49)",
@@ -136,6 +149,7 @@
 	    "id": "195",
 	    "fail": "-",
 	    "worst": 120,
+	    "normalized": 120,
 	    "value": 120,
 	    "threshold": 0,
 	    "name": "ECC_Uncorr_Error_Count",
@@ -149,10 +163,12 @@
 	    "flags": "PO--CK",
 	    "threshold": 3,
 	    "name": "Reallocated_Event_Count",
+	    "normalized": 100,
 	    "value": 100,
 	    "worst": 100
 	},
 	{
+	    "normalized": 120,
 	    "value": 120,
 	    "worst": 120,
 	    "threshold": 0,
@@ -165,6 +181,7 @@
 	{
 	    "raw": "0/0",
 	    "flags": "--SRC-",
+	    "normalized": 120,
 	    "value": 120,
 	    "worst": 120,
 	    "threshold": 0,
@@ -173,6 +190,7 @@
 	    "id": "204"
 	},
 	{
+	    "normalized": 100,
 	    "value": 100,
 	    "worst": 100,
 	    "threshold": 0,
@@ -186,6 +204,7 @@
 	    "id": "231",
 	    "fail": "-",
 	    "worst": 91,
+	    "normalized": 91,
 	    "value": 91,
 	    "name": "SSD_Life_Left",
 	    "threshold": 11,
@@ -197,12 +216,14 @@
 	    "flags": "-O--CK",
 	    "name": "SandForce_Internal",
 	    "threshold": 0,
+	    "normalized": 0,
 	    "value": 0,
 	    "worst": 0,
 	    "fail": "-",
 	    "id": "233"
 	},
 	{
+	    "normalized": 0,
 	    "value": 0,
 	    "worst": 0,
 	    "name": "SandForce_Internal",
@@ -214,6 +235,7 @@
 	},
 	{
 	    "worst": 0,
+	    "normalized": 0,
 	    "value": 0,
 	    "name": "Lifetime_Writes_GiB",
 	    "threshold": 0,
@@ -225,6 +247,7 @@
 	{
 	    "flags": "-O--CK",
 	    "raw": "34599",
+	    "normalized": 0,
 	    "value": 0,
 	    "worst": 0,
 	    "threshold": 0,
@@ -236,6 +259,7 @@
 	    "threshold": 10,
 	    "name": "Unknown_Attribute",
 	    "worst": 99,
+	    "normalized": 99,
 	    "value": 99,
 	    "flags": "------",
 	    "raw": "4063273",

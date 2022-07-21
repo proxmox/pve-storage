@@ -10,6 +10,7 @@
 	    "flags" : "-O--CK",
 	    "raw" : "0",
 	    "id" : "  5",
+	    "normalized" : 100,
 	    "value" : 100
 	},
 	{
@@ -20,9 +21,11 @@
 	    "fail" : "-",
 	    "raw" : "1259",
 	    "flags" : "-O--CK",
+	    "normalized" : 100,
 	    "value" : 100
 	},
 	{
+	    "normalized" : 100,
 	    "value" : 100,
 	    "id" : " 12",
 	    "raw" : "191",
@@ -37,6 +40,7 @@
 	    "raw" : "0",
 	    "flags" : "PO--CK",
 	    "fail" : "-",
+	    "normalized" : 100,
 	    "value" : 100,
 	    "worst" : 100,
 	    "threshold" : 10,
@@ -46,6 +50,7 @@
 	    "threshold" : 0,
 	    "name" : "Program_Fail_Count",
 	    "worst" : 100,
+	    "normalized" : 100,
 	    "value" : 100,
 	    "raw" : "0",
 	    "flags" : "-O--CK",
@@ -60,12 +65,14 @@
 	    "fail" : "-",
 	    "flags" : "-O--CK",
 	    "raw" : "0",
+	    "normalized" : 100,
 	    "value" : 100
 	},
 	{
 	    "worst" : 100,
 	    "threshold" : 0,
 	    "name" : "Unsafe_Shutdown_Count",
+	    "normalized" : 100,
 	    "value" : 100,
 	    "id" : "174",
 	    "raw" : "164",
@@ -73,6 +80,7 @@
 	    "fail" : "-"
 	},
 	{
+	    "normalized" : 100,
 	    "value" : 100,
 	    "fail" : "-",
 	    "flags" : "PO--CK",
@@ -86,6 +94,7 @@
 	    "worst" : 100,
 	    "threshold" : 0,
 	    "name" : "SATA_Downshift_Count",
+	    "normalized" : 100,
 	    "value" : 100,
 	    "id" : "183",
 	    "raw" : "0",
@@ -96,6 +105,7 @@
 	    "worst" : 100,
 	    "name" : "End-to-End_Error",
 	    "threshold" : 90,
+	    "normalized" : 100,
 	    "value" : 100,
 	    "id" : "184",
 	    "fail" : "-",
@@ -106,6 +116,7 @@
 	    "worst" : 100,
 	    "name" : "Reported_Uncorrect",
 	    "threshold" : 0,
+	    "normalized" : 100,
 	    "value" : 100,
 	    "id" : "187",
 	    "fail" : "-",
@@ -120,12 +131,14 @@
 	    "fail" : "-",
 	    "raw" : "28 (Min/Max 21/30)",
 	    "flags" : "-O---K",
+	    "normalized" : 72,
 	    "value" : 72
 	},
 	{
 	    "worst" : 100,
 	    "threshold" : 0,
 	    "name" : "Unsafe_Shutdown_Count",
+	    "normalized" : 100,
 	    "value" : 100,
 	    "id" : "192",
 	    "raw" : "164",
@@ -137,6 +150,7 @@
 	    "fail" : "-",
 	    "raw" : "28",
 	    "flags" : "-O---K",
+	    "normalized" : 100,
 	    "value" : 100,
 	    "worst" : 100,
 	    "name" : "Temperature_Internal",
@@ -146,6 +160,7 @@
 	    "worst" : 100,
 	    "threshold" : 0,
 	    "name" : "Current_Pending_Sector",
+	    "normalized" : 100,
 	    "value" : 100,
 	    "id" : "197",
 	    "raw" : "0",
@@ -156,6 +171,7 @@
 	    "worst" : 100,
 	    "threshold" : 0,
 	    "name" : "CRC_Error_Count",
+	    "normalized" : 100,
 	    "value" : 100,
 	    "id" : "199",
 	    "flags" : "-OSRCK",
@@ -170,9 +186,11 @@
 	    "fail" : "-",
 	    "flags" : "-O--CK",
 	    "raw" : "296600",
+	    "normalized" : 100,
 	    "value" : 100
 	},
 	{
+	    "normalized" : 100,
 	    "value" : 100,
 	    "id" : "226",
 	    "raw" : "3747",
@@ -190,6 +208,7 @@
 	    "raw" : "0",
 	    "flags" : "-O--CK",
 	    "fail" : "-",
+	    "normalized" : 100,
 	    "value" : 100
 	},
 	{
@@ -200,6 +219,7 @@
 	    "flags" : "-O--CK",
 	    "fail" : "-",
 	    "id" : "228",
+	    "normalized" : 100,
 	    "value" : 100
 	},
 	{
@@ -207,12 +227,14 @@
 	    "raw" : "0",
 	    "flags" : "PO--CK",
 	    "id" : "232",
+	    "normalized" : 100,
 	    "value" : 100,
 	    "name" : "Available_Reservd_Space",
 	    "threshold" : 10,
 	    "worst" : 100
 	},
 	{
+	    "normalized" : 97,
 	    "value" : 97,
 	    "fail" : "-",
 	    "flags" : "-O--CK",
@@ -223,6 +245,7 @@
 	    "worst" : 97
 	},
 	{
+	    "normalized" : 100,
 	    "value" : 100,
 	    "fail" : "-",
 	    "raw" : "0/0",
@@ -240,9 +263,11 @@
 	    "fail" : "-",
 	    "raw" : "296600",
 	    "flags" : "-O--CK",
+	    "normalized" : 100,
 	    "value" : 100
 	},
 	{
+	    "normalized" : 100,
 	    "value" : 100,
 	    "id" : "242",
 	    "fail" : "-",

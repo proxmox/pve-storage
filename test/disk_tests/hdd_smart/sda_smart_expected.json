@@ -4,6 +4,7 @@
 	    "threshold" : 6,
 	    "fail" : "-",
 	    "flags" : "POSR--",
+	    "normalized" : 117,
 	    "value" : 117,
 	    "id" : "  1",
 	    "raw" : "158983656",
@@ -12,6 +13,7 @@
 	},
 	{
 	    "flags" : "PO----",
+	    "normalized" : 92,
 	    "value" : 92,
 	    "raw" : "0",
 	    "name" : "Spin_Up_Time",
@@ -21,6 +23,7 @@
 	    "threshold" : 0
 	},
 	{
+	    "normalized" : 100,
 	    "value" : 100,
 	    "flags" : "-O--CK",
 	    "id" : "  4",
@@ -31,6 +34,7 @@
 	    "fail" : "-"
 	},
 	{
+	    "normalized" : 100,
 	    "value" : 100,
 	    "flags" : "PO--CK",
 	    "id" : "  5",
@@ -42,6 +46,7 @@
 	},
 	{
 	    "flags" : "POSR--",
+	    "normalized" : 75,
 	    "value" : 75,
 	    "raw" : "30779387",
 	    "worst" : 60,
@@ -56,11 +61,13 @@
 	    "name" : "Power_On_Hours",
 	    "id" : "  9",
 	    "flags" : "-O--CK",
+	    "normalized" : 99,
 	    "value" : 99,
 	    "fail" : "-",
 	    "threshold" : 0
 	},
 	{
+	    "normalized" : 100,
 	    "value" : 100,
 	    "flags" : "PO--C-",
 	    "id" : " 10",
@@ -72,6 +79,7 @@
 	},
 	{
 	    "flags" : "-O--CK",
+	    "normalized" : 100,
 	    "value" : 100,
 	    "id" : " 12",
 	    "raw" : "190",
@@ -84,6 +92,7 @@
 	    "threshold" : 0,
 	    "fail" : "-",
 	    "flags" : "-O--CK",
+	    "normalized" : 100,
 	    "value" : 100,
 	    "id" : "183",
 	    "raw" : "0",
@@ -94,6 +103,7 @@
 	    "fail" : "-",
 	    "threshold" : 99,
 	    "flags" : "-O--CK",
+	    "normalized" : 100,
 	    "value" : 100,
 	    "raw" : "0",
 	    "worst" : 100,
@@ -105,6 +115,7 @@
 	    "name" : "Reported_Uncorrect",
 	    "raw" : "0",
 	    "id" : "187",
+	    "normalized" : 100,
 	    "value" : 100,
 	    "flags" : "-O--CK",
 	    "fail" : "-",
@@ -112,6 +123,7 @@
 	},
 	{
 	    "flags" : "-O--CK",
+	    "normalized" : 100,
 	    "value" : 100,
 	    "raw" : "0 0 0",
 	    "worst" : 100,
@@ -124,6 +136,7 @@
 	    "threshold" : 0,
 	    "fail" : "-",
 	    "flags" : "-O-RCK",
+	    "normalized" : 100,
 	    "value" : 100,
 	    "id" : "189",
 	    "raw" : "0",
@@ -135,6 +148,7 @@
 	    "name" : "Airflow_Temperature_Cel",
 	    "raw" : "31 (Min/Max 20/33)",
 	    "id" : "190",
+	    "normalized" : 69,
 	    "value" : 69,
 	    "flags" : "-O---K",
 	    "fail" : "-",
@@ -147,6 +161,7 @@
 	    "name" : "G-Sense_Error_Rate",
 	    "raw" : "0",
 	    "id" : "191",
+	    "normalized" : 100,
 	    "value" : 100,
 	    "flags" : "-O--CK"
 	},
@@ -156,12 +171,14 @@
 	    "name" : "Power-Off_Retract_Count",
 	    "worst" : 100,
 	    "flags" : "-O--CK",
+	    "normalized" : 100,
 	    "value" : 100,
 	    "threshold" : 0,
 	    "fail" : "-"
 	},
 	{
 	    "flags" : "-O--CK",
+	    "normalized" : 100,
 	    "value" : 100,
 	    "raw" : "201",
 	    "worst" : 100,
@@ -173,6 +190,7 @@
 	{
 	    "fail" : "-",
 	    "threshold" : 0,
+	    "normalized" : 31,
 	    "value" : 31,
 	    "flags" : "-O---K",
 	    "name" : "Temperature_Celsius",
@@ -181,6 +199,7 @@
 	    "id" : "194"
 	},
 	{
+	    "normalized" : 100,
 	    "value" : 100,
 	    "flags" : "-O--C-",
 	    "id" : "197",
@@ -195,6 +214,7 @@
 	    "name" : "Offline_Uncorrectable",
 	    "raw" : "0",
 	    "id" : "198",
+	    "normalized" : 100,
 	    "value" : 100,
 	    "flags" : "----C-",
 	    "fail" : "-",
@@ -203,6 +223,7 @@
 	{
 	    "threshold" : 0,
 	    "fail" : "-",
+	    "normalized" : 200,
 	    "value" : 200,
 	    "flags" : "-OSRCK",
 	    "id" : "199",
@@ -216,6 +237,7 @@
 	    "worst" : 253,
 	    "id" : "240",
 	    "flags" : "------",
+	    "normalized" : 100,
 	    "value" : 100,
 	    "fail" : "-",
 	    "threshold" : 0
@@ -227,11 +249,13 @@
 	    "worst" : 253,
 	    "raw" : "24013587236",
 	    "id" : "241",
+	    "normalized" : 100,
 	    "value" : 100,
 	    "flags" : "------"
 	},
 	{
 	    "flags" : "------",
+	    "normalized" : 100,
 	    "value" : 100,
 	    "id" : "242",
 	    "raw" : "66916845706732",
