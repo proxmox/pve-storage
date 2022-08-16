@@ -155,7 +155,12 @@ sub pbs_open_encryption_key {
 
     my $keyfd;
     if (!open($keyfd, '<', $encryption_key_file)) {
-	return undef if $! == ENOENT;
+	if ($! == ENOENT) {
+	    my $encryption_fp = $scfg->{'encryption-key'};
+	    die "encryption configured ('$encryption_fp') but no encryption key file found!\n"
+		if $encryption_fp;
+	    return undef;
+	}
 	die "failed to open encryption key: $encryption_key_file: $!\n";
     }
 
