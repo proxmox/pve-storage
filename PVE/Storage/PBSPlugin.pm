@@ -211,7 +211,7 @@ sub pbs_open_master_pubkey {
     my $keyfd;
     if (!open($keyfd, '<', $master_pubkey_file)) {
 	if ($! == ENOENT) {
-	    warn "master public key configured but no key file found!\n"
+	    die "master public key configured but no key file found!\n"
 		if $scfg->{'master-pubkey'};
 	    return undef;
 	}
