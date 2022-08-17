@@ -688,7 +688,7 @@ my sub snapshot_files_encrypted {
 # TODO: use a client with native rust/proxmox-backup bindings to profit from
 # API schema checks and types
 my sub pbs_api_connect {
-    my ($scfg, $password) = @_;
+    my ($scfg, $password, $timeout) = @_;
 
     my $params = {};
 
@@ -709,7 +709,7 @@ my sub pbs_api_connect {
 	%$params,
 	host => $scfg->{server},
 	port => $scfg->{port} // 8007,
-	timeout => 7, # cope with a 401 (3s api delay) and high latency
+	timeout => ($timeout // 7), # cope with a 401 (3s api delay) and high latency
 	cookie_name => 'PBSAuthCookie',
     );
 
@@ -724,7 +724,7 @@ sub list_volumes {
     return $res if !grep { $_ eq 'backup' } @$content_types;
 
     my $password = pbs_get_password($scfg, $storeid);
-    my $conn = pbs_api_connect($scfg, $password);
+    my $conn = pbs_api_connect($scfg, $password, 120);
     my $datastore = $scfg->{datastore};
 
     my $param = {};
