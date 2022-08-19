@@ -108,7 +108,26 @@ __PACKAGE__->register_method ({
 
 	$dev = PVE::Diskmanage::verify_blockdev_path($dev);
 	PVE::Diskmanage::assert_disk_unused($dev);
-	PVE::Storage::assert_sid_unused($name) if $param->{add_storage};
+
+	my $storage_params = {
+	    type => 'lvmthin',
+	    vgname => $name,
+	    thinpool => $name,
+	    storage => $name,
+	    content => 'rootdir,images',
+	    nodes => $node,
+	};
+	my $verify_params = [qw(vgname thinpool)];
+
+	if ($param->{add_storage}) {
+	    PVE::API2::Storage::Config->create_or_update(
+		$name,
+		$node,
+		$storage_params,
+		$verify_params,
+		1,
+	    );
+	}
 
 	my $worker = sub {
 	    PVE::Diskmanage::locked_disk_action(sub {
@@ -147,16 +166,12 @@ __PACKAGE__->register_method ({
 		PVE::Diskmanage::udevadm_trigger($dev);
 
 		if ($param->{add_storage}) {
-		    my $storage_params = {
-			type => 'lvmthin',
-			vgname => $name,
-			thinpool => $name,
-			storage => $name,
-			content => 'rootdir,images',
-			nodes => $node,
-		    };
-
-		    PVE::API2::Storage::Config->create($storage_params);
+		    PVE::API2::Storage::Config->create_or_update(
+			$name,
+			$node,
+			$storage_params,
+			$verify_params,
+		    );
 		}
 	    });
 	};

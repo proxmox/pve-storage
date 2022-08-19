@@ -342,14 +342,33 @@ __PACKAGE__->register_method ({
 	my $name = $param->{name};
 	my $node = $param->{node};
 	my $devs = [PVE::Tools::split_list($param->{devices})];
+	my $node = $param->{node};
 	my $raidlevel = $param->{raidlevel};
 	my $compression = $param->{compression} // 'on';
 
 	for my $dev (@$devs) {
 	    $dev = PVE::Diskmanage::verify_blockdev_path($dev);
 	    PVE::Diskmanage::assert_disk_unused($dev);
+
 	}
-	PVE::Storage::assert_sid_unused($name) if $param->{add_storage};
+	my $storage_params = {
+	    type => 'zfspool',
+	    pool => $name,
+	    storage => $name,
+	    content => 'rootdir,images',
+	    nodes => $node,
+	};
+	my $verify_params = [qw(pool)];
+
+	if ($param->{add_storage}) {
+	    PVE::API2::Storage::Config->create_or_update(
+		$name,
+		$node,
+		$storage_params,
+		$verify_params,
+		1,
+	    );
+	}
 
 	my $pools = get_pool_data();
 	die "pool '${name}' already exists on node '${node}'\n"
@@ -432,15 +451,12 @@ __PACKAGE__->register_method ({
 	    PVE::Diskmanage::udevadm_trigger($devs->@*);
 
 	    if ($param->{add_storage}) {
-		my $storage_params = {
-		    type => 'zfspool',
-		    pool => $name,
-		    storage => $name,
-		    content => 'rootdir,images',
-		    nodes => $node,
-		};
-
-		PVE::API2::Storage::Config->create($storage_params);
+		PVE::API2::Storage::Config->create_or_update(
+		    $name,
+		    $node,
+		    $storage_params,
+		    $verify_params,
+		);
 	    }
 	};
 

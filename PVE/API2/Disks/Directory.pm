@@ -209,7 +209,26 @@ __PACKAGE__->register_method ({
 
 	$dev = PVE::Diskmanage::verify_blockdev_path($dev);
 	PVE::Diskmanage::assert_disk_unused($dev);
-	PVE::Storage::assert_sid_unused($name) if $param->{add_storage};
+
+	my $storage_params = {
+	    type => 'dir',
+	    storage => $name,
+	    content => 'rootdir,images,iso,backup,vztmpl,snippets',
+	    is_mountpoint => 1,
+	    path => $path,
+	    nodes => $node,
+	};
+	my $verify_params = [qw(path)];
+
+	if ($param->{add_storage}) {
+	    PVE::API2::Storage::Config->create_or_update(
+		$name,
+		$node,
+		$storage_params,
+		$verify_params,
+		1,
+	    );
+	}
 
 	my $mounted = PVE::Diskmanage::mounted_paths();
 	die "the path for '${name}' is already mounted: ${path} ($mounted->{$path})\n"
@@ -286,16 +305,12 @@ __PACKAGE__->register_method ({
 		run_command(['systemctl', 'start', $mountunitname]);
 
 		if ($param->{add_storage}) {
-		    my $storage_params = {
-			type => 'dir',
-			storage => $name,
-			content => 'rootdir,images,iso,backup,vztmpl,snippets',
-			is_mountpoint => 1,
-			path => $path,
-			nodes => $node,
-		    };
-
-		    PVE::API2::Storage::Config->create($storage_params);
+		    PVE::API2::Storage::Config->create_or_update(
+			$name,
+			$node,
+			$storage_params,
+			$verify_params,
+		    );
 		}
 	    });
 	};

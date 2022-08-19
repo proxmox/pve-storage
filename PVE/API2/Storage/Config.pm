@@ -65,6 +65,57 @@ sub cleanup_storages_for_node {
     }
 }
 
+# Decides if a storage needs to be created or updated. An update is needed, if
+# the storage has a node list configured, then the current node will be added.
+# The verify_params parameter is an array of parameter names that need to match
+# if there already is a storage config of the same name present.  This is
+# mainly intended for local storage types as certain parameters need to be the
+# same.  For exmaple 'pool' for ZFS, 'vg_name' for LVM, ...
+# Set the dryrun parameter, to only verify the parameters without updating or
+# creating the storage.
+sub create_or_update {
+    my ($self, $sid, $node, $storage_params, $verify_params, $dryrun) = @_;
+
+    my $cfg = PVE::Storage::config();
+    my $scfg = PVE::Storage::storage_config($cfg, $sid, 1);
+
+    if ($scfg) {
+	die "storage config for '${sid}' exists but no parameters to verify were provided\n"
+	    if !$verify_params;
+
+	$node = PVE::INotify::nodename() if !$node || ($node eq 'localhost');
+	die "Storage ID '${sid}' already exists on node ${node}\n"
+	    if !defined($scfg->{nodes}) || $scfg->{nodes}->{$node};
+
+	push @$verify_params, 'type';
+	for my $key (@$verify_params) {
+	    if (!defined($scfg->{$key})) {
+		die "Option '${key}' is not configured for storage '$sid', "
+		    ."expected it to be '$storage_params->{$key}'";
+	    }
+	    if ($storage_params->{$key} ne $scfg->{$key}) {
+		die "Option '${key}' ($storage_params->{$key}) does not match "
+		    ."existing storage configuration '$scfg->{$key}'\n";
+	    }
+	}
+    }
+
+    if (!$dryrun) {
+	if ($scfg) {
+	    if ($scfg->{nodes}) {
+		$scfg->{nodes}->{$node} = 1;
+		$self->update({
+		    nodes => join(',', sort keys $scfg->{nodes}->%*),
+		    storage => $sid,
+		});
+		print "Added '${node}' to nodes for storage '${sid}'\n";
+	    }
+	} else {
+	    $self->create($storage_params);
+	}
+    }
+}
+
 __PACKAGE__->register_method ({
     name => 'index',
     path => '',
