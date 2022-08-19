@@ -499,6 +499,19 @@ sub mounted_blockdevs {
     return $mounted;
 }
 
+# returns hashmap of abs mount path -> first part of /proc/mounts (what)
+sub mounted_paths {
+    my $mounted = {};
+
+    my $mounts = PVE::ProcFSTools::parse_proc_mounts();
+
+    foreach my $mount (@$mounts) {
+	$mounted->{abs_path($mount->[1])} = $mount->[0];
+    };
+
+    return $mounted;
+}
+
 sub get_disks {
     my ($disks, $nosmart, $include_partitions) = @_;
     my $disklist = {};
