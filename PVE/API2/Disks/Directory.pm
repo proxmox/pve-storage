@@ -203,16 +203,20 @@ __PACKAGE__->register_method ({
 	my $dev = $param->{device};
 	my $node = $param->{node};
 	my $type = $param->{filesystem} // 'ext4';
+	my $path = "/mnt/pve/$name";
+	my $mountunitname = PVE::Systemd::escape_unit($path, 1) . ".mount";
+	my $mountunitpath = "/etc/systemd/system/$mountunitname";
 
 	$dev = PVE::Diskmanage::verify_blockdev_path($dev);
 	PVE::Diskmanage::assert_disk_unused($dev);
 	PVE::Storage::assert_sid_unused($name) if $param->{add_storage};
 
-	my $worker = sub {
-	    my $path = "/mnt/pve/$name";
-	    my $mountunitname = PVE::Systemd::escape_unit($path, 1) . ".mount";
-	    my $mountunitpath = "/etc/systemd/system/$mountunitname";
+	my $mounted = PVE::Diskmanage::mounted_paths();
+	die "the path for '${name}' is already mounted: ${path} ($mounted->{$path})\n"
+	    if $mounted->{$path};
+	die "a systemd mount unit already exists: ${mountunitpath}\n" if -e $mountunitpath;
 
+	my $worker = sub {
 	    PVE::Diskmanage::locked_disk_action(sub {
 		PVE::Diskmanage::assert_disk_unused($dev);
 

@@ -18,6 +18,43 @@ use base qw(PVE::RESTHandler);
 my $ZPOOL = '/sbin/zpool';
 my $ZFS = '/sbin/zfs';
 
+sub get_pool_data {
+    if (!-f $ZPOOL) {
+	die "zfsutils-linux not installed\n";
+    }
+
+    my $propnames = [qw(name size alloc free frag dedup health)];
+    my $numbers = {
+	size => 1,
+	alloc => 1,
+	free => 1,
+	frag => 1,
+	dedup => 1,
+    };
+
+    my $cmd = [$ZPOOL,'list', '-HpPLo', join(',', @$propnames)];
+
+    my $pools = [];
+
+    run_command($cmd, outfunc => sub {
+	my ($line) = @_;
+
+	    my @props = split('\s+', trim($line));
+	    my $pool = {};
+	    for (my $i = 0; $i < scalar(@$propnames); $i++) {
+		if ($numbers->{$propnames->[$i]}) {
+		    $pool->{$propnames->[$i]} = $props[$i] + 0;
+		} else {
+		    $pool->{$propnames->[$i]} = $props[$i];
+		}
+	    }
+
+	    push @$pools, $pool;
+    });
+
+    return $pools;
+}
+
 __PACKAGE__->register_method ({
     name => 'index',
     path => '',
@@ -74,40 +111,7 @@ __PACKAGE__->register_method ({
     code => sub {
 	my ($param) = @_;
 
-	if (!-f $ZPOOL) {
-	    die "zfsutils-linux not installed\n";
-	}
-
-	my $propnames = [qw(name size alloc free frag dedup health)];
-	my $numbers = {
-	    size => 1,
-	    alloc => 1,
-	    free => 1,
-	    frag => 1,
-	    dedup => 1,
-	};
-
-	my $cmd = [$ZPOOL,'list', '-HpPLo', join(',', @$propnames)];
-
-	my $pools = [];
-
-	run_command($cmd, outfunc => sub {
-	    my ($line) = @_;
-
-		my @props = split('\s+', trim($line));
-		my $pool = {};
-		for (my $i = 0; $i < scalar(@$propnames); $i++) {
-		    if ($numbers->{$propnames->[$i]}) {
-			$pool->{$propnames->[$i]} = $props[$i] + 0;
-		    } else {
-			$pool->{$propnames->[$i]} = $props[$i];
-		    }
-		}
-
-		push @$pools, $pool;
-	});
-
-	return $pools;
+	return get_pool_data();
     }});
 
 sub preparetree {
@@ -336,6 +340,7 @@ __PACKAGE__->register_method ({
 	my $user = $rpcenv->get_user();
 
 	my $name = $param->{name};
+	my $node = $param->{node};
 	my $devs = [PVE::Tools::split_list($param->{devices})];
 	my $raidlevel = $param->{raidlevel};
 	my $compression = $param->{compression} // 'on';
@@ -345,6 +350,10 @@ __PACKAGE__->register_method ({
 	    PVE::Diskmanage::assert_disk_unused($dev);
 	}
 	PVE::Storage::assert_sid_unused($name) if $param->{add_storage};
+
+	my $pools = get_pool_data();
+	die "pool '${name}' already exists on node '${node}'\n"
+	    if grep { $_->{name} eq $name } @{$pools};
 
 	my $numdisks = scalar(@$devs);
 	my $mindisks = {
@@ -428,7 +437,7 @@ __PACKAGE__->register_method ({
 		    pool => $name,
 		    storage => $name,
 		    content => 'rootdir,images',
-		    nodes => $param->{node},
+		    nodes => $node,
 		};
 
 		PVE::API2::Storage::Config->create($storage_params);

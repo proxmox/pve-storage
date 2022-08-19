@@ -114,6 +114,9 @@ __PACKAGE__->register_method ({
 	    PVE::Diskmanage::locked_disk_action(sub {
 		PVE::Diskmanage::assert_disk_unused($dev);
 
+		die "volume group with name '${name}' already exists on node '${node}'\n"
+		    if PVE::Storage::LVMPlugin::lvm_vgs()->{$name};
+
 		if (PVE::Diskmanage::is_partition($dev)) {
 		    eval { PVE::Diskmanage::change_parttype($dev, '8E00'); };
 		    warn $@ if $@;
