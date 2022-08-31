@@ -417,8 +417,10 @@ sub path {
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
     $name .= '@'.$snapname if $snapname;
 
-    my $rbd_dev_path = get_rbd_dev_path($scfg, $storeid, $name);
-    return ($rbd_dev_path, $vmid, $vtype) if $scfg->{krbd};
+    if ($scfg->{krbd}) {
+	my $rbd_dev_path = get_rbd_dev_path($scfg, $storeid, $name);
+	return ($rbd_dev_path, $vmid, $vtype);
+    }
 
     my $rbd_path = get_rbd_path($scfg, $name);
     my $path = "rbd:${rbd_path}";
