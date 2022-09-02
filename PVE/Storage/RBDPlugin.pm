@@ -13,6 +13,7 @@ use PVE::Cluster qw(cfs_read_file);;
 use PVE::JSONSchema qw(get_standard_option);
 use PVE::ProcFSTools;
 use PVE::RADOS;
+use PVE::RPCEnvironment;
 use PVE::Storage::Plugin;
 use PVE::Tools qw(run_command trim file_read_firstline);
 
@@ -26,6 +27,9 @@ my $get_parent_image_name = sub {
 
 my $librados_connect = sub {
     my ($scfg, $storeid, $options) = @_;
+
+    $options->{timeout} = 60
+	if !defined($options->{timeout}) && PVE::RPCEnvironment->is_worker();
 
     my $librados_config = PVE::CephConfig::ceph_connect_option($scfg, $storeid, $options->%*);
 
