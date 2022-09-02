@@ -27,7 +27,7 @@ my $get_parent_image_name = sub {
 my $librados_connect = sub {
     my ($scfg, $storeid, $options) = @_;
 
-    my $librados_config = PVE::CephConfig::ceph_connect_option($scfg, $storeid);
+    my $librados_config = PVE::CephConfig::ceph_connect_option($scfg, $storeid, $options->%*);
 
     my $rados = PVE::RADOS->new(%$librados_config);
 
