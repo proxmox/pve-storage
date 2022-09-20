@@ -342,7 +342,6 @@ __PACKAGE__->register_method ({
 	my $name = $param->{name};
 	my $node = $param->{node};
 	my $devs = [PVE::Tools::split_list($param->{devices})];
-	my $node = $param->{node};
 	my $raidlevel = $param->{raidlevel};
 	my $compression = $param->{compression} // 'on';
 
