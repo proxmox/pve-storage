@@ -51,7 +51,7 @@ sub assert_blockdev {
     my ($dev, $noerr) = @_;
 
     if ($dev !~ m|^/dev/| || !(-b $dev)) {
-	return undef if $noerr;
+	return if $noerr;
 	die "not a valid block device\n";
     }
 
@@ -93,8 +93,6 @@ sub get_smart_data {
     my $smartdata = {};
     my $type;
 
-    my $returncode = 0;
-
     if ($disk =~ m!^/dev/(nvme\d+n\d+)$!) {
 	my $info = get_sysdir_info("/sys/block/$1");
 	$disk = "/dev/".($info->{device}
@@ -105,8 +103,8 @@ sub get_smart_data {
     push @$cmd, '-A', '-f', 'brief' if !$healthonly;
     push @$cmd, $disk;
 
-    eval {
-	$returncode = run_command($cmd, noerr => 1, outfunc => sub{
+    my $returncode = eval {
+	run_command($cmd, noerr => 1, outfunc => sub {
 	    my ($line) = @_;
 
 # ATA SMART attributes, e.g.:
@@ -154,13 +152,11 @@ sub get_smart_data {
 	    } elsif ($line =~ m/SMART Disabled/) {
 		$smartdata->{health} = "SMART Disabled";
 	    }
-	});
+	})
     };
     my $err = $@;
 
-    # bit 0 and 1 mark an severe smartctl error
-    # all others are for disk status, so ignore them
-    # see smartctl(8)
+    # bit 0 and 1 mark a fatal error, other bits are for disk status -> ignore (see man 8 smartctl)
     if ((defined($returncode) && ($returncode & 0b00000011)) || $err) {
 	die "Error getting S.M.A.R.T. data: Exit code: $returncode\n";
     }
@@ -170,34 +166,28 @@ sub get_smart_data {
     return $smartdata;
 }
 
-sub get_lsblk_info() {
+sub get_lsblk_info {
     my $cmd = [$LSBLK, '--json', '-o', 'path,parttype,fstype'];
     my $output = "";
-    my $res = {};
-    eval {
-	run_command($cmd, outfunc => sub {
-	    my ($line) = @_;
-	    $output .= "$line\n";
-	});
-    };
+    eval { run_command($cmd, outfunc => sub { $output .= "$_[0]\n"; }) };
     warn "$@\n" if $@;
-    return $res if $output eq '';
+    return {} if $output eq '';
 
-    my $parsed = eval { decode_json($output) };
+    my $parsed = eval { decode_json($output) } // {};
     warn "$@\n" if $@;
     my $list = $parsed->{blockdevices} // [];
 
-    $res = { map {
-	$_->{path} => {
-	    parttype => $_->{parttype},
-	    fstype => $_->{fstype}
-	}
-    } @{$list} };
-
-    return $res;
+    return {
+	map {
+	    $_->{path} => {
+		parttype => $_->{parttype},
+		fstype => $_->{fstype}
+	    }
+	} @{$list}
+    };
 }
 
-my $get_devices_by_partuuid = sub {
+my sub get_devices_by_partuuid {
     my ($lsblk_info, $uuids, $res) = @_;
 
     $res = {} if !defined($res);
@@ -209,7 +199,7 @@ my $get_devices_by_partuuid = sub {
     }
 
     return $res;
-};
+}
 
 sub get_zfs_devices {
     my ($lsblk_info) = @_;
@@ -217,21 +207,17 @@ sub get_zfs_devices {
 
     return {} if !check_bin($ZPOOL);
 
-    # use zpool and parttype uuid,
-    # because log and cache do not have
-    # zfs type uuid
+    # use zpool and parttype uuid, because log and cache do not have zfs type uuid
     eval {
 	run_command([$ZPOOL, 'list', '-HPLv'], outfunc => sub {
 	     my ($line) = @_;
-
 	     if ($line =~ m|^\t([^\t]+)\t|) {
 		$res->{$1} = 1;
 	     }
 	});
     };
 
-    # only warn here,
-    # because maybe zfs tools are not installed
+    # only warn here, because maybe zfs tools are not installed
     warn "$@\n" if $@;
 
     my $uuids = {
@@ -240,7 +226,7 @@ sub get_zfs_devices {
     };
 
 
-    $res = $get_devices_by_partuuid->($lsblk_info, $uuids, $res);
+    $res = get_devices_by_partuuid($lsblk_info, $uuids, $res);
 
     return $res;
 }
@@ -258,15 +244,14 @@ sub get_lvm_devices {
 	});
     };
 
-    # if something goes wrong, we do not want
-    # to give up, but indicate an error has occurred
+    # if something goes wrong, we do not want to give up, but indicate an error has occurred
     warn "$@\n" if $@;
 
     my $uuids = {
 	"e6d6d379-f507-44c2-a23c-238f2a3df928" => 1,
     };
 
-    $res = $get_devices_by_partuuid->($lsblk_info, $uuids, $res);
+    $res = get_devices_by_partuuid($lsblk_info, $uuids, $res);
 
     return $res;
 }
@@ -282,7 +267,7 @@ sub get_ceph_journals {
 	'cafecafe-9b03-4f30-b4c6-b4b80ceff106' => 4, # block
     };
 
-    $res = $get_devices_by_partuuid->($lsblk_info, $uuids, $res);
+    $res = get_devices_by_partuuid($lsblk_info, $uuids, $res);
 
     return $res;
 }
@@ -333,46 +318,31 @@ sub get_udev_info {
 	});
     };
     warn $@ if $@;
-    return undef if !$info;
+    return if !$info;
 
-    return undef if $info !~ m/^E: DEVTYPE=(disk|partition)$/m;
-    return undef if $info =~ m/^E: ID_CDROM/m;
+    return if $info !~ m/^E: DEVTYPE=(disk|partition)$/m;
+    return if $info =~ m/^E: ID_CDROM/m;
 
-    # we use this, because some disks are not simply in /dev
-    # e.g. /dev/cciss/c0d0
+    # we use this, because some disks are not simply in /dev e.g. /dev/cciss/c0d0
     if ($info =~ m/^E: DEVNAME=(\S+)$/m) {
 	$data->{devpath} = $1;
     }
     return if !defined($data->{devpath});
 
     $data->{serial} = 'unknown';
-    if ($info =~ m/^E: ID_SERIAL_SHORT=(\S+)$/m) {
-	$data->{serial} = $1;
-    }
+    $data->{serial} = $1 if $info =~ m/^E: ID_SERIAL_SHORT=(\S+)$/m;
 
-    $data->{gpt} = 0;
-    if ($info =~ m/^E: ID_PART_TABLE_TYPE=gpt$/m) {
-	$data->{gpt} = 1;
-    }
+    $data->{gpt} = $info =~ m/^E: ID_PART_TABLE_TYPE=gpt$/m ? 1 : 0;
 
-    # detect SSD
     $data->{rpm} = -1;
-    if ($info =~ m/^E: ID_ATA_ROTATION_RATE_RPM=(\d+)$/m) {
-	$data->{rpm} = $1;
-    }
+    $data->{rpm} = $1 if $info =~ m/^E: ID_ATA_ROTATION_RATE_RPM=(\d+)$/m; # detects SSD implicit
 
-    if ($info =~ m/^E: ID_BUS=usb$/m) {
-	$data->{usb} = 1;
-    }
+    $data->{usb} = 1 if $info =~ m/^E: ID_BUS=usb$/m;
 
-    if ($info =~ m/^E: ID_MODEL=(.+)$/m) {
-	$data->{model} = $1;
-    }
+    $data->{model} = $1 if $info =~ m/^E: ID_MODEL=(.+)$/m;
 
     $data->{wwn} = 'unknown';
-    if ($info =~ m/^E: ID_WWN=(.*)$/m) {
-	$data->{wwn} = $1;
-    }
+    $data->{wwn} = $1 if $info =~ m/^E: ID_WWN=(.*)$/m;
 
     if ($info =~ m/^E: DEVLINKS=(.+)$/m) {
 	my @devlinks = grep(m#^/dev/disk/by-id/(ata|scsi|nvme(?!-eui))#, split (/ /, $1));
@@ -388,15 +358,14 @@ sub get_sysdir_size {
     my $size = file_read_firstline("$sysdir/size");
     return if !$size;
 
-    # linux always considers sectors to be 512 bytes,
-    # independently of real block size
+    # linux always considers sectors to be 512 bytes, independently of real block size
     return $size * 512;
 }
 
 sub get_sysdir_info {
     my ($sysdir) = @_;
 
-    return undef if ! -d "$sysdir/device";
+    return if ! -d "$sysdir/device";
 
     my $data = {};
 
@@ -409,8 +378,7 @@ sub get_sysdir_info {
     $data->{model} = file_read_firstline("$sysdir/device/model") || 'unknown';
 
     if (defined(my $device = readlink("$sysdir/device"))) {
-	# strip directory and untaint:
-	($data->{device}) = $device =~ m!([^/]+)$!;
+	($data->{device}) = $device =~ m!([^/]+)$!; # strip directory and untaint
     }
 
     return $data;
@@ -426,9 +394,8 @@ sub get_wear_leveling_info {
 
     my $wearout;
 
-    # Common register names that represent percentage values of potential
-    # failure indicators used in drivedb.h of smartmontool's. Order matters,
-    # as some drives may have multiple definitions
+    # Common register names that represent percentage values of potential failure indicators used
+    # in drivedb.h of smartmontool's. Order matters, as some drives may have multiple definitions
     my @wearoutregisters = (
 	"Media_Wearout_Indicator",
 	"SSD_Life_Left",
@@ -553,18 +520,17 @@ sub get_disks {
     dir_glob_foreach('/sys/block', $disk_regex, sub {
 	my ($dev) = @_;
 	# whitelisting following devices
-	# hdX: ide block device
-	# sdX: sd block device
-	# vdX: virtual block device
-	# xvdX: xen virtual block device
-	# nvmeXnY: nvme devices
-	# cciss!cXnY: cciss devices
+	# - hdX         ide block device
+	# - sdX         scsi/sata block device
+	# - vdX         virtIO block device
+	# - xvdX:       xen virtual block device
+	# - nvmeXnY:    nvme devices
+	# - cciss!cXnY  cciss devices
 	return if $dev !~ m/^(h|s|x?v)d[a-z]+$/ &&
 		  $dev !~ m/^nvme\d+n\d+$/ &&
 		  $dev !~ m/^cciss\!c\d+d\d+$/;
 
-	my $data = get_udev_info("/sys/block/$dev");
-	return if !defined($data);
+	my $data = get_udev_info("/sys/block/$dev") // return;
 	my $devpath = $data->{devpath};
 
 	my $sysdir = "/sys/block/$dev";
@@ -590,26 +556,21 @@ sub get_disks {
 	    }
 	}
 
-	my $health = 'UNKNOWN';
-	my $wearout = 'N/A';
-
+	my ($health, $wearout) = ('UNKNOWN', 'N/A');
 	if (!$nosmart) {
 	    eval {
 		my $smartdata = get_smart_data($devpath, !is_ssdlike($type));
 		$health = $smartdata->{health} if $smartdata->{health};
 
-		if (is_ssdlike($type)) {
-		    # if we have an ssd we try to get the wearout indicator
-		    my $wearval = get_wear_leveling_info($smartdata);
-		    $wearout = $wearval if defined($wearval);
+		if (is_ssdlike($type)) { # if we have an ssd we try to get the wearout indicator
+		    my $wear_level = get_wear_leveling_info($smartdata);
+		    $wearout = $wear_level if defined($wear_level);
 		}
 	    };
 	}
 
-	# we replaced cciss/ with cciss! above
-	# but in the result we need cciss/ again
-	# because the caller might want to check the
-	# result again with the original parameter
+	# we replaced cciss/ with cciss! above, but in the result we need cciss/ again because the
+	# caller might want to check the result again with the original parameter
 	if ($dev =~ m|^cciss!|) {
 	    $dev =~ s|^cciss!|cciss/|;
 	}
@@ -632,19 +593,11 @@ sub get_disks {
 	my $by_id_link = $data->{by_id_link};
 	$disklist->{$dev}->{by_id_link} = $by_id_link if defined($by_id_link);
 
-	my $osdid = -1;
-	my $bluestore = 0;
-	my $osdencrypted = 0;
-
-	my $journal_count = 0;
-	my $db_count = 0;
-	my $wal_count = 0;
+	my ($osdid, $bluestore, $osdencrypted) = (-1, 0, 0);
+	my ($journal_count, $db_count, $wal_count) = (0, 0, 0);
 
 	my $partpath = $devpath;
-
-	# remove part after last / to
-	# get the base path for the partitions
-	# e.g. from /dev/cciss/c0d0 get /dev/cciss
+	# remove trailing part to get the partition base path, e.g. /dev/cciss/c0d0 -> /dev/cciss
 	$partpath =~ s/\/[^\/]+$//;
 
 	my $determine_usage = sub {
@@ -655,18 +608,13 @@ sub get_disks {
 
 	    my $info = $lsblk_info->{$devpath} // {};
 
-	    my $parttype = $info->{parttype};
-	    if (defined($parttype)) {
-		return 'BIOS boot'
-		    if $parttype eq '21686148-6449-6e6f-744e-656564454649';
-		return 'EFI'
-		    if $parttype eq 'c12a7328-f81f-11d2-ba4b-00a0c93ec93b';
-		return 'ZFS reserved'
-		    if $parttype eq '6a945a3b-1dd2-11b2-99a6-080020736631';
+	    if (defined(my $parttype = $info->{parttype})) {
+		return 'BIOS boot'if $parttype eq '21686148-6449-6e6f-744e-656564454649';
+		return 'EFI' if $parttype eq 'c12a7328-f81f-11d2-ba4b-00a0c93ec93b';
+		return 'ZFS reserved' if $parttype eq '6a945a3b-1dd2-11b2-99a6-080020736631';
 	    }
 
-	    my $fstype = $info->{fstype};
-	    return "${fstype}" if defined($fstype);
+	    return "$info->{fstype}" if defined($info->{fstype});
 	    return 'mounted' if $mounted->{$devpath};
 
 	    return if !$is_partition;
@@ -691,13 +639,11 @@ sub get_disks {
 	    }
 
 	    my $result = { %{$ceph_volume} };
-	    $result->{journals} = delete $result->{journal}
-		if $result->{journal};
+	    $result->{journals} = delete $result->{journal} if $result->{journal};
 	    return $result;
 	};
 
 	my $partitions = {};
-
 	dir_glob_foreach("$sysdir", "$dev.+", sub {
 	    my ($part) = @_;
 
@@ -709,18 +655,14 @@ sub get_disks {
 	    $partitions->{$part}->{mounted} = 1 if exists $mounted->{"$partpath/$part"};
 	    $partitions->{$part}->{gpt} = $data->{gpt};
 	    $partitions->{$part}->{type} = 'partition';
-	    $partitions->{$part}->{size} =
-		get_sysdir_size("$sysdir/$part") // 0;
-	    $partitions->{$part}->{used} =
-		$determine_usage->("$partpath/$part", "$sysdir/$part", 1);
+	    $partitions->{$part}->{size} = get_sysdir_size("$sysdir/$part") // 0;
+	    $partitions->{$part}->{used} = $determine_usage->("$partpath/$part", "$sysdir/$part", 1);
 	    $partitions->{$part}->{osdid} //= -1;
 
-	    # Avoid counting twice (e.g. partition on which the LVM for the
-	    # DB OSD resides is present in the $journalhash)
+	    # avoid counting twice (e.g. partition with the LVM for the DB OSD is in $journalhash)
 	    return if $lvm_based_osd;
 
 	    # Legacy handling for non-LVM based OSDs
-
 	    if (my $mp = $mounted->{"$partpath/$part"}) {
 		if ($mp =~ m|^/var/lib/ceph/osd/ceph-(\d+)$|) {
 		    $osdid = $1;
@@ -768,14 +710,11 @@ sub get_disks {
 	$disklist->{$dev}->{wal} = $wal_count if $wal_count;
 
 	if ($include_partitions) {
-	    foreach my $part (keys %{$partitions}) {
-		$disklist->{$part} = $partitions->{$part};
-	    }
+	    $disklist->{$_} = $partitions->{$_} for keys %{$partitions};
 	}
     });
 
     return $disklist;
-
 }
 
 sub get_partnum {
@@ -790,19 +729,11 @@ sub get_partnum {
     my $minor = PVE::Tools::dev_t_minor($st->rdev);
     my $partnum_path = "/sys/dev/block/$major:$minor/";
 
-    my $partnum;
-
-    $partnum = file_read_firstline("${partnum_path}partition");
-
+    my $partnum = file_read_firstline("${partnum_path}partition");
     die "Partition does not exist\n" if !defined($partnum);
-
-    #untaint and ensure it is a int
-    if ($partnum =~ m/(\d+)/) {
-	$partnum = $1;
-	die "Partition number $partnum is invalid\n" if $partnum > 128;
-    } else {
-	die "Failed to get partition number\n";
-    }
+    die "Failed to get partition number\n" if $partnum !~ m/(\d+)/; # untaint
+    $partnum = $1;
+    die "Partition number $partnum is invalid\n" if $partnum > 128;
 
     return $partnum;
 }
@@ -841,10 +772,8 @@ sub locked_disk_action {
 
 sub assert_disk_unused {
     my ($dev) = @_;
-
     die "device '$dev' is already in use\n" if disk_is_used($dev);
-
-    return undef;
+    return;
 }
 
 sub append_partition {
