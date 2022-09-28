@@ -30,8 +30,6 @@ use PVE::CLIHandler;
 
 use base qw(PVE::CLIHandler);
 
-my $KNOWN_EXPORT_FORMATS = ['raw+size', 'tar+size', 'qcow2+size', 'vmdk+size', 'zfs', 'btrfs'];
-
 my $nodename = PVE::INotify::nodename();
 
 sub param_mapping {
@@ -269,7 +267,7 @@ __PACKAGE__->register_method ({
 	    format => {
 		description => "Export stream format",
 		type => 'string',
-		enum => $KNOWN_EXPORT_FORMATS,
+		enum => $PVE::Storage::KNOWN_EXPORT_FORMATS,
 	    },
 	    filename => {
 		description => "Destination file name",
@@ -355,7 +353,7 @@ __PACKAGE__->register_method ({
 	    format => {
 		description => "Import stream format",
 		type => 'string',
-		enum => $KNOWN_EXPORT_FORMATS,
+		enum => $PVE::Storage::KNOWN_EXPORT_FORMATS,
 	    },
 	    filename => {
 		description => "Source file name. For '-' stdin is used, the " .

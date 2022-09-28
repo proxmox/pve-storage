@@ -48,6 +48,8 @@ use constant APIVER => 10;
 # see https://www.gnu.org/software/libtool/manual/html_node/Libtool-versioning.html
 use constant APIAGE => 1;
 
+our $KNOWN_EXPORT_FORMATS = ['raw+size', 'tar+size', 'qcow2+size', 'vmdk+size', 'zfs', 'btrfs'];
+
 # load standard plugins
 PVE::Storage::DirPlugin->register();
 PVE::Storage::LVMPlugin->register();
@@ -1948,6 +1950,12 @@ sub volume_import_start {
 
 sub volume_export_start {
     my ($cfg, $volid, $format, $log, $opts) = @_;
+
+    my $known_format = [ grep { $_ eq $format } $KNOWN_EXPORT_FORMATS->@* ];
+    if (!$known_format->@*) {
+	die "Cannot export '$volid' using unknown export format '$format'\n";
+    }
+    $format = $known_format->[0];
 
     my $run_command_params = delete $opts->{cmd} // {};
 
