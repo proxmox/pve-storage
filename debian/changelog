@@ -1,3 +1,11 @@
+libpve-storage-perl (7.2-10) bullseye; urgency=medium
+
+  * (remote) export: check and untaint format
+
+  * fix #4165: disk: SMART: add normalized field
+
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 29 Sep 2022 14:33:07 +0200
+
 libpve-storage-perl (7.2-9) bullseye; urgency=medium
 
   * fix #4189: pbs: bump list_volumes timeout to 2mins
