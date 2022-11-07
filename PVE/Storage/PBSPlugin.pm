@@ -403,19 +403,25 @@ sub prune_backups {
 
     $logfunc //= sub { print "$_[1]\n" };
 
-    my $backups = eval { $class->list_volumes($storeid, $scfg, $vmid, ['backup']) };
-    die "failed to get list of all backups to prune - $@" if $@;
-
     $type = 'vm' if defined($type) && $type eq 'qemu';
     $type = 'ct' if defined($type) && $type eq 'lxc';
 
     my $backup_groups = {};
-    foreach my $backup (@{$backups}) {
-	(my $backup_type = $backup->{format}) =~ s/^pbs-//;
-	next if defined($type) && $backup_type ne $type;
 
-	my $backup_group = "$backup_type/$backup->{vmid}";
-	$backup_groups->{$backup_group} = 1;
+    if (defined($vmid) && defined($type)) {
+	# no need to get the list of volumes, we only got a single backup group anyway
+	$backup_groups->{"$type/$vmid"} = 1;
+    } else {
+	my $backups = eval { $class->list_volumes($storeid, $scfg, $vmid, ['backup']) };
+	die "failed to get list of all backups to prune - $@" if $@;
+
+	foreach my $backup (@{$backups}) {
+	    (my $backup_type = $backup->{format}) =~ s/^pbs-//;
+	    next if defined($type) && $backup_type ne $type;
+
+	    my $backup_group = "$backup_type/$backup->{vmid}";
+	    $backup_groups->{$backup_group} = 1;
+	}
     }
 
     my @param;
