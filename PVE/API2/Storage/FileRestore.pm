@@ -121,13 +121,24 @@ __PACKAGE__->register_method ({
 	my $client = PVE::PBSClient->new($scfg, $storeid);
 	my $ret = $client->file_restore_list($snap, $path, $base64);
 
-	# 'leaf' is a proper JSON boolean, map to perl-y bool
-	# TODO: make PBSClient decode all bools always as 1/0?
-	foreach my $item (@$ret) {
-	    $item->{leaf} = $item->{leaf} ? 1 : 0;
+	if (ref($ret) eq "HASH") {
+	    my $msg = $ret->{message};
+	    if (my $code = $ret->{code}) {
+		die PVE::Exception->new("$msg\n", code => $code);
+	    } else {
+		die "$msg\n";
+	    }
+	} elsif (ref($ret) eq "ARRAY") {
+	    # 'leaf' is a proper JSON boolean, map to perl-y bool
+	    # TODO: make PBSClient decode all bools always as 1/0?
+	    foreach my $item (@$ret) {
+		$item->{leaf} = $item->{leaf} ? 1 : 0;
+	    }
+
+	    return $ret;
 	}
 
-	return $ret;
+	die "invalid proxmox-file-restore output";
     }});
 
 __PACKAGE__->register_method ({
