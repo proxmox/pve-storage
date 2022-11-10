@@ -280,6 +280,19 @@ __PACKAGE__->register_method ({
 	return $pool;
     }});
 
+my $draid_config_format = {
+    spares => {
+	type => 'integer',
+	minimum => 0,
+	description => 'Number of dRAID spares.',
+    },
+    data => {
+	type => 'integer',
+	minimum => 1,
+	description => 'The number of data devices per redundancy group. (dRAID)',
+    },
+};
+
 __PACKAGE__->register_method ({
     name => 'create',
     path => '',
@@ -298,11 +311,20 @@ __PACKAGE__->register_method ({
 	    raidlevel => {
 		type => 'string',
 		description => 'The RAID level to use.',
-		enum => ['single', 'mirror', 'raid10', 'raidz', 'raidz2', 'raidz3'],
+		enum => [
+		    'single', 'mirror',
+		    'raid10', 'raidz', 'raidz2', 'raidz3',
+		    'draid', 'draid2', 'draid3',
+		],
 	    },
 	    devices => {
 		type => 'string', format => 'string-list',
 		description => 'The block devices you want to create the zpool on.',
+	    },
+	    'draid-config' => {
+		type => 'string',
+		format => $draid_config_format,
+		optional => 1,
 	    },
 	    ashift => {
 		type => 'integer',
@@ -339,6 +361,13 @@ __PACKAGE__->register_method ({
 	my $devs = [PVE::Tools::split_list($param->{devices})];
 	my $raidlevel = $param->{raidlevel};
 	my $compression = $param->{compression} // 'on';
+	my $draid_config = {};
+	if (exists $param->{'draid-config'}) {
+	    $draid_config = PVE::JSONSchema::parse_property_string(
+		$draid_config_format, $param->{'draid-config'});
+	}
+	my $draid_data = $draid_config->{data};
+	my $draid_spares = $draid_config->{spares};
 
 	for my $dev (@$devs) {
 	    $dev = PVE::Diskmanage::verify_blockdev_path($dev);
@@ -376,6 +405,9 @@ __PACKAGE__->register_method ({
 	    raidz => 3,
 	    raidz2 => 4,
 	    raidz3 => 5,
+	    draid => 3,
+	    draid2 => 4,
+	    draid3 => 5,
 	};
 
 	# sanity checks
@@ -387,6 +419,22 @@ __PACKAGE__->register_method ({
 
 	die "$raidlevel needs at least $mindisks->{$raidlevel} disks\n"
 	    if $numdisks < $mindisks->{$raidlevel};
+
+	# draid checks
+	if ($raidlevel =~ m/^draid/) {
+	    # bare minimum would be two drives:
+	    # one parity & one data drive this code doesn't allow that because
+	    # it makes no sense, at least one spare disk should be used
+	    my $draidmin = $mindisks->{$raidlevel} - 2;
+	    $draidmin += $draid_data if $draid_data;
+	    $draidmin += $draid_spares if $draid_spares;
+
+	    die "At least $draidmin disks needed for current dRAID config\n"
+		if $numdisks < $draidmin;
+	} else {
+	    die "draidspares and/or draiddata set without using dRAID"
+		if ($draid_spares or $draid_data);
+	}
 
 	my $code = sub {
 	    for my $dev (@$devs) {
@@ -424,6 +472,11 @@ __PACKAGE__->register_method ({
 		}
 	    } elsif ($raidlevel eq 'single') {
 		push @$cmd, $devs->[0];
+	    } elsif ($raidlevel =~ m/^draid/) {
+		my $draid_cmd = $raidlevel;
+		$draid_cmd .= ":${draid_data}d" if $draid_data;
+		$draid_cmd .= ":${draid_spares}s" if $draid_spares;
+		push @$cmd, $draid_cmd, @$devs;
 	    } else {
 		push @$cmd, $raidlevel, @$devs;
 	    }
