@@ -119,7 +119,7 @@ __PACKAGE__->register_method ({
 	my (undef, $snap) = PVE::Storage::parse_volname($cfg, $volid);
 
 	my $client = PVE::PBSClient->new($scfg, $storeid);
-	my $ret = $client->file_restore_list($snap, $path, $base64);
+	my $ret = $client->file_restore_list($snap, $path, $base64, { timeout => 25 });
 
 	if (ref($ret) eq "HASH") {
 	    my $msg = $ret->{message};
