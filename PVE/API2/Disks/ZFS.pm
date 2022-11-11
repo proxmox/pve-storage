@@ -363,6 +363,7 @@ __PACKAGE__->register_method ({
 	my $compression = $param->{compression} // 'on';
 	my $draid_config = {};
 	if (exists $param->{'draid-config'}) {
+	    die "draid-config set without using dRAID level\n" if $raidlevel !~ m/^draid/;
 	    $draid_config = PVE::JSONSchema::parse_property_string(
 		$draid_config_format, $param->{'draid-config'});
 	}
@@ -431,9 +432,6 @@ __PACKAGE__->register_method ({
 
 	    die "At least $draidmin disks needed for current dRAID config\n"
 		if $numdisks < $draidmin;
-	} else {
-	    die "draidspares and/or draiddata set without using dRAID"
-		if ($draid_spares or $draid_data);
 	}
 
 	my $code = sub {
