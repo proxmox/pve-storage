@@ -415,9 +415,9 @@ __PACKAGE__->register_method ({
 	properties => {
 	    node => get_standard_option('pve-node'),
 	    storage => get_standard_option('pve-storage-id', {
-                optional => 1,
-                completion => \&PVE::Storage::complete_storage,
-            }),
+		optional => 1,
+		completion => \&PVE::Storage::complete_storage,
+	    }),
 	    volume => {
 		description => "Volume identifier",
 		type => 'string',
