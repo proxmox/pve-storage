@@ -4,7 +4,7 @@ use strict;
 use warnings;
 
 use PVE::Diskmanage;
-use PVE::JSONSchema qw(get_standard_option);
+use PVE::JSONSchema qw(get_standard_option parse_property_string);
 use PVE::Systemd;
 use PVE::API2::Storage::Config;
 use PVE::Storage;
@@ -361,14 +361,12 @@ __PACKAGE__->register_method ({
 	my $devs = [PVE::Tools::split_list($param->{devices})];
 	my $raidlevel = $param->{raidlevel};
 	my $compression = $param->{compression} // 'on';
-	my $draid_config = {};
+
+	my $draid_config;
 	if (exists $param->{'draid-config'}) {
 	    die "draid-config set without using dRAID level\n" if $raidlevel !~ m/^draid/;
-	    $draid_config = PVE::JSONSchema::parse_property_string(
-		$draid_config_format, $param->{'draid-config'});
+	    $draid_config = parse_property_string($draid_config_format, $param->{'draid-config'});
 	}
-	my $draid_data = $draid_config->{data};
-	my $draid_spares = $draid_config->{spares};
 
 	for my $dev (@$devs) {
 	    $dev = PVE::Diskmanage::verify_blockdev_path($dev);
@@ -423,15 +421,15 @@ __PACKAGE__->register_method ({
 
 	# draid checks
 	if ($raidlevel =~ m/^draid/) {
-	    # bare minimum would be two drives:
-	    # one parity & one data drive this code doesn't allow that because
-	    # it makes no sense, at least one spare disk should be used
-	    my $draidmin = $mindisks->{$raidlevel} - 2;
-	    $draidmin += $draid_data if $draid_data;
-	    $draidmin += $draid_spares if $draid_spares;
-
-	    die "At least $draidmin disks needed for current dRAID config\n"
-		if $numdisks < $draidmin;
+	    # bare minimum would be two drives: one for parity & one for data, but forbid that
+	    # because it makes no sense in practice, at least one spare disk should be used
+	    my $draid_min = $mindisks->{$raidlevel} - 2;
+	    if ($draid_config) {
+		$draid_min += $draid_config->{data} || 0;
+		$draid_min += $draid_config->{spares} || 0;
+	    }
+	    die "At least $draid_min disks needed for current dRAID config\n"
+		if $numdisks < $draid_min;
 	}
 
 	my $code = sub {
@@ -472,8 +470,8 @@ __PACKAGE__->register_method ({
 		push @$cmd, $devs->[0];
 	    } elsif ($raidlevel =~ m/^draid/) {
 		my $draid_cmd = $raidlevel;
-		$draid_cmd .= ":${draid_data}d" if $draid_data;
-		$draid_cmd .= ":${draid_spares}s" if $draid_spares;
+		$draid_cmd .= ":$$draid_config->{data}d" if $$draid_config->{data};
+		$draid_cmd .= ":$$draid_config->{spares}s" if $draid_config->{spares};
 		push @$cmd, $draid_cmd, @$devs;
 	    } else {
 		push @$cmd, $raidlevel, @$devs;
