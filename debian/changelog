@@ -1,3 +1,19 @@
+libpve-storage-perl (7.2-11) bullseye; urgency=medium
+
+  * api: pbs: file restore: don't use namespaced parameters
+
+  * pbs: prune: avoid getting all snapshots for group assembly if fixed anyway
+
+  * fix #3967: enable ZFS dRAID creation via API
+
+  * api: pbs file restore: decode and return proper error of file-restore
+    listing
+
+  * api: pbs file restore: make use of file-restores and guis timeout
+    mechanism
+
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 17 Nov 2022 17:51:07 +0100
+
 libpve-storage-perl (7.2-10) bullseye; urgency=medium
 
   * (remote) export: check and untaint format
