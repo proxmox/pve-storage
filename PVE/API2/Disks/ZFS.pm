@@ -470,8 +470,8 @@ __PACKAGE__->register_method ({
 		push @$cmd, $devs->[0];
 	    } elsif ($raidlevel =~ m/^draid/) {
 		my $draid_cmd = $raidlevel;
-		$draid_cmd .= ":$$draid_config->{data}d" if $$draid_config->{data};
-		$draid_cmd .= ":$$draid_config->{spares}s" if $draid_config->{spares};
+		$draid_cmd .= ":$draid_config->{data}d" if $draid_config->{data};
+		$draid_cmd .= ":$draid_config->{spares}s" if $draid_config->{spares};
 		push @$cmd, $draid_cmd, @$devs;
 	    } else {
 		push @$cmd, $raidlevel, @$devs;
