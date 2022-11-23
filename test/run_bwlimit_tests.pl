@@ -188,7 +188,7 @@ my @tests = (
     [ ['move',    ['nolimit', 'd20m40r30'],   undef],     40, 'multiple storages specific limit with privileges on one of them (default limited) (move)' ],
     [ ['restore', ['nolimit', 'd20m40r30'],   undef],     30, 'multiple storages specific limit with privileges on one of them (default limited) (restore)' ],
     [ ['restore', ['d20m40r30', 'm50'],         200],     60, 'multiple storages specific limit with privileges on one of them (global default limited) (restore)' ],
-    [ ['move',    ['nolimit', undef ],          40] ,     40, 'multiple storages one undefined, passing 100 (move)' ],
+    [ ['move',    ['nolimit', undef ],          40] ,     40, 'multiple storages one undefined, passing 40 (move)' ],
 );
 
 foreach my $t (@tests) {
