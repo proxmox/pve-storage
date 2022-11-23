@@ -16,6 +16,7 @@ use PVE::Tools qw(extract_param run_command file_get_contents file_read_firstlin
 my $SMARTCTL = "/usr/sbin/smartctl";
 my $ZPOOL = "/sbin/zpool";
 my $SGDISK = "/sbin/sgdisk";
+my $PARTPROBE = "/usr/sbin/partprobe";
 my $PVS = "/sbin/pvs";
 my $LVS = "/sbin/lvs";
 my $LSBLK = "/bin/lsblk";
@@ -795,6 +796,8 @@ sub append_partition {
 
     run_command([ $SGDISK, '-n', "$newpartid:0:+${size}M", $dev ],
 		errmsg => "error creating partition '$newpartid' on '$dev'");
+    run_command([ $PARTPROBE, $dev ],
+		errmsg => "error kernel still using old partition table");
 
     my $partition;
 
