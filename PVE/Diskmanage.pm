@@ -93,11 +93,7 @@ sub get_smart_data {
     my $smartdata = {};
     my $type;
 
-    if ($disk =~ m!^/dev/(nvme\d+n\d+)$!) {
-	my $info = get_sysdir_info("/sys/block/$1");
-	$disk = "/dev/".($info->{device}
-	    or die "failed to get nvme controller device for $disk\n");
-    }
+    $disk =~ s/n\d+$// if $disk =~ m!^/dev/nvme\d+n\d+$!;
 
     my $cmd = [$SMARTCTL, '-H'];
     push @$cmd, '-A', '-f', 'brief' if !$healthonly;
@@ -376,10 +372,6 @@ sub get_sysdir_info {
 
     $data->{vendor} = file_read_firstline("$sysdir/device/vendor") || 'unknown';
     $data->{model} = file_read_firstline("$sysdir/device/model") || 'unknown';
-
-    if (defined(my $device = readlink("$sysdir/device"))) {
-	($data->{device}) = $device =~ m!([^/]+)$!; # strip directory and untaint
-    }
 
     return $data;
 }
