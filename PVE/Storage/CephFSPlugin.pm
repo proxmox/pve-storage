@@ -127,10 +127,6 @@ sub properties {
 	    description => "Mount CephFS through FUSE.",
 	    type => 'boolean',
 	},
-	subdir => {
-	    description => "Subdir to mount.",
-	    type => 'string', format => 'pve-storage-path',
-	},
 	'fs-name' => {
 	    description => "The Ceph filesystem name.",
 	    type => 'string', format => 'pve-configid',

@@ -13,11 +13,16 @@ use base qw(PVE::Storage::Plugin);
 
 # CIFS helper functions
 
-sub cifs_is_mounted {
-    my ($server, $share, $mountpoint, $mountdata) = @_;
+sub cifs_is_mounted : prototype($$) {
+    my ($scfg, $mountdata) = @_;
+
+    my $mountpoint = $scfg->{path};
+    my $server = $scfg->{server};
+    my $share = $scfg->{share};
+    my $subdir = $scfg->{subdir} // "/";
 
     $server = "[$server]" if Net::IP::ip_is_ipv6($server);
-    my $source = "//${server}/$share";
+    my $source = "//${server}/$share$subdir";
     $mountdata = PVE::ProcFSTools::parse_proc_mounts() if !$mountdata;
 
     return $mountpoint if grep {
@@ -63,11 +68,16 @@ sub get_cred_file {
     return undef;
 }
 
-sub cifs_mount {
-    my ($server, $share, $mountpoint, $storeid, $smbver, $user, $domain) = @_;
+sub cifs_mount : prototype($$$$$) {
+    my ($scfg, $storeid, $smbver, $user, $domain) = @_;
+
+    my $mountpoint = $scfg->{path};
+    my $server = $scfg->{server};
+    my $share = $scfg->{share};
+    my $subdir = $scfg->{subdir} // "/";
 
     $server = "[$server]" if Net::IP::ip_is_ipv6($server);
-    my $source = "//${server}/$share";
+    my $source = "//${server}/$share$subdir";
 
     my $cmd = ['/bin/mount', '-t', 'cifs', $source, $mountpoint, '-o', 'soft', '-o'];
 
@@ -131,6 +141,7 @@ sub options {
 	'content-dirs' => { optional => 1 },
 	server => { fixed => 1 },
 	share => { fixed => 1 },
+	subdir => { optional => 1 },
 	nodes => { optional => 1 },
 	disable => { optional => 1 },
 	maxfiles => { optional => 1 },
@@ -205,12 +216,8 @@ sub status {
     $cache->{mountdata} = PVE::ProcFSTools::parse_proc_mounts()
 	if !$cache->{mountdata};
 
-    my $path = $scfg->{path};
-    my $server = $scfg->{server};
-    my $share = $scfg->{share};
-
     return undef
-	if !cifs_is_mounted($server, $share, $path, $cache->{mountdata});
+	if !cifs_is_mounted($scfg, $cache->{mountdata});
 
     return $class->SUPER::status($storeid, $scfg, $cache);
 }
@@ -222,17 +229,15 @@ sub activate_storage {
 	if !$cache->{mountdata};
 
     my $path = $scfg->{path};
-    my $server = $scfg->{server};
-    my $share = $scfg->{share};
 
-    if (!cifs_is_mounted($server, $share, $path, $cache->{mountdata})) {
+    if (!cifs_is_mounted($scfg, $cache->{mountdata})) {
 
 	mkpath $path if !(defined($scfg->{mkdir}) && !$scfg->{mkdir});
 
 	die "unable to activate storage '$storeid' - " .
 	    "directory '$path' does not exist\n" if ! -d $path;
 
-	cifs_mount($server, $share, $path, $storeid, $scfg->{smbversion},
+	cifs_mount($scfg, $storeid, $scfg->{smbversion},
 	    $scfg->{username}, $scfg->{domain});
     }
 
@@ -246,10 +251,8 @@ sub deactivate_storage {
 	if !$cache->{mountdata};
 
     my $path = $scfg->{path};
-    my $server = $scfg->{server};
-    my $share = $scfg->{share};
 
-    if (cifs_is_mounted($server, $share, $path, $cache->{mountdata})) {
+    if (cifs_is_mounted($scfg, $cache->{mountdata})) {
 	my $cmd = ['/bin/umount', $path];
 	run_command($cmd, errmsg => 'umount error');
     }

@@ -169,6 +169,11 @@ my $defaultData = {
 	    type => 'boolean',
 	    optional => 1,
 	},
+	subdir => {
+	    description => "Subdir to mount.",
+	    type => 'string', format => 'pve-storage-path',
+	    optional => 1,
+	},
 	'format' => {
 	    description => "Default image format.",
 	    type => 'string', format => 'pve-storage-format',
