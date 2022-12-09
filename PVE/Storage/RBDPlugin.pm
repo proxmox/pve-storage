@@ -767,8 +767,6 @@ sub volume_snapshot_rollback {
 sub volume_snapshot_delete {
     my ($class, $scfg, $storeid, $volname, $snap, $running) = @_;
 
-    return 1 if $running && !$scfg->{krbd}; # FIXME: ????
-
     $class->deactivate_volume($storeid, $scfg, $volname, $snap, {});
 
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
