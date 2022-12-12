@@ -93,8 +93,6 @@ sub get_smart_data {
     my $smartdata = {};
     my $type;
 
-    $disk =~ s/n\d+$// if $disk =~ m!^/dev/nvme\d+n\d+$!;
-
     my $cmd = [$SMARTCTL, '-H'];
     push @$cmd, '-A', '-f', 'brief' if !$healthonly;
     push @$cmd, $disk;
