@@ -254,12 +254,11 @@ sub free_image {
 sub list_images {
     my ($class, $storeid, $scfg, $vmid, $vollist, $cache) = @_;
 
-    $cache->{zfs}->{$storeid} = $class->zfs_list_zvol($scfg)
-	if !$cache->{zfs}->{$storeid};
+    my $zfs_list = $class->zfs_list_zvol($scfg);
 
     my $res = [];
 
-    if (my $dat = $cache->{zfs}->{$storeid}) {
+    if (my $dat = $zfs_list) {
 
 	foreach my $image (keys %$dat) {
 
