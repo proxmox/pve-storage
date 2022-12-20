@@ -254,11 +254,12 @@ sub free_image {
 sub list_images {
     my ($class, $storeid, $scfg, $vmid, $vollist, $cache) = @_;
 
-    $cache->{zfs} = $class->zfs_list_zvol($scfg) if !$cache->{zfs};
-    my $zfspool = $scfg->{pool};
+    $cache->{zfs}->{$storeid} = $class->zfs_list_zvol($scfg)
+	if !$cache->{zfs}->{$storeid};
+
     my $res = [];
 
-    if (my $dat = $cache->{zfs}->{$zfspool}) {
+    if (my $dat = $cache->{zfs}->{$storeid}) {
 
 	foreach my $image (keys %$dat) {
 
@@ -375,20 +376,32 @@ sub zfs_delete_zvol {
 sub zfs_list_zvol {
     my ($class, $scfg) = @_;
 
-    my $text = $class->zfs_request($scfg, 10, 'list', '-o', 'name,volsize,origin,type,refquota', '-t', 'volume,filesystem', '-Hrp');
+    my $text = $class->zfs_request(
+	$scfg,
+	10,
+	'list',
+	'-o',
+	'name,volsize,origin,type,refquota',
+	'-t',
+	'volume,filesystem',
+	'-Hrp',
+	$scfg->{pool},
+    );
     my $zvols = zfs_parse_zvol_list($text);
     return undef if !$zvols;
 
     my $list = ();
     foreach my $zvol (@$zvols) {
-	my $pool = $zvol->{pool};
+	# The "pool" in $scfg is not the same as ZFS pool, so it's necessary to filter here.
+	next if $scfg->{pool} ne $zvol->{pool};
+
 	my $name = $zvol->{name};
 	my $parent = $zvol->{origin};
 	if($zvol->{origin} && $zvol->{origin} =~ m/^$scfg->{pool}\/(\S+)$/){
 	    $parent = $1;
 	}
 
-	$list->{$pool}->{$name} = {
+	$list->{$name} = {
 	    name => $name,
 	    size => $zvol->{size},
 	    parent => $parent,
