@@ -254,36 +254,30 @@ sub free_image {
 sub list_images {
     my ($class, $storeid, $scfg, $vmid, $vollist, $cache) = @_;
 
-    my $zfs_list = $class->zfs_list_zvol($scfg);
+    my $zfs_list = $class->zfs_list_zvol($scfg) // {};
 
     my $res = [];
 
-    if (my $dat = $zfs_list) {
+    for my $info (values $zfs_list->%*) {
+	my $volname = $info->{name};
+	my $parent = $info->{parent};
+	my $owner = $info->{vmid};
 
-	foreach my $image (keys %$dat) {
-
-	    my $info = $dat->{$image};
-
-	    my $volname = $info->{name};
-	    my $parent = $info->{parent};
-	    my $owner = $info->{vmid};
-
-	    if ($parent && $parent =~ m/^(\S+)\@__base__$/) {
-		my ($basename) = ($1);
-		$info->{volid} = "$storeid:$basename/$volname";
-	    } else {
-		$info->{volid} = "$storeid:$volname";
-	    }
-
-	    if ($vollist) {
-		my $found = grep { $_ eq $info->{volid} } @$vollist;
-		next if !$found;
-	    } else {
-		next if defined ($vmid) && ($owner ne $vmid);
-	    }
-
-	    push @$res, $info;
+	if ($parent && $parent =~ m/^(\S+)\@__base__$/) {
+	    my ($basename) = ($1);
+	    $info->{volid} = "$storeid:$basename/$volname";
+	} else {
+	    $info->{volid} = "$storeid:$volname";
 	}
+
+	if ($vollist) {
+	    my $found = grep { $_ eq $info->{volid} } @$vollist;
+	    next if !$found;
+	} else {
+	    next if defined ($vmid) && ($owner ne $vmid);
+	}
+
+	push @$res, $info;
     }
     return $res;
 }
