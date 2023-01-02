@@ -79,6 +79,7 @@ sub properties {
 sub options {
     return {
 	path => { fixed => 1 },
+	dirs => { optional => 1 },
 	server => { fixed => 1 },
 	export => { fixed => 1 },
 	nodes => { optional => 1 },

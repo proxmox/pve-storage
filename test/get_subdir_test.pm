@@ -27,6 +27,13 @@ foreach my $type (keys %$vtype_subdirs) {
     push @$tests, [ $scfg_with_path, $type, $path ];
 }
 
+# creates additional tests for overrides
+foreach my $type (keys %$vtype_subdirs) {
+    my $override = "/${type}_override";
+    my $scfg_with_override = { path => '/some/path', dirs => { $type => $override } };
+    push @$tests, [ $scfg_with_override, $type, "$scfg_with_override->{path}$scfg_with_override->{dirs}->{$type}" ];
+}
+
 plan tests => scalar @$tests;
 
 foreach my $tt (@$tests) {

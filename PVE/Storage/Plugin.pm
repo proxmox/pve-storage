@@ -181,6 +181,11 @@ my $defaultData = {
 	    default => 'metadata',
 	    optional => 1,
 	},
+	dirs => {
+	    description => "Overrides for default directories",
+	    type => "string", format => "pve-dir-override-list",
+	    optional => 1,
+	},
     },
 };
 
@@ -203,6 +208,12 @@ sub valid_content_types {
     return {} if !$def;
 
     return $def->{content}->[0];
+}
+
+sub dirs_hash_to_string {
+    my $hash = shift;
+
+    return join(',', map { "$_:$hash->{$_}" } sort keys %$hash);
 }
 
 sub default_format {
@@ -335,6 +346,18 @@ sub parse_volume_id {
     die "unable to parse volume ID '$volid'\n";
 }
 
+PVE::JSONSchema::register_format('pve-dir-override', \&verify_dir_override);
+sub verify_dir_override {
+    my ($value, $noerr) = @_;
+
+    if($value =~ m/^([a-z]+):(.+)$/ &&
+	verify_content($1, $noerr) && verify_path($2, $noerr)) {
+	return $value;
+    }
+
+    return undef if $noerr;
+    die "invalid override '$value'\n";
+}
 
 sub private {
     return $defaultData;
@@ -406,6 +429,22 @@ sub decode_value {
 	#}
 
 	return $res;
+    } elsif ($key eq 'dirs') {
+	my $valid_content = $def->{content}->[0];
+	my $res = {};
+
+	foreach my $dir (PVE::Tools::split_list($value)) {
+	    my ($content, $path) = split(/:/, $dir, 2);
+
+	    if (!$valid_content->{$content}) {
+		warn "storage does not support content type '$content'\n";
+		next;
+	    }
+
+	    $res->{$content} = $path;
+	}
+
+	return $res;
     }
 
     return $value;
@@ -418,6 +457,9 @@ sub encode_value {
         return join(',', keys(%$value));
     } elsif ($key eq 'content') {
 	my $res = content_hash_to_string($value) || 'none';
+	return $res;
+    } elsif ($key eq 'dirs') {
+	my $res = dirs_hash_to_string($value);
 	return $res;
     }
 
@@ -610,12 +652,11 @@ sub get_subdir {
     my $path = $scfg->{path};
 
     die "storage definition has no path\n" if !$path;
+    die "unknown vtype '$vtype'\n" if !exists($vtype_subdirs->{$vtype});
 
-    my $subdir = $vtype_subdirs->{$vtype};
+    my $subdir = $scfg->{dirs}->{$vtype} // "/".$vtype_subdirs->{$vtype};
 
-    die "unknown vtype '$vtype'\n" if !defined($subdir);
-
-    return "$path/$subdir";
+    return $path.$subdir;
 }
 
 sub filesystem_path {
