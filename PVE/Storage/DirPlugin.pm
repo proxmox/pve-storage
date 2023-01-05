@@ -54,7 +54,7 @@ sub properties {
 sub options {
     return {
 	path => { fixed => 1 },
-	dirs => { optional => 1 },
+	'content-dirs' => { optional => 1 },
 	nodes => { optional => 1 },
 	shared => { optional => 1 },
 	disable => { optional => 1 },
