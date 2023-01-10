@@ -254,7 +254,7 @@ sub free_image {
 sub list_images {
     my ($class, $storeid, $scfg, $vmid, $vollist, $cache) = @_;
 
-    my $zfs_list = $class->zfs_list_zvol($scfg) // {};
+    my $zfs_list = $class->zfs_list_zvol($scfg);
 
     my $res = [];
 
@@ -381,9 +381,9 @@ sub zfs_list_zvol {
 	$scfg->{pool},
     );
     my $zvols = zfs_parse_zvol_list($text);
-    return undef if !$zvols;
+    return {} if !$zvols;
 
-    my $list = ();
+    my $list = {};
     foreach my $zvol (@$zvols) {
 	# The "pool" in $scfg is not the same as ZFS pool, so it's necessary to filter here.
 	next if $scfg->{pool} ne $zvol->{pool};
