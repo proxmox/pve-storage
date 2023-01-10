@@ -58,7 +58,7 @@ sub options {
 # static zfs helper methods
 
 sub zfs_parse_zvol_list {
-    my ($text) = @_;
+    my ($text, $pool) = @_;
 
     my $list = ();
 
@@ -73,12 +73,12 @@ sub zfs_parse_zvol_list {
 	my @parts = split /\//, $dataset;
 	next if scalar(@parts) < 2; # we need pool/name
 	my $name = pop @parts;
-	my $pool = join('/', @parts);
+	my $parsed_pool = join('/', @parts);
+	next if $parsed_pool ne $pool;
 
 	next unless $name =~ m!^(vm|base|subvol|basevol)-(\d+)-(\S+)$!;
 	$zvol->{owner} = $2;
 
-	$zvol->{pool} = $pool;
 	$zvol->{name} = $name;
 	if ($type eq 'filesystem') {
 	    if ($refquota eq 'none') {
@@ -380,14 +380,11 @@ sub zfs_list_zvol {
 	'-Hrp',
 	$scfg->{pool},
     );
-    my $zvols = zfs_parse_zvol_list($text);
+    my $zvols = zfs_parse_zvol_list($text, $scfg->{pool});
     return {} if !$zvols;
 
     my $list = {};
     foreach my $zvol (@$zvols) {
-	# The "pool" in $scfg is not the same as ZFS pool, so it's necessary to filter here.
-	next if $scfg->{pool} ne $zvol->{pool};
-
 	my $name = $zvol->{name};
 	my $parent = $zvol->{origin};
 	if($zvol->{origin} && $zvol->{origin} =~ m/^$scfg->{pool}\/(\S+)$/){
