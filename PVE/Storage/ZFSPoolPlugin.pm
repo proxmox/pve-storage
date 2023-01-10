@@ -377,9 +377,12 @@ sub zfs_list_zvol {
 	'name,volsize,origin,type,refquota',
 	'-t',
 	'volume,filesystem',
-	'-Hrp',
+	'-d1',
+	'-Hp',
 	$scfg->{pool},
     );
+    # It's still required to have zfs_parse_zvol_list filter by pool, because -d1 lists
+    # $scfg->{pool} too and while unlikely, it could be named to be mistaken for a volume.
     my $zvols = zfs_parse_zvol_list($text, $scfg->{pool});
     return {} if !$zvols;
 
