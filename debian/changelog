@@ -1,3 +1,27 @@
+libpve-storage-perl (7.3-2) bullseye; urgency=medium
+
+  * revert using /sys to map nvmeXnY to nvmeX as this is not necessary anymore
+    to address the issue from bug #2020 with modern Kernels (Linux 5.4+) and
+    seemingly doesn't always resolved to the correct device neither.
+
+  * disk manage: pass full NVMe device path to smartctl, which can cope with
+    that since a while
+
+  * zfs: list: only cache and list images for actually requested storage/pool
+
+  * config: allow one to add overrides for default (sub-)directory locations
+    of content-type specific files thorugh the `content-dirs` storage option.
+
+  * zfs: list zvol: skip different pools during parsing already
+
+  * zfs: list zvol: limit recursion depth to 1 to avoid scanning volumes that
+    cannot be a storage volume anyway
+
+  * fix #4390: rbd: snapshot delete: avoid early return to fix handling TPM
+    drive
+
+ -- Proxmox Support Team <support@proxmox.com>  Wed, 11 Jan 2023 16:47:22 +0100
+
 libpve-storage-perl (7.3-1) bullseye; urgency=medium
 
   * get bandwidth limit: improve detecting if storages are involved to avoid
