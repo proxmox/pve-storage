@@ -360,6 +360,7 @@ sub volume_snapshot_rollback {
     }
 }
 
+# FIXME PVE 8.x remove $running parameter (needs APIAGE reset)
 sub volume_snapshot_delete {
     my ($cfg, $volid, $snap, $running) = @_;
 
