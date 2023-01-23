@@ -168,7 +168,9 @@ sub check_connection {
     my $opts = $scfg->{options};
 
     my $cmd;
-    if (defined($opts) && $opts =~ /vers=4.*/) {
+
+    my $is_v4 = defined($opts) && $opts =~ /vers=4.*/;
+    if ($is_v4) {
 	my $ip = PVE::JSONSchema::pve_verify_ip($server, 1);
 	if (!defined($ip)) {
 	    $ip = PVE::Network::get_ip_from_hostname($server);
@@ -185,6 +187,16 @@ sub check_connection {
 
     eval { run_command($cmd, timeout => 10, outfunc => sub {}, errfunc => sub {}) };
     if (my $err = $@) {
+	if ($is_v4) {
+	    my $port = 2049;
+	    $port = $1 if defined($opts) && $opts =~ /port=(\d+)/;
+
+	    # rpcinfo is expected to work when the port is 0 (see 'man 5 nfs') and tcp_ping()
+	    # defaults to port 7 when passing in 0.
+	    return 0 if $port == 0;
+
+	    return PVE::Network::tcp_ping($server, $port, 2);
+	}
 	return 0;
     }
 
