@@ -16,9 +16,7 @@ use base qw(PVE::Storage::Plugin);
 sub cifs_is_mounted : prototype($$) {
     my ($scfg, $mountdata) = @_;
 
-    my $mountpoint = $scfg->{path};
-    my $server = $scfg->{server};
-    my $share = $scfg->{share};
+    my ($mountpoint, $server, $share) = $scfg->@{'path', 'server', 'share'};
     my $subdir = $scfg->{subdir} // "/";
 
     $server = "[$server]" if Net::IP::ip_is_ipv6($server);
@@ -71,9 +69,7 @@ sub get_cred_file {
 sub cifs_mount : prototype($$$$$) {
     my ($scfg, $storeid, $smbver, $user, $domain) = @_;
 
-    my $mountpoint = $scfg->{path};
-    my $server = $scfg->{server};
-    my $share = $scfg->{share};
+    my ($mountpoint, $server, $share) = $scfg->@{'path', 'server', 'share'};
     my $subdir = $scfg->{subdir} // "/";
 
     $server = "[$server]" if Net::IP::ip_is_ipv6($server);
