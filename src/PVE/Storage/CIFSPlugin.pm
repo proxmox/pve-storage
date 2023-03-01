@@ -69,7 +69,7 @@ sub get_cred_file {
 sub cifs_mount : prototype($$$$$) {
     my ($scfg, $storeid, $smbver, $user, $domain) = @_;
 
-    my ($mountpoint, $server, $share) = $scfg->@{'path', 'server', 'share'};
+    my ($mountpoint, $server, $share, $options) = $scfg->@{'path', 'server', 'share', 'options'};
     my $subdir = $scfg->{subdir} // '';
 
     $server = "[$server]" if Net::IP::ip_is_ipv6($server);
@@ -85,6 +85,7 @@ sub cifs_mount : prototype($$$$$) {
     }
 
     push @$cmd, '-o', defined($smbver) ? "vers=$smbver" : "vers=default";
+    push @$cmd, '-o', $options if $options;
 
     run_command($cmd, errmsg => "mount error");
 }
@@ -154,6 +155,7 @@ sub options {
 	'create-subdirs' => { optional => 1 },
 	bwlimit => { optional => 1 },
 	preallocation => { optional => 1 },
+	options => { optional => 1 },
     };
 }
 

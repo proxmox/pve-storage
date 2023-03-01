@@ -69,10 +69,6 @@ sub properties {
 	    description => "Server IP or DNS name.",
 	    type => 'string', format => 'pve-storage-server',
 	},
-	options => {
-	    description => "NFS mount options (see 'man nfs')",
-	    type => 'string',  format => 'pve-storage-options',
-	},
     };
 }
 

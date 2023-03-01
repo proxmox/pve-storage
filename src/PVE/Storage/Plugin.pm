@@ -192,6 +192,12 @@ my $defaultData = {
 	    type => "string", format => "pve-dir-override-list",
 	    optional => 1,
 	},
+	options => {
+	    description => "NFS/CIFS mount options (see 'man nfs' or 'man mount.cifs')",
+	    type => 'string',
+	    format => 'pve-storage-options',
+	    optional => 1,
+	},
     },
 };
 
