@@ -208,7 +208,7 @@ sub volume_size_info {
     my $vollist = iscsi_ls($scfg,$storeid);
     my $info = $vollist->{$storeid}->{$volname};
 
-    return $info->{size};
+    return wantarray ? ($info->{size}, 'raw', 0, undef) : $info->{size};
 }
 
 sub volume_resize {

@@ -308,6 +308,45 @@ sub rbd_volume_info {
     return $volume->@{qw(size parent format protected features)};
 }
 
+sub rbd_volume_du {
+    my ($scfg, $storeid, $volname) = @_;
+
+    my @options = ('du', $volname, '--format', 'json');
+    my $cmd = $rbd_cmd->($scfg, $storeid, @options);
+
+    my $raw = '';
+    my $parser = sub { $raw .= shift };
+
+    run_rbd_command($cmd, errmsg => "rbd error", errfunc => sub {}, outfunc => $parser);
+
+    my $volume;
+    if ($raw eq '') {
+	$volume = {};
+    } elsif ($raw =~ m/^(\{.*\})$/s) { # untaint
+	$volume = JSON::decode_json($1);
+    } else {
+	die "got unexpected data from rbd du: '$raw'\n";
+    }
+
+    if (!defined($volume->{images})) {
+	die "got no images from rbd du\n";
+    }
+
+    # `rbd du` returns array of images for name matching `volname`,
+    # including snapshots.
+    my $images = $volume->{images};
+    foreach my $image (@$images) {
+	next if defined($image->{snapshot});
+	next if !defined($image->{used_size}) || !defined($image->{name});
+
+	# Return `used_size` of first volume with matching name which
+	# is not a snapshot.
+	return $image->{used_size} if $image->{name} eq $volname;
+    }
+
+    die "got no matching image from rbd du\n";
+}
+
 # Configuration
 
 sub type {
@@ -729,8 +768,9 @@ sub volume_size_info {
     my ($class, $scfg, $storeid, $volname, $timeout) = @_;
 
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
-    my ($size, undef) = rbd_volume_info($scfg, $storeid, $name);
-    return $size;
+    my ($size, $parent) = rbd_volume_info($scfg, $storeid, $name);
+    my $used = wantarray ? rbd_volume_du($scfg, $storeid, $name) : 0;
+    return wantarray ? ($size, 'raw', $used, $parent) : $size;
 }
 
 sub volume_resize {

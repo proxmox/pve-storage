@@ -446,13 +446,16 @@ sub status {
 sub volume_size_info {
     my ($class, $scfg, $storeid, $volname, $timeout) = @_;
 
-    my (undef, $vname, undef, undef, undef, undef, $format) =
+    my (undef, $vname, undef, $parent, undef, undef, $format) =
         $class->parse_volname($volname);
 
     my $attr = $format eq 'subvol' ? 'refquota' : 'volsize';
-    my $value = $class->zfs_get_properties($scfg, $attr, "$scfg->{pool}/$vname");
-    if ($value =~ /^(\d+)$/) {
-	return $1;
+    my ($size, $used) = $class->zfs_get_properties($scfg, "$attr,usedbydataset", "$scfg->{pool}/$vname");
+
+    $used = ($used =~ /^(\d+)$/) ? $1 : 0;
+
+    if ($size =~ /^(\d+)$/) {
+	return wantarray ? ($1, $format, $used, $parent) : $1;
     }
 
     die "Could not get zfs volume size\n";
