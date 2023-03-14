@@ -355,7 +355,7 @@ PVE::JSONSchema::register_format('pve-dir-override', \&verify_dir_override);
 sub verify_dir_override {
     my ($value, $noerr) = @_;
 
-    if ($value =~ m/^([-a-z]+)=\/.+$/ && verify_content($1, $noerr)) {
+    if ($value =~ m/^([a-z]+)=[^.]+$/ && verify_content($1, $noerr)) {
 	return $value;
     }
 
@@ -658,9 +658,9 @@ sub get_subdir {
     die "storage definition has no path\n" if !$path;
     die "unknown vtype '$vtype'\n" if !exists($vtype_subdirs->{$vtype});
 
-    my $subdir = $scfg->{"content-dirs"}->{$vtype} // "/".$vtype_subdirs->{$vtype};
+    my $subdir = $scfg->{"content-dirs"}->{$vtype} // $vtype_subdirs->{$vtype};
 
-    return $path.$subdir;
+    return "$path/$subdir";
 }
 
 sub filesystem_path {
