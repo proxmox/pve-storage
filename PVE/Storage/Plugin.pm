@@ -355,8 +355,7 @@ PVE::JSONSchema::register_format('pve-dir-override', \&verify_dir_override);
 sub verify_dir_override {
     my ($value, $noerr) = @_;
 
-    if($value =~ m/^([a-z]+)=\/.+$/ &&
-	verify_content($1, $noerr)) {
+    if ($value =~ m/^([-a-z]+)=\/.+$/ && verify_content($1, $noerr)) {
 	return $value;
     }
 
