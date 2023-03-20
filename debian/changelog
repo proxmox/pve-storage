@@ -1,3 +1,18 @@
+libpve-storage-perl (7.4-1) bullseye; urgency=medium
+
+  * nfs: check connection: support NFSv4-only servers without rpcbind, by
+    simply doing a ping with the expected port as a fallback
+
+  * fix #2641: allow mounting of CIFS subdirectories
+
+  * config: use relative paths for content overrides
+
+  * content path overrides: allow single dots and enforce max-lengths
+
+  * api: fix get content call response type for RBD/ZFS/iSCSI volumes
+
+ -- Proxmox Support Team <support@proxmox.com>  Mon, 20 Mar 2023 17:04:55 +0100
+
 libpve-storage-perl (7.3-2) bullseye; urgency=medium
 
   * revert using /sys to map nvmeXnY to nvmeX as this is not necessary anymore
