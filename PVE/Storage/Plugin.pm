@@ -355,8 +355,14 @@ PVE::JSONSchema::register_format('pve-dir-override', \&verify_dir_override);
 sub verify_dir_override {
     my ($value, $noerr) = @_;
 
-    if ($value =~ m/^([a-z]+)=[^.]+$/ && verify_content($1, $noerr)) {
-	return $value;
+    if ($value =~ m/^([a-z]+)=([^.]*(?:\.?[^.]+)+)$/) {
+	my ($content_type, $relative_path) = ($1, $2);
+	if (verify_content($content_type, $noerr)) {
+	    # linux has 4k max-path, but limit total length to lower as its concat'd for full path
+	    if (length($relative_path) < 1023 && !(grep { length($_) >= 255 } split('/', $relative_path))) {
+		return $value;
+	    }
+	}
     }
 
     return undef if $noerr;
