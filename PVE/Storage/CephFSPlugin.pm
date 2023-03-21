@@ -137,6 +137,7 @@ sub properties {
 sub options {
     return {
 	path => { fixed => 1 },
+	'content-dirs' => { optional => 1 },
 	monhost => { optional => 1},
 	nodes => { optional => 1 },
 	subdir => { optional => 1 },
