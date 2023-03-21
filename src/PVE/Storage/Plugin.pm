@@ -3,6 +3,7 @@ package PVE::Storage::Plugin;
 use strict;
 use warnings;
 
+use Cwd qw(abs_path);
 use Encode qw(decode);
 use Fcntl ':mode';
 use File::chdir;
@@ -1364,6 +1365,17 @@ sub activate_storage {
 
     warn "${storeid}: 'mkdir' option is deprecated. Use 'create-base-path' or 'create-subdirs' instead.\n"
 	if defined($scfg->{mkdir});
+
+    # check that content dirs are pairwise inequal
+    my $resolved_subdirs = {};
+    if (defined($scfg->{content})) {
+	foreach my $vtype (keys $scfg->{content}->%*) {
+	    my $abs_subdir = abs_path($class->get_subdir($scfg, $vtype));
+	    die "storage '$storeid' uses directory $abs_subdir for multiple content types\n"
+		if defined($resolved_subdirs->{$abs_subdir});
+	    $resolved_subdirs->{$abs_subdir} = 1;
+	}
+    }
 
     return if defined($scfg->{'create-subdirs'}) && !$scfg->{'create-subdirs'};
 
