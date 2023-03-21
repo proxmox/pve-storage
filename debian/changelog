@@ -1,3 +1,12 @@
+libpve-storage-perl (7.4-2) bullseye; urgency=medium
+
+  * cifs: use empty string instead of / as default directory to avoid
+    regression with the mount detection
+
+  * feature: enable 'content-dirs' property for cephfs
+
+ -- Proxmox Support Team <support@proxmox.com>  Tue, 21 Mar 2023 16:49:27 +0100
+
 libpve-storage-perl (7.4-1) bullseye; urgency=medium
 
   * nfs: check connection: support NFSv4-only servers without rpcbind, by
