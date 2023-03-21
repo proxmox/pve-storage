@@ -17,7 +17,7 @@ sub cifs_is_mounted : prototype($$) {
     my ($scfg, $mountdata) = @_;
 
     my ($mountpoint, $server, $share) = $scfg->@{'path', 'server', 'share'};
-    my $subdir = $scfg->{subdir} // "/";
+    my $subdir = $scfg->{subdir} // '';
 
     $server = "[$server]" if Net::IP::ip_is_ipv6($server);
     my $source = "//${server}/$share$subdir";
@@ -70,7 +70,7 @@ sub cifs_mount : prototype($$$$$) {
     my ($scfg, $storeid, $smbver, $user, $domain) = @_;
 
     my ($mountpoint, $server, $share) = $scfg->@{'path', 'server', 'share'};
-    my $subdir = $scfg->{subdir} // "/";
+    my $subdir = $scfg->{subdir} // '';
 
     $server = "[$server]" if Net::IP::ip_is_ipv6($server);
     my $source = "//${server}/$share$subdir";
