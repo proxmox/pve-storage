@@ -752,7 +752,7 @@ my $volume_export_prepare = sub {
     my $cstream;
     if (defined($ratelimit_bps)) {
 	$cstream = [ '/usr/bin/cstream', '-t', $ratelimit_bps ];
-	$logfunc->("using a bandwidth limit of $ratelimit_bps bps for transferring '$volid'") if $logfunc;
+	$logfunc->("using a bandwidth limit of $ratelimit_bps bytes per second for transferring '$volid'") if $logfunc;
     }
 
     volume_snapshot($cfg, $volid, $snapshot) if $migration_snapshot;
