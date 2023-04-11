@@ -222,7 +222,7 @@ if (@ARGV && $ARGV[0] eq 'print') {
 }
 
 print("Setting up Mocking\n");
-$diskmanage_module =  new Test::MockModule('PVE::Diskmanage', no_auto => 1);
+$diskmanage_module = Test::MockModule->new('PVE::Diskmanage', no_auto => 1);
 $diskmanage_module->mock('run_command' => \&mocked_run_command);
 print("\tMocked run_command\n");
 $diskmanage_module->mock('dir_glob_foreach' => \&mocked_dir_glob_foreach);
@@ -246,7 +246,7 @@ $diskmanage_module->mock('dir_is_empty' => sub {
 print("\tMocked dir_is_empty\n");
 $diskmanage_module->mock('check_bin' => sub { return 1; });
 print("\tMocked check_bin\n");
-my $tools_module= new Test::MockModule('PVE::ProcFSTools', no_auto => 1);
+my $tools_module= Test::MockModule->new('PVE::ProcFSTools', no_auto => 1);
 $tools_module->mock('parse_proc_mounts' => \&mocked_parse_proc_mounts);
 print("\tMocked parse_proc_mounts\n");
 print("Done Setting up Mocking\n\n");
