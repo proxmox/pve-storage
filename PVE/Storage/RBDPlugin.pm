@@ -417,8 +417,7 @@ sub options {
 sub on_add_hook {
     my ($class, $storeid, $scfg, %param) = @_;
 
-    my $secret = $param{keyring} if defined $param{keyring} // undef;
-    PVE::CephConfig::ceph_create_keyfile($scfg->{type}, $storeid, $secret);
+    PVE::CephConfig::ceph_create_keyfile($scfg->{type}, $storeid, $param{keyring});
 
     return;
 }
