@@ -241,7 +241,7 @@ sub check_config {
     my ($self, $sectionId, $config, $create, $skipSchemaCheck) = @_;
     my $opts = PVE::SectionConfig::check_config($self, $sectionId, $config, $create, $skipSchemaCheck);
     return $opts if !$create;
-    if ($opts->{path} !~ m@^/[-/a-zA-Z0-9_.]+$@) {
+    if ($opts->{path} !~ m|^/[-/a-zA-Z0-9_.@]+$|) {
 	die "illegal path for directory storage: $opts->{path}\n";
     }
     return $opts;
