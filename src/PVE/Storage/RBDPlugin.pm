@@ -7,6 +7,7 @@ use Cwd qw(abs_path);
 use IO::File;
 use JSON;
 use Net::IP;
+use POSIX qw(ceil);
 
 use PVE::CephConfig;
 use PVE::Cluster qw(cfs_read_file);;
@@ -779,7 +780,7 @@ sub volume_resize {
 
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
 
-    my $cmd = $rbd_cmd->($scfg, $storeid, 'resize', '--size', ($size/1024/1024), $name);
+    my $cmd = $rbd_cmd->($scfg, $storeid, 'resize', '--size', ceil($size/1024/1024), $name);
     run_rbd_command($cmd, errmsg => "rbd resize '$volname' error");
     return undef;
 }
