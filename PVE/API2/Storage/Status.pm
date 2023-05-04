@@ -405,6 +405,7 @@ __PACKAGE__->register_method ({
 		description => "The source file name. This parameter is usually set by the REST handler. You can only overwrite it when connecting to the trusted port on localhost.",
 		type => 'string',
 		optional => 1,
+		pattern => '/var/tmp/pveupload-[0-9a-f]+',
 	    },
 	},
     },
