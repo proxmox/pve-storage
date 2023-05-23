@@ -1,3 +1,12 @@
+libpve-storage-perl (7.4-3) bullseye; urgency=medium
+
+  * fix variable declared in conditional statement in cephfs and rbd, avoiding
+    a (theoretical) unsoundness
+
+  * api: upload: record the pattern of the tmpfilename parameter in the schema
+
+ -- Proxmox Support Team <support@proxmox.com>  Tue, 23 May 2023 08:45:58 +0200
+
 libpve-storage-perl (7.4-2) bullseye; urgency=medium
 
   * cifs: use empty string instead of / as default directory to avoid
