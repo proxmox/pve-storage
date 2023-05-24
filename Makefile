@@ -18,9 +18,7 @@ GITVERSION:=$(shell git rev-parse HEAD)
 
 DEB=${PACKAGE}_${DEB_VERSION_UPSTREAM_REVISION}_all.deb
 
-# this require package pve-doc-generator
-export NOVIEW=1
-include /usr/share/pve-doc-generator/pve-doc-generator.mk
+-include /usr/share/pve-doc-generator/pve-doc-generator.mk
 
 all:
 
@@ -64,9 +62,8 @@ test:
 
 .PHONY: clean
 clean:
-	make cleanup-docgen
+	rm -f *.xml.tmp *.1 *.5 *.8 *{synopsis,opts}.adoc docinfo.xml
 	rm -rf build *.deb *.buildinfo *.changes
-	find . -name '*~' -exec rm {} ';'
 
 .PHONY: distclean
 distclean: clean
