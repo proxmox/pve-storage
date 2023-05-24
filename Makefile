@@ -43,3 +43,6 @@ dsc: $(DSC)
 
 $(DSC): $(BUILDDIR)
 	cd $(BUILDDIR); dpkg-buildpackage -S -us -uc -d
+
+sbuild: $(DSC)
+	sbuild $(DSC)
