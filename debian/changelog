@@ -1,3 +1,11 @@
+libpve-storage-perl (7.99.0) bookworm; urgency=medium
+
+  * re-build for Proxmox VE 8 / Debian 12 Bookworm
+
+  * switch to native versioning scheme
+
+ -- Proxmox Support Team <support@proxmox.com>  Wed, 24 May 2023 14:12:01 +0200
+
 libpve-storage-perl (7.4-3) bullseye; urgency=medium
 
   * fix variable declared in conditional statement in cephfs and rbd, avoiding
