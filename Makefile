@@ -2,6 +2,7 @@ include /usr/share/dpkg/pkg-info.mk
 
 PACKAGE=libpve-storage-perl
 BUILDDIR ?= $(PACKAGE)-$(DEB_VERSION)
+DSC=$(PACKAGE)_$(DEB_VERSION).dsc
 
 GITVERSION:=$(shell git rev-parse HEAD)
 
@@ -34,3 +35,11 @@ clean:
 .PHONY: upload
 upload: $(DEB)
 	tar cf - $(DEB) | ssh -X repoman@repo.proxmox.com -- upload --product pve --dist bullseye
+
+dsc: $(DSC)
+	$(MAKE) clean
+	$(MAKE) $(DSC)
+	lintian $(DSC)
+
+$(DSC): $(BUILDDIR)
+	cd $(BUILDDIR); dpkg-buildpackage -S -us -uc -d
