@@ -1,6 +1,7 @@
 include /usr/share/dpkg/pkg-info.mk
 
 PACKAGE=libpve-storage-perl
+BUILDDIR ?= $(PACKAGE)-$(DEB_VERSION)
 
 GITVERSION:=$(shell git rev-parse HEAD)
 
@@ -12,20 +13,23 @@ all:
 dinstall: deb
 	dpkg -i $(DEB)
 
+$(BUILDDIR):
+	rm -rf $@ $@.tmp
+	cp -a src $@.tmp
+	cp -a debian $@.tmp/
+	echo "git clone git://git.proxmox.com/git/pve-storage.git\\ngit checkout $(GITVERSION)" >$@.tmp/debian/SOURCE
+	mv $@.tmp $@
+
 .PHONY: deb
 deb: $(DEB)
-$(DEB):
-	rm -rf build
-	cp -a src build
-	cp -a debian build/
-	echo "git clone git://git.proxmox.com/git/pve-storage.git\\ngit checkout $(GITVERSION)" >build/debian/SOURCE
-	cd build; dpkg-buildpackage -b -us -uc
+$(DEB): $(BUILDDIR)
+	cd $(BUILDDIR); dpkg-buildpackage -b -us -uc
 	lintian $(DEB)
 
 .PHONY: clean distclean
 distclean: clean
 clean:
-	rm -rf build *.deb *.buildinfo *.changes
+	rm -rf $(PACKAGE)-[0-9]*/ *.deb *.dsc *.build *.buildinfo *.changes $(PACKAGE)*.tar.*
 
 .PHONY: upload
 upload: $(DEB)
