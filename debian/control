@@ -45,6 +45,7 @@ Depends: ceph-common (>= 12.2~),
          smbclient,
          thin-provisioning-tools,
          udev,
+         ${misc:Depends},
          ${perl:Depends},
 Recommends: zfs-zed,
 Description: Proxmox VE storage management library
