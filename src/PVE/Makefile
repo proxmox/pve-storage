@@ -8,3 +8,5 @@ install:
 	make -C Storage install
 	make -C API2 install
 	make -C CLI install
+
+clean:
