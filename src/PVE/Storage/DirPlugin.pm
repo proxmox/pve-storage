@@ -35,7 +35,18 @@ sub properties {
 	    type => 'string', format => 'pve-storage-path',
 	},
 	mkdir => {
-	    description => "Create the directory if it doesn't exist.",
+	    description => "Create the directory if it doesn't exist and populate it with default sub-dirs."
+		." NOTE: Deprecated, use the 'create-base-path' and 'create-subdirs' options instead.",
+	    type => 'boolean',
+	    default => 'yes',
+	},
+	'create-base-path' => {
+	    description => "Create the base directory if it doesn't exist.",
+	    type => 'boolean',
+	    default => 'yes',
+	},
+	'create-subdirs' => {
+	    description => "Populate the directory with the default structure.",
 	    type => 'boolean',
 	    default => 'yes',
 	},
@@ -64,6 +75,8 @@ sub options {
 	content => { optional => 1 },
 	format => { optional => 1 },
 	mkdir => { optional => 1 },
+	'create-base-path' => { optional => 1 },
+	'create-subdirs' => { optional => 1 },
 	is_mountpoint => { optional => 1 },
 	bwlimit => { optional => 1 },
 	preallocation => { optional => 1 },
@@ -213,9 +226,6 @@ sub activate_storage {
     my ($class, $storeid, $scfg, $cache) = @_;
 
     my $path = $scfg->{path};
-    if (!defined($scfg->{mkdir}) || $scfg->{mkdir}) {
-	mkpath $path;
-    }
 
     my $mp = parse_is_mountpoint($scfg);
     if (defined($mp) && !path_is_mounted($mp, $cache->{mountdata})) {
@@ -223,6 +233,7 @@ sub activate_storage {
 	    "directory is expected to be a mount point but is not mounted: '$mp'\n";
     }
 
+    $class->config_aware_base_mkdir($scfg, $path);
     $class->SUPER::activate_storage($storeid, $scfg, $cache);
 }
 

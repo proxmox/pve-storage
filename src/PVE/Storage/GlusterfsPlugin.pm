@@ -137,6 +137,8 @@ sub options {
 	content => { optional => 1 },
 	format => { optional => 1 },
 	mkdir => { optional => 1 },
+	'create-base-path' => { optional => 1 },
+	'create-subdirs' => { optional => 1 },
 	bwlimit => { optional => 1 },
 	preallocation => { optional => 1 },
     };
@@ -302,8 +304,7 @@ sub activate_storage {
     my $volume = $scfg->{volume};
 
     if (!glusterfs_is_mounted($volume, $path, $cache->{mountdata})) {
-	
-	mkpath $path if !(defined($scfg->{mkdir}) && !$scfg->{mkdir});
+	$class->config_aware_base_mkdir($scfg, $path);
 
 	die "unable to activate storage '$storeid' - " .
 	    "directory '$path' does not exist\n" if ! -d $path;

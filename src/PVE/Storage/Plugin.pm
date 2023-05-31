@@ -1362,7 +1362,12 @@ sub activate_storage {
 	"directory '$path' does not exist or is unreachable\n";
     }
 
+    warn "${storeid}: 'mkdir' option is deprecated. Use 'create-base-path' or 'create-subdirs' instead.\n"
+	if defined($scfg->{mkdir});
 
+    return if defined($scfg->{'create-subdirs'}) && !$scfg->{'create-subdirs'};
+
+    # FIXME The mkdir option is deprecated. Remove with PVE 9?
     return if defined($scfg->{mkdir}) && !$scfg->{mkdir};
 
     if (defined($scfg->{content})) {
@@ -1696,6 +1701,21 @@ sub rename_volume {
 	die "rename '$old_path' to '$new_path' failed - $!\n";
 
     return "${storeid}:${base}${target_vmid}/${target_volname}";
+}
+
+sub config_aware_base_mkdir {
+    my ($class, $scfg, $path) = @_;
+
+    # FIXME the mkdir parameter is deprecated and create-base-path should be used
+    my $mkpath = 0;
+    if (!defined($scfg->{'create-base-path'}) && !defined($scfg->{mkdir})) {
+	$mkpath = 1;
+    } elsif (defined($scfg->{'create-base-path'}) && $scfg->{'create-base-path'}) {
+	$mkpath = 1;
+    } elsif ($scfg->{mkdir}) {
+	$mkpath = 1;
+    }
+    mkpath $path if $mkpath;
 }
 
 1;

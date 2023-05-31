@@ -150,6 +150,8 @@ sub options {
 	domain => { optional => 1},
 	smbversion => { optional => 1},
 	mkdir => { optional => 1 },
+	'create-base-path' => { optional => 1 },
+	'create-subdirs' => { optional => 1 },
 	bwlimit => { optional => 1 },
 	preallocation => { optional => 1 },
     };
@@ -228,7 +230,7 @@ sub activate_storage {
 
     if (!cifs_is_mounted($scfg, $cache->{mountdata})) {
 
-	mkpath $path if !(defined($scfg->{mkdir}) && !$scfg->{mkdir});
+	$class->config_aware_base_mkdir($scfg, $path);
 
 	die "unable to activate storage '$storeid' - " .
 	    "directory '$path' does not exist\n" if ! -d $path;

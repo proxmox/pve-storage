@@ -74,6 +74,8 @@ sub options {
 	is_mountpoint => { optional => 1 },
 	nocow => { optional => 1 },
 	mkdir => { optional => 1 },
+	'create-base-path' => { optional => 1 },
+	'create-subdirs' => { optional => 1 },
 	preallocation => { optional => 1 },
 	# TODO: The new variant of mkdir with  `populate` vs `create`...
     };
@@ -118,9 +120,7 @@ sub activate_storage {
     my ($class, $storeid, $scfg, $cache) = @_;
 
     my $path = $scfg->{path};
-    if (!defined($scfg->{mkdir}) || $scfg->{mkdir}) {
-	mkpath $path;
-    }
+    $class->config_aware_base_mkdir($scfg, $path);
 
     my $mp = PVE::Storage::DirPlugin::parse_is_mountpoint($scfg);
     if (defined($mp) && !PVE::Storage::DirPlugin::path_is_mounted($mp, $cache->{mountdata})) {
