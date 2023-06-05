@@ -1707,15 +1707,9 @@ sub config_aware_base_mkdir {
     my ($class, $scfg, $path) = @_;
 
     # FIXME the mkdir parameter is deprecated and create-base-path should be used
-    my $mkpath = 0;
-    if (!defined($scfg->{'create-base-path'}) && !defined($scfg->{mkdir})) {
-	$mkpath = 1;
-    } elsif (defined($scfg->{'create-base-path'}) && $scfg->{'create-base-path'}) {
-	$mkpath = 1;
-    } elsif ($scfg->{mkdir}) {
-	$mkpath = 1;
+    if ($scfg->{'create-base-path'} // $scfg->{mkdir} // 1) {
+	mkpath($path);
     }
-    mkpath $path if $mkpath;
 }
 
 1;
