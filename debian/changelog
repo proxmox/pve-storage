@@ -1,3 +1,23 @@
+libpve-storage-perl (8.0.0~2) bookworm; urgency=medium
+
+  * content-dirs: enforce that all content dirs are pairwise non-equal, as
+    the same directory must not be used for multiple content types
+
+  * volume export: explicitly state that the unit of bandwidth limit is
+    bytes/s
+
+  * rbd: don't specify useless allow-shrink flag
+
+  * rbd: volume resize: avoid passing floating point value to rbd, by
+    ceiling the result we can make resizes like +0.01 GB work
+
+  * changed regex to allow @ in directory storage paths, which is often
+    used to signify btrfs subvolumes.
+
+  * fix #2920: cifs: add options parameter
+
+ -- Proxmox Support Team <support@proxmox.com>  Wed, 07 Jun 2023 19:10:09 +0200
+
 libpve-storage-perl (8.0.0~1) bookworm; urgency=medium
 
   * add 'create-base-path' and 'create-subdirs' option to path based storages
