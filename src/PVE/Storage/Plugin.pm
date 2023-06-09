@@ -1372,30 +1372,39 @@ sub activate_storage {
     warn "${storeid}: 'mkdir' option is deprecated. Use 'create-base-path' or 'create-subdirs' instead.\n"
 	if defined($scfg->{mkdir});
 
-    # check that content dirs are pairwise inequal
-    my $resolved_subdirs = {};
     if (defined($scfg->{content})) {
-	foreach my $vtype (keys $scfg->{content}->%*) {
-	    my $abs_subdir = abs_path($class->get_subdir($scfg, $vtype));
-	    die "storage '$storeid' uses directory $abs_subdir for multiple content types\n"
-		if defined($resolved_subdirs->{$abs_subdir});
-	    $resolved_subdirs->{$abs_subdir} = 1;
-	}
-    }
-
-    return if defined($scfg->{'create-subdirs'}) && !$scfg->{'create-subdirs'};
-
-    # FIXME The mkdir option is deprecated. Remove with PVE 9?
-    return if defined($scfg->{mkdir}) && !$scfg->{mkdir};
-
-    if (defined($scfg->{content})) {
-	foreach my $vtype (keys %$vtype_subdirs) {
-	    # OpenVZMigrate uses backup (dump) dir
-	    if (defined($scfg->{content}->{$vtype}) ||
-		($vtype eq 'backup' && defined($scfg->{content}->{'rootdir'}))) {
-		my $subdir = $class->get_subdir($scfg, $vtype);
-		mkpath $subdir if $subdir ne $path;
+	# (opt-out) create content dirs and check validity
+	if (
+	    (!defined($scfg->{'create-subdirs'}) || $scfg->{'create-subdirs'})
+	    # FIXME The mkdir option is deprecated. Remove with PVE 9?
+	    || (!defined($scfg->{mkdir}) || $scfg->{mkdir})
+	) {
+	    for my $vtype (sort keys %$vtype_subdirs) {
+		# OpenVZMigrate uses backup (dump) dir
+		if (
+		    defined($scfg->{content}->{$vtype})
+		    || ($vtype eq 'backup' && defined($scfg->{content}->{'rootdir'}))
+		) {
+		    my $subdir = $class->get_subdir($scfg, $vtype);
+		    mkpath $subdir if $subdir ne $path;
+		}
 	    }
+	}
+
+	# check that content dirs are pairwise inequal
+	my $resolved_subdirs = {};
+	for my $vtype (sort keys $scfg->{content}->%*) {
+	    my $subdir = $class->get_subdir($scfg, $vtype);
+	    my $abs_subdir = abs_path($subdir);
+	    if (!defined($abs_subdir)) {
+		warn "could not get absolute path for '$subdir' - $!\n";
+		next;
+	    }
+
+	    die "storage '$storeid' uses directory $abs_subdir for multiple content types\n"
+		if defined($abs_subdir) && defined($resolved_subdirs->{$abs_subdir});
+
+	    $resolved_subdirs->{$abs_subdir} = 1;
 	}
     }
 }
