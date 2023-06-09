@@ -1377,7 +1377,7 @@ sub activate_storage {
 	if (
 	    (!defined($scfg->{'create-subdirs'}) || $scfg->{'create-subdirs'})
 	    # FIXME The mkdir option is deprecated. Remove with PVE 9?
-	    || (!defined($scfg->{mkdir}) || $scfg->{mkdir})
+	    && (!defined($scfg->{mkdir}) || $scfg->{mkdir})
 	) {
 	    for my $vtype (sort keys %$vtype_subdirs) {
 		# OpenVZMigrate uses backup (dump) dir
