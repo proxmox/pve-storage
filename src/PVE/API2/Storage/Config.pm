@@ -87,8 +87,8 @@ sub create_or_update {
 	die "Storage ID '${sid}' already exists on node ${node}\n"
 	    if !defined($scfg->{nodes}) || $scfg->{nodes}->{$node};
 
-	push @$verify_params, 'type';
-	for my $key (@$verify_params) {
+	# check for type mismatch first to get a clear error
+	for my $key ('type', $verify_params->@*) {
 	    if (!defined($scfg->{$key})) {
 		die "Option '${key}' is not configured for storage '$sid', "
 		    ."expected it to be '$storage_params->{$key}'";
