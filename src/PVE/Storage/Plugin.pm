@@ -1396,10 +1396,7 @@ sub activate_storage {
 	for my $vtype (sort keys $scfg->{content}->%*) {
 	    my $subdir = $class->get_subdir($scfg, $vtype);
 	    my $abs_subdir = abs_path($subdir);
-	    if (!defined($abs_subdir)) {
-		warn "could not get absolute path for '$subdir' - $!\n";
-		next;
-	    }
+	    next if !defined($abs_subdir);
 
 	    die "storage '$storeid' uses directory $abs_subdir for multiple content types\n"
 		if defined($abs_subdir) && defined($resolved_subdirs->{$abs_subdir});
