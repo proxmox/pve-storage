@@ -22,7 +22,7 @@ __PACKAGE__->register_method ({
     proxyto => 'node',
     protected => 1,
     permissions => {
-	check => ['perm', '/', ['Sys.Audit', 'Datastore.Audit'], any => 1],
+	check => ['perm', '/', ['Sys.Audit']],
     },
     description => "List LVM thinpools",
     parameters => {
