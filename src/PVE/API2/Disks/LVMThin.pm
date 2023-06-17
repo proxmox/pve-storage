@@ -75,7 +75,8 @@ __PACKAGE__->register_method ({
     proxyto => 'node',
     protected => 1,
     permissions => {
-	check => ['perm', '/', ['Sys.Modify', 'Datastore.Allocate']],
+	description => "Requires additionally 'Datastore.Allocate' on /storage when setting 'add_storage'",
+	check => ['perm', '/', ['Sys.Modify']],
     },
     description => "Create an LVM thinpool",
     parameters => {
@@ -120,6 +121,8 @@ __PACKAGE__->register_method ({
 	my $verify_params = [qw(vgname thinpool)];
 
 	if ($param->{add_storage}) {
+	    $rpcenv->check($user, "/storage", ['Datastore.Allocate']);
+
 	    # reserve the name and add as disabled, will be enabled below if creation works out
 	    PVE::API2::Storage::Config->create_or_update(
 		$name, $node, $storage_params, $verify_params, 1);
@@ -178,7 +181,8 @@ __PACKAGE__->register_method ({
     proxyto => 'node',
     protected => 1,
     permissions => {
-	check => ['perm', '/', ['Sys.Modify', 'Datastore.Allocate']],
+	description => "Requires additionally 'Datastore.Allocate' on /storage when setting 'cleanup-config'",
+	check => ['perm', '/', ['Sys.Modify']],
     },
     description => "Remove an LVM thin pool.",
     parameters => {
@@ -208,6 +212,8 @@ __PACKAGE__->register_method ({
 
 	my $rpcenv = PVE::RPCEnvironment::get();
 	my $user = $rpcenv->get_user();
+
+	$rpcenv->check($user, "/storage", ['Datastore.Allocate']) if $param->{'cleanup-config'};
 
 	my $vg = $param->{'volume-group'};
 	my $lv = $param->{name};
