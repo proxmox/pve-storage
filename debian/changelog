@@ -1,3 +1,18 @@
+libpve-storage-perl (8.0.1) bookworm; urgency=medium
+
+  * api: config: add/update storage: check for type mismatch first
+
+  * content-dirs check: silently skip paths that cannot be resolved
+
+  * fix #4785: avoid overly noisy mkdir deprecation warning for now
+
+  * disk api: avoid using unrelated Datastore.Audit priv for disk management
+
+  * disk api: only ask for Datastore.Allocate if actually adding newly created
+    file system, LVM or ZFS directly to the Proxmox VE storage config
+
+ -- Proxmox Support Team <support@proxmox.com>  Sat, 17 Jun 2023 15:34:00 +0200
+
 libpve-storage-perl (8.0.0) bookworm; urgency=medium
 
   * activate storage: ensure content directories are created before checking
