@@ -256,6 +256,11 @@ __PACKAGE__->register_method ({
 
 	    $returned_config = $plugin->on_add_hook($storeid, $opts, %$sensitive);
 
+	    if (defined($opts->{mkdir})) { # TODO: remove complete option in Proxmox VE 9
+		warn "NOTE: The 'mkdir' option set for '${storeid}' is deprecated and will be removed"
+		    ." in Proxmox VE 9. Use 'create-base-path' or 'create-subdirs' instead.\n"
+	    }
+
 	    eval {
 		# try to activate if enabled on local node,
 		# we only do this to detect errors/problems sooner
@@ -361,6 +366,11 @@ __PACKAGE__->register_method ({
 
 	    for my $k (keys %$opts) {
 		$scfg->{$k} = $opts->{$k};
+	    }
+
+	    if (defined($scfg->{mkdir})) { # TODO: remove complete option in Proxmox VE 9
+		warn "NOTE: The 'mkdir' option set for '${storeid}' is deprecated and will be removed"
+		    ." in Proxmox VE 9. Use 'create-base-path' or 'create-subdirs' instead.\n"
 	    }
 
 	    PVE::Storage::write_config($cfg);

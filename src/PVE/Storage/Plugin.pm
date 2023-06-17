@@ -1369,8 +1369,8 @@ sub activate_storage {
 	"directory '$path' does not exist or is unreachable\n";
     }
 
-    warn "${storeid}: 'mkdir' option is deprecated. Use 'create-base-path' or 'create-subdirs' instead.\n"
-	if defined($scfg->{mkdir});
+    # TODO: mkdir is basically deprecated since 8.0, but we don't warn here until 8.4 or 9.0, as we
+    # only got the replacement in 8.0, so no real replacement window, and its really noisy.
 
     if (defined($scfg->{content})) {
 	# (opt-out) create content dirs and check validity
