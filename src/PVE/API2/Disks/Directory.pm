@@ -221,13 +221,9 @@ __PACKAGE__->register_method ({
 	my $verify_params = [qw(path)];
 
 	if ($param->{add_storage}) {
+	    # reserve the name and add as disabled, will be enabled below if creation works out
 	    PVE::API2::Storage::Config->create_or_update(
-		$name,
-		$node,
-		$storage_params,
-		$verify_params,
-		1,
-	    );
+		$name, $node, $storage_params, $verify_params, 1);
 	}
 
 	my $mounted = PVE::Diskmanage::mounted_paths();
@@ -306,11 +302,7 @@ __PACKAGE__->register_method ({
 
 		if ($param->{add_storage}) {
 		    PVE::API2::Storage::Config->create_or_update(
-			$name,
-			$node,
-			$storage_params,
-			$verify_params,
-		    );
+			$name, $node, $storage_params, $verify_params);
 		}
 	    });
 	};
