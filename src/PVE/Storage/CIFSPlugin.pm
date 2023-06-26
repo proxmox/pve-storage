@@ -272,7 +272,7 @@ sub check_connection {
 
     if (my $cred_file = get_cred_file($storeid)) {
 	push @$cmd, '-U', $scfg->{username}, '-A', $cred_file;
-	push @$cmd, '-W', $scfg->{domain} if defined($scfg->{domain});
+	push @$cmd, '-W', $scfg->{domain} if $scfg->{domain};
     } else {
 	push @$cmd, '-U', 'Guest','-N';
     }
