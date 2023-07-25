@@ -2,7 +2,6 @@ package PVE::Storage;
 
 use strict;
 use warnings;
-use Data::Dumper;
 
 use POSIX;
 use IO::Select;
@@ -304,11 +303,11 @@ sub volume_resize {
 
     my ($storeid, $volname) = parse_volume_id($volid, 1);
     if ($storeid) {
-        my $scfg = storage_config($cfg, $storeid);
-        my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
-        return $plugin->volume_resize($scfg, $storeid, $volname, $size, $running);
+	my $scfg = storage_config($cfg, $storeid);
+	my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
+	return $plugin->volume_resize($scfg, $storeid, $volname, $size, $running);
     } elsif ($volid =~ m|^(/.+)$| && -e $volid) {
-        die "resize file/device '$volid' is not possible\n";
+	die "resize file/device '$volid' is not possible\n";
     } else {
 	die "unable to parse volume ID '$volid'\n";
     }
@@ -319,11 +318,11 @@ sub volume_rollback_is_possible {
 
     my ($storeid, $volname) = parse_volume_id($volid, 1);
     if ($storeid) {
-        my $scfg = storage_config($cfg, $storeid);
-        my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
-        return $plugin->volume_rollback_is_possible($scfg, $storeid, $volname, $snap, $blockers);
+	my $scfg = storage_config($cfg, $storeid);
+	my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
+	return $plugin->volume_rollback_is_possible($scfg, $storeid, $volname, $snap, $blockers);
     } elsif ($volid =~ m|^(/.+)$| && -e $volid) {
-        die "snapshot rollback file/device '$volid' is not possible\n";
+	die "snapshot rollback file/device '$volid' is not possible\n";
     } else {
 	die "unable to parse volume ID '$volid'\n";
     }
@@ -334,11 +333,11 @@ sub volume_snapshot {
 
     my ($storeid, $volname) = parse_volume_id($volid, 1);
     if ($storeid) {
-        my $scfg = storage_config($cfg, $storeid);
-        my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
-        return $plugin->volume_snapshot($scfg, $storeid, $volname, $snap);
+	my $scfg = storage_config($cfg, $storeid);
+	my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
+	return $plugin->volume_snapshot($scfg, $storeid, $volname, $snap);
     } elsif ($volid =~ m|^(/.+)$| && -e $volid) {
-        die "snapshot file/device '$volid' is not possible\n";
+	die "snapshot file/device '$volid' is not possible\n";
     } else {
 	die "unable to parse volume ID '$volid'\n";
     }
@@ -349,12 +348,12 @@ sub volume_snapshot_rollback {
 
     my ($storeid, $volname) = parse_volume_id($volid, 1);
     if ($storeid) {
-        my $scfg = storage_config($cfg, $storeid);
-        my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
+	my $scfg = storage_config($cfg, $storeid);
+	my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
 	$plugin->volume_rollback_is_possible($scfg, $storeid, $volname, $snap);
-        return $plugin->volume_snapshot_rollback($scfg, $storeid, $volname, $snap);
+	return $plugin->volume_snapshot_rollback($scfg, $storeid, $volname, $snap);
     } elsif ($volid =~ m|^(/.+)$| && -e $volid) {
-        die "snapshot rollback file/device '$volid' is not possible\n";
+	die "snapshot rollback file/device '$volid' is not possible\n";
     } else {
 	die "unable to parse volume ID '$volid'\n";
     }
@@ -366,11 +365,11 @@ sub volume_snapshot_delete {
 
     my ($storeid, $volname) = parse_volume_id($volid, 1);
     if ($storeid) {
-        my $scfg = storage_config($cfg, $storeid);
-        my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
-        return $plugin->volume_snapshot_delete($scfg, $storeid, $volname, $snap, $running);
+	my $scfg = storage_config($cfg, $storeid);
+	my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
+	return $plugin->volume_snapshot_delete($scfg, $storeid, $volname, $snap, $running);
     } elsif ($volid =~ m|^(/.+)$| && -e $volid) {
-        die "snapshot delete file/device '$volid' is not possible\n";
+	die "snapshot delete file/device '$volid' is not possible\n";
     } else {
 	die "unable to parse volume ID '$volid'\n";
     }
@@ -409,9 +408,9 @@ sub volume_has_feature {
 
     my ($storeid, $volname) = parse_volume_id($volid, 1);
     if ($storeid) {
-        my $scfg = storage_config($cfg, $storeid);
-        my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
-        return $plugin->volume_has_feature($scfg, $feature, $storeid, $volname, $snap, $running, $opts);
+	my $scfg = storage_config($cfg, $storeid);
+	my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
+	return $plugin->volume_has_feature($scfg, $feature, $storeid, $volname, $snap, $running, $opts);
     } elsif ($volid =~ m|^(/.+)$| && -e $volid) {
 	return undef;
     } else {
@@ -1503,7 +1502,7 @@ sub foreach_volid {
 
     foreach my $sid (keys %$list) {
        foreach my $info (@{$list->{$sid}}) {
-           my $volid = $info->{volid};
+	   my $volid = $info->{volid};
 	   my ($sid1, $volname) = parse_volume_id($volid, 1);
 	   if ($sid1 && $sid1 eq $sid) {
 	       &$func ($volid, $sid, $info);
@@ -1827,7 +1826,7 @@ sub volume_export : prototype($$$$$$$) {
     my $scfg = storage_config($cfg, $storeid);
     my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
     return $plugin->volume_export($scfg, $storeid, $fh, $volname, $format,
-                                  $snapshot, $base_snapshot, $with_snapshots);
+				  $snapshot, $base_snapshot, $with_snapshots);
 }
 
 sub volume_import : prototype($$$$$$$$) {
@@ -1858,8 +1857,8 @@ sub volume_export_formats : prototype($$$$$) {
     my $scfg = storage_config($cfg, $storeid);
     my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
     return $plugin->volume_export_formats($scfg, $storeid, $volname,
-                                          $snapshot, $base_snapshot,
-                                          $with_snapshots);
+					  $snapshot, $base_snapshot,
+					  $with_snapshots);
 }
 
 sub volume_import_formats : prototype($$$$$) {

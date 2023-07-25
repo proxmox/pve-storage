@@ -53,7 +53,7 @@ __PACKAGE__->register_method ({
     protected => 1,
     proxyto => 'node',
     parameters => {
-    	additionalProperties => 0,
+	additionalProperties => 0,
 	properties => {
 	    node => get_standard_option('pve-node'),
 	    storage => get_standard_option('pve-storage-id', {
@@ -204,7 +204,7 @@ __PACKAGE__->register_method ({
 	check => ['perm', '/storage/{storage}', ['Datastore.Audit', 'Datastore.AllocateSpace'], any => 1],
     },
     parameters => {
-    	additionalProperties => 0,
+	additionalProperties => 0,
 	properties => {
 	    node => get_standard_option('pve-node'),
 	    storage => get_standard_option('pve-storage-id'),
@@ -248,7 +248,7 @@ __PACKAGE__->register_method ({
     protected => 1,
     proxyto => 'node',
     parameters => {
-    	additionalProperties => 0,
+	additionalProperties => 0,
 	properties => {
 	    node => get_standard_option('pve-node'),
 	    storage => get_standard_option('pve-storage-id'),
@@ -284,7 +284,7 @@ __PACKAGE__->register_method ({
     protected => 1,
     proxyto => 'node',
     parameters => {
-    	additionalProperties => 0,
+	additionalProperties => 0,
 	properties => {
 	    node => get_standard_option('pve-node'),
 	    storage => get_standard_option('pve-storage-id'),
@@ -295,11 +295,11 @@ __PACKAGE__->register_method ({
 	    },
 	    ds => {
 		description => "The list of datasources you want to display.",
- 		type => 'string', format => 'pve-configid-list',
+		type => 'string', format => 'pve-configid-list',
 	    },
 	    cf => {
 		description => "The RRD consolidation function",
- 		type => 'string',
+		type => 'string',
 		enum => [ 'AVERAGE', 'MAX' ],
 		optional => 1,
 	    },
@@ -330,7 +330,7 @@ __PACKAGE__->register_method ({
     protected => 1,
     proxyto => 'node',
     parameters => {
-    	additionalProperties => 0,
+	additionalProperties => 0,
 	properties => {
 	    node => get_standard_option('pve-node'),
 	    storage => get_standard_option('pve-storage-id'),
@@ -341,7 +341,7 @@ __PACKAGE__->register_method ({
 	    },
 	    cf => {
 		description => "The RRD consolidation function",
- 		type => 'string',
+		type => 'string',
 		enum => [ 'AVERAGE', 'MAX' ],
 		optional => 1,
 	    },
@@ -374,7 +374,7 @@ __PACKAGE__->register_method ({
     },
     protected => 1,
     parameters => {
-    	additionalProperties => 0,
+	additionalProperties => 0,
 	properties => {
 	    node => get_standard_option('pve-node'),
 	    storage => get_standard_option('pve-storage-id'),
