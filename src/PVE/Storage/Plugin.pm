@@ -471,7 +471,7 @@ sub encode_value {
     my ($class, $type, $key, $value) = @_;
 
     if ($key eq 'nodes') {
-        return join(',', keys(%$value));
+	return join(',', keys(%$value));
     } elsif ($key eq 'content') {
 	my $res = content_hash_to_string($value) || 'none';
 	return $res;
@@ -1152,9 +1152,9 @@ sub volume_has_feature {
 
     my $key = undef;
     if($snapname){
-        $key = 'snap';
+	$key = 'snap';
     }else{
-        $key =  $isBase ? 'base' : 'current';
+	$key =  $isBase ? 'base' : 'current';
     }
 
     return 1 if defined($features->{$feature}->{$key}->{$format});
@@ -1198,14 +1198,14 @@ sub list_images {
 	    next if !$found;
 	}
 
-        my $info = {
+	my $info = {
 	    volid => $volid, format => $format,
 	    size => $size, vmid => $owner, used => $used, parent => $parent
 	};
 
-        $info->{ctime} = $ctime if $ctime;
+	$info->{ctime} = $ctime if $ctime;
 
-        push @$res, $info;
+	push @$res, $info;
     }
 
     return $res;
