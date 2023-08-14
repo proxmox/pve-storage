@@ -19,7 +19,8 @@ use JSON;
 
 use base qw(PVE::SectionConfig);
 
-use constant COMPRESSOR_RE => 'gz|lzo|zst';
+use constant KNOWN_COMPRESSION_FORMATS =>  ( 'gz', 'lzo', 'zst');
+use constant COMPRESSOR_RE => join( '|', KNOWN_COMPRESSION_FORMATS);
 
 use constant LOG_EXT => ".log";
 use constant NOTES_EXT => ".notes";

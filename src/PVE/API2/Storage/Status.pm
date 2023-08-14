@@ -578,6 +578,12 @@ __PACKAGE__->register_method({
 		requires => 'checksum-algorithm',
 		optional => 1,
 	    },
+	    compression => {
+		description => "Decompress the downloaded file using specified compression algorithm",
+		type => 'string',
+		enum => $PVE::Storage::Plugin::KNOWN_COMPRESSION_FORMATS,
+		optional => 1,
+	    },
 	    'checksum-algorithm' => {
 		description => "The algorithm to calculate the checksum of the file.",
 		type => 'string',
@@ -604,7 +610,7 @@ __PACKAGE__->register_method({
 
 	my $cfg = PVE::Storage::config();
 
-	my ($node, $storage) = $param->@{'node', 'storage'};
+	my ($node, $storage, $compression) = $param->@{'node', 'storage','compression'};
 	my $scfg = PVE::Storage::storage_check_enabled($cfg, $storage, $node);
 
 	die "can't upload to storage type '$scfg->{type}', not a file based storage!\n"
@@ -649,6 +655,12 @@ __PACKAGE__->register_method({
 	}
 
 	my $worker = sub {
+	    if ($compression) {
+		die "decompression not supported for $content\n" if $content ne 'iso';
+		my $info = PVE::Storage::decompressor_info('iso', $compression);
+		die "no decompression method found\n" if (! $info->{decompressor});
+		$opts->{decompression_command} = $info->{decompressor};
+	    }
 	    PVE::Tools::download_file_from_url("$path/$filename", $url, $opts);
 	};
 

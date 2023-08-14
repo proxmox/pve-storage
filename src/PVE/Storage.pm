@@ -1531,6 +1531,12 @@ sub decompressor_info {
 	    lzo => ['lzop', '-d', '-c'],
 	    zst => ['zstd', '-q', '-d', '-c'],
 	},
+	iso => {
+	    # zstd seem to be able to handle .gzip fine. Therefore we dont need additional other tool
+	    gz => ['zcat'],
+	    lzo => ['lzop', '-d', '-c'],
+	    zst => ['zstd', '-q', '-d', '-c'],
+	},
     };
 
     die "ERROR: archive format not defined\n"
