@@ -1532,7 +1532,6 @@ sub decompressor_info {
 	    zst => ['zstd', '-q', '-d', '-c'],
 	},
 	iso => {
-	    # zstd seem to be able to handle .gzip fine. Therefore we dont need additional other tool
 	    gz => ['zcat'],
 	    lzo => ['lzop', '-d', '-c'],
 	    zst => ['zstd', '-q', '-d', '-c'],
