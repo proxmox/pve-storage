@@ -286,6 +286,10 @@ sub get_ceph_volume_infos {
 	    # $result autovivification is wanted, to not creating empty hashes
 	    if (($type eq 'block' || $type eq 'data') && $fields->[2] =~ m/ceph.osd_id=([^,]+)/) {
 		$result->{$dev}->{osdid} = $1;
+		if ( !defined($result->{$dev}->{'osdid-list'}) ) {
+		    $result->{$dev}->{'osdid-list'} = [];
+		}
+		push($result->{$dev}->{'osdid-list'}->@*, $1);
 		$result->{$dev}->{bluestore} = ($type eq 'block');
 		if ($fields->[2] =~ m/ceph\.encrypted=1/) {
 		    $result->{$dev}->{encrypted} = 1;
@@ -584,6 +588,7 @@ sub get_disks {
 	$disklist->{$dev}->{by_id_link} = $by_id_link if defined($by_id_link);
 
 	my ($osdid, $bluestore, $osdencrypted) = (-1, 0, 0);
+	my $osdid_list;
 	my ($journal_count, $db_count, $wal_count) = (0, 0, 0);
 
 	my $partpath = $devpath;
@@ -624,6 +629,7 @@ sub get_disks {
 	    $wal_count += $ceph_volume->{wal} // 0;
 	    if (defined($ceph_volume->{osdid})) {
 		$osdid = $ceph_volume->{osdid};
+		$osdid_list = $ceph_volume->{'osdid-list'};
 		$bluestore = 1 if $ceph_volume->{bluestore};
 		$osdencrypted = 1 if $ceph_volume->{encrypted};
 	    }
@@ -648,6 +654,7 @@ sub get_disks {
 	    $partitions->{$part}->{size} = get_sysdir_size("$sysdir/$part") // 0;
 	    $partitions->{$part}->{used} = $determine_usage->("$partpath/$part", "$sysdir/$part", 1);
 	    $partitions->{$part}->{osdid} //= -1;
+	    $partitions->{$part}->{'osdid-list'} //= undef;
 
 	    # avoid counting twice (e.g. partition with the LVM for the DB OSD is in $journalhash)
 	    return if $lvm_based_osd;
@@ -657,6 +664,8 @@ sub get_disks {
 		if ($mp =~ m|^/var/lib/ceph/osd/ceph-(\d+)$|) {
 		    $osdid = $1;
 		    $partitions->{$part}->{osdid} = $osdid;
+		    $osdid_list = [$1]; # assuming only one OSD per disk
+		    $partitions->{$part}->{'osdid-list'} = $osdid_list;
 		}
 	    }
 
@@ -693,6 +702,7 @@ sub get_disks {
 	$collect_ceph_info->($devpath);
 
 	$disklist->{$dev}->{osdid} = $osdid;
+	$disklist->{$dev}->{'osdid-list'} = $osdid_list;
 	$disklist->{$dev}->{journals} = $journal_count if $journal_count;
 	$disklist->{$dev}->{bluestore} = $bluestore if $osdid != -1;
 	$disklist->{$dev}->{osdencrypted} = $osdencrypted if $osdid != -1;

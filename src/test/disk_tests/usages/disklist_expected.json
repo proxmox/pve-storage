@@ -6,6 +6,7 @@
 	"type" : "hdd",
 	"osdencrypted": 0,
 	"osdid" : "444",
+	"osdid-list" : ["444"],
 	"bluestore" : "0",
 	"health" : "UNKNOWN",
 	"model" : "MODEL1",
@@ -26,6 +27,7 @@
 	"size" : 1536000,
 	"gpt" : 1,
 	"osdid" : -1,
+	"osdid-list" : null,
 	"type" : "hdd",
 	"model" : "MODEL1",
 	"used" : "Device Mapper",
@@ -44,7 +46,8 @@
 	"size" : 1536000,
 	"rpm" : 0,
 	"type" : "hdd",
-	"osdid" : -1
+	"osdid" : -1,
+	"osdid-list" : null
     },
     "sda" : {
 	"model" : "MODEL1",
@@ -57,6 +60,7 @@
 	"rpm" : 0,
 	"type" : "hdd",
 	"osdid" : -1,
+	"osdid-list" : null,
 	"serial" : "SERIAL1",
 	"vendor" : "ATA",
 	"wwn" : "0x0000000000000000",
@@ -73,6 +77,7 @@
 	"health" : "UNKNOWN",
 	"type" : "hdd",
 	"osdid" : -1,
+	"osdid-list" : null,
 	"gpt" : 1,
 	"rpm" : 0,
 	"size" : 1536000
@@ -86,6 +91,7 @@
 	"gpt" : 1,
 	"type" : "hdd",
 	"osdid" : -1,
+	"osdid-list" : null,
 	"serial" : "SERIAL1",
 	"used": "ZFS",
 	"vendor" : "ATA",
@@ -107,7 +113,8 @@
 	"type" : "hdd",
 	"bluestore": 1,
 	"osdencrypted": 0,
-	"osdid" : 1
+	"osdid" : 1,
+	"osdid-list" : [1]
     },
     "sdh" : {
 	"serial" : "SERIAL1",
@@ -123,7 +130,8 @@
 	"size" : 1536000,
 	"rpm" : 0,
 	"type" : "hdd",
-	"osdid" : -1
+	"osdid" : -1,
+	"osdid-list" : null
     },
     "sdi" : {
 	"serial" : "SERIAL1",
@@ -139,7 +147,8 @@
 	"rpm" : 0,
 	"type" : "hdd",
 	"db": 1,
-	"osdid" : -1
+	"osdid" : -1,
+	"osdid-list" : null
     },
     "sdj" : {
 	"serial" : "SERIAL1",
@@ -156,7 +165,8 @@
 	"bluestore": 0,
 	"type" : "hdd",
 	"osdencrypted": 1,
-	"osdid" : 0
+	"osdid" : 0,
+	"osdid-list" : [0]
     },
     "sdk" : {
 	"serial" : "SERIAL1",
@@ -173,7 +183,8 @@
 	"bluestore": 0,
 	"type" : "hdd",
 	"osdencrypted": 0,
-	"osdid" : 230
+	"osdid" : 230,
+	"osdid-list": [230]
     },
     "sdl" : {
 	"serial" : "SERIAL1",
@@ -188,7 +199,8 @@
 	"size" : 1536000,
 	"rpm" : 0,
 	"type" : "hdd",
-	"osdid" : -1
+	"osdid" : -1,
+	"osdid-list" : null
     },
     "sdm" : {
 	"serial" : "SERIAL1",
@@ -203,7 +215,8 @@
 	"size" : 1536000,
 	"rpm" : 0,
 	"type" : "hdd",
-	"osdid" : -1
+	"osdid" : -1,
+	"osdid-list" : null
     },
     "sdn" : {
 	"serial" : "SERIAL1",
@@ -218,6 +231,7 @@
 	"size" : 1536000,
 	"rpm" : 0,
 	"type" : "hdd",
-	"osdid" : -1
+	"osdid" : -1,
+	"osdid-list" : null
     }
 }

@@ -124,7 +124,11 @@ __PACKAGE__->register_method ({
 		gpt => { type => 'boolean' },
 		mounted => { type => 'boolean' },
 		size => { type => 'integer'},
-		osdid => { type => 'integer'},
+		osdid => { type => 'integer'}, # TODO: deprecate / remove in PVE 9?
+		'osdid-list' => {
+		    type => 'array',
+		    items => { type => 'integer' },
+		},
 		vendor =>  { type => 'string', optional => 1 },
 		model =>  { type => 'string', optional => 1 },
 		serial =>  { type => 'string', optional => 1 },

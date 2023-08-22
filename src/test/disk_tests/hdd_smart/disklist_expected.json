@@ -4,6 +4,7 @@
 	"size" : 1024000,
 	"gpt" : 1,
 	"osdid" : -1,
+	"osdid-list" : null,
 	"rpm" : 7200,
 	"model" : "ST4000NM0033-9ZM170",
 	"vendor" : "ATA",
@@ -15,6 +16,7 @@
     },
     "sda" : {
 	"osdid" : -1,
+	"osdid-list" : null,
 	"size" : 1024000,
 	"gpt" : 1,
 	"devpath" : "/dev/sda",

@@ -8,6 +8,7 @@
 	"model" : "NVME MODEL 1",
 	"rpm" : 0,
 	"osdid" : -1,
+	"osdid-list" : null,
 	"devpath" : "/dev/nvme0n1",
 	"gpt" : 0,
 	"wwn" : "unknown",

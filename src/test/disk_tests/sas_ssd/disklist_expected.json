@@ -6,6 +6,7 @@
 	"model" : "MODEL1",
 	"health" : "OK",
 	"osdid" : -1,
+	"osdid-list" : null,
 	"wwn" : "0x0000000000000000",
 	"vendor" : "VENDOR1",
 	"rpm" : 0,

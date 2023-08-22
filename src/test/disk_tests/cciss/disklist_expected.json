@@ -6,6 +6,7 @@
 	"type" : "unknown",
 	"serial" : "SER111",
 	"osdid" : -1,
+	"osdid-list" : null,
 	"health" : "UNKNOWN",
 	"model" : "LOGICAL_VOLUME",
 	"size" : 5120,
