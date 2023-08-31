@@ -645,7 +645,7 @@ sub volume_export {
 	$size = int($1);
     });
     PVE::Storage::Plugin::write_common_header($fh, $size);
-    run_command(['dd', "if=$file", "bs=64k"], output => '>&'.fileno($fh));
+    run_command(['dd', "if=$file", "bs=64k", "status=progress"], output => '>&'.fileno($fh));
 }
 
 sub volume_import_formats {

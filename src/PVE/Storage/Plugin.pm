@@ -1577,7 +1577,7 @@ sub volume_export {
 	    goto unsupported if $with_snapshots || $file_format eq 'subvol';
 	    write_common_header($fh, $size);
 	    if ($file_format eq 'raw') {
-		run_command(['dd', "if=$file", "bs=4k"], output => '>&'.fileno($fh));
+		run_command(['dd', "if=$file", "bs=4k", "status=progress"], output => '>&'.fileno($fh));
 	    } else {
 		run_command(['qemu-img', 'convert', '-f', $file_format, '-O', 'raw', $file, '/dev/stdout'],
 		            output => '>&'.fileno($fh));
@@ -1587,7 +1587,7 @@ sub volume_export {
 	    my $data_format = $1;
 	    goto unsupported if !$with_snapshots || $file_format ne $data_format;
 	    write_common_header($fh, $size);
-	    run_command(['dd', "if=$file", "bs=4k"], output => '>&'.fileno($fh));
+	    run_command(['dd', "if=$file", "bs=4k", "status=progress"], output => '>&'.fileno($fh));
 	    return;
 	} elsif ($format eq 'tar+size') {
 	    goto unsupported if $file_format ne 'subvol';

@@ -821,12 +821,25 @@ sub storage_migrate {
 
     my $new_volid;
     my $pattern = volume_imported_message(undef, 1);
+    # Matches new volid and rate-limits dd output
     my $match_volid_and_log = sub {
 	my $line = shift;
+	my $show = 1;
+
+	# rate-limit dd logs
+	if ($line =~ /(?:\d+ bytes)(?:.+?copied, )(\d+) s/) {
+	    if ($1 < 60) { # if < 60s, print every 3s
+		$show = !($1 % 3);
+	    } elsif ($1 < 600) { # if < 10mins, print every 10s
+		$show = !($1 % 10);
+	    } else { # else, print every 30s
+		$show = !($1 % 30);
+	    }
+	}
 
 	$new_volid = $1 if ($line =~ $pattern);
 
-	if ($logfunc) {
+	if ($logfunc && $show) {
 	    chomp($line);
 	    $logfunc->($line);
 	}
@@ -855,7 +868,7 @@ sub storage_migrate {
 	    # we won't be reading from the socket
 	    shutdown($socket, 0);
 
-	    eval { run_command($cmds, output => '>&'.fileno($socket), errfunc => $logfunc); };
+	    eval { run_command($cmds, output => '>&'.fileno($socket), errfunc => $match_volid_and_log); };
 	    my $send_error = $@;
 
 	    # don't close the connection entirely otherwise the receiving end
