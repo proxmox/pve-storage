@@ -826,13 +826,13 @@ sub storage_migrate {
 	my $line = shift;
 	my $show = 1;
 
-	# rate-limit dd logs
-	if ($line =~ /(?:\d+ bytes)(?:.+?copied, )(\d+) s/) {
-	    if ($1 < 60) { # if < 60s, print every 3s
+	if ($line =~ /(?:\d+ bytes)(?:.+?copied, )(\d+) s/) { # rate-limit dd logs
+	    my $elapsed = int($1);
+	    if ($elapsed < 60) {
 		$show = !($1 % 3);
-	    } elsif ($1 < 600) { # if < 10mins, print every 10s
+	    } elsif ($elapsed < 600) {
 		$show = !($1 % 10);
-	    } else { # else, print every 30s
+	    } else {
 		$show = !($1 % 30);
 	    }
 	}
