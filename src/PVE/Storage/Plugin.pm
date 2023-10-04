@@ -138,7 +138,10 @@ my $defaultData = {
 	type => { description => "Storage type." },
 	storage => get_standard_option('pve-storage-id',
 	    { completion => \&PVE::Storage::complete_storage }),
-	nodes => get_standard_option('pve-node-list', { optional => 1 }),
+	nodes => get_standard_option('pve-node-list', {
+	    description => "List of nodes for which the storage configuration applies.",
+	    optional => 1,
+	}),
 	content => {
 	    description => "Allowed content types.\n\nNOTE: the value " .
 		"'rootdir' is used for Containers, and value 'images' for VMs.\n",
