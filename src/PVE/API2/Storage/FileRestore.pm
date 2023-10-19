@@ -167,6 +167,12 @@ __PACKAGE__->register_method ({
 		description => 'base64-path to the directory or file to download.',
 		type => 'string',
 	    },
+	    tar => {
+		description => "Download dirs as 'tar.zst' instead of 'zip'.",
+		type => 'boolean',
+		optional => 1,
+		default => 0,
+	    },
 	},
     },
     returns => {
@@ -182,6 +188,7 @@ __PACKAGE__->register_method ({
 	my $path = extract_param($param, 'filepath');
 	my $storeid = extract_param($param, 'storage');
 	my $volid = $parse_volname_or_id->($storeid, $param->{volume});
+	my $tar = extract_param($param, 'tar') // 0;
 
 	my $cfg = PVE::Storage::config();
 	my $scfg = PVE::Storage::storage_config($cfg, $storeid);
@@ -199,7 +206,7 @@ __PACKAGE__->register_method ({
 	$rpcenv->fork_worker('pbs-download', undef, $user, sub {
 	    my $name = decode_base64($path);
 	    print "Starting download of file: $name\n";
-	    $client->file_restore_extract($fifo, $snap, $path, 1);
+	    $client->file_restore_extract($fifo, $snap, $path, 1, $tar);
 	});
 
 	my $ret = {
