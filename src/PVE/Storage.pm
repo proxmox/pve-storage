@@ -1445,7 +1445,7 @@ sub scan_iscsi {
 	die "unable to parse/resolve portal address '${portal_in}'\n";
     }
 
-    return PVE::Storage::ISCSIPlugin::iscsi_discovery($portal);
+    return PVE::Storage::ISCSIPlugin::iscsi_discovery([ $portal ]);
 }
 
 sub storage_default_format {

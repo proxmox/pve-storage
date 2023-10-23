@@ -18,6 +18,9 @@ use base qw(PVE::Storage::Plugin);
 my $ISCSIADM = '/usr/bin/iscsiadm';
 $ISCSIADM = undef if ! -X $ISCSIADM;
 
+# Example: 192.168.122.252:3260,1 iqn.2003-01.org.linux-iscsi.proxmox-nfs.x8664:sn.00567885ba8f
+my $ISCSI_TARGET_RE = qr/^((?:$IPV4RE|\[$IPV6RE\]):\d+)\,\S+\s+(\S+)\s*$/;
+
 sub check_iscsi_support {
     my $noerr = shift;
 
@@ -45,11 +48,12 @@ sub iscsi_session_list {
     eval {
 	run_command($cmd, errmsg => 'iscsi session scan failed', outfunc => sub {
 	    my $line = shift;
-
-	    if ($line =~ m/^tcp:\s+\[(\S+)\]\s+\S+\s+(\S+)(\s+\S+)?\s*$/) {
-		my ($session, $target) = ($1, $2);
+	    # example: tcp: [1] 192.168.122.252:3260,1 iqn.2003-01.org.linux-iscsi.proxmox-nfs.x8664:sn.00567885ba8f (non-flash)
+	    if ($line =~ m/^tcp:\s+\[(\S+)\]\s+((?:$IPV4RE|\[$IPV6RE\]):\d+)\,\S+\s+(\S+)\s+\S+?\s*$/) {
+		my ($session_id, $portal, $target) = ($1, $2, $3);
 		# there can be several sessions per target (multipath)
-		push @{$res->{$target}}, $session;
+		my %session = ( session_id => $session_id, portal => $portal );
+		push @{$res->{$target}}, \%session;
 	    }
 	});
     };
@@ -68,42 +72,77 @@ sub iscsi_test_portal {
     return PVE::Network::tcp_ping($server, $port || 3260, 2);
 }
 
+sub iscsi_portals {
+    my ($target, $portal_in) = @_;
+
+    check_iscsi_support ();
+
+    my $res = [];
+    my $cmd = [$ISCSIADM, '--mode', 'node'];
+    eval {
+	run_command($cmd, outfunc => sub {
+	    my $line = shift;
+
+	    if ($line =~ $ISCSI_TARGET_RE) {
+		my ($portal, $portal_target) = ($1, $2);
+		if ($portal_target eq $target) {
+		    push @{$res}, $portal;
+		}
+	    }
+	});
+    };
+
+    if ($@) {
+	warn $@;
+	return [ $portal_in ];
+    }
+
+    return $res;
+}
+
 sub iscsi_discovery {
-    my ($portal) = @_;
+    my ($portals) = @_;
 
     check_iscsi_support ();
 
     my $res = {};
-    return $res if !iscsi_test_portal($portal); # fixme: raise exception here?
+    for my $portal ($portals->@*) {
+	next if !iscsi_test_portal($portal); # fixme: raise exception here?
 
-    my $cmd = [$ISCSIADM, '--mode', 'discovery', '--type', 'sendtargets', '--portal', $portal];
-    run_command($cmd, outfunc => sub {
-	my $line = shift;
+	my $cmd = [$ISCSIADM, '--mode', 'discovery', '--type', 'sendtargets', '--portal', $portal];
+	eval {
+	    run_command($cmd, outfunc => sub {
+		my $line = shift;
 
-	if ($line =~ m/^((?:$IPV4RE|\[$IPV6RE\]):\d+)\,\S+\s+(\S+)\s*$/) {
-	    my $portal = $1;
-	    my $target = $2;
-	    # one target can have more than one portal (multipath).
-	    push @{$res->{$target}}, $portal;
-	}
-    });
+		if ($line =~ $ISCSI_TARGET_RE) {
+		    my ($portal, $target) = ($1, $2);
+		    # one target can have more than one portal (multipath)
+		    # and sendtargets should return all of them in single call
+		    push @{$res->{$target}}, $portal;
+		}
+	    });
+	};
+
+	# In case of multipath we can stop after receiving targets from any available portal
+	last if scalar(keys %$res) > 0;
+    }
 
     return $res;
 }
 
 sub iscsi_login {
-    my ($target, $portal_in) = @_;
+    my ($target, $portals) = @_;
 
     check_iscsi_support();
 
-    eval { iscsi_discovery($portal_in); };
+    eval { iscsi_discovery($portals); };
     warn $@ if $@;
 
     run_command([$ISCSIADM, '--mode', 'node', '--targetname',  $target, '--login']);
 }
 
 sub iscsi_logout {
-    my ($target, $portal) = @_;
+    my ($target) = @_;
 
     check_iscsi_support();
 
@@ -133,7 +172,7 @@ sub iscsi_session_rescan {
     }
 
     foreach my $session (@$session_list) {
-	my $cmd = [$ISCSIADM, '--mode', 'session', '--sid', $session, '--rescan'];
+	my $cmd = [$ISCSIADM, '--mode', 'session', '--sid', $session->{session_id}, '--rescan'];
 	eval { run_command($cmd, outfunc => sub {}); };
 	warn $@ if $@;
     }
@@ -379,14 +418,28 @@ sub activate_storage {
 
     return if !check_iscsi_support(1);
 
-    my $session = iscsi_session($cache, $scfg->{target});
+    my $sessions = iscsi_session($cache, $scfg->{target});
+    my $portals = iscsi_portals($scfg->{target}, $scfg->{portal});
+    my $do_login = !defined($sessions);
 
-    if (!defined ($session)) {
-	eval { iscsi_login($scfg->{target}, $scfg->{portal}); };
+    if (!$do_login) {
+	# We should check that sessions for all portals are available
+	my $session_portals = [ map { $_->{portal} } (@$sessions) ];
+
+	for my $portal (@$portals) {
+	    if (!grep(/^\Q$portal\E$/, @$session_portals)) {
+		$do_login = 1;
+		last;
+	    }
+	}
+    }
+
+    if ($do_login) {
+	eval { iscsi_login($scfg->{target}, $portals); };
 	warn $@ if $@;
     } else {
 	# make sure we get all devices
-	iscsi_session_rescan($session);
+	iscsi_session_rescan($sessions);
     }
 }
 
@@ -396,15 +449,21 @@ sub deactivate_storage {
     return if !check_iscsi_support(1);
 
     if (defined(iscsi_session($cache, $scfg->{target}))) {
-	iscsi_logout($scfg->{target}, $scfg->{portal});
+	iscsi_logout($scfg->{target});
     }
 }
 
 sub check_connection {
     my ($class, $storeid, $scfg) = @_;
 
-    my $portal = $scfg->{portal};
-    return iscsi_test_portal($portal);
+    my $portals = iscsi_portals($scfg->{target}, $scfg->{portal});
+
+    for my $portal (@$portals) {
+	my $result = iscsi_test_portal($portal);
+	return $result if $result;
+    }
+
+    return 0;
 }
 
 sub volume_resize {
