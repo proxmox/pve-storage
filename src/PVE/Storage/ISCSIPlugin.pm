@@ -16,35 +16,30 @@ use base qw(PVE::Storage::Plugin);
 # iscsi helper function
 
 my $ISCSIADM = '/usr/bin/iscsiadm';
-$ISCSIADM = undef if ! -X $ISCSIADM;
+
+my $found_iscsi_adm_exe;
+my sub assert_iscsi_support {
+    my ($noerr) = @_;
+    return $found_iscsi_adm_exe if $found_iscsi_adm_exe; # assume it won't be removed if ever found
+
+    $found_iscsi_adm_exe = -x $ISCSIADM;
+
+    if (!$found_iscsi_adm_exe) {
+	die "error: no iscsi support - please install open-iscsi\n" if !$noerr;
+	warn "warning: no iscsi support - please install open-iscsi\n";
+    }
+    return $found_iscsi_adm_exe;
+}
 
 # Example: 192.168.122.252:3260,1 iqn.2003-01.org.linux-iscsi.proxmox-nfs.x8664:sn.00567885ba8f
 my $ISCSI_TARGET_RE = qr/^((?:$IPV4RE|\[$IPV6RE\]):\d+)\,\S+\s+(\S+)\s*$/;
 
-sub check_iscsi_support {
-    my $noerr = shift;
-
-    if (!$ISCSIADM) {
-	my $msg = "no iscsi support - please install open-iscsi";
-	if ($noerr) {
-	    warn "warning: $msg\n";
-	    return 0;
-	}
-
-	die "error: $msg\n";
-    }
-
-    return 1;
-}
-
 sub iscsi_session_list {
-
-    check_iscsi_support ();
+    assert_iscsi_support();
 
     my $cmd = [$ISCSIADM, '--mode', 'session'];
 
     my $res = {};
-
     eval {
 	run_command($cmd, errmsg => 'iscsi session scan failed', outfunc => sub {
 	    my $line = shift;
@@ -75,7 +70,7 @@ sub iscsi_test_portal {
 sub iscsi_portals {
     my ($target, $portal_in) = @_;
 
-    check_iscsi_support ();
+    assert_iscsi_support();
 
     my $res = [];
     my $cmd = [$ISCSIADM, '--mode', 'node'];
@@ -103,7 +98,7 @@ sub iscsi_portals {
 sub iscsi_discovery {
     my ($portals) = @_;
 
-    check_iscsi_support ();
+    assert_iscsi_support();
 
     my $res = {};
     for my $portal ($portals->@*) {
@@ -133,7 +128,7 @@ sub iscsi_discovery {
 sub iscsi_login {
     my ($target, $portals) = @_;
 
-    check_iscsi_support();
+    assert_iscsi_support();
 
     eval { iscsi_discovery($portals); };
     warn $@ if $@;
@@ -144,7 +139,7 @@ sub iscsi_login {
 sub iscsi_logout {
     my ($target) = @_;
 
-    check_iscsi_support();
+    assert_iscsi_support();
 
     run_command([$ISCSIADM, '--mode', 'node', '--targetname', $target, '--logout']);
 }
@@ -154,7 +149,7 @@ my $rescan_filename = "/var/run/pve-iscsi-rescan.lock";
 sub iscsi_session_rescan {
     my $session_list = shift;
 
-    check_iscsi_support();
+    assert_iscsi_support();
 
     my $rstat = stat($rescan_filename);
 
@@ -416,7 +411,7 @@ sub status {
 sub activate_storage {
     my ($class, $storeid, $scfg, $cache) = @_;
 
-    return if !check_iscsi_support(1);
+    return if !assert_iscsi_support(1);
 
     my $sessions = iscsi_session($cache, $scfg->{target});
     my $portals = iscsi_portals($scfg->{target}, $scfg->{portal});
@@ -446,7 +441,7 @@ sub activate_storage {
 sub deactivate_storage {
     my ($class, $storeid, $scfg, $cache) = @_;
 
-    return if !check_iscsi_support(1);
+    return if !assert_iscsi_support(1);
 
     if (defined(iscsi_session($cache, $scfg->{target}))) {
 	iscsi_logout($scfg->{target});
