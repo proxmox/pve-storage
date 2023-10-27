@@ -47,8 +47,7 @@ sub iscsi_session_list {
 	    if ($line =~ m/^tcp:\s+\[(\S+)\]\s+((?:$IPV4RE|\[$IPV6RE\]):\d+)\,\S+\s+(\S+)\s+\S+?\s*$/) {
 		my ($session_id, $portal, $target) = ($1, $2, $3);
 		# there can be several sessions per target (multipath)
-		my %session = ( session_id => $session_id, portal => $portal );
-		push @{$res->{$target}}, \%session;
+		push @{$res->{$target}}, { session_id => $session_id, portal => $portal };
 	    }
 	});
     };
@@ -477,10 +476,10 @@ sub volume_has_feature {
 	$class->parse_volname($volname);
 
     my $key = undef;
-    if($snapname){
+    if ($snapname){
 	$key = 'snap';
-    }else{
-	$key =  $isBase ? 'base' : 'current';
+    } else {
+	$key = $isBase ? 'base' : 'current';
     }
     return 1 if $features->{$feature}->{$key};
 
