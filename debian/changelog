@@ -1,3 +1,17 @@
+libpve-storage-perl (8.0.4) bookworm; urgency=medium
+
+  * cifs: bubble up NT_STATUS_INVALID_PARAMETER during connection c
+
+  * fix #3004: show progress of offline migration in task log
+
+  * fix #254: iscsi: add support for multipath targets
+
+  * api/filerestore: add tar parameter to download api
+
+  * disks: get: add osdid-list return parameter
+
+ -- Proxmox Support Team <support@proxmox.com>  Mon, 13 Nov 2023 18:12:34 +0100
+
 libpve-storage-perl (8.0.3) bookworm; urgency=medium
 
   * fix #4849: support decompressing ISOs downloaded from URLs
