@@ -262,7 +262,7 @@ sub create_base {
     # If we're not working with a 'raw' file, which is the only thing that's "different" for btrfs,
     # or a subvolume, we forward to the DirPlugin
     if ($format ne 'raw' && $format ne 'subvol') {
-	return PVE::Storage::DirPlugin::create_base(@_);
+	return PVE::Storage::Plugin::create_base(@_);
     }
 
     my $path = $class->filesystem_path($scfg, $volname);
