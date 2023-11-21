@@ -1,3 +1,9 @@
+libpve-storage-perl (8.0.5) bookworm; urgency=medium
+
+  * btrfs: fix calling parent create_base method in fall-back
+
+ -- Proxmox Support Team <support@proxmox.com>  Tue, 21 Nov 2023 21:20:53 +0100
+
 libpve-storage-perl (8.0.4) bookworm; urgency=medium
 
   * cifs: bubble up NT_STATUS_INVALID_PARAMETER during connection c
