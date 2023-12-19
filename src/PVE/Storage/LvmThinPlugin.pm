@@ -383,6 +383,56 @@ sub volume_has_feature {
     return undef;
 }
 
+sub volume_import {
+    my ($class, $scfg, $storeid, $fh, $volname, $format, $snapshot, $base_snapshot, $with_snapshots, $allow_rename) = @_;
+
+    my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $file_format) =
+	$class->parse_volname($volname);
+
+    if (!$isBase) {
+	return $class->SUPER::volume_import(
+	    $scfg,
+	    $storeid,
+	    $fh,
+	    $volname,
+	    $format,
+	    $snapshot,
+	    $base_snapshot,
+	    $with_snapshots,
+	    $allow_rename
+	);
+    } else {
+	my $tempname;
+	my $vg = $scfg->{vgname};
+	my $lvs = PVE::Storage::LVMPlugin::lvm_list_volumes($vg);
+	if ($lvs->{$vg}->{$volname}) {
+	    die "volume $vg/$volname already exists\n" if !$allow_rename;
+	    warn "volume $vg/$volname already exists - importing with a different name\n";
+
+	    $tempname = $class->find_free_diskname($storeid, $scfg, $vmid);
+	} else {
+	    $tempname = $volname;
+	    $tempname =~ s/base/vm/;
+	}
+
+	($storeid,my $newname) = PVE::Storage::parse_volume_id($class->SUPER::volume_import(
+	    $scfg,
+	    $storeid,
+	    $fh,
+	    $tempname,
+	    $format,
+	    $snapshot,
+	    $base_snapshot,
+	    $with_snapshots,
+	    $allow_rename
+	));
+
+	$volname = $class->create_base($storeid, $scfg, $newname);
+    }
+
+    return "$storeid:$volname";
+}
+
 # used in LVMPlugin->volume_import
 sub volume_import_write {
     my ($class, $input_fh, $output_file) = @_;
