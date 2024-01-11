@@ -467,9 +467,9 @@ __PACKAGE__->register_method ({
 	if ($node ne 'localhost' && $node ne PVE::INotify::nodename()) {
 	    my $remip = PVE::Cluster::remote_node_ip($node);
 
-	    my @ssh_options = ('-o', 'BatchMode=yes');
+	    my $ssh_options = PVE::SSHInfo::ssh_info_to_ssh_opts({ ip => $remip, name => $node });
 
-	    my @remcmd = ('/usr/bin/ssh', @ssh_options, $remip, '--');
+	    my @remcmd = ('/usr/bin/ssh', $ssh_options->@*, $remip, '--');
 
 	    eval { # activate remote storage
 		run_command([@remcmd, '/usr/sbin/pvesm', 'status', '--storage', $param->{storage}]);
@@ -481,7 +481,7 @@ __PACKAGE__->register_method ({
 		errmsg => "mkdir failed",
 	    );
  
-	    $cmd = ['/usr/bin/scp', @ssh_options, '-p', '--', $tmpfilename, "[$remip]:" . PVE::Tools::shell_quote($dest)];
+	    $cmd = ['/usr/bin/scp', $ssh_options->@*, '-p', '--', $tmpfilename, "[$remip]:" . PVE::Tools::shell_quote($dest)];
 
 	    $err_cleanup = sub { run_command([@remcmd, 'rm', '-f', '--', $dest]) };
 	} else {
