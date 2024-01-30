@@ -200,7 +200,7 @@ sub zfs_wait_for_zvol_link {
 
     for (my $i = 1; $i <= $timeout; $i++) {
 	last if -b $devname;
-	die "timeout: no zvol device link for '$volname' found after $timeout sec found.\n"
+	die "timeout: no zvol device link for '$volname' found after $timeout sec.\n"
 	    if $i == $timeout;
 
 	sleep(1);
