@@ -170,7 +170,10 @@ my $defaultData = {
 	    default => "Unlimited for users with Datastore.Allocate privilege, 5 for other users",
 	},
 	shared => {
-	    description => "Mark storage as shared.",
+	    description => "Indicate that this is a single storage with the same contents on all "
+		."nodes (or all listed in the 'nodes' option). It will not make the contents of a "
+		."local storage automatically accessible to other nodes, it just marks an already "
+		."shared storage as such!",
 	    type => 'boolean',
 	    optional => 1,
 	},
