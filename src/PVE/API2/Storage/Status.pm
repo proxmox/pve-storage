@@ -546,9 +546,15 @@ __PACKAGE__->register_method({
     description => "Download templates and ISO images by using an URL.",
     proxyto => 'node',
     permissions => {
+	description => 'Requires allocation access on the storage and as this allows one to probe'
+	    .' the (local!) host network indirectly it also requires one of Sys.Modify on / (for'
+	    .' backwards compatibility) or the newer Sys.AccessNetwork privilege on the node.',
 	check => [ 'and',
 	    ['perm', '/storage/{storage}', [ 'Datastore.AllocateTemplate' ]],
-	    ['perm', '/', [ 'Sys.Audit', 'Sys.Modify' ]],
+	    [ 'or',
+		['perm', '/', [ 'Sys.Audit', 'Sys.Modify' ]],
+		['perm', '/nodes/{node}', [ 'Sys.AccessNetwork' ]],
+	    ],
 	],
     },
     protected => 1,
