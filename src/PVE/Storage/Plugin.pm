@@ -319,7 +319,9 @@ PVE::JSONSchema::register_format('pve-storage-content', \&verify_content);
 sub verify_content {
     my ($ct, $noerr) = @_;
 
-    my $valid_content = valid_content_types('dir'); # dir includes all types
+    return $ct if $ct eq 'import';
+
+    my $valid_content = valid_content_types('dir'); # dir includes all other types
 
     if (!$valid_content->{$ct}) {
 	return undef if $noerr;

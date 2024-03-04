@@ -1107,7 +1107,7 @@ sub template_list {
 sub volume_list {
     my ($cfg, $storeid, $vmid, $content) = @_;
 
-    my @ctypes = qw(rootdir images vztmpl iso backup snippets);
+    my @ctypes = qw(rootdir images vztmpl iso backup snippets import);
 
     my $cts = $content ? [ $content ] : [ @ctypes ];
 
