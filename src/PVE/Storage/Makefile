@@ -13,7 +13,8 @@ SOURCES= \
 	ZFSPlugin.pm \
 	PBSPlugin.pm \
 	BTRFSPlugin.pm \
-	LvmThinPlugin.pm
+	LvmThinPlugin.pm \
+	ESXiPlugin.pm
 
 .PHONY: install
 install:

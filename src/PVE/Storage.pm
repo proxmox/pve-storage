@@ -39,6 +39,7 @@ use PVE::Storage::ZFSPoolPlugin;
 use PVE::Storage::ZFSPlugin;
 use PVE::Storage::PBSPlugin;
 use PVE::Storage::BTRFSPlugin;
+use PVE::Storage::ESXiPlugin;
 
 # Storage API version. Increment it on changes in storage API interface.
 use constant APIVER => 10;
@@ -64,6 +65,7 @@ PVE::Storage::ZFSPoolPlugin->register();
 PVE::Storage::ZFSPlugin->register();
 PVE::Storage::PBSPlugin->register();
 PVE::Storage::BTRFSPlugin->register();
+PVE::Storage::ESXiPlugin->register();
 
 # load third-party plugins
 if ( -d '/usr/share/perl5/PVE/Storage/Custom' ) {
@@ -2163,6 +2165,22 @@ sub normalize_content_filename {
     $filename =~ s/[^a-zA-Z0-9_.-]/_/g;
 
     return $filename;
+}
+
+# If a storage provides an 'import' content type, it should be able to provide
+# an object implementing the import information interface.
+sub get_import_metadata {
+    my ($cfg, $volid) = @_;
+
+    my ($storeid, $volname) = parse_volume_id($volid);
+
+    my $scfg = storage_config($cfg, $storeid);
+    my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
+    if (!$plugin->can('get_import_metadata')) {
+	die "storage does not support the importer API\n";
+    }
+
+    return $plugin->get_import_metadata($scfg, $volname, $storeid);
 }
 
 1;
