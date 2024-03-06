@@ -1,3 +1,15 @@
+libpve-storage-perl (8.1.0) bookworm; urgency=medium
+
+  * zfs: fix duplicate word typo in error message
+
+  * plugin schema: improve description of 'nodes' and 'shared' properties
+
+  * fix #5254: api: allow usage of download-url with Sys.AccessNetwork
+
+  * d/control: add missing dependency relation on libpve-access-control
+
+ -- Proxmox Support Team <support@proxmox.com>  Wed, 06 Mar 2024 18:25:58 +0100
+
 libpve-storage-perl (8.0.5) bookworm; urgency=medium
 
   * btrfs: fix calling parent create_base method in fall-back
