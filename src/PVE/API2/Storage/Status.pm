@@ -227,6 +227,7 @@ __PACKAGE__->register_method ({
 	    { subdir => 'content' },
 	    { subdir => 'download-url' },
 	    { subdir => 'file-restore' },
+	    { subdir => 'import-metadata' },
 	    { subdir => 'prunebackups' },
 	    { subdir => 'rrd' },
 	    { subdir => 'rrddata' },
@@ -674,6 +675,76 @@ __PACKAGE__->register_method({
 	my $worker_id = PVE::Tools::encode_text($filename); # must not pass : or the like as w-ID
 
 	return $rpcenv->fork_worker('download', $worker_id, $user, $worker);
+    }});
+
+__PACKAGE__->register_method({
+    name => 'get_import_metadata',
+    path => '{storage}/import-metadata',
+    method => 'GET',
+    description =>
+	"Get the base parameters for creating a guest which imports data from a foreign importable"
+	." guest, like an ESXi VM",
+    proxyto => 'node',
+    permissions => {
+	description => "You need read access for the volume.",
+	user => 'all',
+    },
+    protected => 1,
+    parameters => {
+	additionalProperties => 0,
+	properties => {
+	    node => get_standard_option('pve-node'),
+	    storage => get_standard_option('pve-storage-id'),
+	    volume => {
+		description => "Volume identifier",
+		type => 'string',
+	    },
+	    target => get_standard_option('pve-storage-id', {
+		description => 'The default target storage',
+		optional => 1,
+		default => 'local',
+	    }),
+	},
+    },
+    returns => {
+	type => "object",
+	description => 'Information about how to import a guest.',
+	additionalProperties => 0,
+	properties => {
+	    type => {
+		type => 'string',
+		enum => [ 'vm' ],
+		description => 'The type of guest this is going to produce.',
+	    },
+	    'create-args' => {
+		type => 'object',
+		additionalProperties => 1,
+		description => 'Parameters which can be used in a call to create a VM or container.',
+	    },
+	},
+    },
+    code => sub {
+	my ($param) = @_;
+
+	my $rpcenv = PVE::RPCEnvironment::get();
+	my $authuser = $rpcenv->get_user();
+
+	my ($storeid, $volume, $target) = $param->@{qw(storage volume target)};
+	my $volid = "$storeid:$volume";
+
+	my $cfg = PVE::Storage::config();
+
+	PVE::Storage::check_volume_access($rpcenv, $authuser, $cfg, undef, $volid);
+
+	my $create_args = PVE::Tools::run_with_timeout(30, sub {
+	    my $import = PVE::Storage::get_import_metadata($cfg, $volid);
+	    return $import->get_create_args($target);
+	});
+
+	return {
+	    type => 'vm', # currently we only have this
+	    'create-args' => $create_args,
+	};
     }});
 
 1;
