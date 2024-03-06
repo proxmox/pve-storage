@@ -898,6 +898,7 @@ sub get_create_args {
     my $manifest = $self->manifest;
 
     my $create_args = {};
+    my $ignored_volumes = {};
 
     my ($cores, $sockets) = $self->cpu_info();
     $create_args->{cores} = $cores if $cores != 1;
@@ -973,7 +974,14 @@ sub get_create_args {
 	}
 
 	my $count = $counts{$bus}++;
-	$create_args->{"${bus}${count}"} = "$default_storage:0,import-from=$storeid:$path";
+	if ($kind eq 'cdrom') {
+	    # We currently do not pass cdroms through via the esxi storage.
+	    # Users should adapt import these from the storages directly/manually.
+	    $create_args->{"${bus}${count}"} = "none,media=cdrom";
+	    $ignored_volumes->{"${bus}${count}"} = "$storeid:$path";
+	} else {
+	    $create_args->{"${bus}${count}"} = "$default_storage:0,import-from=$storeid:$path";
+	}
 
 	$boot_order .= ';' if length($boot_order);
 	$boot_order .= $bus.$count;
@@ -1009,7 +1017,11 @@ sub get_create_args {
 	$create_args->{name} = $name if length($name);
     }
 
-    return $create_args;
+    return {
+	type => 'vm',
+	'create-args' => $create_args,
+	'ignored-volumes' => $ignored_volumes,
+    };
 }
 
 1;
