@@ -775,6 +775,28 @@ sub for_each_netdev {
     return;
 }
 
+sub for_each_serial {
+    my ($self, $code) = @_;
+
+    my $found_serials = {};
+    for my $key (sort keys %$self) {
+	next if $key !~ /^serial(\d+)\.(.+)$/;
+	my ($slot, $opt) = ($1, $2);
+	my $serial = ($found_serials->{$1} //= {});
+	$serial->{$opt} = $self->{$key};
+    }
+
+    for my $id (sort { $a <=> $b } keys %$found_serials) {
+	my $serial = $found_serials->{$id};
+
+	next if ($serial->{present} // '') ne 'TRUE';
+
+	$code->($id, $serial);
+    }
+
+    return;
+}
+
 sub firmware {
     my ($self) = @_;
     my $fw = $self->{firmware};
@@ -1030,6 +1052,15 @@ sub get_create_args {
 	$name =~ s/[.-]+$//;
 	$create_args->{name} = $name if length($name);
     }
+
+    my $serid = 0;
+    $self->for_each_serial(sub {
+	my ($id, $serial) = @_;
+	# currently we only support 'socket' type serials anyway
+	$warn->("serial ports are currently all mapped to sockets") if $serid == 0;
+	$create_args->{"serial$serid"} = 'socket';
+	++$serid;
+    });
 
     return {
 	type => 'vm',
