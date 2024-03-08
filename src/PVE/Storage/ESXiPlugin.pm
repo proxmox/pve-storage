@@ -898,7 +898,12 @@ sub get_create_args {
     my $create_args = {};
     my $create_disks = {};
     my $create_net = {};
+    my $warnings = [];
     my $ignored_volumes = {};
+
+    my $warn = sub {
+	push @$warnings, { message => $_[0] };
+    };
 
     my ($cores, $sockets) = $self->cpu_info();
     $create_args->{cores} = $cores if $cores != 1;
@@ -990,17 +995,23 @@ sub get_create_args {
 	$boot_order .= $bus.$count;
     };
     $self->for_each_disk($add_disk);
-    for my $nvme (@nvmes) {
-	my ($slot, $file, $devtype, $kind) = @$nvme;
-	$add_disk->('nvme', $slot, $file, $devtype, $kind, 1);
+    if (@nvmes) {
+	$warn->("PVE currently does not support NVMe guest disks, they are converted to SCSI");
+	for my $nvme (@nvmes) {
+	    my ($slot, $file, $devtype, $kind) = @$nvme;
+	    $add_disk->('nvme', $slot, $file, $devtype, $kind, 1);
+	}
     }
 
     $scsihw //= $default_scsihw;
-    if ($firmware eq 'efi' && !defined($scsihw) || $scsihw =~ /^lsi/) {
-	if ($is_windows) {
-	    $scsihw = 'pvscsi';
-	} else {
-	    $scsihw = 'virtio-scsi-single';
+    if ($firmware eq 'efi') {
+	if (!defined($scsihw) || $scsihw =~ /^lsi/) {
+	    if ($is_windows) {
+		$scsihw = 'pvscsi';
+	    } else {
+		$scsihw = 'virtio-scsi-single';
+	    }
+	    $warn->("OVMF is built without LSI drivers, scsi hardware was set to $scsihw");
 	}
     }
     $create_args->{scsihw} = $scsihw;
@@ -1026,6 +1037,7 @@ sub get_create_args {
 	disks => $create_disks,
 	net => $create_net,
 	'ignored-volumes' => $ignored_volumes,
+	warnings => $warnings,
     };
 }
 
