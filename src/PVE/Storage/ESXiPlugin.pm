@@ -890,14 +890,14 @@ sub smbios1_uuid {
 
 # This builds arguments for the `create` api call for this config.
 sub get_create_args {
-    my ($self, $default_storage) = @_;
-
-    $default_storage //= 'local';
+    my ($self) = @_;
 
     my $storeid = $self->storeid;
     my $manifest = $self->manifest;
 
     my $create_args = {};
+    my $create_disks = {};
+    my $create_net = {};
     my $ignored_volumes = {};
 
     my ($cores, $sockets) = $self->cpu_info();
@@ -907,7 +907,7 @@ sub get_create_args {
     my $firmware = $self->firmware;
     if ($firmware eq 'efi') {
 	$create_args->{bios} = 'ovmf';
-	$create_args->{efidisk0} = "$default_storage:1";
+	$create_disks->{efidisk0} = 1;
     } else {
 	$create_args->{bios} = 'seabios';
     }
@@ -936,10 +936,9 @@ sub get_create_args {
 	$mac //= '';
 	my $model = $dev->{virtualDev} // 'vmxnet3';
 
-	my $param = "model=$model";
-	$param .= ",macaddr=$mac" if length($mac);
-	$param .= ",firewall=1";
-	$create_args->{"net$id"} = $param;
+	my $param = { model => $model };
+	$param->{macaddr} = $mac if length($mac);
+	$create_net->{"net$id"} = $param;
     });
 
     my %counts = ( scsi => 0, sata => 0, ide => 0 );
@@ -980,7 +979,7 @@ sub get_create_args {
 	    $create_args->{"${bus}${count}"} = "none,media=cdrom";
 	    $ignored_volumes->{"${bus}${count}"} = "$storeid:$path";
 	} else {
-	    $create_args->{"${bus}${count}"} = "$default_storage:0,import-from=$storeid:$path";
+	    $create_disks->{"${bus}${count}"} = "$storeid:$path";
 	}
 
 	$boot_order .= ';' if length($boot_order);
@@ -1020,6 +1019,8 @@ sub get_create_args {
     return {
 	type => 'vm',
 	'create-args' => $create_args,
+	disks => $create_disks,
+	net => $create_net,
 	'ignored-volumes' => $ignored_volumes,
     };
 }
