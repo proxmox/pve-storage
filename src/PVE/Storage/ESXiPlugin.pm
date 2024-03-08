@@ -1033,6 +1033,7 @@ sub get_create_args {
 
     return {
 	type => 'vm',
+	source => 'esxi',
 	'create-args' => $create_args,
 	disks => $create_disks,
 	net => $create_net,
