@@ -968,8 +968,12 @@ sub get_create_args {
 	# my $fullpath = "$mntdir/$path";
 	# return if !-e $fullpath;
 
-	if ($devtype && $devtype =~ /^lsi/i) {
-	    $set_scsihw->('lsi');
+	if ($devtype) {
+	    if ($devtype =~ /^lsi/i) {
+		$set_scsihw->('lsi');
+	    } elsif ($devtype eq 'pvscsi') {
+		$set_scsihw->('pvscsi'); # same name in pve
+	    }
 	}
 
 	my $count = $counts{$bus}++;
