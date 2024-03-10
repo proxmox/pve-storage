@@ -696,7 +696,7 @@ __PACKAGE__->register_method({
 	    node => get_standard_option('pve-node'),
 	    storage => get_standard_option('pve-storage-id'),
 	    volume => {
-		description => "Volume identifier",
+		description => "Volume identifier for the guest archive/entry.",
 		type => 'string',
 	    },
 	    target => get_standard_option('pve-storage-id', {
@@ -716,10 +716,48 @@ __PACKAGE__->register_method({
 		enum => [ 'vm' ],
 		description => 'The type of guest this is going to produce.',
 	    },
+	    source => {
+		type => 'string',
+		enum => [ 'esxi' ],
+		description => 'The type of the import-source of this guest volume.',
+	    },
 	    'create-args' => {
 		type => 'object',
 		additionalProperties => 1,
 		description => 'Parameters which can be used in a call to create a VM or container.',
+	    },
+	    'disks' => {
+		type => 'object',
+		additionalProperties => 1,
+		optional => 1,
+		description => 'Recognised disk volumes as `$bus$id` => `$storeid:$path` map.',
+	    },
+	    'net' => {
+		type => 'object',
+		additionalProperties => 1,
+		optional => 1,
+		description => 'Recognised network interfaces as `net$id` => { ...params } object.',
+	    },
+	    'ignored-volumes' => {
+		type => 'object',
+		additionalProperties => 1,
+		optional => 1,
+		description => 'Volumes that are explicitly ignored, like e.g., CDROM drives on ESXi.',
+	    },
+	    'warnings' => {
+		type => 'array',
+		description => 'List of known issues that can affect the import of a guest.'
+		    .' Note that lack of warning does not imply that there cannot be any problems.',
+		optional => 1,
+		items => {
+		    type => "object",
+		    additionalProperties => 1,
+		    properties => {
+			message => {
+			    type => 'string',
+			},
+		    },
+		},
 	    },
 	},
     },
