@@ -28,7 +28,7 @@ sub type {
 
 sub plugindata {
     return {
-	content => [ { import => 1, images => 1 }, { import => 1, images => 1 }],
+	content => [ { import => 1 }, { import => 1 }],
 	format => [ { raw => 1, qcow2 => 1, vmdk => 1 } , 'raw' ],
     };
 }
