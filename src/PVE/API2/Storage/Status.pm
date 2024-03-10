@@ -738,12 +738,6 @@ __PACKAGE__->register_method({
 		optional => 1,
 		description => 'Recognised network interfaces as `net$id` => { ...params } object.',
 	    },
-	    'ignored-volumes' => {
-		type => 'object',
-		additionalProperties => 1,
-		optional => 1,
-		description => 'Volumes that are explicitly ignored, like e.g., CDROM drives on ESXi.',
-	    },
 	    'warnings' => {
 		type => 'array',
 		description => 'List of known issues that can affect the import of a guest.'
@@ -753,7 +747,24 @@ __PACKAGE__->register_method({
 		    type => "object",
 		    additionalProperties => 1,
 		    properties => {
-			message => {
+			'type' => {
+			    description => 'What this warning is about.',
+			    enum => [
+				'cdrom-image-ignored',
+				'nvme-unsupported',
+				'ovmf-with-lsi-unsupported',
+				'serial-port-socket-only',
+			    ],
+			    type => 'string',
+			},
+			'key' => {
+			    description => 'Related subject (config) key of warning.',
+			    optional => 1,
+			    type => 'string',
+			},
+			'value' => {
+			    description => 'Related subject (config) value of warning.',
+			    optional => 1,
 			    type => 'string',
 			},
 		    },

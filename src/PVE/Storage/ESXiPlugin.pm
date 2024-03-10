@@ -921,10 +921,11 @@ sub get_create_args {
     my $create_disks = {};
     my $create_net = {};
     my $warnings = [];
-    my $ignored_volumes = {};
 
+    # NOTE: all types must be added to the return schema of the import-metadata API endpoint
     my $warn = sub {
-	push @$warnings, { message => $_[0] };
+	my ($type, %properties) = @_;
+	push @$warnings, { type => $type, %properties };
     };
 
     my ($cores, $sockets) = $self->cpu_info();
@@ -1008,7 +1009,8 @@ sub get_create_args {
 	    # We currently do not pass cdroms through via the esxi storage.
 	    # Users should adapt import these from the storages directly/manually.
 	    $create_args->{"${bus}${count}"} = "none,media=cdrom";
-	    $ignored_volumes->{"${bus}${count}"} = "$storeid:$path";
+	    # CD-ROM image will not get imported
+	    $warn->('cdrom-image-ignored', key => "${bus}${count}", value => "$storeid:$path");
 	} else {
 	    $create_disks->{"${bus}${count}"} = "$storeid:$path";
 	}
@@ -1018,10 +1020,10 @@ sub get_create_args {
     };
     $self->for_each_disk($add_disk);
     if (@nvmes) {
-	$warn->("PVE currently does not support NVMe guest disks, they are converted to SCSI");
 	for my $nvme (@nvmes) {
 	    my ($slot, $file, $devtype, $kind) = @$nvme;
-	    $add_disk->('nvme', $slot, $file, $devtype, $kind, 1);
+	    $warn->('nvme-unsupported', key => "nvme${slot}", value => "$file");
+	    $add_disk->('scsi', $slot, $file, $devtype, $kind, 1);
 	}
     }
 
@@ -1033,7 +1035,8 @@ sub get_create_args {
 	    } else {
 		$scsihw = 'virtio-scsi-single';
 	    }
-	    $warn->("OVMF is built without LSI drivers, scsi hardware was set to $scsihw");
+	    # OVMF is built without LSI drivers, scsi hardware was set to $scsihw
+	    $warn->('ovmf-with-lsi-unsupported', key => 'scsihw', value => "$scsihw");
 	}
     }
     $create_args->{scsihw} = $scsihw;
@@ -1057,7 +1060,7 @@ sub get_create_args {
     $self->for_each_serial(sub {
 	my ($id, $serial) = @_;
 	# currently we only support 'socket' type serials anyway
-	$warn->("serial ports are currently all mapped to sockets") if $serid == 0;
+	$warn->('serial-port-socket-only', key => "serial$serid");
 	$create_args->{"serial$serid"} = 'socket';
 	++$serid;
     });
@@ -1068,7 +1071,6 @@ sub get_create_args {
 	'create-args' => $create_args,
 	disks => $create_disks,
 	net => $create_net,
-	'ignored-volumes' => $ignored_volumes,
 	warnings => $warnings,
     };
 }
