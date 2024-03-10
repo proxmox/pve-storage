@@ -14,8 +14,8 @@ use PVE::Tools qw(file_get_contents file_set_contents run_command);
 
 use base qw(PVE::Storage::Plugin);
 
-my $ESXI_LIST_VMS = '/usr/lib/pve-esxi-import-tools/listvms.py';
-my $ESXI_MOUNT = '/usr/lib/x86_64-linux-gnu/pve-esxi-import-tools/esxi-folder-fuse';
+my $ESXI_LIST_VMS = '/usr/libexec/pve-esxi-import-tools/listvms.py';
+my $ESXI_FUSE_TOOL = '/usr/libexec/pve-esxi-import-tools/esxi-folder-fuse';
 my $ESXI_PRIV_DIR = '/etc/pve/priv/import/esxi';
 
 #
@@ -184,8 +184,8 @@ sub esxi_mount : prototype($$$;$) {
 	    fcntl($wr, F_SETFD, $flags & ~FD_CLOEXEC)
 		// die "failed to remove CLOEXEC flag from fd: $!\n";
 	    # FIXME: use the user/group options!
-	    exec {$ESXI_MOUNT}
-		$ESXI_MOUNT,
+	    exec {$ESXI_FUSE_TOOL}
+		$ESXI_FUSE_TOOL,
 		'-o', 'allow_other',
 		'--ready-fd', fileno($wr),
 		'--user', $user,
