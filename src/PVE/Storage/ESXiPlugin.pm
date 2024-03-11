@@ -105,11 +105,19 @@ my sub check_esxi_import_package : prototype() {
 	if !-e $ESXI_LIST_VMS;
 }
 
+my sub is_old : prototype($) {
+    my ($file) = @_;
+    my $mtime = (CORE::stat($file))[9];
+    return !defined($mtime) || ($mtime + 60) < CORE::time();
+}
+
 sub get_manifest : prototype($$$;$) {
     my ($class, $storeid, $scfg, $force_query) = @_;
 
     my $rundir = run_path($storeid);
     my $manifest_file = "$rundir/manifest.json";
+
+    $force_query ||= is_old($manifest_file);
 
     if (!$force_query && -e $manifest_file) {
 	return PVE::Storage::ESXiPlugin::Manifest->new(
