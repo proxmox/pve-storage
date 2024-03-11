@@ -634,6 +634,26 @@ sub resolve_path_relative_to {
     return "$rel_dc/$rel_ds/$rel_path/$path";
 }
 
+# Imports happen by the volume id which is a path to a VMX file.
+# In order to find the vm's power state and disk capacity info, we need to find the
+# VM the vmx file belongs to.
+sub vm_for_vmx_path {
+    my ($self, $vmx_path) = @_;
+
+    my ($dc_name, $ds_name, $path) = PVE::Storage::ESXiPlugin::split_path($vmx_path);
+    if (my $dc = $self->{$dc_name}) {
+	my $vms = $dc->{vms};
+	for my $vm_name (keys %$vms) {
+	    my $vm = $vms->{$vm_name};
+	    my $cfg_info = $vm->{config};
+	    if ($cfg_info->{datastore} eq $ds_name && $cfg_info->{path} eq $path) {
+		return $vm;
+	    }
+	}
+    }
+    return;
+}
+
 package PVE::Storage::ESXiPlugin::VMX;
 
 use strict;
