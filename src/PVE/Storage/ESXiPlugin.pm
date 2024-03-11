@@ -225,30 +225,6 @@ sub esxi_unmount : prototype($$$) {
     run_command(['/bin/umount', $mount_dir]);
 }
 
-my sub get_raw_vmx : prototype($$$$%) {
-    my ($class, $storeid, $scfg, $vm, %opts) = @_;
-
-    my ($datacenter, $mount, $force_requery) = @opts{qw(datacenter mount force-requery)};
-    my $mntdir = mount_dir($storeid);
-    my $manifest = $class->get_manifest($storeid, $scfg, $force_requery);
-
-    $datacenter //= $manifest->datacenter_for_vm($vm);
-    die "no such VM\n" if !defined($datacenter);
-
-    my $dc = $manifest->{$datacenter}
-	or die "no such datacenter\n";
-    my $info = $dc->{vms}->{$vm}
-	or die "no such vm\n";
-    my ($datastore, $path) = $info->{config}->@{qw(datastore path)};
-
-    if ($mount && !is_mounted($storeid)) {
-	$class->esxi_mount($storeid, $scfg, $force_requery);
-    }
-
-    my $contents = file_get_contents("$mntdir/$datacenter/$datastore/$path");
-    return wantarray ? ($datacenter, $contents) : $contents;
-}
-
 # Split a path into (datacenter, datastore, path)
 sub split_path : prototype($) {
     my ($path) = @_;
@@ -633,23 +609,6 @@ sub config_path_for_vm {
 # Since paths in the vmx file are relative to the vmx file itself, this helper
 # provides a way to resolve paths which are relative based on the config file
 # path, while also resolving absolute paths without the vm config.
-sub resolve_path_for_vm {
-    my ($self, $vm, $path, $datacenter) = @_;
-
-    if ($path =~ m|^/|) {
-	if (my ($disk_dc, $disk_ds, $disk_path) = $self->resolve_path($path)) {
-	    return "$disk_dc/$disk_ds/$disk_path";
-	}
-	die "failed to resolve path '$path' for vm '$vm'\n";
-    }
-
-    my ($cfg_dc, $cfg_ds, $cfg_path) = $self->config_path_for_vm($vm, $datacenter)
-	or die "failed to resolve vm config path for '$vm'\n";
-    $cfg_path =~ s|/[^/]+$||;
-
-    return "$cfg_dc/$cfg_ds/$cfg_path/$path";
-}
-
 sub resolve_path_relative_to {
     my ($self, $vmx_path, $path) = @_;
 
