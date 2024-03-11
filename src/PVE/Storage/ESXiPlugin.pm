@@ -903,6 +903,7 @@ sub get_create_args {
 
     my $storeid = $self->storeid;
     my $manifest = $self->manifest;
+    my $vminfo = $manifest->vm_for_vmx_path($self->vmx_path);
 
     my $create_args = {};
     my $create_disks = {};
@@ -1051,6 +1052,8 @@ sub get_create_args {
 	$create_args->{"serial$serid"} = 'socket';
 	++$serid;
     });
+
+    $warn->('guest-is-running') if defined($vminfo) && ($vminfo->{power}//'') ne 'poweredOff';
 
     return {
 	type => 'vm',
