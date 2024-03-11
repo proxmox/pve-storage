@@ -992,6 +992,17 @@ sub get_create_args {
 	    }
 	}
 
+	my $disk_capacity;
+	if (defined(my $diskinfo = $vminfo->{disks})) {
+	    my ($dc, $ds, $rel_path) = PVE::Storage::ESXiPlugin::split_path($path);
+	    for my $disk ($diskinfo->@*) {
+		if ($disk->{datastore} eq $ds && $disk->{path} eq $rel_path) {
+		    $disk_capacity = $disk->{capacity};
+		    last;
+		}
+	    }
+	}
+
 	my $count = $counts{$bus}++;
 	if ($kind eq 'cdrom') {
 	    # We currently do not pass cdroms through via the esxi storage.
@@ -1000,7 +1011,10 @@ sub get_create_args {
 	    # CD-ROM image will not get imported
 	    $warn->('cdrom-image-ignored', key => "${bus}${count}", value => "$storeid:$path");
 	} else {
-	    $create_disks->{"${bus}${count}"} = "$storeid:$path";
+	    $create_disks->{"${bus}${count}"} = {
+		volid => "$storeid:$path",
+		defined($disk_capacity) ? (size => $disk_capacity) : (),
+	    };
 	}
 
 	$boot_order .= ';' if length($boot_order);
