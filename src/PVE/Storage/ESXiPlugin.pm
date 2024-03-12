@@ -328,6 +328,9 @@ sub on_update_hook {
 sub on_delete_hook {
     my ($class, $storeid, $scfg) = @_;
 
+    eval { $class->deactivate_storage($storeid, $scfg) };
+    warn $@ if $@;
+
     esxi_delete_credentials($storeid);
 
     return;
