@@ -346,6 +346,10 @@ sub deactivate_storage {
     my ($class, $storeid, $scfg, $cache) = @_;
 
     $class->esxi_unmount($storeid, $scfg);
+
+    my $rundir = run_path($storeid);
+    remove_tree($rundir); # best-effort, ignore errors for now
+
 }
 
 sub activate_volume {
