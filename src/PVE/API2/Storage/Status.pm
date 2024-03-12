@@ -699,11 +699,6 @@ __PACKAGE__->register_method({
 		description => "Volume identifier for the guest archive/entry.",
 		type => 'string',
 	    },
-	    target => get_standard_option('pve-storage-id', {
-		description => 'The default target storage',
-		optional => 1,
-		default => 'local',
-	    }),
 	},
     },
     returns => {
@@ -779,7 +774,7 @@ __PACKAGE__->register_method({
 	my $rpcenv = PVE::RPCEnvironment::get();
 	my $authuser = $rpcenv->get_user();
 
-	my ($storeid, $volume, $target) = $param->@{qw(storage volume target)};
+	my ($storeid, $volume) = $param->@{qw(storage volume)};
 	my $volid = "$storeid:$volume";
 
 	my $cfg = PVE::Storage::config();
@@ -788,7 +783,7 @@ __PACKAGE__->register_method({
 
 	return PVE::Tools::run_with_timeout(30, sub {
 	    my $import = PVE::Storage::get_import_metadata($cfg, $volid);
-	    return $import->get_create_args($target);
+	    return $import->get_create_args();
 	});
     }});
 
