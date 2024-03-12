@@ -314,12 +314,22 @@ sub on_add_hook {
 sub on_update_hook {
     my ($class, $storeid, $scfg, %sensitive) = @_;
 
-    return if !exists($sensitive{password});
+    # FIXME: allow to actually determine this, e.g., through new $changed hash passed to the hook
+    my $connection_detail_changed = 1;
 
-    if (defined($sensitive{password})) {
-	esxi_set_credentials($sensitive{password}, $storeid);
-    } else {
-	esxi_delete_credentials($storeid);
+    if (exists($sensitive{password})) {
+	$connection_detail_changed = 1;
+	if (defined($sensitive{password})) {
+	    esxi_set_credentials($sensitive{password}, $storeid);
+	} else {
+	    esxi_delete_credentials($storeid);
+	}
+    }
+
+    if ($connection_detail_changed) {
+	# best-effort deactivate storage so that it can get re-mounted with updated params
+	eval { $class->deactivate_storage($storeid, $scfg) };
+	warn $@ if $@;
     }
 
     return;
