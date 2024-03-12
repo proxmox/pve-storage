@@ -242,7 +242,7 @@ sub split_path : prototype($) {
     return;
 }
 
-sub get_import_metadata : prototype($$$$) {
+sub get_import_metadata : prototype($$$$$) {
     my ($class, $scfg, $volname, $storeid) = @_;
 
     if ($volname !~ m!^([^/]+)/.*\.vmx$!) {
@@ -256,13 +256,14 @@ sub get_import_metadata : prototype($$$$) {
 
     my $manifest = $class->get_manifest($storeid, $scfg, 0);
     my $contents = file_get_contents($vmx_path);
-    return PVE::Storage::ESXiPlugin::VMX->parse(
+    my $vmx = PVE::Storage::ESXiPlugin::VMX->parse(
 	$storeid,
 	$scfg,
 	$volname,
 	$contents,
 	$manifest,
     );
+    return $vmx->get_create_args();
 }
 
 # Returns a size in bytes, this is a helper for already-mounted files.

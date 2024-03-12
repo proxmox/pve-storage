@@ -782,8 +782,7 @@ __PACKAGE__->register_method({
 	PVE::Storage::check_volume_access($rpcenv, $authuser, $cfg, undef, $volid);
 
 	return PVE::Tools::run_with_timeout(30, sub {
-	    my $import = PVE::Storage::get_import_metadata($cfg, $volid);
-	    return $import->get_create_args();
+	    return PVE::Storage::get_import_metadata($cfg, $volid);
 	});
     }});
 
