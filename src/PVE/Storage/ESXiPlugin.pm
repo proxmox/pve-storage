@@ -34,7 +34,13 @@ sub plugindata {
 }
 
 sub properties {
-    return {};
+    return {
+	'skip-cert-verification' => {
+	    description => 'Disable TLS certificate verification, only enable on fully trusted networks!',
+	    type => 'boolean',
+	    default => 'false',
+	},
+    };
 }
 
 sub options {
@@ -47,6 +53,7 @@ sub options {
 	server => {},
 	username => {},
 	password => { optional => 1},
+	'skip-cert-verification' => { optional => 1},
    };
 }
 
@@ -127,12 +134,14 @@ sub get_manifest : prototype($$$;$) {
 
     check_esxi_import_package();
 
+    my @extra_params;
+    push @extra_params, '--skip-cert-verification' if $scfg->{'skip-cert-verification'};
     my $host = $scfg->{server};
     my $user = $scfg->{username};
     my $pwfile = esxi_cred_file_name($storeid);
     my $json = '';
     run_command(
-	[$ESXI_LIST_VMS, $host, $user, $pwfile],
+	[$ESXI_LIST_VMS, @extra_params, $host, $user, $pwfile],
 	outfunc => sub { $json .= $_[0] . "\n" },
     );
 
@@ -187,6 +196,9 @@ sub esxi_mount : prototype($$$;$) {
 		"Proxmox VE FUSE mount for ESXi storage $storeid (server $host)",
 	    );
 
+	    my @extra_params;
+	    push @extra_params, '--skip-cert-verification' if $scfg->{'skip-cert-verification'};
+
 	    my $flags = fcntl($wr, F_GETFD, 0)
 		// die "failed to get file descriptor flags: $!\n";
 	    fcntl($wr, F_SETFD, $flags & ~FD_CLOEXEC)
@@ -194,6 +206,7 @@ sub esxi_mount : prototype($$$;$) {
 	    # FIXME: use the user/group options!
 	    exec {$ESXI_FUSE_TOOL}
 		$ESXI_FUSE_TOOL,
+		@extra_params,
 		'-o', 'allow_other',
 		'--ready-fd', fileno($wr),
 		'--user', $user,
