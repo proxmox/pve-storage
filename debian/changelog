@@ -1,3 +1,17 @@
+libpve-storage-perl (8.1.1) bookworm; urgency=medium
+
+  * storage plugins: add 'import' content type to allow interfacing with
+    virtual guests of foreign sources or formats to Proxmox VE.
+
+  * add storage/{storage}/import-metadata API endpoint to query information
+    about external guests so that a frontend can use this to provide a
+    interface for users to import such guests.
+
+  * add a plugin for connecting to a ESXi instance, exposign it's VMs through
+    the new import content type and metadata mechanisms.
+
+ -- Proxmox Support Team <support@proxmox.com>  Wed, 13 Mar 2024 15:16:19 +0100
+
 libpve-storage-perl (8.1.0) bookworm; urgency=medium
 
   * zfs: fix duplicate word typo in error message
