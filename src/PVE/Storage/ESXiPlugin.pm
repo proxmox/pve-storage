@@ -955,6 +955,7 @@ sub get_create_args {
     if ($firmware eq 'efi') {
 	$create_args->{bios} = 'ovmf';
 	$create_disks->{efidisk0} = 1;
+	$warn->('efi-state-lost', key => "bios", value => "ovmf");
     } else {
 	$create_args->{bios} = 'seabios';
     }

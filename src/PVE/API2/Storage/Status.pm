@@ -746,6 +746,7 @@ __PACKAGE__->register_method({
 			    description => 'What this warning is about.',
 			    enum => [
 				'cdrom-image-ignored',
+				'efi-state-lost',
 				'guest-is-running',
 				'nvme-unsupported',
 				'ovmf-with-lsi-unsupported',
