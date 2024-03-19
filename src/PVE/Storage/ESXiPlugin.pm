@@ -1073,7 +1073,7 @@ sub get_create_args {
 	    $warn->('ovmf-with-lsi-unsupported', key => 'scsihw', value => "$scsihw");
 	}
     }
-    $create_args->{scsihw} = $scsihw;
+    $create_args->{scsihw} = $scsihw if defined($scsihw);
 
     $create_args->{boot} = "order=$boot_order";
 
