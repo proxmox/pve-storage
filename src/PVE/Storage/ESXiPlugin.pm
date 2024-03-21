@@ -849,7 +849,7 @@ sub is_windows {
     return;
 }
 
-my %guest_types = (
+my %guest_types_windows = (
     dos                     => 'other',
     winNetBusiness          => 'w2k3',
     windows9                => 'win10',
@@ -888,14 +888,49 @@ my %guest_types = (
     'winXPPro-64'           => 'wxp',
 );
 
+my %guest_types_other = (
+    'freeBSD11'    => 'other',
+    'freeBSD11-64' => 'other',
+    'freeBSD12'    => 'other',
+    'freeBSD12-64' => 'other',
+    'freeBSD13'    => 'other',
+    'freeBSD13-64' => 'other',
+    'freeBSD14'    => 'other',
+    'freeBSD14-64' => 'other',
+    'freeBSD'      => 'other',
+    'freeBSD-64'   => 'other',
+    'os2'          => 'other',
+    'netware5'     => 'other',
+    'netware6'     => 'other',
+    'solaris10'    => 'solaris',
+    'solaris10-64' => 'solaris',
+    'solaris11-64' => 'solaris',
+    'other'        => 'other',
+    'other-64'     => 'other',
+    'openserver5'  => 'other',
+    'openserver6'  => 'other',
+    'unixware7'    => 'other',
+    'eComStation'  => 'other',
+    'eComStation2' => 'other',
+    'solaris8'     => 'solaris',
+    'solaris9'     => 'solaris',
+    'vmkernel'     => 'other',
+    'vmkernel5'    => 'other',
+    'vmkernel6'    => 'other',
+    'vmkernel65'   => 'other',
+    'vmkernel7'    => 'other',
+    'vmkernel8'    => 'other',
+);
+
 # Best effort translation from vmware guest os type to pve.
 # Returns a tuple: `(pve-type, is_windows)`
 sub guest_type {
     my ($self) = @_;
-
     if (defined(my $guest = $self->{guestOS})) {
-	if (defined(my $known = $guest_types{$guest})) {
-	    return ($known, 1);
+	if (defined(my $known_windows = $guest_types_windows{$guest})) {
+	    return ($known_windows, 1);
+	} elsif (defined(my $known_other = $guest_types_other{$guest})) {
+	    return ($known_other, 0);
 	}
 	# This covers all the 'Mac OS' types AFAICT
 	return ('other', 0) if $guest =~ /^darwin/;
