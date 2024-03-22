@@ -215,6 +215,8 @@ sub esxi_mount : prototype($$$;$) {
 	    exec {$ESXI_FUSE_TOOL}
 		$ESXI_FUSE_TOOL,
 		@extra_params,
+		'--change-user', 'nobody',
+		'--change-group', 'nogroup',
 		'-o', 'allow_other',
 		'--ready-fd', fileno($wr),
 		'--user', $user,
