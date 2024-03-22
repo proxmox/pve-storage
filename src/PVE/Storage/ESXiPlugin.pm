@@ -140,10 +140,18 @@ sub get_manifest : prototype($$$;$) {
     my $user = $scfg->{username};
     my $pwfile = esxi_cred_file_name($storeid);
     my $json = '';
-    run_command(
-	[$ESXI_LIST_VMS, @extra_params, $host, $user, $pwfile],
-	outfunc => sub { $json .= $_[0] . "\n" },
-    );
+    my $errmsg = '';
+    eval {
+	run_command(
+	    [$ESXI_LIST_VMS, @extra_params, $host, $user, $pwfile],
+	    outfunc => sub { $json .= $_[0] . "\n" },
+	    errfunc => sub { $errmsg .= $_[0] . "\n" },
+	);
+    };
+    if ($@) {
+	# propagate listvms error output if any, otherwise use the error from run_command
+	die $errmsg || $@;
+    }
 
     my $result = PVE::Storage::ESXiPlugin::Manifest->new($json);
     mkpath($rundir);
