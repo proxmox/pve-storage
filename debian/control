@@ -49,7 +49,7 @@ Depends: ceph-common (>= 12.2~),
          udev,
          ${misc:Depends},
          ${perl:Depends},
-Recommends: pve-esxi-import-tools,
+Recommends: pve-esxi-import-tools (>= 0.3.0),
             zfs-zed,
 Description: Proxmox VE storage management library
  This package contains the storage management library used by Proxmox VE.
