@@ -1,3 +1,18 @@
+libpve-storage-perl (8.1.2) bookworm; urgency=medium
+
+  * esxi: add warning for losing EFI state on import
+
+  * esxi: only add a 'scsihw' key if it's defined in the source VM
+
+  * esxi: detect correct os type in 'other' family, mainly BSD and Solaris
+    variants
+
+  * esxi: use the stderr of our API client (listvms.py) as error message
+
+  * esxi: have the fuse process drop its privileges
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 22 Mar 2024 16:39:27 +0100
+
 libpve-storage-perl (8.1.1) bookworm; urgency=medium
 
   * storage plugins: add 'import' content type to allow interfacing with
