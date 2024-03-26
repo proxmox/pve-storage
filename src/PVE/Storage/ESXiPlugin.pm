@@ -793,7 +793,7 @@ sub for_each_netdev {
 
 	my $ty = $dev->{addressType};
 	my $mac = $dev->{address};
-	if ($ty && fc($ty) eq fc('generated')) {
+	if ($ty && fc($ty) =~ /^(static|generated|vpx)$/) {
 	    $mac = $dev->{generatedAddress} // $mac;
 	}
 
