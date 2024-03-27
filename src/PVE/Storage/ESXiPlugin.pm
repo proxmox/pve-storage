@@ -115,7 +115,7 @@ my sub check_esxi_import_package : prototype() {
 my sub is_old : prototype($) {
     my ($file) = @_;
     my $mtime = (CORE::stat($file))[9];
-    return !defined($mtime) || ($mtime + 60) < CORE::time();
+    return !defined($mtime) || ($mtime + 30) < CORE::time();
 }
 
 sub get_manifest : prototype($$$;$) {
