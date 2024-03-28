@@ -4,9 +4,10 @@ use strict;
 use warnings;
 
 use Fcntl qw(F_GETFD F_SETFD FD_CLOEXEC);
-use JSON qw(from_json);
-use POSIX ();
 use File::Path qw(mkpath remove_tree);
+use JSON qw(from_json);
+use Net::IP;
+use POSIX ();
 
 use PVE::Network;
 use PVE::Systemd;
@@ -54,6 +55,7 @@ sub options {
 	username => {},
 	password => { optional => 1},
 	'skip-cert-verification' => { optional => 1},
+	port => { optional => 1 },
    };
 }
 
@@ -136,6 +138,9 @@ sub get_manifest : prototype($$$;$) {
 
     my @extra_params;
     push @extra_params, '--skip-cert-verification' if $scfg->{'skip-cert-verification'};
+    if (my $port = $scfg->{port}) {
+	push @extra_params, '--port', $port;
+    }
     my $host = $scfg->{server};
     my $user = $scfg->{username};
     my $pwfile = esxi_cred_file_name($storeid);
@@ -191,6 +196,12 @@ sub esxi_mount : prototype($$$;$) {
     my $host = $scfg->{server};
     my $pwfile = esxi_cred_file_name($storeid);
 
+    my $hostport = $host;
+    $hostport = "[$hostport]" if Net::IP::ip_is_ipv6($host);
+    if (my $port = $scfg->{port}) {
+	$hostport .= ":$port";
+    }
+
     pipe(my $rd, my $wr) or die "failed to create pipe: $!\n";
 
     my $pid = fork();
@@ -221,7 +232,7 @@ sub esxi_mount : prototype($$$;$) {
 		'--ready-fd', fileno($wr),
 		'--user', $user,
 		'--password-file', $pwfile,
-		$host,
+		$hostport,
 		$manifest_file,
 		$mount_dir;
 	    die "exec failed: $!\n";
@@ -387,7 +398,8 @@ sub deactivate_volume {
 sub check_connection {
     my ($class, $storeid, $scfg) = @_;
 
-    return PVE::Network::tcp_ping($scfg->{server}, 443, 2);
+    my $port = $scfg->{port} || 443;
+    return PVE::Network::tcp_ping($scfg->{server}, $port, 2);
 }
 
 sub status {

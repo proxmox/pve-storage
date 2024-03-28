@@ -54,7 +54,6 @@ sub properties {
 	    type => 'integer',
 	    minimum => 1,
 	    maximum => 65535,
-	    default => 8007,
 	},
     };
 }
