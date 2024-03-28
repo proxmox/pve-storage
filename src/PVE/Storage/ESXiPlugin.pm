@@ -405,7 +405,9 @@ sub check_connection {
 sub status {
     my ($class, $storeid, $scfg, $cache) = @_;
 
-    return (0, 0, 0, 0);
+    my $active = is_mounted($storeid) ? 1 : 0;
+
+    return (0, 0, 0, $active);
 }
 
 sub parse_volname {
