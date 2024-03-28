@@ -1048,8 +1048,6 @@ sub get_create_args {
 
     my %counts = ( scsi => 0, sata => 0, ide => 0 );
 
-    my $mntdir = PVE::Storage::ESXiPlugin::mount_dir($storeid);
-
     my $boot_order = '';
 
     # we deal with nvme disks in a 2nd go-around since we currently don't
@@ -1069,9 +1067,6 @@ sub get_create_args {
 
 	my $path = eval { $manifest->resolve_path_relative_to($self->vmx_path, $file) };
 	return if !defined($path);
-
-	# my $fullpath = "$mntdir/$path";
-	# return if !-e $fullpath;
 
 	if ($devtype) {
 	    if ($devtype =~ /^lsi/i) {
