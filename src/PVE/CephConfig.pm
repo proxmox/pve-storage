@@ -72,7 +72,7 @@ sub write_ceph_config {
 
 	    $out .= "[$section]\n";
 	    for my $key (sort keys $cfg->{$section}->%*) {
-		$out .= "\t $key = $cfg->{$section}->{$key}\n";
+		$out .= "\t$key = $cfg->{$section}->{$key}\n";
 	    }
 	    $out .= "\n";
 
