@@ -82,16 +82,20 @@ sub write_ceph_config {
 
     my @rexprs = (
 	qr/global/,
+
 	qr/client/,
+	qr/client\..*/,
 
 	qr/mds/,
-	qr/mon/,
-	qr/osd/,
-	qr/mgr/,
-
 	qr/mds\..*/,
+
+	qr/mon/,
 	qr/mon\..*/,
+
+	qr/osd/,
 	qr/osd\..*/,
+
+	qr/mgr/,
 	qr/mgr\..*/,
 
 	qr/.*/,
