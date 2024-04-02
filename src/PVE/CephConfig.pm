@@ -10,36 +10,244 @@ cfs_register_file('ceph.conf',
 		  \&parse_ceph_config,
 		  \&write_ceph_config);
 
+# For more information on how the Ceph parser works and how its grammar is
+# defined, see:
+# https://git.proxmox.com/?p=ceph.git;a=blob;f=ceph/src/common/ConfUtils.cc;h=2f78fd02bf9e27467275752e6f3bca0c5e3946ce;hb=e9fe820e7fffd1b7cde143a9f77653b73fcec748#l144
 sub parse_ceph_config {
     my ($filename, $raw) = @_;
 
     my $cfg = {};
     return $cfg if !defined($raw);
 
-    my @lines = split /\n/, $raw;
+    # Note: According to Ceph's config grammar, a single key-value pair in a file
+    # (and nothing else!) is a valid config file and will be parsed by `ceph-conf`.
+    # We choose not to handle this case here because it doesn't seem to be used
+    # by Ceph at all (and otherwise doesn't really make sense anyway).
+
+    # Regexes ending with '_class' consist of only an extended character class
+    # each, which allows them to be interpolated into other ext. char classes.
+
+    my $re_leading_ws = qr/^\s+/;
+    my $re_trailing_ws = qr/\s+$/;
+
+    my $re_continue_marker = qr/\\/;
+    my $re_comment_class = qr/(?[ [ ; # ] ])/;
+    my $re_not_allowed_in_section_header_class = qr/(?[ [ \] ] + $re_comment_class ])/;
+
+    # Note: The Ceph config grammar defines keys the following way:
+    #
+    #     key %= raw[+(text_char - char_("=[ ")) % +blank];
+    #
+    # The ' - char_("=[ ")' expression might lure you into thinking that keys
+    # may *not* contain spaces, but they can, due to the "% +blank" at the end!
+    #
+    # See: https://www.boost.org/doc/libs/1_42_0/libs/spirit/doc/html/spirit/qi/reference/operator/list.html
+    #
+    # Allowing spaces in this class and later squeezing whitespace as well as
+    # removing any leading and trailing whitespace from keys is just so much
+    # easier in our case.
+    my $re_not_allowed_in_keys_class = qr/(?[ [  = \[  ] + $re_comment_class ])/;
+
+    my $re_not_allowed_in_single_quoted_text_class = qr/(?[ [  '  ] + $re_comment_class ])/;
+    my $re_not_allowed_in_double_quoted_text_class = qr/(?[ [  "  ] + $re_comment_class ])/;
+
+    my $re_text_char = qr/\\.|(?[ ! $re_comment_class ])/;
+    my $re_section_header_char = qr/\\.|(?[ ! $re_not_allowed_in_section_header_class ])/;
+
+    my $re_key_char = qr/\\.|(?[ ! $re_not_allowed_in_keys_class ])/;
+
+    my $re_single_quoted_text_char = qr/\\.|(?[ ! $re_not_allowed_in_single_quoted_text_class ])/;
+    my $re_double_quoted_text_char = qr/\\.|(?[ ! $re_not_allowed_in_double_quoted_text_class ])/;
+
+    my $re_single_quoted_value = qr/'(($re_single_quoted_text_char)*)'/;
+    my $re_double_quoted_value = qr/"(($re_double_quoted_text_char)*)"/;
+
+    my $re_key = qr/^(($re_key_char)+)/;
+    my $re_quoted_value = qr/$re_single_quoted_value|$re_double_quoted_value/;
+    my $re_unquoted_value = qr/(($re_text_char)*)/;
+    my $re_value = qr/($re_quoted_value|$re_unquoted_value)/;
+
+    my $re_kv_separator = qr/\s*(=)\s*/;
+
+    my $re_section_start = qr/\[/;
+    my $re_section_end = qr/\]/;
+    my $re_section_header = qr/$re_section_start(($re_section_header_char)+)$re_section_end/;
 
     my $section;
+    my @lines = split(/\n/, $raw);
 
-    foreach my $line (@lines) {
-	$line =~ s/#.*$//;
-	$line =~ s/^\s+//;
-	$line =~ s/^;.*$//;
-	$line =~ s/\s+$//;
+    my $parse_section_header = sub {
+	my ($section_line) = @_;
+
+	# continued lines in section headers are allowed
+	while ($section_line =~ s/$re_continue_marker$//) {
+	    $section_line .= shift(@lines);
+	}
+
+	my $remainder = $section_line;
+
+	$remainder =~ s/$re_section_header//;
+	my $parsed_header = $1;
+
+	# Un-escape comment literals
+	$parsed_header =~ s/\\($re_comment_class)/$1/g;
+
+	if (!$parsed_header) {
+	    die "failed to parse section - skip: $section_line\n";
+	}
+
+	# preserve Ceph's behaviour and disallow anything after the section header
+	# that's not whitespace or a comment
+	$remainder =~ s/$re_leading_ws//;
+	$remainder =~ s/^$re_comment_class.*$//;
+
+	if ($remainder) {
+	    die "unexpected remainder after section - skip: $section_line\n";
+	}
+
+	return $parsed_header;
+    };
+
+    my $parse_key = sub {
+	my ($line) = @_;
+
+	my $remainder = $line;
+
+	my $key = '';
+	while ($remainder =~ s/$re_key//) {
+	    $key .= $1;
+
+	    while ($key =~ s/$re_continue_marker$//) {
+		$remainder = shift(@lines);
+	    }
+	}
+
+	$key =~ s/$re_trailing_ws//;
+	$key =~ s/$re_leading_ws//;
+
+	$key =~ s/\s/ /;
+	while ($key =~ s/\s\s/ /) {}  # squeeze repeated whitespace
+
+	# Ceph treats *single* spaces in keys the same as underscores,
+	# but we'll just use underscores for readability
+	$key =~ s/ /_/g;
+
+	# Un-escape comment literals
+	$key =~ s/\\($re_comment_class)/$1/g;
+
+	if ($key eq '') {
+	    die "failed to parse key from line - skip: $line\n";
+	}
+
+	my $had_equals = $remainder =~ s/^$re_kv_separator//;
+
+	if (!$had_equals) {
+	    die "expected '=' after key - skip: $line\n";
+	}
+
+	while ($remainder =~ s/^$re_continue_marker$//) {
+	    # Whitespace and continuations after equals sign can be arbitrary
+	    $remainder = shift(@lines);
+	    $remainder =~ s/$re_leading_ws//;
+	}
+
+	return ($key, $remainder);
+    };
+
+    my $parse_value = sub {
+	my ($line, $remainder) = @_;
+
+	my $starts_with_quote = $remainder =~ m/^['"]/;
+	$remainder =~ s/$re_value//;
+	my $value = $1 // '';
+
+	if ($value eq '') {
+	    die "failed to parse value - skip: $line\n";
+	}
+
+	if ($starts_with_quote) {
+	    # If it started with a quote, the parsed value MUST end with a quote
+	    my $is_single_quoted = $value =~ m/$re_single_quoted_value/;
+	    $value = $1 if $is_single_quoted;
+	    my $is_double_quoted = !$is_single_quoted && $value =~ m/$re_double_quoted_value/;
+	    $value = $1 if $is_double_quoted;
+
+	    if (!($is_single_quoted || $is_double_quoted)) {
+		die "failed to parse quoted value - skip: $line\n";
+	    }
+
+	    # Optionally, *only* line continuations may *only* follow right after
+	    while ($remainder =~ s/^$re_continue_marker$//) {
+		$remainder .= shift(@lines);
+	    }
+
+	    # Nothing but whitespace or a comment may follow
+	    $remainder =~ s/$re_leading_ws//;
+	    $remainder =~ s/^$re_comment_class.*$//;
+
+	    if ($remainder) {
+		die "unexpected remainder after value - skip: $line\n";
+	    }
+
+	} else {
+	    while ($value =~ s/$re_continue_marker$//) {
+		my $next_line = shift(@lines);
+
+		$next_line =~ s/$re_unquoted_value//;
+		my $value_part = $1 // '';
+		$value .= $value_part;
+	    }
+
+	    $value =~ s/$re_trailing_ws//;
+	}
+
+	# Un-escape comment literals
+	$value =~ s/\\($re_comment_class)/$1/g;
+
+	return $value;
+    };
+
+    while (scalar(@lines)) {
+	my $line = shift(@lines);
+
+	$line =~ s/^\s*(?<!\\)$re_comment_class.*$//;
+	$line =~ s/^\s*$//;
 	next if !$line;
+	next if $line =~ m/^$re_continue_marker$/;
 
-	$section = $1 if $line =~ m/^\[(\S+)\]$/;
-	if (!$section) {
-	    warn "no section - skip: $line\n";
+	if ($line =~ m/$re_section_start/) {
+	    $section = undef;
+
+	    eval { $section = $parse_section_header->($line) };
+	    if ($@) {
+		warn "$@\n";
+	    }
+
+	    if (defined($section)) {
+		$cfg->{$section} = {} if !exists($cfg->{$section});
+	    }
+
 	    next;
 	}
 
-	if ($line =~ m/^(.*?\S)\s*=\s*(\S.*)$/) {
-	    my ($key, $val) = ($1, $2);
-	    # ceph treats ' ', '_' and '-' in keys the same, so lets do too
-	    $key =~ s/[-\ ]/_/g;
-	    $cfg->{$section}->{$key} = $val;
+	if (!defined($section)) {
+	    warn "no section header - skip: $line\n";
+	    next;
 	}
 
+	my ($key, $remainder) = eval { $parse_key->($line) };
+	if ($@) {
+	    warn "$@\n";
+	    next;
+	}
+
+	my $value = eval { $parse_value->($line, $remainder) };
+	if ($@) {
+	    warn "$@\n";
+	    next;
+	}
+
+	$cfg->{$section}->{$key} = $value;
     }
 
     return $cfg;
