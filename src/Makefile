@@ -15,6 +15,7 @@ install: PVE bin udev-rbd
 test:
 	perl -I. -T -e "use PVE::CLI::pvesm; PVE::CLI::pvesm->verify_api();"
 	$(MAKE) -C test
+	$(MAKE) -C PVE test
 
 .PHONY: clean
 clean:

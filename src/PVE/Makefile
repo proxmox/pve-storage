@@ -9,4 +9,8 @@ install:
 	make -C API2 install
 	make -C CLI install
 
+.PHONY: test
+test:
+	$(MAKE) -C test test
+
 clean:
