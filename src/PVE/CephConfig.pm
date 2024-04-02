@@ -65,28 +65,35 @@ sub write_ceph_config {
     my $cond_write_sec = sub {
 	my $re = shift;
 
-	foreach my $section (sort keys %$cfg) {
+	for my $section (sort keys $cfg->%*) {
 	    next if $section !~ m/^$re$/;
+
 	    $out .= "[$section]\n";
-	    foreach my $key (sort keys %{$cfg->{$section}}) {
+	    for my $key (sort keys $cfg->{$section}->%*) {
 		$out .= "\t $key = $cfg->{$section}->{$key}\n";
 	    }
 	    $out .= "\n";
 	}
     };
 
-    &$cond_write_sec('global');
-    &$cond_write_sec('client');
+    my @rexprs = (
+	qr/global/,
+	qr/client/,
 
-    &$cond_write_sec('mds');
-    &$cond_write_sec('mon');
-    &$cond_write_sec('osd');
-    &$cond_write_sec('mgr');
+	qr/mds/,
+	qr/mon/,
+	qr/osd/,
+	qr/mgr/,
 
-    &$cond_write_sec('mds\..*');
-    &$cond_write_sec('mon\..*');
-    &$cond_write_sec('osd\..*');
-    &$cond_write_sec('mgr\..*');
+	qr/mds\..*/,
+	qr/mon\..*/,
+	qr/osd\..*/,
+	qr/mgr\..*/,
+    );
+
+    for my $re (@rexprs) {
+	$cond_write_sec->($re);
+    }
 
     return $out;
 }
