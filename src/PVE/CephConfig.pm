@@ -60,6 +60,7 @@ my $parse_ceph_file = sub {
 sub write_ceph_config {
     my ($filename, $cfg) = @_;
 
+    my $written_sections = {};
     my $out = '';
 
     my $cond_write_sec = sub {
@@ -67,12 +68,15 @@ sub write_ceph_config {
 
 	for my $section (sort keys $cfg->%*) {
 	    next if $section !~ m/^$re$/;
+	    next if exists($written_sections->{$section});
 
 	    $out .= "[$section]\n";
 	    for my $key (sort keys $cfg->{$section}->%*) {
 		$out .= "\t $key = $cfg->{$section}->{$key}\n";
 	    }
 	    $out .= "\n";
+
+	    $written_sections->{$section} = 1;
 	}
     };
 
@@ -89,6 +93,8 @@ sub write_ceph_config {
 	qr/mon\..*/,
 	qr/osd\..*/,
 	qr/mgr\..*/,
+
+	qr/.*/,
     );
 
     for my $re (@rexprs) {
