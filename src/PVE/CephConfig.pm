@@ -105,6 +105,9 @@ sub write_ceph_config {
 	$cond_write_sec->($re);
     }
 
+    # Escape comment literals that aren't escaped already
+    $out =~ s/(?<!\\)([;#])/\\$1/gm;
+
     return $out;
 }
 
