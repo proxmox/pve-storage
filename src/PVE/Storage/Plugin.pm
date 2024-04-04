@@ -950,14 +950,21 @@ sub file_size_info {
     }
 
     my $json = '';
+    my $err_output = '';
     eval {
 	run_command(['/usr/bin/qemu-img', 'info', '--output=json', $filename],
 	    timeout => $timeout,
 	    outfunc => sub { $json .= shift },
-	    errfunc => sub { warn "$_[0]\n" }
+	    errfunc => sub { $err_output .= shift . "\n"},
 	);
     };
     warn $@ if $@;
+    if ($err_output) {
+	# if qemu did not output anything to stdout we die with stderr as an error
+	die $err_output if !$json;
+	# otherwise we warn about it and try to parse the json
+	warn $err_output;
+    }
 
     my $info = eval { decode_json($json) };
     if (my $err = $@) {
