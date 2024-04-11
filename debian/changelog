@@ -1,3 +1,13 @@
+libpve-storage-perl (8.1.5) bookworm; urgency=medium
+
+  * esxi: status: mark as active if its mounted
+
+  * esxi: add mapping for windows server 2016/2019
+
+  * ceph config: rewrite parser/writer, allow arbitrary sections
+
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 11 Apr 2024 11:56:49 +0200
+
 libpve-storage-perl (8.1.4) bookworm; urgency=medium
 
   * esxi: add optional 'port' config parameter
