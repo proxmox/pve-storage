@@ -915,8 +915,8 @@ sub storage_migrate {
 	    if !defined($new_volid) && $target_apiver >= 5;
     };
     my $err = $@;
-    warn "send/receive failed, cleaning up snapshot(s)..\n" if $err;
     if ($opts->{migration_snapshot}) {
+	warn "send/receive failed, cleaning up snapshot(s)..\n" if $err;
 	eval { volume_snapshot_delete($cfg, $volid, $opts->{snapshot}, 0) };
 	warn "could not remove source snapshot: $@\n" if $@;
     }
