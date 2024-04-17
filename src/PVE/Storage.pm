@@ -851,9 +851,7 @@ sub storage_migrate {
 
     eval {
 	if ($insecure) {
-	    my $ip;
-	    my $port;
-	    my $socket;
+	    my ($ip, $port, $socket);
 	    my $send_error;
 
 	    my $handle_insecure_migration = sub {
@@ -899,7 +897,6 @@ sub storage_migrate {
 		    outfunc => $handle_insecure_migration,
 		    errfunc => sub {
 			my $line = shift;
-
 			$match_volid_and_log->("[$target_sshinfo->{name}] $line");
 		    },
 		);
