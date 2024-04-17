@@ -851,43 +851,62 @@ sub storage_migrate {
 
     eval {
 	if ($insecure) {
-	    my $input = IO::File->new();
-	    my $info = IO::File->new();
-	    open3($input, $info, $info, @$recv)
-		or die "receive command failed: $!\n";
-	    close($input);
+	    my $ip;
+	    my $port;
+	    my $socket;
+	    my $send_error;
 
-	    my $try_ip = <$info> // '';
-	    my ($ip) = $try_ip =~ /^($PVE::Tools::IPRE)$/ # untaint
-		or die "no tunnel IP received, got '$try_ip'\n";
+	    my $handle_insecure_migration = sub {
+		my $line = shift;
 
-	    my $try_port = <$info> // '';
-	    my ($port) = $try_port =~ /^(\d+)$/ # untaint
-		or die "no tunnel port received, got '$try_port'\n";
+		if (!$ip) {
+		    ($ip) = $line =~ /^($PVE::Tools::IPRE)$/ # untaint
+			or die "no tunnel IP received, got '$line'\n";
+		} elsif (!$port) {
+		    ($port) = $line =~ /^(\d+)$/ # untaint
+			or die "no tunnel port received, got '$line'\n";
 
-	    my $socket = IO::Socket::IP->new(PeerHost => $ip, PeerPort => $port, Type => SOCK_STREAM)
-		or die "failed to connect to tunnel at $ip:$port\n";
-	    # we won't be reading from the socket
-	    shutdown($socket, 0);
+		    # create socket, run command
+		    $socket = IO::Socket::IP->new(
+			PeerHost => $ip,
+			PeerPort => $port,
+			Type => SOCK_STREAM,
+		    );
+		    die "failed to connect to tunnel at $ip:$port\n" if !$socket;
+		    # we won't be reading from the socket
+		    shutdown($socket, 0);
 
-	    eval { run_command($cmds, output => '>&'.fileno($socket), errfunc => $match_volid_and_log); };
-	    my $send_error = $@;
+		    eval {
+			run_command(
+			    $cmds,
+			    output => '>&'.fileno($socket),
+			    errfunc => $match_volid_and_log,
+			);
+		    };
+		    $send_error = $@;
 
-	    # don't close the connection entirely otherwise the receiving end
-	    # might not get all buffered data (and fails with 'connection reset by peer')
-	    shutdown($socket, 1);
+		    # don't close the connection entirely otherwise the receiving end
+		    # might not get all buffered data (and fails with 'connection reset by peer')
+		    shutdown($socket, 1);
+		} else {
+		    $match_volid_and_log->("[$target_sshinfo->{name}] $line");
+		}
+	    };
 
-	    # wait for the remote process to finish
-	    while (my $line = <$info>) {
-		$match_volid_and_log->("[$target_sshinfo->{name}] $line");
-	    }
+	    eval {
+		run_command(
+		    $recv,
+		    outfunc => $handle_insecure_migration,
+		    errfunc => sub {
+			my $line = shift;
 
-	    # now close the socket
-	    close($socket);
-	    if (!close($info)) { # does waitpid()
-		die "import failed: $!\n" if $!;
-		die "import failed: exit code ".($?>>8)."\n";
-	    }
+			$match_volid_and_log->("[$target_sshinfo->{name}] $line");
+		    },
+		);
+	    };
+	    my $recv_err = $@;
+	    close($socket) if $socket;
+	    die "failed to run insecure migration: $recv_err\n" if $recv_err;
 
 	    die $send_error if $send_error;
 	} else {
