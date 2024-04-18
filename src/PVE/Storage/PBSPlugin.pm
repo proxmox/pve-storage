@@ -49,12 +49,6 @@ sub properties {
 	    description => "Base64-encoded, PEM-formatted public RSA key. Used to encrypt a copy of the encryption-key which will be added to each encrypted backup.",
 	    type => 'string',
 	},
-	port => {
-	    description => "For non default port.",
-	    type => 'integer',
-	    minimum => 1,
-	    maximum => 65535,
-	},
     };
 }
 

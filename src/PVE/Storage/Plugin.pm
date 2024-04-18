@@ -205,6 +205,15 @@ my $defaultData = {
 	    format => 'pve-storage-options',
 	    optional => 1,
 	},
+	port => {
+	    description => "Use this port to connect to the storage instead of the default one (for"
+		." example, with PBS or ESXi). For NFS and CIFS, use the 'options' option to"
+		." configure the port via the mount options.",
+	    type => 'integer',
+	    minimum => 1,
+	    maximum => 65535,
+	    optional => 1,
+	},
     },
 };
 
