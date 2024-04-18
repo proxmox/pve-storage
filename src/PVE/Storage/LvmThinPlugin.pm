@@ -415,7 +415,7 @@ sub volume_import {
 	    $tempname =~ s/base/vm/;
 	}
 
-	($storeid,my $newname) = PVE::Storage::parse_volume_id($class->SUPER::volume_import(
+	my $newvolid = $class->SUPER::volume_import(
 	    $scfg,
 	    $storeid,
 	    $fh,
@@ -425,7 +425,8 @@ sub volume_import {
 	    $base_snapshot,
 	    $with_snapshots,
 	    $allow_rename
-	));
+	);
+	($storeid,my $newname) = PVE::Storage::parse_volume_id($newvolid);
 
 	$volname = $class->create_base($storeid, $scfg, $newname);
     }
