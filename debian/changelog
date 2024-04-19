@@ -1,3 +1,16 @@
+libpve-storage-perl (8.2.0) bookworm; urgency=medium
+
+  * fix insecure migration failing if it must wait on the lock
+
+  * storage migrate: only output about cleaning-up snapshots if there are any
+
+  * fix #1611: implement import of base-images for LVM-thin Storage
+
+  * upload: use SSH helper to get ssh/scp options to ensure the new
+    node-specific public key files inside pmxcfs are used
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 19 Apr 2024 09:07:08 +0200
+
 libpve-storage-perl (8.1.5) bookworm; urgency=medium
 
   * esxi: status: mark as active if its mounted
