@@ -875,6 +875,7 @@ sub is_windows {
 
 my %guest_types_windows = (
     'dos'                   => 'other',
+    'longhorn'              => 'w2k8',
     'winNetBusiness'        => 'w2k3',
     'windows9'              => 'win10',
     'windows9-64'           => 'win10',
