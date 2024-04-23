@@ -1,3 +1,9 @@
+libpve-storage-perl (8.2.1) bookworm; urgency=medium
+
+  * esxi import: add "longhorn" to possible Windows Server 2008 OS types
+
+ -- Proxmox Support Team <support@proxmox.com>  Tue, 23 Apr 2024 17:20:10 +0200
+
 libpve-storage-perl (8.2.0) bookworm; urgency=medium
 
   * fix insecure migration failing if it must wait on the lock
