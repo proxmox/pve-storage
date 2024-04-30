@@ -982,7 +982,7 @@ sub file_size_info {
     $used = int($used);
     ($format) = ($format =~ /^(\S+)$/) or die "format '$format' includes whitespace\n"; # untaint
     if (defined($parent)) {
-	($parent) = ($parent =~ /^(\S+)$/) or die "parent '$parent' includes whitespace\n"; # untaint
+	($parent) = ($parent =~ /^(\S+)$/); # untaint
     }
     return wantarray ? ($size, $format, $used, $parent, $st->ctime) : $size;
 }
