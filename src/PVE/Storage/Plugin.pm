@@ -974,13 +974,16 @@ sub file_size_info {
 
     my ($size, $format, $used, $parent) = $info->@{qw(virtual-size format actual-size backing-filename)};
 
-    ($size) = ($size =~ /^(\d+)$/) or die "size '$size' not an integer\n"; # untaint
+    ($size) = ($size =~ /^(\d+)$/); # untaint
+    die "size '$size' not an integer\n" if !defined($size);
     # coerce back from string
     $size = int($size);
-    ($used) = ($used =~ /^(\d+)$/) or die "used '$used' not an integer\n"; # untaint
+    ($used) = ($used =~ /^(\d+)$/); # untaint
+    die "used '$used' not an integer\n" if !defined($used);
     # coerce back from string
     $used = int($used);
-    ($format) = ($format =~ /^(\S+)$/) or die "format '$format' includes whitespace\n"; # untaint
+    ($format) = ($format =~ /^(\S+)$/); # untaint
+    die "format '$format' includes whitespace\n" if !defined($format);
     if (defined($parent)) {
 	($parent) = ($parent =~ /^(\S+)$/); # untaint
     }
