@@ -222,6 +222,9 @@ sub esxi_mount : prototype($$$;$) {
 		// die "failed to get file descriptor flags: $!\n";
 	    fcntl($wr, F_SETFD, $flags & ~FD_CLOEXEC)
 		// die "failed to remove CLOEXEC flag from fd: $!\n";
+
+	    open(STDERR, ">&", $wr) or die "unable to redirect STDERR: $!\n";
+
 	    # FIXME: use the user/group options!
 	    exec {$ESXI_FUSE_TOOL}
 		$ESXI_FUSE_TOOL,
@@ -245,7 +248,7 @@ sub esxi_mount : prototype($$$;$) {
     undef $wr;
 
     my $result = do { local $/ = undef; <$rd> };
-    if ($result =~ /^ERROR: (.*)$/) {
+    if ($result =~ /^ERROR: (.*)$/i) {
 	die "$1\n";
     }
 
