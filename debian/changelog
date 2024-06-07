@@ -1,3 +1,13 @@
+libpve-storage-perl (8.2.2) bookworm; urgency=medium
+
+  * esxi: don't bail on whitespaces in backing devices
+
+  * esxi: fixup error message when getting file size info
+
+  * esxi: improve error handling for fuse mount tool
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 07 Jun 2024 13:23:07 +0200
+
 libpve-storage-perl (8.2.1) bookworm; urgency=medium
 
   * esxi import: add "longhorn" to possible Windows Server 2008 OS types
