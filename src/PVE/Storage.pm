@@ -709,7 +709,7 @@ sub storage_migrate_snapshot {
 }
 
 my $volume_import_prepare = sub {
-    my ($volid, $format, $path, $apiver, $opts) = @_;
+    my ($volid, $format, $path, $opts) = @_;
 
     my $base_snapshot = $opts->{base_snapshot};
     my $snapshot = $opts->{snapshot};
@@ -724,11 +724,11 @@ my $volume_import_prepare = sub {
     if ($migration_snapshot) {
 	push @$recv, '-delete-snapshot', $snapshot;
     }
-    push @$recv, '-allow-rename', $allow_rename if $apiver >= 5;
+    push @$recv, '-allow-rename', $allow_rename;
 
     if (defined($base_snapshot)) {
 	# Check if the snapshot exists on the remote side:
-	push @$recv, '-base', $base_snapshot if $apiver >= 9;
+	push @$recv, '-base', $base_snapshot;
     }
 
     return $recv;
@@ -814,12 +814,7 @@ sub storage_migrate {
 	$import_fn = "tcp://$net";
     }
 
-    my $target_apiver = 1; # if there is no apiinfo call, assume 1
-    my $get_api_version = [@$ssh, 'pvesm', 'apiinfo'];
-    my $match_api_version = sub { $target_apiver = $1 if $_[0] =~ m!^APIVER (\d+)$!; };
-    eval { run_command($get_api_version, logfunc => $match_api_version); };
-
-    my $recv = [ @$ssh, '--', $volume_import_prepare->($target_volid, $format, $import_fn, $target_apiver, $opts)->@* ];
+    my $recv = [ @$ssh, '--', $volume_import_prepare->($target_volid, $format, $import_fn, $opts)->@* ];
 
     my $new_volid;
     my $pattern = volume_imported_message(undef, 1);
@@ -911,8 +906,7 @@ sub storage_migrate {
 	    run_command($cmds, logfunc => $match_volid_and_log);
 	}
 
-	die "unable to get ID of the migrated volume\n"
-	    if !defined($new_volid) && $target_apiver >= 5;
+	die "unable to get ID of the migrated volume\n" if !defined($new_volid);
     };
     my $err = $@;
     if ($opts->{migration_snapshot}) {
@@ -1961,7 +1955,7 @@ sub volume_import_start {
     my $info = IO::File->new();
 
     my $unix = $opts->{unix} // "/run/pve/storage-migrate-$vmid.$$.unix";
-    my $import = $volume_import_prepare->($volid, $format, "unix://$unix", APIVER, $opts);
+    my $import = $volume_import_prepare->($volid, $format, "unix://$unix", $opts);
 
     unlink $unix;
     my $cpid = open3($input, $info, $info, @$import)
