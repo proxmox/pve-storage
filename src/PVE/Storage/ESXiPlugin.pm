@@ -222,7 +222,6 @@ sub esxi_mount : prototype($$$;$) {
 		// die "failed to get file descriptor flags: $!\n";
 	    fcntl($wr, F_SETFD, $flags & ~FD_CLOEXEC)
 		// die "failed to remove CLOEXEC flag from fd: $!\n";
-	    # FIXME: use the user/group options!
 	    exec {$ESXI_FUSE_TOOL}
 		$ESXI_FUSE_TOOL,
 		@extra_params,
