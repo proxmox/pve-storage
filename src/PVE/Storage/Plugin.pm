@@ -1586,13 +1586,14 @@ sub read_common_header($) {
 # Export a volume into a file handle as a stream of desired format.
 sub volume_export {
     my ($class, $scfg, $storeid, $fh, $volname, $format, $snapshot, $base_snapshot, $with_snapshots) = @_;
+
+    my $err_msg = "volume export format $format not available for $class\n";
     if ($scfg->{path} && !defined($snapshot) && !defined($base_snapshot)) {
-	my $file = $class->path($scfg, $volname, $storeid)
-	    or goto unsupported;
+	my $file = $class->path($scfg, $volname, $storeid) or die $err_msg;
 	my ($size, $file_format) = file_size_info($file);
 
 	if ($format eq 'raw+size') {
-	    goto unsupported if $with_snapshots || $file_format eq 'subvol';
+	    die $err_msg if $with_snapshots || $file_format eq 'subvol';
 	    write_common_header($fh, $size);
 	    if ($file_format eq 'raw') {
 		run_command(['dd', "if=$file", "bs=4k", "status=progress"], output => '>&'.fileno($fh));
@@ -1603,20 +1604,19 @@ sub volume_export {
 	    return;
 	} elsif ($format =~ /^(qcow2|vmdk)\+size$/) {
 	    my $data_format = $1;
-	    goto unsupported if !$with_snapshots || $file_format ne $data_format;
+	    die $err_msg if !$with_snapshots || $file_format ne $data_format;
 	    write_common_header($fh, $size);
 	    run_command(['dd', "if=$file", "bs=4k", "status=progress"], output => '>&'.fileno($fh));
 	    return;
 	} elsif ($format eq 'tar+size') {
-	    goto unsupported if $file_format ne 'subvol';
+	    die $err_msg if $file_format ne 'subvol';
 	    write_common_header($fh, $size);
 	    run_command(['tar', @COMMON_TAR_FLAGS, '-cf', '-', '-C', $file, '.'],
 	                output => '>&'.fileno($fh));
 	    return;
 	}
     }
- unsupported:
-    die "volume export format $format not available for $class";
+    die $err_msg;
 }
 
 sub volume_export_formats {
