@@ -114,7 +114,7 @@ our $VZTMPL_EXT_RE_1 = qr/\.tar\.(gz|xz|zst)/i;
 
 our $BACKUP_EXT_RE_2 = qr/\.(tgz|(?:tar|vma)(?:\.(${\PVE::Storage::Plugin::COMPRESSOR_RE}))?)/;
 
-# FIXME remove with PVE 8.0, add versioned breaks for pve-manager
+# FIXME remove with PVE 9.0, add versioned breaks for pve-manager
 our $vztmpl_extension_re = $VZTMPL_EXT_RE_1;
 
 #  PVE::Storage utility functions
