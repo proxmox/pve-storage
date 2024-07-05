@@ -618,6 +618,9 @@ sub volume_has_feature {
 	    base => { qcow2 => 1, raw => 1, vmdk => 1 },
 	    current => { qcow2 => 1, raw => 1, vmdk => 1 },
 	},
+	rename => {
+	    current => { qcow2 => 1, raw => 1, vmdk => 1 },
+	},
     };
 
     my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $format) = $class->parse_volname($volname);
@@ -928,6 +931,36 @@ sub volume_import {
     }
 
     return "$storeid:$volname";
+}
+
+sub rename_volume {
+    my ($class, $scfg, $storeid, $source_volname, $target_vmid, $target_volname) = @_;
+    die "no path found\n" if !$scfg->{path};
+
+    my $format = ($class->parse_volname($source_volname))[6];
+
+    if ($format ne 'raw' && $format ne 'subvol') {
+       return $class->SUPER::rename_volume($scfg, $storeid, $source_volname, $target_vmid, $target_volname);
+    }
+
+    $target_volname = $class->find_free_diskname($storeid, $scfg, $target_vmid, $format, 1)
+	if !$target_volname;
+    $target_volname = "$target_vmid/$target_volname";
+
+    my $basedir = $class->get_subdir($scfg, 'images');
+
+    mkpath "${basedir}/${target_vmid}";
+    my $source_dir = raw_name_to_dir($source_volname);
+    my $target_dir = raw_name_to_dir($target_volname);
+
+    my $old_path = "${basedir}/${source_dir}";
+    my $new_path = "${basedir}/${target_dir}";
+
+    die "target volume '${target_volname}' already exists\n" if -e $new_path;
+    rename $old_path, $new_path ||
+	die "rename '$old_path' to '$new_path' failed - $!\n";
+
+    return "${storeid}:$target_volname";
 }
 
 1
