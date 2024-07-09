@@ -226,7 +226,7 @@ sub btrfs_cmd {
     } else {
 	$func = sub { $msg .= "$_[0]\n" };
     }
-    run_command(['btrfs', '-q', @$cmd], errmsg => 'btrfs error', outfunc => $func);
+    run_command(['btrfs', '-q', @$cmd], errmsg => "command 'btrfs @$cmd' failed", outfunc => $func);
 
     return $msg;
 }
