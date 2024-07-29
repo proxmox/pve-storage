@@ -461,7 +461,7 @@ __PACKAGE__->register_method ({
 	# best effort to match apl_download behaviour
 	chmod 0644, $tmpfilename;
 
-	my $err_cleanup = sub { unlink $dest; die "cleanup failed: $!\n" if $! && $! != ENOENT };
+	my $err_cleanup = sub { unlink $dest or $! == ENOENT or die "cleanup failed: $!\n" };
 
 	my $cmd;
 	if ($node ne 'localhost' && $node ne PVE::INotify::nodename()) {
@@ -513,9 +513,8 @@ __PACKAGE__->register_method ({
 	    };
 	    if (my $err = $@) {
 		# unlinks only the temporary file from the http server
-		unlink $tmpfilename;
-		warn "unable to clean up temporory file '$tmpfilename' - $!\n"
-		    if $! && $! != ENOENT;
+		unlink $tmpfilename or $! == ENOENT
+		    or warn "unable to clean up temporory file '$tmpfilename' - $!\n";
 		die $err;
 	    }
 
@@ -526,8 +525,9 @@ __PACKAGE__->register_method ({
 
 	    eval { run_command($cmd, errmsg => 'import failed'); };
 
-	    unlink $tmpfilename; # the temporary file got only uploaded locally, no need to rm remote
-	    warn "unable to clean up temporary file '$tmpfilename' - $!\n" if $! && $! != ENOENT;
+	    # the temporary file got only uploaded locally, no need to rm remote
+	    unlink $tmpfilename or $! == ENOENT
+		or warn "unable to clean up temporary file '$tmpfilename' - $!\n";
 
 	    if (my $err = $@) {
 		eval { $err_cleanup->() };
