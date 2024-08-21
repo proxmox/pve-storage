@@ -754,7 +754,7 @@ sub manifest { $_[0]->{'pve.manifest'} }
 # (Also used for the fileName config key...)
 sub is_disk_entry : prototype($) {
     my ($id) = @_;
-    if ($id =~ /^(scsi|ide|sata|nvme)(\d+:\d+)(:?\.fileName)?$/) {
+    if ($id =~ /^(scsi|ide|sata|nvme)(\d+:\d+)(:?\.file[nN]ame)?$/) {
 	return ($1, $2);
     }
     return;
