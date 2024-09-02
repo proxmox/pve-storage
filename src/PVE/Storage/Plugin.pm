@@ -974,6 +974,10 @@ sub file_size_info {
 	# otherwise we warn about it and try to parse the json
 	warn $err_output;
     }
+    if (!$json) {
+	# skip decoding if there was no output, e.g. if there was a timeout.
+	return wantarray ? (undef, undef, undef, undef, $st->ctime) : undef;
+    }
 
     my $info = eval { decode_json($json) };
     if (my $err = $@) {
