@@ -1,3 +1,24 @@
+libpve-storage-perl (8.2.4) bookworm; urgency=medium
+
+  * volume import: assume target API version is at least 9, which is supported
+    since the initial Proxmox VE 7.0 release. This allows removing some code
+    while keeping our upgrade path from 7 to 8.
+
+  * btrfs: log executed command on failures
+
+  * fix #5587: esxi: add support for more variants of how the VMX file
+    references disk file paths, allowing some nore niche use case like, e.g.,
+    importing VMs from ESXi that where originally created on (older versions)
+    of the VMWare Player application.
+
+  * fix #4272: btrfs: expose the ability to change the owner of a guest image
+    backed by a btrfs storage.
+
+  * file size info query: avoid false-positive error when the qemu-img command
+    fails to return any output, which most often indicates that it timed out
+
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 12 Sep 2024 12:26:15 +0200
+
 libpve-storage-perl (8.2.3) bookworm; urgency=medium
 
   * esxi: revert change to error handling from the fuse mount tool which would
