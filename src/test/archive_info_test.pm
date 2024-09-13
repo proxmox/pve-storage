@@ -121,11 +121,13 @@ my $decompressor = {
 	gz  => ['tar', '-z'],
 	lzo => ['tar', '--lzop'],
 	zst => ['tar', '--zstd'],
+	bz2 => ['tar', '--bzip2'],
     },
     vma => {
 	gz  => ['zcat'],
 	lzo => ['lzop', '-d', '-c'],
 	zst => ['zstd', '-q', '-d', '-c'],
+	bz2 => ['bzcat', '-q'],
     },
 };
 
@@ -163,8 +165,8 @@ for my $virt (sort keys %$bkp_suffix) {
 
 # add compression formats to test failed matches
 my $non_bkp_suffix = {
-    'openvz' => [ 'zip', 'tgz.lzo', 'tar.bz2', 'zip.gz', '', ],
-    'lxc'    => [ 'zip', 'tgz.lzo', 'tar.bz2', 'zip.gz', '', ],
+    'openvz' => [ 'zip', 'tgz.lzo', 'zip.gz', '', ],
+    'lxc'    => [ 'zip', 'tgz.lzo', 'zip.gz', '', ],
     'qemu'   => [ 'vma.xz', 'vms.gz', 'vmx.zst', '', ],
     'none'   => [ 'tar.gz', ],
 };

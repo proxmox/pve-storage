@@ -49,6 +49,11 @@ my $tests = [
 	volname     => 'vztmpl/debian-10.0-standard_10.0-1_amd64.tar.xz',
 	expected    => ['vztmpl', 'debian-10.0-standard_10.0-1_amd64.tar.xz'],
     },
+    {
+	description => 'Container template tar.bz2',
+	volname     => 'vztmpl/debian-10.0-standard_10.0-1_amd64.tar.bz2',
+	expected    => ['vztmpl', 'debian-10.0-standard_10.0-1_amd64.tar.bz2'],
+    },
     #
     # container rootdir
     #
@@ -97,11 +102,6 @@ my $tests = [
 	description => 'Failed match: Container template, zip.gz',
 	volname     => 'vztmpl/debian-10.0-standard_10.0-1_amd64.zip.gz',
 	expected    => "unable to parse directory volume name 'vztmpl/debian-10.0-standard_10.0-1_amd64.zip.gz'\n",
-    },
-    {
-	description => 'Failed match: Container template, tar.bz2',
-	volname     => 'vztmpl/debian-10.0-standard_10.0-1_amd64.tar.bz2',
-	expected    => "unable to parse directory volume name 'vztmpl/debian-10.0-standard_10.0-1_amd64.tar.bz2'\n",
     },
     {
 	description => 'Failed match: Container rootdir, subvol',
@@ -177,7 +177,7 @@ foreach my $s (@$disk_suffix) {
 # create more test cases for backup files matches
 my $bkp_suffix = {
     qemu   => [ 'vma', 'vma.gz', 'vma.lzo', 'vma.zst' ],
-    lxc    => [ 'tar', 'tgz', 'tar.gz', 'tar.lzo', 'tar.zst' ],
+    lxc    => [ 'tar', 'tgz', 'tar.gz', 'tar.lzo', 'tar.zst', 'tar.bz2' ],
     openvz => [ 'tar', 'tgz', 'tar.gz', 'tar.lzo', 'tar.zst' ],
 };
 
@@ -204,7 +204,7 @@ foreach my $virt (keys %$bkp_suffix) {
 # create more test cases for failed backup files matches
 my $non_bkp_suffix = {
     qemu   => [ 'vms.gz', 'vma.xz' ],
-    lxc    => [ 'tar.bz2', 'zip.gz', 'tgz.lzo' ],
+    lxc    => [ 'zip.gz', 'tgz.lzo' ],
 };
 foreach my $virt (keys %$non_bkp_suffix) {
     my $suffix = $non_bkp_suffix->{$virt};

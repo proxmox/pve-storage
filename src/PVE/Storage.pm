@@ -110,7 +110,7 @@ PVE::Storage::Plugin->init();
 
 our $ISO_EXT_RE_0 = qr/\.(?:iso|img)/i;
 
-our $VZTMPL_EXT_RE_1 = qr/\.tar\.(gz|xz|zst)/i;
+our $VZTMPL_EXT_RE_1 = qr/\.tar\.(gz|xz|zst|bz2)/i;
 
 our $BACKUP_EXT_RE_2 = qr/\.(tgz|(?:tar|vma)(?:\.(${\PVE::Storage::Plugin::COMPRESSOR_RE}))?)/;
 
@@ -1550,16 +1550,19 @@ sub decompressor_info {
 	    gz => ['tar', '-z'],
 	    lzo => ['tar', '--lzop'],
 	    zst => ['tar', '--zstd'],
+	    bz2 => ['tar', '--bzip2'],
 	},
 	vma => {
 	    gz => ['zcat'],
 	    lzo => ['lzop', '-d', '-c'],
 	    zst => ['zstd', '-q', '-d', '-c'],
+	    bz2 => ['bzcat', '-q'],
 	},
 	iso => {
 	    gz => ['zcat'],
 	    lzo => ['lzop', '-d', '-c'],
 	    zst => ['zstd', '-q', '-d', '-c'],
+	    bz2 => ['bzcat', '-q'],
 	},
     };
 
