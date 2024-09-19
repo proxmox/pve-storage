@@ -146,6 +146,7 @@ __PACKAGE__->register_method ({
     path => 'download',
     method => 'GET',
     proxyto => 'node',
+    download => 1,
     permissions => {
 	description => "You need read access for the volume.",
 	user => 'all',
