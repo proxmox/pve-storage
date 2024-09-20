@@ -1,3 +1,9 @@
+libpve-storage-perl (7.4-4) bullseye; urgency=medium
+
+  * api: annotate file-restore endpoint as download-enabled
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 20 Sep 2024 13:18:36 +0200
+
 libpve-storage-perl (7.4-3) bullseye; urgency=medium
 
   * fix variable declared in conditional statement in cephfs and rbd, avoiding
