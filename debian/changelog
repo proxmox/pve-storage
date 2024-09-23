@@ -1,3 +1,9 @@
+libpve-storage-perl (8.2.5) bookworm; urgency=medium
+
+  * api: annotate file-restore endpoint as download-enabled
+
+ -- Proxmox Support Team <support@proxmox.com>  Mon, 23 Sep 2024 11:23:12 +0200
+
 libpve-storage-perl (8.2.4) bookworm; urgency=medium
 
   * volume import: assume target API version is at least 9, which is supported
