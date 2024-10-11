@@ -132,6 +132,20 @@ sub iscsi_login {
     eval { iscsi_discovery($portals); };
     warn $@ if $@;
 
+    # Disable retries to avoid blocking pvestatd for too long, next iteration will retry anyway
+    eval {
+	my $cmd = [
+	    $ISCSIADM,
+	    '--mode', 'node',
+	    '--targetname', $target,
+	    '--op', 'update',
+	    '--name', 'node.session.initial_login_retry_max',
+	    '--value', '0',
+	];
+	run_command($cmd);
+    };
+    warn $@ if $@;
+
     run_command([$ISCSIADM, '--mode', 'node', '--targetname',  $target, '--login']);
 }
 
