@@ -943,15 +943,25 @@ sub free_image {
     return undef;
 }
 
+# set $untrusted if the file in question might be malicious since it isn't
+# created by our stack
+# this makes certain checks fatal, and adds extra checks for known problems like
+# - backing files (qcow2/vmdk)
+# - external data files (qcow2)
 sub file_size_info {
-    my ($filename, $timeout) = @_;
+    my ($filename, $timeout, $untrusted) = @_;
 
     my $st = File::stat::stat($filename);
 
     if (!defined($st)) {
 	my $extramsg = -l $filename ? ' - dangling symlink?' : '';
-	warn "failed to stat '$filename'$extramsg\n";
-	return undef;
+	my $msg = "failed to stat '$filename'$extramsg\n";
+	if ($untrusted) {
+	    die $msg;
+	} else {
+	    warn $msg;
+	    return undef;
+	}
     }
 
     if (S_ISDIR($st->mode)) {
@@ -975,17 +985,33 @@ sub file_size_info {
 	warn $err_output;
     }
     if (!$json) {
+	die "failed to query file information with qemu-img\n" if $untrusted;
 	# skip decoding if there was no output, e.g. if there was a timeout.
 	return wantarray ? (undef, undef, undef, undef, $st->ctime) : undef;
     }
 
     my $info = eval { decode_json($json) };
     if (my $err = $@) {
-	warn "could not parse qemu-img info command output for '$filename' - $err\n";
-	return wantarray ? (undef, undef, undef, undef, $st->ctime) : undef;
+	my $msg = "could not parse qemu-img info command output for '$filename' - $err\n";
+	if ($untrusted) {
+	    die $msg;
+	} else {
+	    warn $msg;
+	    return wantarray ? (undef, undef, undef, undef, $st->ctime) : undef;
+	}
+    }
+
+    if ($untrusted) {
+	if (my $format_specific = $info->{'format-specific'}) {
+	    if ($format_specific->{type} eq 'qcow2' && $format_specific->{data}->{"data-file"}) {
+		die "$filename: 'data-file' references are not allowed!\n";
+	    }
+	}
     }
 
     my ($size, $format, $used, $parent) = $info->@{qw(virtual-size format actual-size backing-filename)};
+
+    die "backing file not allowed for untrusted image '$filename'!\n" if $untrusted && $parent;
 
     ($size) = ($size =~ /^(\d+)$/); # untaint
     die "size '$size' not an integer\n" if !defined($size);

@@ -233,9 +233,9 @@ sub storage_ids {
 }
 
 sub file_size_info {
-    my ($filename, $timeout) = @_;
+    my ($filename, $timeout, $untrusted) = @_;
 
-    return PVE::Storage::Plugin::file_size_info($filename, $timeout);
+    return PVE::Storage::Plugin::file_size_info($filename, $timeout, $untrusted);
 }
 
 sub get_volume_attribute {
