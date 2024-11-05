@@ -86,12 +86,14 @@ sub iscsi_portals {
 	});
     };
 
-    if ($@) {
-	warn $@;
-	return [ $portal_in ];
-    }
+    my $err = $@;
+    warn $err if $err;
 
-    return $res;
+    if ($err || !scalar(@$res)) {
+	return [ $portal_in ];
+    } else {
+	return $res;
+    }
 }
 
 sub iscsi_discovery {
