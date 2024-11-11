@@ -463,6 +463,100 @@ sub deactivate_storage {
     }
 }
 
+my $check_devices_part_of_target = sub {
+    my ($device_paths, $target) = @_;
+
+    my $found = 0;
+    for my $path (@$device_paths) {
+	if ($path =~ m!^/devices/platform/host\d+/session(\d+)/target\d+:\d:\d!) {
+	    my $session_id = $1;
+
+	    my $targetname = file_read_firstline(
+		"/sys/class/iscsi_session/session$session_id/targetname",
+	    );
+	    if ($targetname && ($targetname eq $target)) {
+		$found = 1;
+		last;
+	    }
+	}
+    }
+    return $found;
+};
+
+my $udev_query_path = sub {
+    my ($dev) = @_;
+
+    # only accept device names (see `man udevadm`)
+    ($dev) = $dev =~ m!^(/dev/.+)$!; # untaint
+    die "invalid device for udevadm path query\n" if !defined($dev);
+
+    my $device_path;
+    my $cmd = [
+	'udevadm',
+	'info',
+	'--query=path',
+	$dev,
+    ];
+    eval {
+	run_command($cmd, outfunc => sub {
+	    $device_path = shift;
+	});
+    };
+    die "failed to query device path for '$dev': $@\n" if $@;
+
+    ($device_path) = $device_path =~ m!^(/devices/.+)$!; # untaint
+    die "invalid resolved device path\n" if !defined($device_path);
+
+    return $device_path;
+};
+
+my $resolve_virtual_devices;
+$resolve_virtual_devices = sub {
+    my ($dev, $visited) = @_;
+
+    $visited = {} if !defined($visited);
+
+    my $resolved = [];
+    if ($dev =~ m!^/devices/virtual/block/!) {
+	dir_glob_foreach("/sys/$dev/slaves", '([^.].+)', sub {
+	    my ($slave) = @_;
+
+	    # don't check devices multiple times
+	    return if $visited->{$slave};
+	    $visited->{$slave} = 1;
+
+	    my $path;
+	    eval { $path = $udev_query_path->("/dev/$slave"); };
+	    return if $@;
+
+	    my $nested_resolved = $resolve_virtual_devices->($path, $visited);
+
+	    push @$resolved, @$nested_resolved;
+	});
+    } else {
+	push @$resolved, $dev;
+    }
+
+    return $resolved;
+};
+
+sub activate_volume {
+    my ($class, $storeid, $scfg, $volname, $snapname, $cache) = @_;
+
+    my $path = $class->filesystem_path($scfg, $volname, $snapname);
+    my $real_path = Cwd::realpath($path);
+    die "failed to get realpath for '$path': $!\n" if !$real_path;
+    # in case $path does not exist or is not a symlink, check if the returned
+    # $real_path is a block device
+    die "resolved realpath '$real_path' is not a block device\n" if ! -b $real_path;
+
+    my $device_path = $udev_query_path->($real_path);
+    my $resolved_paths = $resolve_virtual_devices->($device_path);
+
+    my $found = $check_devices_part_of_target->($resolved_paths, $scfg->{target});
+    die "volume '$volname' not part of target '$scfg->{target}'\n" if !$found;
+}
+
 sub check_connection {
     my ($class, $storeid, $scfg) = @_;
 
