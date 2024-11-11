@@ -316,7 +316,7 @@ sub options {
 sub parse_volname {
     my ($class, $volname) = @_;
 
-    if ($volname =~ m!^\d+\.\d+\.\d+\.(\S+)$!) {
+    if ($volname =~ m!^\d+\.\d+\.\d+\.([^/\s]+)$!) {
 	return ('images', $1, undef, undef, undef, undef, 'raw');
     }
 
