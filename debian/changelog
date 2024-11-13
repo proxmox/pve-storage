@@ -1,3 +1,21 @@
+libpve-storage-perl (8.2.6) bookworm; urgency=medium
+
+  * iscsi: disable Open-iSCSI login retries to reduce timeout to 15s, logins
+    will be already retried on a higher level (pvestatd).
+
+  * fix #5267: storage: add bzip2 support to volumes that already support some
+    compression like VM images or ISOs, Container templates, or backup
+    archives.
+
+  * iscsi: fix activation of second iSCSI storage on other cluster nodes.
+
+  * iscsi: disallow slashes in volume name
+
+  * iscsi: verify volume disks are part of target to harden against
+    misconfiguration.
+
+ -- Proxmox Support Team <support@proxmox.com>  Wed, 13 Nov 2024 16:19:43 +0100
+
 libpve-storage-perl (8.2.5) bookworm; urgency=medium
 
   * api: annotate file-restore endpoint as download-enabled
