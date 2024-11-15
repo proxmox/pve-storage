@@ -1,6 +1,6 @@
 all: test
 
-test: test_zfspoolplugin test_disklist test_bwlimit test_plugin
+test: test_zfspoolplugin test_disklist test_bwlimit test_plugin test_ovf
 
 test_zfspoolplugin: run_test_zfspoolplugin.pl
 	./run_test_zfspoolplugin.pl
@@ -13,3 +13,6 @@ test_bwlimit: run_bwlimit_tests.pl
 
 test_plugin: run_plugin_tests.pl
 	./run_plugin_tests.pl
+
+test_ovf: run_ovf_tests.pl
+	./run_ovf_tests.pl
