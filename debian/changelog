@@ -1,3 +1,13 @@
+libpve-storage-perl (8.2.8) bookworm; urgency=medium
+
+  * directory backed storage: implement import content type to support
+    uploading and importing OVA images.
+
+  * various improvements to the OVF parser to better support parsing basic
+    resources and also improve coping  with more quirks from OVA images.
+
+ -- Proxmox Support Team <support@proxmox.com>  Mon, 18 Nov 2024 21:11:43 +0100
+
 libpve-storage-perl (8.2.7) bookworm; urgency=medium
 
   * file size info: implement untrusted mode to check some extra attributes
