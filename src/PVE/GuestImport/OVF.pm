@@ -267,7 +267,7 @@ sub parse_ovf {
 	# RFC 3986 "2.3.  Unreserved Characters"
 	my $valid_uripath_chars = qr/[[:alnum:]]|[\-\._~]/;
 
-	if ($host_resource =~ m|^ovf:/(${valid_uripath_chars}+)/(${valid_uripath_chars}+)$|) {
+	if ($host_resource =~ m|^(?:ovf:)?/(${valid_uripath_chars}+)/(${valid_uripath_chars}+)$|) {
 	    $disk_section_path = $1;
 	    $disk_id = $2;
 	} else {
