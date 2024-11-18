@@ -293,7 +293,7 @@ sub get_import_metadata {
 	'create-args' => $res->{qm},
 	'disks' => $disks,
 	warnings => $warnings,
-	net => [],
+	net => $res->{net},
     };
 }
 

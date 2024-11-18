@@ -54,6 +54,11 @@ is($win10noNs->{disks}->[0]->{disk_address}, 'scsi0', 'single disk vm (no defaul
 is($win10noNs->{disks}->[0]->{backing_file}, "$test_manifests/Win10-Liz-disk1.vmdk", 'single disk vm (no default rasd NS) has the correct disk backing device');
 is($win10noNs->{disks}->[0]->{virtual_size}, 2048, 'single disk vm (no default rasd NS) has the correct size');
 
+print "testing nics\n";
+is($win2008->{net}->{net0}->{model}, 'e1000', 'win2008 has correct nic model');
+is($win10->{net}->{net0}->{model}, 'e1000e', 'win10 has correct nic model');
+is($win10noNs->{net}->{net0}->{model}, 'e1000e', 'win10 (no default rasd NS) has correct nic model');
+
 print "\ntesting vm.conf extraction\n";
 
 is($win2008->{qm}->{boot}, 'order=scsi0;scsi1', 'win2008 VM boot is correct');

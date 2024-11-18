@@ -119,6 +119,12 @@ sub get_ostype {
     return $ostype_ids->{$id} // 'other';
 }
 
+my $allowed_nic_models = [
+    'e1000',
+    'e1000e',
+    'vmxnet3',
+];
+
 sub find_by {
     my ($key, $param) = @_;
     foreach my $resource (@resources) {
@@ -359,7 +365,22 @@ ovf:Item[rasd:InstanceID='%s']/rasd:ResourceType", $controller_id);
 
     $qm->{boot} = "order=" . join(';', @$boot_order) if scalar(@$boot_order) > 0;
 
-    return {qm => $qm, disks => \@disks};
+    my $nic_id = dtmf_name_to_id('Ethernet Adapter');
+    my $xpath_find_nics = "/ovf:Envelope/ovf:VirtualSystem/ovf:VirtualHardwareSection/ovf:Item[rasd:ResourceType=${nic_id}]";
+    my @nic_items = $xpc->findnodes($xpath_find_nics);
+
+    my $net = {};
+
+    my $net_count = 0;
+    for my $item_node (@nic_items) {
+	my $model = $xpc->findvalue('rasd:ResourceSubType', $item_node);
+	$model = lc($model);
+	$model = 'e1000' if ! grep { $_ eq $model } @$allowed_nic_models;
+	$net->{"net${net_count}"} = { model => $model };
+	$net_count++;
+    }
+
+    return {qm => $qm, disks => \@disks, net => $net};
 }
 
 1;
