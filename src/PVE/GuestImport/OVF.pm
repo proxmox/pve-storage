@@ -84,11 +84,37 @@ sub id_to_pve {
     }
 }
 
+# technically defined in DSP0004 (https://www.dmtf.org/dsp/DSP0004) as an ABNF
+# but realistically this always takes the form of 'byte * base^exponent'
+sub try_parse_capacity_unit {
+    my ($unit_text) = @_;
+
+    if ($unit_text =~ m/^\s*byte\s*\*\s*([0-9]+)\s*\^\s*([0-9]+)\s*$/) {
+	my $base = $1;
+	my $exp = $2;
+	return $base ** $exp;
+    }
+
+    return undef;
+}
+
 # returns two references, $qm which holds qm.conf style key/values, and \@disks
 sub parse_ovf {
-    my ($ovf, $debug) = @_;
+    my ($ovf, $isOva, $debug) = @_;
 
-    my $dom = XML::LibXML->load_xml(location => $ovf, no_blanks => 1);
+    # we have to ignore missing disk images for ova
+    my $dom;
+    if ($isOva) {
+	my $raw = "";
+	PVE::Tools::run_command(['tar', '-xO', '--wildcards', '--occurrence=1', '-f', $ovf, '*.ovf'], outfunc => sub {
+	    my $line = shift;
+	    $raw .= $line;
+	});
+	$dom = XML::LibXML->load_xml(string => $raw, no_blanks => 1);
+    } else {
+	$dom = XML::LibXML->load_xml(location => $ovf, no_blanks => 1);
+    }
+
 
     # register the xml namespaces in a xpath context object
     # 'ovf' is the default namespace so it will prepended to each xml element
@@ -176,7 +202,17 @@ sub parse_ovf {
 	# @ needs to be escaped to prevent Perl double quote interpolation
 	my $xpath_find_fileref = sprintf("/ovf:Envelope/ovf:DiskSection/\
 ovf:Disk[\@ovf:diskId='%s']/\@ovf:fileRef", $disk_id);
+	my $xpath_find_capacity = sprintf("/ovf:Envelope/ovf:DiskSection/\
+ovf:Disk[\@ovf:diskId='%s']/\@ovf:capacity", $disk_id);
+	my $xpath_find_capacity_unit = sprintf("/ovf:Envelope/ovf:DiskSection/\
+ovf:Disk[\@ovf:diskId='%s']/\@ovf:capacityAllocationUnits", $disk_id);
 	my $fileref = $xpc->findvalue($xpath_find_fileref);
+	my $capacity = $xpc->findvalue($xpath_find_capacity);
+	my $capacity_unit = $xpc->findvalue($xpath_find_capacity_unit);
+	my $virtual_size;
+	if (my $factor = try_parse_capacity_unit($capacity_unit)) {
+	    $virtual_size = $capacity * $factor;
+	}
 
 	my $valid_url_chars = qr@${valid_uripath_chars}|/@;
 	if (!$fileref || $fileref !~ m/^${valid_url_chars}+$/) {
@@ -216,7 +252,7 @@ ovf:Item[rasd:InstanceID='%s']/rasd:ResourceType", $controller_id);
 	    die "error parsing $filepath, are you using a symlink ?\n";
 	}
 
-	if (!-e $backing_file_path) {
+	if (!-e $backing_file_path && !$isOva) {
 	    die "error parsing $filepath, file seems not to exist at $backing_file_path\n";
 	}
 
@@ -224,16 +260,20 @@ ovf:Item[rasd:InstanceID='%s']/rasd:ResourceType", $controller_id);
 	($filepath) = $filepath =~ m|^(${PVE::Storage::SAFE_CHAR_CLASS_RE}+)$|; # untaint & check no sub/parent dirs
 	die "invalid path\n" if !$filepath;
 
-	my $virtual_size = PVE::Storage::file_size_info($backing_file_path);
-	die "error parsing $backing_file_path, cannot determine file size\n"
-	    if !$virtual_size;
+	if (!$isOva) {
+	    my $size = PVE::Storage::file_size_info($backing_file_path);
+	    die "error parsing $backing_file_path, cannot determine file size\n"
+		if !$size;
 
+	    $virtual_size = $size;
+	}
 	$pve_disk = {
 	    disk_address => $pve_disk_address,
 	    backing_file => $backing_file_path,
 	    virtual_size => $virtual_size,
 	    relative_path => $filepath,
 	};
+	$pve_disk->{virtual_size} = $virtual_size if defined($virtual_size);
 	push @disks, $pve_disk;
 
     }

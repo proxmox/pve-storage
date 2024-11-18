@@ -114,9 +114,11 @@ our $VZTMPL_EXT_RE_1 = qr/\.tar\.(gz|xz|zst|bz2)/i;
 
 our $BACKUP_EXT_RE_2 = qr/\.(tgz|(?:tar|vma)(?:\.(${\PVE::Storage::Plugin::COMPRESSOR_RE}))?)/;
 
-our $IMPORT_EXT_RE_1 = qr/\.(ovf|qcow2|raw|vmdk)/;
+our $IMPORT_EXT_RE_1 = qr/\.(ova|ovf|qcow2|raw|vmdk)/;
 
 our $SAFE_CHAR_CLASS_RE = qr/[a-zA-Z0-9\-\.\+\=\_]/;
+
+our $OVA_CONTENT_RE_1 = qr/${SAFE_CHAR_CLASS_RE}+\.(qcow2|raw|vmdk)/;
 
 # FIXME remove with PVE 9.0, add versioned breaks for pve-manager
 our $vztmpl_extension_re = $VZTMPL_EXT_RE_1;

@@ -191,6 +191,14 @@ my @tests = (
 	],
     },
     {
+	description => 'Import, ova',
+	volname     => "$storage_dir/import/import.ova",
+	expected    => [
+	    'import',
+	    'local:import/import.ova',
+	],
+    },
+    {
 	description => 'Import, ovf',
 	volname     => "$storage_dir/import/import.ovf",
 	expected    => [

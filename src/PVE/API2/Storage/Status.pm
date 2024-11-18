@@ -761,6 +761,7 @@ __PACKAGE__->register_method({
 				'efi-state-lost',
 				'guest-is-running',
 				'nvme-unsupported',
+				'ova-needs-extracting',
 				'ovmf-with-lsi-unsupported',
 				'serial-port-socket-only',
 			    ],

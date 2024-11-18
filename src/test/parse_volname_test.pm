@@ -89,9 +89,29 @@ my $tests = [
     # Import
     #
     {
+	description => "Import, ova",
+	volname     => 'import/import.ova',
+	expected    => ['import', 'import.ova', undef, undef, undef ,undef, 'ova'],
+    },
+    {
 	description => "Import, ovf",
 	volname     => 'import/import.ovf',
 	expected    => ['import', 'import.ovf', undef, undef, undef ,undef, 'ovf'],
+    },
+    {
+	description => "Import, innner file of ova",
+	volname     => 'import/import.ova/disk.qcow2',
+	expected    => ['import', 'import.ova/disk.qcow2', undef, undef, undef, undef, 'ova+qcow2'],
+    },
+    {
+	description => "Import, innner file of ova",
+	volname     => 'import/import.ova/disk.vmdk',
+	expected    => ['import', 'import.ova/disk.vmdk', undef, undef, undef, undef, 'ova+vmdk'],
+    },
+    {
+	description => "Import, innner file of ova",
+	volname     => 'import/import.ova/disk.raw',
+	expected    => ['import', 'import.ova/disk.raw', undef, undef, undef, undef, 'ova+raw'],
     },
     #
     # failed matches

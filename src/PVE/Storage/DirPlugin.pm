@@ -253,20 +253,31 @@ sub get_import_metadata {
 
     my ($vtype, $name, undef, undef, undef, undef, $fmt) = $class->parse_volname($volname);
     die "invalid content type '$vtype'\n" if $vtype ne 'import';
-    die "invalid format\n" if $fmt ne 'ovf';
+    die "invalid format\n" if $fmt ne 'ova' && $fmt ne 'ovf';
 
     # NOTE: all types of warnings must be added to the return schema of the import-metadata API endpoint
     my $warnings = [];
 
+    my $isOva = 0;
+    if ($fmt =~ m/^ova/) {
+	$isOva = 1;
+	push @$warnings, { type => 'ova-needs-extracting' };
+    }
     my $path = $class->path($scfg, $volname, $storeid, undef);
-    my $res = PVE::GuestImport::OVF::parse_ovf($path);
+    my $res = PVE::GuestImport::OVF::parse_ovf($path, $isOva);
     my $disks = {};
     for my $disk ($res->{disks}->@*) {
 	my $id = $disk->{disk_address};
 	my $size = $disk->{virtual_size};
 	my $path = $disk->{relative_path};
+	my $volid;
+	if ($isOva) {
+	    $volid = "$storeid:$volname/$path";
+	} else {
+	    $volid = "$storeid:import/$path",
+	}
 	$disks->{$id} = {
-	    volid => "$storeid:import/$path",
+	    volid => $volid,
 	    defined($size) ? (size => $size) : (),
 	};
     }
