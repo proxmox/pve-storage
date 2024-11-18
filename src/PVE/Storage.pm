@@ -542,7 +542,7 @@ sub check_volume_access {
 
 	return if $rpcenv->check($user, "/storage/$sid", ['Datastore.Allocate'], 1);
 
-	if ($vtype eq 'iso' || $vtype eq 'vztmpl') {
+	if ($vtype eq 'iso' || $vtype eq 'vztmpl' || $vtype eq 'import') {
 	    # require at least read access to storage, (custom) templates/ISOs could be sensitive
 	    $rpcenv->check_any($user, "/storage/$sid", ['Datastore.AllocateSpace', 'Datastore.Audit']);
 	} elsif (defined($ownervm) && defined($vmid) && ($ownervm == $vmid)) {
