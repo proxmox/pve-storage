@@ -1,3 +1,15 @@
+libpve-storage-perl (8.2.7) bookworm; urgency=medium
+
+  * file size info: implement untrusted mode to check some extra attributes
+    for files that originate from outside the PVE storage system.
+
+  * move OVF module over from qemu-server
+
+  * api: iso up/download: check file content to prevent users from uploading
+    files that they then cannot use as an ISO or raw image.
+
+ -- Proxmox Support Team <support@proxmox.com>  Mon, 18 Nov 2024 15:51:20 +0100
+
 libpve-storage-perl (8.2.6) bookworm; urgency=medium
 
   * iscsi: disable Open-iSCSI login retries to reduce timeout to 15s, logins
