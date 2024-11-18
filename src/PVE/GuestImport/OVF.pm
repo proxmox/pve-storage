@@ -54,6 +54,71 @@ my @resources = (
     { id => 35, dtmf_name => 'Vendor Reserved'}
 );
 
+# see https://schemas.dmtf.org/wbem/cim-html/2.55.0+/CIM_OperatingSystem.html
+my $ostype_ids = {
+    18 => 'winxp', # 'WINNT',
+    29 => 'solaris', # 'Solaris',
+    36 => 'l26', # 'LINUX',
+    58 => 'w2k', # 'Windows 2000',
+    67 => 'wxp', #'Windows XP',
+    69 => 'w2k3', # 'Microsoft Windows Server 2003',
+    70 => 'w2k3', # 'Microsoft Windows Server 2003 64-Bit',
+    71 => 'wxp', # 'Windows XP 64-Bit',
+    72 => 'wxp', # 'Windows XP Embedded',
+    73 => 'wvista', # 'Windows Vista',
+    74 => 'wvista', # 'Windows Vista 64-Bit',
+    75 => 'wxp', # 'Windows Embedded for Point of Service', ??
+    76 => 'w2k8', # 'Microsoft Windows Server 2008',
+    77 => 'w2k8', # 'Microsoft Windows Server 2008 64-Bit',
+    79 => 'l26', # 'RedHat Enterprise Linux',
+    80 => 'l26', # 'RedHat Enterprise Linux 64-Bit',
+    81 => 'solaris', #'Solaris 64-Bit',
+    82 => 'l26', # 'SUSE',
+    83 => 'l26', # 'SUSE 64-Bit',
+    84 => 'l26', # 'SLES',
+    85 => 'l26', # 'SLES 64-Bit',
+    87 => 'l26', # 'Novell Linux Desktop',
+    89 => 'l26', # 'Mandriva',
+    90 => 'l26', # 'Mandriva 64-Bit',
+    91 => 'l26', # 'TurboLinux',
+    92 => 'l26', # 'TurboLinux 64-Bit',
+    93 => 'l26', # 'Ubuntu',
+    94 => 'l26', # 'Ubuntu 64-Bit',
+    95 => 'l26', # 'Debian',
+    96 => 'l26', # 'Debian 64-Bit',
+    97 => 'l24', # 'Linux 2.4.x',
+    98 => 'l24', # 'Linux 2.4.x 64-Bit',
+    99 => 'l26', # 'Linux 2.6.x',
+    100 => 'l26', # 'Linux 2.6.x 64-Bit',
+    101 => 'l26', # 'Linux 64-Bit',
+    103 => 'win7', # 'Microsoft Windows Server 2008 R2',
+    105 => 'win7', # 'Microsoft Windows 7',
+    106 => 'l26', # 'CentOS 32-bit',
+    107 => 'l26', # 'CentOS 64-bit',
+    108 => 'l26', # 'Oracle Linux 32-bit',
+    109 => 'l26', # 'Oracle Linux 64-bit',
+    111 => 'win8', # 'Microsoft Windows Server 2011', ??
+    112 => 'win8', # 'Microsoft Windows Server 2012',
+    113 => 'win8', # 'Microsoft Windows 8',
+    114 => 'win8', # 'Microsoft Windows 8 64-bit',
+    115 => 'win8', # 'Microsoft Windows Server 2012 R2',
+    116 => 'win10', # 'Microsoft Windows Server 2016',
+    117 => 'win8', # 'Microsoft Windows 8.1',
+    118 => 'win8', # 'Microsoft Windows 8.1 64-bit',
+    119 => 'win10', # 'Microsoft Windows 10',
+    120 => 'win10', # 'Microsoft Windows 10 64-bit',
+    121 => 'win10', # 'Microsoft Windows Server 2019',
+    122 => 'win11', # 'Microsoft Windows 11 64-bit',
+    123 => 'win11', # 'Microsoft Windows Server 2022',
+    # others => 'other',
+};
+
+sub get_ostype {
+    my ($id) = @_;
+
+    return $ostype_ids->{$id} // 'other';
+}
+
 sub find_by {
     my ($key, $param) = @_;
     foreach my $resource (@resources) {
@@ -158,6 +223,10 @@ sub parse_ovf {
     my $disk_id = dtmf_name_to_id('Disk Drive');
     my $xpath_find_disks="/ovf:Envelope/ovf:VirtualSystem/ovf:VirtualHardwareSection/ovf:Item[rasd:ResourceType=${disk_id}]";
     my @disk_items = $xpc->findnodes($xpath_find_disks);
+
+    my $xpath_find_ostype_id = "/ovf:Envelope/ovf:VirtualSystem/ovf:OperatingSystemSection/\@ovf:id";
+    my $ostype_id = $xpc->findvalue($xpath_find_ostype_id);
+    $qm->{ostype} = get_ostype($ostype_id);
 
     # disks metadata is split in four different xml elements:
     # * as an Item node of type DiskDrive in the VirtualHardwareSection
