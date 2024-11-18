@@ -53,7 +53,7 @@ sub type {
 
 sub plugindata {
     return {
-	content => [ { images => 1, rootdir => 1, vztmpl => 1, iso => 1, backup => 1, snippets => 1 },
+	content => [ { images => 1, rootdir => 1, vztmpl => 1, iso => 1, backup => 1, snippets => 1, import => 1 },
 		     { images => 1 }],
 	format => [ { raw => 1, qcow2 => 1, vmdk => 1 } , 'raw' ],
     };
@@ -221,6 +221,10 @@ sub get_volume_attribute {
 
 sub update_volume_attribute {
     return PVE::Storage::DirPlugin::update_volume_attribute(@_);
+}
+
+sub get_import_metadata {
+    return PVE::Storage::DirPlugin::get_import_metadata(@_);
 }
 
 1;

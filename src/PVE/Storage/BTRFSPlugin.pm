@@ -40,6 +40,7 @@ sub plugindata {
 		backup => 1,
 		snippets => 1,
 		none => 1,
+		import => 1,
 	    },
 	    { images => 1, rootdir => 1 },
 	],
@@ -961,6 +962,10 @@ sub rename_volume {
 	die "rename '$old_path' to '$new_path' failed - $!\n";
 
     return "${storeid}:$target_volname";
+}
+
+sub get_import_metadata {
+    return PVE::Storage::DirPlugin::get_import_metadata(@_);
 }
 
 1

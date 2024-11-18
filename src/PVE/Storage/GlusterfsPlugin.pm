@@ -97,7 +97,7 @@ sub type {
 
 sub plugindata {
     return {
-	content => [ { images => 1, vztmpl => 1, iso => 1, backup => 1, snippets => 1},
+	content => [ { images => 1, vztmpl => 1, iso => 1, backup => 1, snippets => 1, import => 1},
 		     { images => 1 }],
 	format => [ { raw => 1, qcow2 => 1, vmdk => 1 } , 'raw' ],
     };
@@ -350,6 +350,10 @@ sub check_connection {
     my $server = &$get_active_server($scfg);
 
     return defined($server) ? 1 : 0;
+}
+
+sub get_import_metadata {
+    return PVE::Storage::DirPlugin::get_import_metadata(@_);
 }
 
 1;
