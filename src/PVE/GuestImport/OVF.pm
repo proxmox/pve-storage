@@ -209,6 +209,7 @@ sub parse_ovf {
 
     if ($ovf_name) {
 	# PVE::QemuServer::confdesc requires a valid DNS name
+	$ovf_name =~ s/\s+/-/g;
 	($qm->{name} = $ovf_name) =~ s/[^a-zA-Z0-9\-\.]//g;
     } else {
 	warn "warning: unable to parse the VM name in this OVF manifest, generating a default value\n";
