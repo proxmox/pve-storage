@@ -244,6 +244,8 @@ sub parse_ovf {
     # when all the nodes has been found out, we copy the relevant information to
     # a $pve_disk hash ref, which we push to @disks;
 
+    my $boot_order = [];
+
     foreach my $item_node (@disk_items) {
 
 	my $disk_node;
@@ -352,8 +354,10 @@ ovf:Item[rasd:InstanceID='%s']/rasd:ResourceType", $controller_id);
 	};
 	$pve_disk->{virtual_size} = $virtual_size if defined($virtual_size);
 	push @disks, $pve_disk;
-
+	push @$boot_order, $pve_disk_address;
     }
+
+    $qm->{boot} = "order=" . join(';', @$boot_order) if scalar(@$boot_order) > 0;
 
     return {qm => $qm, disks => \@disks};
 }
