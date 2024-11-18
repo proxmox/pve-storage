@@ -228,6 +228,11 @@ sub parse_ovf {
     my $ostype_id = $xpc->findvalue($xpath_find_ostype_id);
     $qm->{ostype} = get_ostype($ostype_id);
 
+    # vmware specific firmware config, seems to not be standardized in ovf ?
+    my $xpath_find_firmware = "/ovf:Envelope/ovf:VirtualSystem/ovf:VirtualHardwareSection/vmw:Config[\@vmw:key=\"firmware\"]/\@vmw:value";
+    my $firmware = $xpc->findvalue($xpath_find_firmware) || 'seabios';
+    $qm->{bios} = 'ovmf' if $firmware eq 'efi';
+
     # disks metadata is split in four different xml elements:
     # * as an Item node of type DiskDrive in the VirtualHardwareSection
     # * as an Disk node in the DiskSection

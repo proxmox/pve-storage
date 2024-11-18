@@ -282,6 +282,11 @@ sub get_import_metadata {
 	};
     }
 
+    if (defined($res->{qm}->{bios}) && $res->{qm}->{bios} eq 'ovmf') {
+	$disks->{efidisk0} = 1;
+	push @$warnings, { type => 'efi-state-lost', key => 'bios', value => 'ovmf' };
+    }
+
     return {
 	type => 'vm',
 	source => $volname,

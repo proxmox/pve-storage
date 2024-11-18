@@ -72,5 +72,6 @@ is($win10noNs->{qm}->{memory}, '6144', 'win10 VM (no default rasd NS) memory is 
 is($win10noNs->{qm}->{cores}, '4', 'win10 VM (no default rasd NS) cores are correct');
 # older esxi/ovf standard used 'other' for windows10
 is($win10noNs->{qm}->{ostype}, 'other', 'win10 VM (no default rasd NS) ostype is correct');
+is($win10noNs->{qm}->{bios}, 'ovmf', 'win10 VM (no default rasd NS) bios is correct');
 
 done_testing();
