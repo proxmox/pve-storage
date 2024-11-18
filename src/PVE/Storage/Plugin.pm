@@ -1031,6 +1031,7 @@ sub file_size_info {
     ($format) = ($format =~ /^(\S+)$/); # untaint
     die "format '$format' includes whitespace\n" if !defined($format);
     if (defined($parent)) {
+	warn "strange parent name path '$parent' found\n" if $parent =~ m/[^\S]/;
 	($parent) = ($parent =~ /^(\S+)$/); # untaint
     }
     return wantarray ? ($size, $format, $used, $parent, $st->ctime) : $size;
