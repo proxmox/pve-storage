@@ -510,6 +510,10 @@ __PACKAGE__->register_method ({
 			die "checksum mismatch: got '$checksum_got' != expect '$checksum'\n";
 		    }
 		}
+
+		if ($content eq 'iso') {
+		    PVE::Storage::assert_iso_content($tmpfilename);
+		}
 	    };
 	    if (my $err = $@) {
 		# unlinks only the temporary file from the http server
@@ -661,6 +665,14 @@ __PACKAGE__->register_method({
 	    $opts->{"${checksum_algorithm}sum"} = $checksum;
 	    $opts->{hash_required} = 1;
 	}
+
+	$opts->{assert_file_validity} = sub {
+	    my ($tmp_path) = @_;
+
+	    if ($content eq 'iso') {
+		PVE::Storage::assert_iso_content($tmp_path);
+	    }
+	};
 
 	my $worker = sub {
 	    if ($compression) {

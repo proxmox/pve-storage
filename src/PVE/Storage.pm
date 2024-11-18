@@ -2196,4 +2196,14 @@ sub get_import_metadata {
     return $plugin->get_import_metadata($scfg, $volname, $storeid);
 }
 
+# dies if the content of the given path is unexpected for an ISO
+sub assert_iso_content {
+    my ($path) = @_;
+
+    # check for things like backing image
+    file_size_info($path, undef, 1);
+
+    return 1;
+}
+
 1;
