@@ -41,6 +41,24 @@ __PACKAGE__->register_method ({
    path => '{storage}/file-restore',
 });
 
+my sub assert_ova_contents {
+    my ($file) = @_;
+
+    # test if it's really a tar file with an ovf file inside
+    my $hasOvf = 0;
+    run_command(['tar', '-t', '-f', $file], outfunc => sub {
+	my ($line) = @_;
+
+	if ($line =~ m/\.ovf$/) {
+	    $hasOvf = 1;
+	}
+    });
+
+    die "ova archive has no .ovf file inside\n" if !$hasOvf;
+
+    return 1;
+}
+
 __PACKAGE__->register_method ({
     name => 'index',
     path => '',
@@ -369,7 +387,7 @@ __PACKAGE__->register_method ({
     name => 'upload',
     path => '{storage}/upload',
     method => 'POST',
-    description => "Upload templates and ISO images.",
+    description => "Upload templates, ISO images and OVAs.",
     permissions => {
 	check => ['perm', '/storage/{storage}', ['Datastore.AllocateTemplate']],
     },
@@ -382,7 +400,7 @@ __PACKAGE__->register_method ({
 	    content => {
 		description => "Content type.",
 		type => 'string', format => 'pve-storage-content',
-		enum => ['iso', 'vztmpl'],
+		enum => ['iso', 'vztmpl', 'import'],
 	    },
 	    filename => {
 		description => "The name of the file to create. Caution: This will be normalized!",
@@ -437,6 +455,7 @@ __PACKAGE__->register_method ({
 	my $filename = PVE::Storage::normalize_content_filename($param->{filename});
 
 	my $path;
+	my $isOva = 0;
 
 	if ($content eq 'iso') {
 	    if ($filename !~ m![^/]+$PVE::Storage::ISO_EXT_RE_0$!) {
@@ -448,6 +467,13 @@ __PACKAGE__->register_method ({
 		raise_param_exc({ filename => "wrong file extension" });
 	    }
 	    $path = PVE::Storage::get_vztmpl_dir($cfg, $param->{storage});
+	} elsif ($content eq 'import') {
+	    if ($filename !~ m!${PVE::Storage::SAFE_CHAR_CLASS_RE}+$PVE::Storage::UPLOAD_IMPORT_EXT_RE_1$!) {
+		raise_param_exc({ filename => "invalid filename or wrong extension" });
+	    }
+
+	    $isOva = 1;
+	    $path = PVE::Storage::get_import_dir($cfg, $param->{storage});
 	} else {
 	    raise_param_exc({ content => "upload content type '$content' not allowed" });
 	}
@@ -514,6 +540,10 @@ __PACKAGE__->register_method ({
 		if ($content eq 'iso') {
 		    PVE::Storage::assert_iso_content($tmpfilename);
 		}
+
+		if ($isOva) {
+		    assert_ova_contents($tmpfilename);
+		}
 	    };
 	    if (my $err = $@) {
 		# unlinks only the temporary file from the http server
@@ -548,7 +578,7 @@ __PACKAGE__->register_method({
     name => 'download_url',
     path => '{storage}/download-url',
     method => 'POST',
-    description => "Download templates and ISO images by using an URL.",
+    description => "Download templates, ISO images and OVAs by using an URL.",
     proxyto => 'node',
     permissions => {
 	description => 'Requires allocation access on the storage and as this allows one to probe'
@@ -576,7 +606,7 @@ __PACKAGE__->register_method({
 	    content => {
 		description => "Content type.", # TODO: could be optional & detected in most cases
 		type => 'string', format => 'pve-storage-content',
-		enum => ['iso', 'vztmpl'],
+		enum => ['iso', 'vztmpl', 'import'],
 	    },
 	    filename => {
 		description => "The name of the file to create. Caution: This will be normalized!",
@@ -636,6 +666,8 @@ __PACKAGE__->register_method({
 	my $filename = PVE::Storage::normalize_content_filename($param->{filename});
 
 	my $path;
+	my $isOva = 0;
+
 	if ($content eq 'iso') {
 	    if ($filename !~ m![^/]+$PVE::Storage::ISO_EXT_RE_0$!) {
 		raise_param_exc({ filename => "wrong file extension" });
@@ -646,6 +678,16 @@ __PACKAGE__->register_method({
 		raise_param_exc({ filename => "wrong file extension" });
 	    }
 	    $path = PVE::Storage::get_vztmpl_dir($cfg, $storage);
+	} elsif ($content eq 'import') {
+	    if ($filename !~ m!${PVE::Storage::SAFE_CHAR_CLASS_RE}+$PVE::Storage::UPLOAD_IMPORT_EXT_RE_1$!) {
+		raise_param_exc({ filename => "invalid filename or wrong extension" });
+	    }
+
+	    if ($filename =~ m/\.ova$/) {
+		$isOva = 1;
+	    }
+
+	    $path = PVE::Storage::get_import_dir($cfg, $param->{storage});
 	} else {
 	    raise_param_exc({ content => "upload content-type '$content' is not allowed" });
 	}
@@ -672,6 +714,10 @@ __PACKAGE__->register_method({
 	    if ($content eq 'iso') {
 		PVE::Storage::assert_iso_content($tmp_path);
 	    }
+
+	    if ($isOva) {
+		assert_ova_contents($tmp_path);
+	    }
 	};
 
 	my $worker = sub {
@@ -681,6 +727,7 @@ __PACKAGE__->register_method({
 		die "no decompression method found\n" if !$info->{decompressor};
 		$opts->{decompression_command} = $info->{decompressor};
 	    }
+
 	    PVE::Tools::download_file_from_url("$path/$filename", $url, $opts);
 	};
 

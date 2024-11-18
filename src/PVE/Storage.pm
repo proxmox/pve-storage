@@ -116,6 +116,8 @@ our $BACKUP_EXT_RE_2 = qr/\.(tgz|(?:tar|vma)(?:\.(${\PVE::Storage::Plugin::COMPR
 
 our $IMPORT_EXT_RE_1 = qr/\.(ova|ovf|qcow2|raw|vmdk)/;
 
+our $UPLOAD_IMPORT_EXT_RE_1 = qr/\.(ova)/;
+
 our $SAFE_CHAR_CLASS_RE = qr/[a-zA-Z0-9\-\.\+\=\_]/;
 
 our $OVA_CONTENT_RE_1 = qr/${SAFE_CHAR_CLASS_RE}+\.(qcow2|raw|vmdk)/;
@@ -464,6 +466,15 @@ sub get_iso_dir {
     my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
 
     return $plugin->get_subdir($scfg, 'iso');
+}
+
+sub get_import_dir {
+    my ($cfg, $storeid) = @_;
+
+    my $scfg = storage_config($cfg, $storeid);
+    my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
+
+    return $plugin->get_subdir($scfg, 'import');
 }
 
 sub get_vztmpl_dir {
