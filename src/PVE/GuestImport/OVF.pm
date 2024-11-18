@@ -220,15 +220,6 @@ ovf:Disk[\@ovf:diskId='%s']/\@ovf:capacityAllocationUnits", $disk_id);
 	    next;
 	}
 
-	# from Disk Node, find corresponding filepath
-	my $xpath_find_filepath = sprintf("/ovf:Envelope/ovf:References/ovf:File[\@ovf:id='%s']/\@ovf:href", $fileref);
-	my $filepath = $xpc->findvalue($xpath_find_filepath);
-	if (!$filepath) {
-	    warn "invalid file reference $fileref, skipping\n";
-	    next;
-	}
-	print "file path: $filepath\n" if $debug;
-
 	# from Item, find owning Controller type
 	my $controller_id = $xpc->findvalue('rasd:Parent', $item_node);
 	my $xpath_find_parent_type = sprintf("/ovf:Envelope/ovf:VirtualSystem/ovf:VirtualHardwareSection/\
@@ -244,21 +235,33 @@ ovf:Item[rasd:InstanceID='%s']/rasd:ResourceType", $controller_id);
 	my $adress_on_controller = $xpc->findvalue('rasd:AddressOnParent', $item_node);
 	my $pve_disk_address = id_to_pve($controller_type) . $adress_on_controller;
 
+	# from Disk Node, find corresponding filepath
+	my $xpath_find_filepath = sprintf("/ovf:Envelope/ovf:References/ovf:File[\@ovf:id='%s']/\@ovf:href", $fileref);
+	my $filepath = $xpc->findvalue($xpath_find_filepath);
+	if (!$filepath) {
+	    warn "invalid file reference $fileref, skipping\n";
+	    next;
+	}
+	print "file path: $filepath\n" if $debug;
+	my $original_filepath = $filepath;
+	($filepath) = $filepath =~ m|^(${PVE::Storage::SAFE_CHAR_CLASS_RE}+)$|; # untaint & check no sub/parent dirs
+	die "referenced path '$original_filepath' is invalid\n" if !$filepath || $filepath eq "." || $filepath eq "..";
+
 	# resolve symlinks and relative path components
 	# and die if the diskimage is not somewhere under the $ovf path
-	my $ovf_dir = realpath(dirname(File::Spec->rel2abs($ovf)));
-	my $backing_file_path = realpath(join ('/', $ovf_dir, $filepath));
+	my $ovf_dir = realpath(dirname(File::Spec->rel2abs($ovf)))
+	    or die "could not get absolute path of $ovf: $!\n";
+	my $backing_file_path = realpath(join ('/', $ovf_dir, $filepath))
+	    or die "could not get absolute path of $filepath: $!\n";
 	if ($backing_file_path !~ /^\Q${ovf_dir}\E/) {
 	    die "error parsing $filepath, are you using a symlink ?\n";
 	}
 
+	($backing_file_path) = $backing_file_path =~ m|^(/.*)|; # untaint
+
 	if (!-e $backing_file_path && !$isOva) {
 	    die "error parsing $filepath, file seems not to exist at $backing_file_path\n";
 	}
-
-	($backing_file_path) = $backing_file_path =~ m|^(/.*)|; # untaint
-	($filepath) = $filepath =~ m|^(${PVE::Storage::SAFE_CHAR_CLASS_RE}+)$|; # untaint & check no sub/parent dirs
-	die "invalid path\n" if !$filepath;
 
 	if (!$isOva) {
 	    my $size = PVE::Storage::file_size_info($backing_file_path);
