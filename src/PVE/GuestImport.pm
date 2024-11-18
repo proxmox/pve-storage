@@ -47,7 +47,15 @@ sub extract_disk_from_import_file {
     my $target_path;
     my $target_volid;
     eval {
-	run_command(['tar', '-x', '--force-local', '-C', $tmpdir, '-f', $ova_path, $inner_file]);
+	run_command([
+	    'tar',
+	    '-x',
+	    '--force-local',
+	    '--no-same-owner',
+	    '-C', $tmpdir,
+	    '-f', $ova_path,
+	    $inner_file,
+	]);
 
 	# check for symlinks and other non regular files
 	if (-l $source_path || ! -f $source_path) {
