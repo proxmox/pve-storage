@@ -204,9 +204,19 @@ sub parse_ovf {
 
     # easy xpath
     # walk down the dom until we find the matching XML element
-    my $xpath_find_name = "/ovf:Envelope/ovf:VirtualSystem/ovf:Name";
-    my $ovf_name = $xpc->findvalue($xpath_find_name);
-
+    my $ovf_name = $xpc->findvalue("/ovf:Envelope/ovf:VirtualSystem/ovf:Name");
+    if (!$ovf_name) {
+	# this is a bit of a hack, but best-effort and can only win here
+	my @nodes = $xpc->findnodes("/ovf:Envelope/ovf:VirtualSystem");
+	if (my $virtual_system_node = shift @nodes) {
+	    for my $attr ($virtual_system_node->attributes()) {
+		if ($attr->nodeName() eq 'ovf:id') {
+		    $ovf_name = $attr->getValue();
+		    last;
+		}
+	    }
+	}
+    }
     if ($ovf_name) {
 	# PVE::QemuServer::confdesc requires a valid DNS name
 	$ovf_name =~ s/\s+/-/g;
