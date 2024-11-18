@@ -228,7 +228,7 @@ sub parse_ovf {
     # here we expect multiple results, so we do not read the element value with
     # findvalue() but store multiple elements with findnodes()
     my $disk_id = dtmf_name_to_id('Disk Drive');
-    my $xpath_find_disks="/ovf:Envelope/ovf:VirtualSystem/ovf:VirtualHardwareSection/ovf:Item[rasd:ResourceType=${disk_id}]";
+    my $xpath_find_disks = "/ovf:Envelope/ovf:VirtualSystem/ovf:VirtualHardwareSection/ovf:Item[rasd:ResourceType=${disk_id}]";
     my @disk_items = $xpc->findnodes($xpath_find_disks);
 
     my $xpath_find_ostype_id = "/ovf:Envelope/ovf:VirtualSystem/ovf:OperatingSystemSection/\@ovf:id";
@@ -253,12 +253,8 @@ sub parse_ovf {
 
     my $boot_order = [];
 
-    foreach my $item_node (@disk_items) {
-
-	my $disk_node;
-	my $file_node;
-	my $controller_node;
-	my $pve_disk;
+    for my $item_node (@disk_items) {
+	my ($disk_node, $file_node, $controller_node, $pve_disk);
 
 	print "disk item:\n", $item_node->toString(1), "\n" if $debug;
 
