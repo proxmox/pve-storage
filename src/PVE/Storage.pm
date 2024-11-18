@@ -119,8 +119,9 @@ our $IMPORT_EXT_RE_1 = qr/\.(ova|ovf|qcow2|raw|vmdk)/;
 our $UPLOAD_IMPORT_EXT_RE_1 = qr/\.(ova)/;
 
 our $SAFE_CHAR_CLASS_RE = qr/[a-zA-Z0-9\-\.\+\=\_]/;
+our $SAFE_CHAR_WITH_WHITESPACE_CLASS_RE = qr/[ a-zA-Z0-9\-\.\+\=\_]/;
 
-our $OVA_CONTENT_RE_1 = qr/${SAFE_CHAR_CLASS_RE}+\.(qcow2|raw|vmdk)/;
+our $OVA_CONTENT_RE_1 = qr/${SAFE_CHAR_WITH_WHITESPACE_CLASS_RE}+\.(qcow2|raw|vmdk)/;
 
 # FIXME remove with PVE 9.0, add versioned breaks for pve-manager
 our $vztmpl_extension_re = $VZTMPL_EXT_RE_1;

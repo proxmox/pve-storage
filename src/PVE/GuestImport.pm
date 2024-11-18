@@ -28,7 +28,7 @@ sub extract_disk_from_import_file {
     my $archive_volid;
     my $inner_file;
     my $inner_fmt;
-    if ($name =~ m!^(.*\.ova)/(${PVE::Storage::SAFE_CHAR_CLASS_RE}+)$!) {
+    if ($name =~ m!^(.*\.ova)/(${PVE::Storage::SAFE_CHAR_WITH_WHITESPACE_CLASS_RE}+)$!) {
 	$archive_volid = "$source_storeid:import/$1";
 	$inner_file = $2;
 	($inner_fmt) = $fmt =~ /^ova\+(.*)$/;

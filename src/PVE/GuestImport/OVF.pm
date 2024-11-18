@@ -323,7 +323,7 @@ ovf:Item[rasd:InstanceID='%s']/rasd:ResourceType", $controller_id);
 	}
 	print "file path: $filepath\n" if $debug;
 	my $original_filepath = $filepath;
-	($filepath) = $filepath =~ m|^(${PVE::Storage::SAFE_CHAR_CLASS_RE}+)$|; # untaint & check no sub/parent dirs
+	($filepath) = $filepath =~ m|^(${PVE::Storage::SAFE_CHAR_WITH_WHITESPACE_CLASS_RE}+)$|; # untaint & check no sub/parent dirs
 	die "referenced path '$original_filepath' is invalid\n" if !$filepath || $filepath eq "." || $filepath eq "..";
 
 	# resolve symlinks and relative path components

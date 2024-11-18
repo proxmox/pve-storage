@@ -109,6 +109,11 @@ my $tests = [
 	expected    => ['import', 'import.ova/disk.vmdk', undef, undef, undef, undef, 'ova+vmdk'],
     },
     {
+	description => "Import, innner file of ova with whitespace in name",
+	volname     => 'import/import.ova/OS disk.vmdk',
+	expected    => ['import', 'import.ova/OS disk.vmdk', undef, undef, undef, undef, 'ova+vmdk'],
+    },
+    {
 	description => "Import, innner file of ova",
 	volname     => 'import/import.ova/disk.raw',
 	expected    => ['import', 'import.ova/disk.raw', undef, undef, undef, undef, 'ova+raw'],
