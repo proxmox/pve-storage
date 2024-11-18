@@ -191,6 +191,7 @@ sub parse_ovf {
     # 'ovf' is the default namespace so it will prepended to each xml element
     my $xpc = XML::LibXML::XPathContext->new($dom);
     $xpc->registerNs('ovf', 'http://schemas.dmtf.org/ovf/envelope/1');
+    $xpc->registerNs('vmw', 'http://www.vmware.com/schema/ovf');
     $xpc->registerNs('rasd', 'http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/CIM_ResourceAllocationSettingData');
     $xpc->registerNs('vssd', 'http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/CIM_VirtualSystemSettingData');
 
