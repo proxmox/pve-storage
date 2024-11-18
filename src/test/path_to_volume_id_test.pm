@@ -190,6 +190,14 @@ my @tests = (
 	    'local:vztmpl/debian-10.0-standard_10.0-1_amd64.tar.xz',
 	],
     },
+    {
+	description => 'Import, ovf',
+	volname     => "$storage_dir/import/import.ovf",
+	expected    => [
+	    'import',
+	    'local:import/import.ovf',
+	],
+    },
 
     # no matches, path or files with failures
     {
@@ -235,6 +243,11 @@ my @tests = (
     {
 	description => 'Image, string as vmid in folder name',
 	volname     => "$storage_dir/images/ssss/vm-1234-disk-0.qcow2",
+	expected    => [''],
+    },
+    {
+	description => 'Import, non ova/ovf/disk image in import dir',
+	volname     => "$storage_dir/import/test.foo",
 	expected    => [''],
     },
 );

@@ -663,6 +663,8 @@ sub parse_volname {
 	return ('backup', $fn);
     } elsif ($volname =~ m!^snippets/([^/]+)$!) {
 	return ('snippets', $1);
+    } elsif ($volname =~ m!^import/(${PVE::Storage::SAFE_CHAR_CLASS_RE}+$PVE::Storage::IMPORT_EXT_RE_1)$!) {
+	return ('import', $1, undef, undef, undef, undef, $2);
     }
 
     die "unable to parse directory volume name '$volname'\n";
@@ -675,6 +677,7 @@ my $vtype_subdirs = {
     vztmpl => 'template/cache',
     backup => 'dump',
     snippets => 'snippets',
+    import => 'import',
 };
 
 sub get_vtype_subdirs {
@@ -1269,7 +1272,7 @@ sub list_images {
     return $res;
 }
 
-# list templates ($tt = <iso|vztmpl|backup|snippets>)
+# list templates ($tt = <iso|vztmpl|backup|snippets|import>)
 my $get_subdir_files = sub {
     my ($sid, $path, $tt, $vmid) = @_;
 
@@ -1325,6 +1328,10 @@ my $get_subdir_files = sub {
 		volid => "$sid:snippets/". basename($fn),
 		format => 'snippet',
 	    };
+	} elsif ($tt eq 'import') {
+	    next if $fn !~ m!/(${PVE::Storage::SAFE_CHAR_CLASS_RE}+$PVE::Storage::IMPORT_EXT_RE_1)$!i;
+
+	    $info = { volid => "$sid:import/$1", format => "$2" };
 	}
 
 	$info->{size} = $st->size;
@@ -1359,6 +1366,8 @@ sub list_volumes {
 		$data = $get_subdir_files->($storeid, $path, 'backup', $vmid);
 	    } elsif ($type eq 'snippets') {
 		$data = $get_subdir_files->($storeid, $path, 'snippets');
+	    } elsif ($type eq 'import') {
+		$data = $get_subdir_files->($storeid, $path, 'import');
 	    }
 	}
 

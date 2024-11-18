@@ -86,6 +86,14 @@ my $tests = [
 	expected    => ['snippets', 'hookscript.pl'],
     },
     #
+    # Import
+    #
+    {
+	description => "Import, ovf",
+	volname     => 'import/import.ovf',
+	expected    => ['import', 'import.ovf', undef, undef, undef ,undef, 'ovf'],
+    },
+    #
     # failed matches
     #
     {
@@ -122,6 +130,11 @@ my $tests = [
 	description => 'Failed match: VM disk image, linked, qcow2, second vmid',
 	volname     => "$vmid/base-$vmid-disk-0.qcow2/ssss/vm-$vmid-disk-0.qcow2",
 	expected    => "unable to parse volume filename 'base-$vmid-disk-0.qcow2/ssss/vm-$vmid-disk-0.qcow2'\n",
+    },
+    {
+	description => "Failed match: import dir but no ova/ovf/disk image",
+	volname	    => "import/test.foo",
+	expected    => "unable to parse directory volume name 'import/test.foo'\n",
     },
 ];
 

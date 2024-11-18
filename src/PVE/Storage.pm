@@ -114,6 +114,10 @@ our $VZTMPL_EXT_RE_1 = qr/\.tar\.(gz|xz|zst|bz2)/i;
 
 our $BACKUP_EXT_RE_2 = qr/\.(tgz|(?:tar|vma)(?:\.(${\PVE::Storage::Plugin::COMPRESSOR_RE}))?)/;
 
+our $IMPORT_EXT_RE_1 = qr/\.(ovf|qcow2|raw|vmdk)/;
+
+our $SAFE_CHAR_CLASS_RE = qr/[a-zA-Z0-9\-\.\+\=\_]/;
+
 # FIXME remove with PVE 9.0, add versioned breaks for pve-manager
 our $vztmpl_extension_re = $VZTMPL_EXT_RE_1;
 
@@ -612,6 +616,7 @@ sub path_to_volume_id {
 	my $backupdir = $plugin->get_subdir($scfg, 'backup');
 	my $privatedir = $plugin->get_subdir($scfg, 'rootdir');
 	my $snippetsdir = $plugin->get_subdir($scfg, 'snippets');
+	my $importdir = $plugin->get_subdir($scfg, 'import');
 
 	if ($path =~ m!^$imagedir/(\d+)/([^/\s]+)$!) {
 	    my $vmid = $1;
@@ -640,6 +645,9 @@ sub path_to_volume_id {
 	} elsif ($path =~ m!^$snippetsdir/([^/]+)$!) {
 	    my $name = $1;
 	    return ('snippets', "$sid:snippets/$name");
+	} elsif ($path =~ m!^$importdir/(${SAFE_CHAR_CLASS_RE}+${IMPORT_EXT_RE_1})$!) {
+	    my $name = $1;
+	    return ('import', "$sid:import/$name");
 	}
     }
 

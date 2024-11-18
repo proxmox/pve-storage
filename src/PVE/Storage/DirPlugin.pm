@@ -10,6 +10,7 @@ use IO::File;
 use POSIX;
 
 use PVE::Storage::Plugin;
+use PVE::GuestImport::OVF;
 use PVE::JSONSchema qw(get_standard_option);
 
 use base qw(PVE::Storage::Plugin);
@@ -22,7 +23,7 @@ sub type {
 
 sub plugindata {
     return {
-	content => [ { images => 1, rootdir => 1, vztmpl => 1, iso => 1, backup => 1, snippets => 1, none => 1 },
+	content => [ { images => 1, rootdir => 1, vztmpl => 1, iso => 1, backup => 1, snippets => 1, none => 1, import => 1 },
 		     { images => 1,  rootdir => 1 }],
 	format => [ { raw => 1, qcow2 => 1, vmdk => 1, subvol => 1 } , 'raw' ],
     };
@@ -245,6 +246,39 @@ sub check_config {
 	die "illegal path for directory storage: $opts->{path}\n";
     }
     return $opts;
+}
+
+sub get_import_metadata {
+    my ($class, $scfg, $volname, $storeid) = @_;
+
+    my ($vtype, $name, undef, undef, undef, undef, $fmt) = $class->parse_volname($volname);
+    die "invalid content type '$vtype'\n" if $vtype ne 'import';
+    die "invalid format\n" if $fmt ne 'ovf';
+
+    # NOTE: all types of warnings must be added to the return schema of the import-metadata API endpoint
+    my $warnings = [];
+
+    my $path = $class->path($scfg, $volname, $storeid, undef);
+    my $res = PVE::GuestImport::OVF::parse_ovf($path);
+    my $disks = {};
+    for my $disk ($res->{disks}->@*) {
+	my $id = $disk->{disk_address};
+	my $size = $disk->{virtual_size};
+	my $path = $disk->{relative_path};
+	$disks->{$id} = {
+	    volid => "$storeid:import/$path",
+	    defined($size) ? (size => $size) : (),
+	};
+    }
+
+    return {
+	type => 'vm',
+	source => $volname,
+	'create-args' => $res->{qm},
+	'disks' => $disks,
+	warnings => $warnings,
+	net => [],
+    };
 }
 
 1;

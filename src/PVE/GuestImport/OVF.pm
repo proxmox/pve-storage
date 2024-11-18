@@ -221,6 +221,8 @@ ovf:Item[rasd:InstanceID='%s']/rasd:ResourceType", $controller_id);
 	}
 
 	($backing_file_path) = $backing_file_path =~ m|^(/.*)|; # untaint
+	($filepath) = $filepath =~ m|^(${PVE::Storage::SAFE_CHAR_CLASS_RE}+)$|; # untaint & check no sub/parent dirs
+	die "invalid path\n" if !$filepath;
 
 	my $virtual_size = PVE::Storage::file_size_info($backing_file_path);
 	die "error parsing $backing_file_path, cannot determine file size\n"
@@ -229,7 +231,8 @@ ovf:Item[rasd:InstanceID='%s']/rasd:ResourceType", $controller_id);
 	$pve_disk = {
 	    disk_address => $pve_disk_address,
 	    backing_file => $backing_file_path,
-	    virtual_size => $virtual_size
+	    virtual_size => $virtual_size,
+	    relative_path => $filepath,
 	};
 	push @disks, $pve_disk;
 
