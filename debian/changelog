@@ -1,3 +1,10 @@
+libpve-storage-perl (8.2.9) bookworm; urgency=medium
+
+  * untrusted image checks: also handle multi-part vmdk files, to harden the
+    new import OVA through API feature also for VMDK backed images.
+
+ -- Proxmox Support Team <support@proxmox.com>  Tue, 19 Nov 2024 21:05:43 +0100
+
 libpve-storage-perl (8.2.8) bookworm; urgency=medium
 
   * directory backed storage: implement import content type to support
