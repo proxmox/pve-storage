@@ -1012,6 +1012,11 @@ sub file_size_info {
 	if (my $format_specific = $info->{'format-specific'}) {
 	    if ($format_specific->{type} eq 'qcow2' && $format_specific->{data}->{"data-file"}) {
 		die "$filename: 'data-file' references are not allowed!\n";
+	    } elsif ($format_specific->{type} eq 'vmdk') {
+		my $extents = $format_specific->{data}->{extents};
+		my $children = $info->{children};
+		die "$filename: multiple children or extents are not allowed!\n"
+		    if scalar($children->@*) > 1 || scalar($extents->@*) > 1;
 	    }
 	}
     }
