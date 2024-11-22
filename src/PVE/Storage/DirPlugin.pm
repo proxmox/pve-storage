@@ -6,6 +6,7 @@ use warnings;
 use Cwd;
 use Encode qw(decode encode);
 use File::Path;
+use File::Spec;
 use IO::File;
 use POSIX;
 
@@ -246,6 +247,8 @@ sub check_config {
     if ($opts->{path} !~ m|^/[-/a-zA-Z0-9_.@]+$|) {
 	die "illegal path for directory storage: $opts->{path}\n";
     }
+    # remove trailing slashes from path
+    $opts->{path} = File::Spec->canonpath($opts->{path});
     return $opts;
 }
 
