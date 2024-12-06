@@ -487,8 +487,7 @@ $mock_stat->redefine(populate => sub {
 # override info provided by qemu-img in file_size_info
 my $mock_fsi = Test::MockModule->new('PVE::Storage::Plugin', no_auto => 1);
 $mock_fsi->redefine(file_size_info => sub {
-	my ($filename, $timeout) = @_;
-	my ($size, $format, $used, $parent, $ctime) = $mock_fsi->original('file_size_info')->($filename, $timeout);
+	my ($size, $format, $used, $parent, $ctime) = $mock_fsi->original('file_size_info')->(@_);
 
 	$size = DEFAULT_SIZE;
 	$used = DEFAULT_USED;
