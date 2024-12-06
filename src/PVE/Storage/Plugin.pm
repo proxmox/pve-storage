@@ -1282,11 +1282,19 @@ sub list_images {
 
 	my $owner = $2;
 	my $name = $3;
+	my $format = $4;
 
 	next if !$vollist && defined($vmid) && ($owner ne $vmid);
 
-	my ($size, $format, $used, $parent, $ctime) = file_size_info($fn);
-	next if !($format && defined($size));
+	my ($size, undef, $used, $parent, $ctime) = eval {
+	    file_size_info($fn, undef, $format);
+	};
+	if (my $err = $@) {
+	    die $err if $err !~ m/Image is not in \S+ format$/;
+	    warn "image '$fn' is not in expected format '$format', querying as raw\n";
+	    ($size, undef, $used, $parent, $ctime) = file_size_info($fn, undef, 'raw');
+	}
+	next if !defined($size);
 
 	my $volid;
 	if ($parent && $parent =~ m!^../(\d+)/([^/]+\.($fmts))$!) {
