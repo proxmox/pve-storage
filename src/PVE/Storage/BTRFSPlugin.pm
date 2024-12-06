@@ -490,7 +490,7 @@ sub volume_size_info {
 	return wantarray ? ($size, 'subvol', $used, undef, $ctime) : 1;
     }
 
-    return PVE::Storage::Plugin::file_size_info($path, $timeout);
+    return PVE::Storage::Plugin::file_size_info($path, $timeout, $format);
 }
 
 sub volume_resize {
