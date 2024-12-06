@@ -971,6 +971,16 @@ sub file_size_info {
 	}
     }
 
+    my $handle_error = sub {
+	my ($msg) = @_;
+	if ($untrusted) {
+	    die $msg;
+	} else {
+	    warn $msg;
+	    return wantarray ? (undef, undef, undef, undef, $st->ctime) : undef;
+	}
+    };
+
     if (S_ISDIR($st->mode)) {
 	return wantarray ? (0, 'subvol', 0, undef, $st->ctime) : 1;
     }
@@ -998,15 +1008,7 @@ sub file_size_info {
     }
 
     my $info = eval { decode_json($json) };
-    if (my $err = $@) {
-	my $msg = "could not parse qemu-img info command output for '$filename' - $err\n";
-	if ($untrusted) {
-	    die $msg;
-	} else {
-	    warn $msg;
-	    return wantarray ? (undef, undef, undef, undef, $st->ctime) : undef;
-	}
-    }
+    $handle_error->("could not parse qemu-img info command output for '$filename' - $@\n") if $@;
 
     if ($untrusted) {
 	if (my $format_specific = $info->{'format-specific'}) {
