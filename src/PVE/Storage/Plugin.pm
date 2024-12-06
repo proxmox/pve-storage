@@ -1300,6 +1300,7 @@ sub list_images {
 	    die $err if $err !~ m/Image is not in \S+ format$/;
 	    warn "image '$fn' is not in expected format '$format', querying as raw\n";
 	    ($size, undef, $used, $parent, $ctime) = file_size_info($fn, undef, 'raw');
+	    $format = 'invalid';
 	}
 	next if !defined($size);
 

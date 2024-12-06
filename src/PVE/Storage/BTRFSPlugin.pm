@@ -678,6 +678,7 @@ sub list_images {
 		warn "image '$fn' is not in expected format '$format', querying as raw\n";
 		($size, undef, $used, $parent, $ctime) =
 		    PVE::Storage::Plugin::file_size_info($fn, undef, 'raw');
+		$format = 'invalid';
 	    }
 	}
 	next if !defined($size);
