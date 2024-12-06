@@ -63,7 +63,7 @@ sub extract_disk_from_import_file {
 	}
 
 	# check potentially untrusted image file!
-	PVE::Storage::file_size_info($source_path, undef, 1);
+	PVE::Storage::file_size_info($source_path, undef, undef, 1);
 
 	# create temporary 1M image that will get overwritten by the rename
 	# to reserve the filename and take care of locking

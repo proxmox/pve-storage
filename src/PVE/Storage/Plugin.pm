@@ -950,13 +950,27 @@ sub free_image {
     return undef;
 }
 
+# TODO taken from PVE/QemuServer/Drive.pm, avoiding duplication would be nice
+my @checked_qemu_img_formats = qw(raw cow qcow qcow2 qed vmdk cloop);
+
 # set $untrusted if the file in question might be malicious since it isn't
 # created by our stack
 # this makes certain checks fatal, and adds extra checks for known problems like
 # - backing files (qcow2/vmdk)
 # - external data files (qcow2)
+#
+# Set $file_format to force qemu-img to treat the image as being a specific format.
 sub file_size_info {
-    my ($filename, $timeout, $untrusted) = @_;
+    my ($filename, $timeout, $file_format, $untrusted) = @_;
+
+    # compat for old parameter order
+    # TODO PVE 9 remove
+    if (defined($file_format) && ($file_format eq '1' || $file_format eq '0')) {
+	warn "file_size_info: detected call with legacy parameter order: \$untrusted before"
+	    ." \$file_format\n";
+	$untrusted = $file_format;
+	$file_format = undef;
+    }
 
     my $st = File::stat::stat($filename);
 
@@ -982,13 +996,24 @@ sub file_size_info {
     };
 
     if (S_ISDIR($st->mode)) {
+	$handle_error->("expected format '$file_format', but '$filename' is a directory\n")
+	    if $file_format && $file_format ne 'subvol';
 	return wantarray ? (0, 'subvol', 0, undef, $st->ctime) : 1;
+    } elsif ($file_format && $file_format eq 'subvol') {
+	$handle_error->("expected format '$file_format', but '$filename' is not a directory\n");
     }
+
+    # TODO PVE 9 - consider upgrading to "die" if an unsupported format is passed in after
+    # evaluating breakage potential.
+    $file_format = 'raw' if $file_format && !grep { $_ eq $file_format } @checked_qemu_img_formats;
+
+    my $cmd = ['/usr/bin/qemu-img', 'info', '--output=json', $filename];
+    push $cmd->@*, '-f', $file_format if $file_format;
 
     my $json = '';
     my $err_output = '';
     eval {
-	run_command(['/usr/bin/qemu-img', 'info', '--output=json', $filename],
+	run_command($cmd,
 	    timeout => $timeout,
 	    outfunc => sub { $json .= shift },
 	    errfunc => sub { $err_output .= shift . "\n"},
@@ -1041,6 +1066,10 @@ sub file_size_info {
 	warn "strange parent name path '$parent' found\n" if $parent =~ m/[^\S]/;
 	($parent) = ($parent =~ /^(\S+)$/); # untaint
     }
+
+    die "qemu-img bug: queried format does not match format in result '$file_format ne $format'"
+	if $file_format && $file_format ne $format;
+
     return wantarray ? ($size, $format, $used, $parent, $st->ctime) : $size;
 }
 

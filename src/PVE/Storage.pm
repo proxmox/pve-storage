@@ -242,9 +242,9 @@ sub storage_ids {
 }
 
 sub file_size_info {
-    my ($filename, $timeout, $untrusted) = @_;
+    my ($filename, $timeout, $file_format, $untrusted) = @_;
 
-    return PVE::Storage::Plugin::file_size_info($filename, $timeout, $untrusted);
+    return PVE::Storage::Plugin::file_size_info($filename, $timeout, $file_format, $untrusted);
 }
 
 sub get_volume_attribute {
@@ -2223,7 +2223,7 @@ sub assert_iso_content {
     my ($path) = @_;
 
     # check for things like backing image
-    file_size_info($path, undef, 1);
+    file_size_info($path, undef, undef, 1);
 
     return 1;
 }
