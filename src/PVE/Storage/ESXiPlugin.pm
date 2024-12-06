@@ -418,7 +418,7 @@ sub parse_volname {
     die "failed to parse volname '$volname'\n"
 	if $volname !~ m!^([^/]+)/([^/]+)/(.+)$!;
 
-    return ('import', $volname) if $volname =~ /\.vmx$/;
+    return ('import', $volname, 0, undef, undef, undef, 'vmx') if $volname =~ /\.vmx$/;
 
     my $format = 'raw';
     $format = 'vmdk'  if $volname =~ /\.vmdk/;
