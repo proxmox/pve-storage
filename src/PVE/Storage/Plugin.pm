@@ -1679,7 +1679,8 @@ sub volume_export {
     my $err_msg = "volume export format $format not available for $class\n";
     if ($scfg->{path} && !defined($snapshot) && !defined($base_snapshot)) {
 	my $file = $class->path($scfg, $volname, $storeid) or die $err_msg;
-	my ($size, $file_format) = file_size_info($file);
+	my $file_format = ($class->parse_volname($volname))[6];
+	my $size = file_size_info($file, undef, $file_format);
 
 	if ($format eq 'raw+size') {
 	    die $err_msg if $with_snapshots || $file_format eq 'subvol';
@@ -1713,7 +1714,8 @@ sub volume_export_formats {
     if ($scfg->{path} && !defined($snapshot) && !defined($base_snapshot)) {
 	my $file = $class->path($scfg, $volname, $storeid)
 	    or return;
-	my ($size, $format) = file_size_info($file);
+	my $format = ($class->parse_volname($volname))[6];
+	my $size = file_size_info($file, undef, $format);
 
 	if ($with_snapshots) {
 	    return ($format.'+size') if ($format eq 'qcow2' || $format eq 'vmdk');
