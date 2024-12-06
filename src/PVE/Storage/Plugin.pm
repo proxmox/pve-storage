@@ -742,8 +742,8 @@ sub create_base {
 
     my $path = $class->filesystem_path($scfg, $volname);
 
-    my ($size, undef, $used, $parent) = file_size_info($path);
-    die "file_size_info on '$volname' failed\n" if !($format && defined($size));
+    my ($size, undef, undef, $parent) = file_size_info($path, undef, $format);
+    die "file_size_info on '$volname' failed\n" if !defined($size);
 
     die "volname '$volname' contains wrong information about parent\n"
 	if $basename && (!$parent || $parent ne "../$basevmid/$basename");
