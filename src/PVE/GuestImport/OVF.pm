@@ -354,7 +354,7 @@ ovf:Item[rasd:InstanceID='%s']/rasd:ResourceType", $controller_id);
 	}
 
 	if (!$isOva) {
-	    my $size = PVE::Storage::file_size_info($backing_file_path);
+	    my $size = PVE::Storage::file_size_info($backing_file_path, undef, 'auto-detect');
 	    die "error parsing $backing_file_path, cannot determine file size\n"
 		if !$size;
 

@@ -959,9 +959,14 @@ my @checked_qemu_img_formats = qw(raw cow qcow qcow2 qed vmdk cloop);
 # - backing files (qcow2/vmdk)
 # - external data files (qcow2)
 #
-# Set $file_format to force qemu-img to treat the image as being a specific format.
+# Set $file_format to force qemu-img to treat the image as being a specific format. Use the value
+# 'auto-detect' for auto-detection. The parameter is planned to become mandatory with Proxmox VE 9.
 sub file_size_info {
     my ($filename, $timeout, $file_format, $untrusted) = @_;
+
+    # TODO PVE 9 make $file_format mandatory
+    warn "file_size_info: detected call without \$file_format parameter\n"
+	if !defined($file_format);
 
     # compat for old parameter order
     # TODO PVE 9 remove
@@ -971,6 +976,8 @@ sub file_size_info {
 	$untrusted = $file_format;
 	$file_format = undef;
     }
+
+    $file_format = undef if $file_format && $file_format eq 'auto-detect';
 
     my $st = File::stat::stat($filename);
 

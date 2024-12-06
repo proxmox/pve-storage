@@ -2223,7 +2223,7 @@ sub assert_iso_content {
     my ($path) = @_;
 
     # check for things like backing image
-    file_size_info($path, undef, undef, 1);
+    file_size_info($path, undef, 'auto-detect', 1);
 
     return 1;
 }
