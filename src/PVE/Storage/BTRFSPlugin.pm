@@ -661,15 +661,26 @@ sub list_images {
 
 	if (!$ext) { # raw
 	    $volid .= '.raw';
-	    ($size, $format, $used, $parent, $ctime) = PVE::Storage::Plugin::file_size_info("$fn/disk.raw");
+	    $format = 'raw';
+	    ($size, undef, $used, $parent, $ctime) =
+		PVE::Storage::Plugin::file_size_info("$fn/disk.raw", undef, $format);
 	} elsif ($ext eq 'subvol') {
 	    ($used, $size) = (0, 0);
 	    #($used, $size) = btrfs_subvol_quota($class, $fn);
 	    $format = 'subvol';
 	} else {
-	    ($size, $format, $used, $parent, $ctime) = PVE::Storage::Plugin::file_size_info($fn);
+	    $format = $ext;
+	    ($size, undef, $used, $parent, $ctime) = eval {
+		PVE::Storage::Plugin::file_size_info($fn, undef, $format);
+	    };
+	    if (my $err = $@) {
+		die $err if $err !~ m/Image is not in \S+ format$/;
+		warn "image '$fn' is not in expected format '$format', querying as raw\n";
+		($size, undef, $used, $parent, $ctime) =
+		    PVE::Storage::Plugin::file_size_info($fn, undef, 'raw');
+	    }
 	}
-	next if !($format && defined($size));
+	next if !defined($size);
 
 	if ($vollist) {
 	    next if ! grep { $_ eq $volid } @$vollist;
