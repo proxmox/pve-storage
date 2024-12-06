@@ -1122,8 +1122,9 @@ sub update_volume_attribute {
 
 sub volume_size_info {
     my ($class, $scfg, $storeid, $volname, $timeout) = @_;
+    my $format = ($class->parse_volname($volname))[6];
     my $path = $class->filesystem_path($scfg, $volname);
-    return file_size_info($path, $timeout);
+    return file_size_info($path, $timeout, $format);
 
 }
 
