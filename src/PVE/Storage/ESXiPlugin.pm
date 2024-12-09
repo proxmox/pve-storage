@@ -538,7 +538,7 @@ sub volume_size_info {
     return 0 if $volname =~ /\.vmx$/;
 
     my $filename = $class->path($scfg, $volname, $storeid, undef);
-    return PVE::Storage::Plugin::file_size_info($filename, $timeout);
+    return PVE::Storage::Plugin::file_size_info($filename, $timeout, 'auto-detect');
 }
 
 sub volume_snapshot {

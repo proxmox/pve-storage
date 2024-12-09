@@ -300,7 +300,7 @@ sub volume_size_info {
 	my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
 	return $plugin->volume_size_info($scfg, $storeid, $volname, $timeout);
     } elsif ($volid =~ m|^(/.+)$| && -e $volid) {
-	return file_size_info($volid, $timeout);
+	return file_size_info($volid, $timeout, 'auto-detect');
     } else {
 	return 0;
     }
