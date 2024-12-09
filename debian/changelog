@@ -1,3 +1,10 @@
+libpve-storage-perl (8.3.0) bookworm; urgency=medium
+
+  * file_size_info: avoid spurious warnings by always setting `format`
+    parameter
+
+ -- Proxmox Support Team <support@proxmox.com>  Mon, 09 Dec 2024 12:00:12 +0100
+
 libpve-storage-perl (8.2.10) bookworm; urgency=medium
 
   * file_size_info: add format parameter and checks
