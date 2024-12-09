@@ -1,3 +1,9 @@
+libpve-storage-perl (8.2.10) bookworm; urgency=medium
+
+  * file_size_info: add format parameter and checks
+
+ -- Proxmox Support Team <support@proxmox.com>  Mon, 09 Dec 2024 10:08:45 +0100
+
 libpve-storage-perl (8.2.9) bookworm; urgency=medium
 
   * untrusted image checks: also handle multi-part vmdk files, to harden the
