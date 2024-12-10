@@ -421,7 +421,7 @@ sub parse_volname {
     return ('import', $volname, 0, undef, undef, undef, 'vmx') if $volname =~ /\.vmx$/;
 
     my $format = 'raw';
-    $format = 'vmdk'  if $volname =~ /\.vmdk/;
+    $format = 'vmdk' if $volname =~ /\.vmdk$/;
     return ('images', $volname, 0, undef, undef, undef, $format);
 }
 
