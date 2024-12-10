@@ -1,3 +1,15 @@
+libpve-storage-perl (8.3.1) bookworm; urgency=medium
+
+  * esxi: anchor vmdk regex in `parse_volname`
+
+  * esxi: fix return value of volume_size_info for vmx volumes
+
+  * storage: plugin: return 'raw' format when parsing non-image volumes
+
+  * file_size_info: add warning when falling back to raw format
+
+ -- Proxmox Support Team <support@proxmox.com>  Tue, 10 Dec 2024 14:32:01 +0100
+
 libpve-storage-perl (8.3.0) bookworm; urgency=medium
 
   * file_size_info: avoid spurious warnings by always setting `format`
