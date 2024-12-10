@@ -29,12 +29,12 @@ my $tests = [
     {
 	description => 'ISO image, iso',
 	volname     => 'iso/some-installation-disk.iso',
-	expected    => ['iso', 'some-installation-disk.iso'],
+	expected    => ['iso', 'some-installation-disk.iso', undef, undef, undef, undef, 'raw'],
     },
     {
 	description => 'ISO image, img',
 	volname     => 'iso/some-other-installation-disk.img',
-	expected    => ['iso', 'some-other-installation-disk.img'],
+	expected    => ['iso', 'some-other-installation-disk.img', undef, undef, undef, undef, 'raw'],
     },
     #
     # container templates
@@ -42,17 +42,17 @@ my $tests = [
     {
 	description => 'Container template tar.gz',
 	volname     => 'vztmpl/debian-10.0-standard_10.0-1_amd64.tar.gz',
-	expected    => ['vztmpl', 'debian-10.0-standard_10.0-1_amd64.tar.gz'],
+	expected    => ['vztmpl', 'debian-10.0-standard_10.0-1_amd64.tar.gz', undef, undef, undef, undef, 'raw'],
     },
     {
 	description => 'Container template tar.xz',
 	volname     => 'vztmpl/debian-10.0-standard_10.0-1_amd64.tar.xz',
-	expected    => ['vztmpl', 'debian-10.0-standard_10.0-1_amd64.tar.xz'],
+	expected    => ['vztmpl', 'debian-10.0-standard_10.0-1_amd64.tar.xz', undef, undef, undef, undef, 'raw'],
     },
     {
 	description => 'Container template tar.bz2',
 	volname     => 'vztmpl/debian-10.0-standard_10.0-1_amd64.tar.bz2',
-	expected    => ['vztmpl', 'debian-10.0-standard_10.0-1_amd64.tar.bz2'],
+	expected    => ['vztmpl', 'debian-10.0-standard_10.0-1_amd64.tar.bz2', undef, undef, undef, undef, 'raw'],
     },
     #
     # container rootdir
@@ -70,7 +70,7 @@ my $tests = [
     {
 	description => 'Backup archive, no virtualization type',
 	volname     => "backup/vzdump-none-$vmid-2020_03_30-21_39_30.tar",
-	expected    => ['backup', "vzdump-none-$vmid-2020_03_30-21_39_30.tar"],
+	expected    => ['backup', "vzdump-none-$vmid-2020_03_30-21_39_30.tar", undef, undef, undef, undef, 'raw'],
     },
     #
     # Snippets
@@ -78,12 +78,12 @@ my $tests = [
     {
 	description => 'Snippets, yaml',
 	volname     => 'snippets/userconfig.yaml',
-	expected    => ['snippets', 'userconfig.yaml'],
+	expected    => ['snippets', 'userconfig.yaml', undef, undef, undef, undef, 'raw'],
     },
     {
 	description => 'Snippets, perl',
 	volname     => 'snippets/hookscript.pl',
-	expected    => ['snippets', 'hookscript.pl'],
+	expected    => ['snippets', 'hookscript.pl', undef, undef, undef, undef, 'raw'],
     },
     #
     # Import
@@ -229,7 +229,11 @@ foreach my $virt (keys %$bkp_suffix) {
 		expected    => [
 		    'backup',
 		    "vzdump-$virt-$vmid-2020_03_30-21_12_40.$s",
-		    "$vmid"
+		    "$vmid",
+		    undef,
+		    undef,
+		    undef,
+		    'raw'
 		],
 	    },
 	);

@@ -650,19 +650,19 @@ sub parse_volname {
 	my (undef, $format, $isBase) = parse_name_dir($name);
 	return ('images', $name, $vmid, undef, undef, $isBase, $format);
     } elsif ($volname =~ m!^iso/([^/]+$PVE::Storage::ISO_EXT_RE_0)$!) {
-	return ('iso', $1);
+	return ('iso', $1, undef, undef, undef, undef, 'raw');
     } elsif ($volname =~ m!^vztmpl/([^/]+$PVE::Storage::VZTMPL_EXT_RE_1)$!) {
-	return ('vztmpl', $1);
+	return ('vztmpl', $1, undef, undef, undef, undef, 'raw');
     } elsif ($volname =~ m!^rootdir/(\d+)$!) {
 	return ('rootdir', $1, $1);
     } elsif ($volname =~ m!^backup/([^/]+$PVE::Storage::BACKUP_EXT_RE_2)$!) {
 	my $fn = $1;
 	if ($fn =~ m/^vzdump-(openvz|lxc|qemu)-(\d+)-.+/) {
-	    return ('backup', $fn, $2);
+	    return ('backup', $fn, $2, undef, undef, undef, 'raw');
 	}
-	return ('backup', $fn);
+	return ('backup', $fn, undef, undef, undef, undef, 'raw');
     } elsif ($volname =~ m!^snippets/([^/]+)$!) {
-	return ('snippets', $1);
+	return ('snippets', $1, undef, undef, undef, undef, 'raw');
     } elsif ($volname =~ m!^import/(${PVE::Storage::SAFE_CHAR_WITH_WHITESPACE_CLASS_RE}+\.ova\/${PVE::Storage::OVA_CONTENT_RE_1})$!) {
 	my $packed_image = $1;
 	my $format = $2;
