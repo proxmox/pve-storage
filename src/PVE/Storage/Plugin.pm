@@ -1012,8 +1012,10 @@ sub file_size_info {
 
     # TODO PVE 9 - consider upgrading to "die" if an unsupported format is passed in after
     # evaluating breakage potential.
-    $file_format = 'raw' if $file_format && !grep { $_ eq $file_format } @checked_qemu_img_formats;
-
+    if ($file_format && !grep { $_ eq $file_format } @checked_qemu_img_formats) {
+	warn "file_size_info: '$filename': falling back to 'raw' from unknown format '$file_format'\n";
+	$file_format = 'raw';
+    }
     my $cmd = ['/usr/bin/qemu-img', 'info', '--output=json', $filename];
     push $cmd->@*, '-f', $file_format if $file_format;
 
