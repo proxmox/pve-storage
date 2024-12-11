@@ -196,13 +196,13 @@ sub filesystem_path {
 
     $path .= "/$vmid" if $vtype eq 'images';
 
-    if (defined($format) && $format eq 'raw') {
+    if ($vtype eq 'images' && defined($format) && $format eq 'raw') {
 	my $dir = raw_name_to_dir($name);
 	if ($snapname) {
 	    $dir .= "\@$snapname";
 	}
 	$path .= "/$dir/disk.raw";
-    } elsif (defined($format) && $format eq 'subvol') {
+    } elsif ($vtype eq 'images' && defined($format) && $format eq 'subvol') {
 	$path .= "/$name";
 	if ($snapname) {
 	    $path .= "\@$snapname";
@@ -422,10 +422,10 @@ my sub foreach_subvol : prototype($$) {
 sub free_image {
     my ($class, $storeid, $scfg, $volname, $isBase, $_format) = @_;
 
-    my (undef, undef, $vmid, undef, undef, undef, $format) =
+    my ($vtype, undef, $vmid, undef, undef, undef, $format) =
 	$class->parse_volname($volname);
 
-    if (!defined($format) || ($format ne 'subvol' && $format ne 'raw')) {
+    if (!defined($format) || $vtype ne 'images' || ($format ne 'subvol' && $format ne 'raw')) {
 	return $class->SUPER::free_image($storeid, $scfg, $volname, $isBase, $_format);
     }
 
