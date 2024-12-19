@@ -315,7 +315,10 @@ __PACKAGE__->register_method ({
 
 	my $outfh;
 	if ($filename eq '-') {
-	    $outfh = \*STDOUT;
+	    # No other messages must go to STDOUT if it's used for the export stream!
+	    open($outfh, '>&', STDOUT) or die "unable to dup() STDOUT - $!\n";
+	    close(STDOUT);
+	    open(STDOUT, '>', '/dev/null');
 	} else {
 	    sysopen($outfh, $filename, O_CREAT|O_WRONLY|O_TRUNC)
 		or die "open($filename): $!\n";
