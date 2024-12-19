@@ -357,11 +357,24 @@ sub rbd_volume_du {
 my sub rbd_volume_exists {
     my ($scfg, $storeid, $volname) = @_;
 
-    eval {
-	my $cmd = $rbd_cmd->($scfg, $storeid, 'info', $volname);
-	run_rbd_command($cmd, errmsg => "exist check",  quiet => 1);
-    };
-    return $@ ? undef : 1;
+    my $cmd = $rbd_cmd->($scfg, $storeid, 'ls', '--format', 'json');
+    my $raw = '';
+    run_rbd_command(
+	$cmd, errmsg => "rbd error", errfunc => sub {}, outfunc => sub { $raw .= shift; });
+
+    my $list;
+    if ($raw =~ m/^(\[.*\])$/s) { # untaint
+	$list = eval { JSON::decode_json($1); };
+	die "invalid JSON output from 'rbd ls': $@\n" if $@;
+    } else {
+	die "got unexpected data from 'rbd ls': '$raw'\n";
+    }
+
+    for my $name ($list->@*) {
+	return 1 if $name eq $volname;
+    }
+
+    return 0;
 }
 
 # Configuration
