@@ -1,3 +1,25 @@
+libpve-storage-perl (8.3.3) bookworm; urgency=medium
+
+  * plugin: export/import: fix calls to path() method
+
+  * rbd plugin: schema: document default value for 'krbd' setting
+
+  * export: redirect stdout to avoid any unrelated messages ending up in the export stream
+
+  * rbd plugin: implement volume import/export (partially fix #5890)
+
+  * rbd plugin: improve volume exists helper
+
+  * iscsi plugin: support volume export
+
+  * iscsi direct plugin: support volume export
+
+  * common: introduce common module
+
+  * plugins: volume import: align size up to 1KiB
+
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 19 Dec 2024 15:11:41 +0100
+
 libpve-storage-perl (8.3.2) bookworm; urgency=medium
 
   * btrfs: fix regression for handling non-images volumes
