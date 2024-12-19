@@ -1,4 +1,5 @@
 SOURCES= \
+	Common.pm \
 	Plugin.pm \
 	DirPlugin.pm \
 	LVMPlugin.pm \
@@ -18,5 +19,6 @@ SOURCES= \
 
 .PHONY: install
 install:
+	make -C Common install
 	for i in ${SOURCES}; do install -D -m 0644 $$i ${DESTDIR}${PERLDIR}/PVE/Storage/$$i; done
 	make -C LunCmd install
