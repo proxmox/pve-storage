@@ -1697,7 +1697,7 @@ sub volume_export {
 
     my $err_msg = "volume export format $format not available for $class\n";
     if ($scfg->{path} && !defined($snapshot) && !defined($base_snapshot)) {
-	my $file = $class->path($scfg, $volname, $storeid) or die $err_msg;
+	my ($file) = $class->path($scfg, $volname, $storeid) or die $err_msg;
 	my $file_format = ($class->parse_volname($volname))[6];
 	my $size = file_size_info($file, undef, $file_format);
 
@@ -1731,7 +1731,7 @@ sub volume_export {
 sub volume_export_formats {
     my ($class, $scfg, $storeid, $volname, $snapshot, $base_snapshot, $with_snapshots) = @_;
     if ($scfg->{path} && !defined($snapshot) && !defined($base_snapshot)) {
-	my $file = $class->path($scfg, $volname, $storeid)
+	my ($file) = $class->path($scfg, $volname, $storeid)
 	    or return;
 	my $format = ($class->parse_volname($volname))[6];
 	my $size = file_size_info($file, undef, $format);
@@ -1769,7 +1769,7 @@ sub volume_import {
 
     # Check for an existing file first since interrupting alloc_image doesn't
     # free it.
-    my $file = $class->path($scfg, $volname, $storeid);
+    my ($file) = $class->path($scfg, $volname, $storeid);
     if (-e $file) {
 	die "file '$file' already exists\n" if !$allow_rename;
 	warn "file '$file' already exists - importing with a different name\n";
@@ -1786,7 +1786,7 @@ sub volume_import {
 	if (defined($name) && $allocname ne $oldname) {
 	    die "internal error: unexpected allocated name: '$allocname' != '$oldname'\n";
 	}
-	my $file = $class->path($scfg, $volname, $storeid)
+	my ($file) = $class->path($scfg, $volname, $storeid)
 	    or die "internal error: failed to get path to newly allocated volume $volname\n";
 	if ($data_format eq 'raw' || $data_format eq 'qcow2' || $data_format eq 'vmdk') {
 	    run_command(['dd', "of=$file", 'conv=sparse', 'bs=64k'],
