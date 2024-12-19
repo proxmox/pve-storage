@@ -348,6 +348,16 @@ sub rbd_volume_du {
     die "got no matching image from rbd du\n";
 }
 
+my sub rbd_volume_exists {
+    my ($scfg, $storeid, $volname) = @_;
+
+    eval {
+	my $cmd = $rbd_cmd->($scfg, $storeid, 'info', $volname);
+	run_rbd_command($cmd, errmsg => "exist check",  quiet => 1);
+    };
+    return $@ ? undef : 1;
+}
+
 # Configuration
 
 sub type {
@@ -869,11 +879,8 @@ sub rename_volume {
     $target_volname = $class->find_free_diskname($storeid, $scfg, $target_vmid, $format)
 	if !$target_volname;
 
-    eval {
-	my $cmd = $rbd_cmd->($scfg, $storeid, 'info', $target_volname);
-	run_rbd_command($cmd, errmsg => "exist check",  quiet => 1);
-    };
-    die "target volume '${target_volname}' already exists\n" if !$@;
+    die "target volume '${target_volname}' already exists\n"
+	if rbd_volume_exists($scfg, $storeid, $target_volname);
 
     my $cmd = $rbd_cmd->($scfg, $storeid, 'rename', $source_image, $target_volname);
 
