@@ -596,5 +596,53 @@ sub volume_has_feature {
     return undef;
 }
 
+sub volume_export_formats {
+    my ($class, $scfg, $storeid, $volname, $snapshot, $base_snapshot, $with_snapshots) = @_;
+
+    return () if defined($snapshot); # not supported
+    return () if defined($base_snapshot); # not supported
+    return () if $with_snapshots; # not supported
+    return ('raw+size');
+}
+
+sub volume_export {
+    my (
+	$class,
+	$scfg,
+	$storeid,
+	$fh,
+	$volname,
+	$format,
+	$snapshot,
+	$base_snapshot,
+	$with_snapshots,
+    ) = @_;
+
+    die "volume export format $format not available for $class\n" if $format ne 'raw+size';
+    die "cannot export volumes together with their snapshots in $class\n" if $with_snapshots;
+    die "cannot export an incremental stream in $class\n" if defined($base_snapshot);
+    die "cannot export a snapshot in $class\n" if defined($snapshot);
+
+    my $file = $class->filesystem_path($scfg, $volname, $snapshot);
+    my $size;
+    run_command(['/sbin/blockdev', '--getsize64', $file], outfunc => sub {
+	my ($line) = @_;
+	die "unexpected output from /sbin/blockdev: $line\n" if $line !~ /^(\d+)$/;
+	$size = int($1);
+    });
+    PVE::Storage::Plugin::write_common_header($fh, $size);
+    run_command(['dd', "if=$file", "bs=64k", "status=progress"], output => '>&'.fileno($fh));
+    return;
+}
+
+sub volume_import_formats {
+    my ($class, $scfg, $storeid, $volname, $snapshot, $base_snapshot, $with_snapshots) = @_;
+
+    return ();
+}
+
+sub volume_import {
+    die "volume import is not possible on iscsi storage\n";
+}
 
 1;
