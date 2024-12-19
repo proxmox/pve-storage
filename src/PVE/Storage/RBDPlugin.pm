@@ -389,6 +389,7 @@ sub properties {
 	krbd => {
 	    description => "Always access rbd through krbd kernel module.",
 	    type => 'boolean',
+	    default => 0,
 	},
 	keyring => {
 	    description => "Client keyring contents (for external clusters).",
