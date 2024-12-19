@@ -18,6 +18,8 @@ use PVE::RPCEnvironment;
 use PVE::Storage::Plugin;
 use PVE::Tools qw(run_command trim file_read_firstline);
 
+use PVE::Storage::Common;
+
 use base qw(PVE::Storage::Plugin);
 
 my $get_parent_image_name = sub {
@@ -955,7 +957,7 @@ sub volume_import {
     }
 
     my ($size) = PVE::Storage::Plugin::read_common_header($fh);
-    $size = int($size/1024);
+    $size = PVE::Storage::Common::align_size_up($size, 1024) / 1024;
 
     eval {
 	my $cmd = $rbd_cmd->($scfg, $storeid, 'import', '--export-format', '1', '-', $volname);

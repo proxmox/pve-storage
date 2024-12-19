@@ -9,6 +9,8 @@ use PVE::Tools qw(run_command trim);
 use PVE::Storage::Plugin;
 use PVE::JSONSchema qw(get_standard_option);
 
+use PVE::Storage::Common;
+
 use base qw(PVE::Storage::Plugin);
 
 # lvm helper functions
@@ -677,7 +679,7 @@ sub volume_import {
     }
 
     my ($size) = PVE::Storage::Plugin::read_common_header($fh);
-    $size = int($size/1024);
+    $size = PVE::Storage::Common::align_size_up($size, 1024) / 1024;
 
     eval {
 	my $allocname = $class->alloc_image($storeid, $scfg, $vmid, 'raw', $name, $size);

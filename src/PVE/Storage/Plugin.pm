@@ -15,6 +15,8 @@ use PVE::Tools qw(run_command);
 use PVE::JSONSchema qw(get_standard_option register_standard_option);
 use PVE::Cluster qw(cfs_register_file);
 
+use PVE::Storage::Common;
+
 use JSON;
 
 use base qw(PVE::SectionConfig);
@@ -1777,7 +1779,7 @@ sub volume_import {
     }
 
     my ($size) = read_common_header($fh);
-    $size = int($size/1024);
+    $size = PVE::Storage::Common::align_size_up($size, 1024) / 1024;
 
     eval {
 	my $allocname = $class->alloc_image($storeid, $scfg, $vmid, $file_format, $name, $size);
