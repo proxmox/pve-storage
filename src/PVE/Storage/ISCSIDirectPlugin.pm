@@ -2,9 +2,12 @@ package PVE::Storage::ISCSIDirectPlugin;
 
 use strict;
 use warnings;
+
 use IO::File;
+use JSON qw(decode_json);
 use HTTP::Request;
 use LWP::UserAgent;
+
 use PVE::Tools qw(run_command file_read_firstline trim dir_glob_regex dir_glob_foreach);
 use PVE::Storage::Plugin;
 use PVE::JSONSchema qw(get_standard_option);
@@ -250,6 +253,66 @@ sub volume_has_feature {
     return 1 if $features->{$feature}->{$key};
 
     return undef;
+}
+
+sub volume_export_formats {
+    my ($class, $scfg, $storeid, $volname, $snapshot, $base_snapshot, $with_snapshots) = @_;
+
+    return () if defined($snapshot); # not supported
+    return () if defined($base_snapshot); # not supported
+    return () if $with_snapshots; # not supported
+    return ('raw+size');
+}
+
+sub volume_export {
+    my (
+	$class,
+	$scfg,
+	$storeid,
+	$fh,
+	$volname,
+	$format,
+	$snapshot,
+	$base_snapshot,
+	$with_snapshots,
+    ) = @_;
+
+    die "volume export format $format not available for $class\n" if $format ne 'raw+size';
+    die "cannot export volumes together with their snapshots in $class\n" if $with_snapshots;
+    die "cannot export an incremental stream in $class\n" if defined($base_snapshot);
+    die "cannot export a snapshot in $class\n" if defined($snapshot);
+
+    my ($file) = $class->path($scfg, $volname, $storeid, $snapshot);
+
+    my $json = '';
+    run_command(
+	['/usr/bin/qemu-img', 'info', '-f', 'raw', '--output=json', $file],
+	outfunc => sub { $json .= shift },
+    );
+    die "failed to query size information for '$file' with qemu-img\n" if !$json;
+    my $info = eval { decode_json($json) };
+    die "could not parse qemu-img info command output for '$file' - $@\n" if $@;
+
+    my ($size) = ($info->{'virtual-size'} =~ /^(\d+)$/); # untaint
+    die "size '$size' not an integer\n" if !defined($size);
+    $size = int($size); # coerce back from string
+
+    PVE::Storage::Plugin::write_common_header($fh, $size);
+    run_command(
+	['qemu-img', 'dd', 'bs=64k', "if=$file", '-f', 'raw', '-O', 'raw'],
+	output => '>&'.fileno($fh),
+    );
+    return;
+}
+
+sub volume_import_formats {
+    my ($class, $scfg, $storeid, $volname, $snapshot, $base_snapshot, $with_snapshots) = @_;
+
+    return ();
+}
+
+sub volume_import {
+    die "volume import is not possible on iscsi storage\n";
 }
 
 1;
