@@ -216,12 +216,7 @@ sub rbd_ls {
     my $parser = sub { $raw .= shift };
 
     my $cmd = $rbd_cmd->($scfg, $storeid, 'ls', '-l', '--format', 'json');
-    eval {
-	run_rbd_command($cmd, errmsg => "rbd error", errfunc => sub {}, outfunc => $parser);
-    };
-    my $err = $@;
-
-    die $err if $err && $err !~ m/doesn't contain rbd images/ ;
+    run_rbd_command($cmd, errmsg => "rbd error", errfunc => sub {}, outfunc => $parser);
 
     my $result;
     if ($raw eq '') {
