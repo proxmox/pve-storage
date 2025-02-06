@@ -209,9 +209,6 @@ sub run_rbd_command {
 sub rbd_ls {
     my ($scfg, $storeid) = @_;
 
-    my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
-    $pool .= "/$scfg->{namespace}" if defined($scfg->{namespace});
-
     my $raw = '';
     my $parser = sub { $raw .= shift };
 
@@ -237,7 +234,7 @@ sub rbd_ls {
 	my ($owner) = $image =~ m/^(?:vm|base)-(\d+)-/;
 	next if !defined($owner);
 
-	$list->{$pool}->{$image} = {
+	$list->{$image} = {
 	    name => $image,
 	    size => $el->{size},
 	    parent => $get_parent_image_name->($el->{parent}),
@@ -672,9 +669,7 @@ sub free_image {
 sub list_images {
     my ($class, $storeid, $scfg, $vmid, $vollist, $cache) = @_;
 
-    $cache->{rbd} = rbd_ls($scfg, $storeid) if !$cache->{rbd};
-
-    my $dat = $cache->{rbd}->{get_rbd_path($scfg)};
+    my $dat = rbd_ls($scfg, $storeid);
     return [] if !$dat; # nothing found
 
     my $res = [];
