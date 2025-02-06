@@ -15,7 +15,7 @@ use PVE::JSONSchema qw(get_standard_option);
 use base qw(PVE::Storage::Plugin);
 
 sub iscsi_ls {
-    my ($scfg, $storeid) = @_;
+    my ($scfg) = @_;
 
     my $portal = $scfg->{portal};
     my $cmd = ['/usr/bin/iscsi-ls', '-s', 'iscsi://'.$portal ];
@@ -27,29 +27,27 @@ sub iscsi_ls {
        "T"   => 1024*1024*1024*1024
     );
     eval {
-
 	    run_command($cmd, errmsg => "iscsi error", errfunc => sub {}, outfunc => sub {
-	        my $line = shift;
-	        $line = trim($line);
-	        if( $line =~ /Lun:(\d+)\s+([A-Za-z0-9\-\_\.\:]*)\s+\(Size:([0-9\.]*)(k|M|G|T)\)/ ) {
-	            my $image = "lun".$1;
-	            my $size = $3;
-	            my $unit = $4;
-				
-	            $list->{$storeid}->{$image} = {
-	                name => $image,
-	                size => $size * $unittobytes{$unit},
+		my $line = shift;
+		$line = trim($line);
+		if( $line =~ /Lun:(\d+)\s+([A-Za-z0-9\-\_\.\:]*)\s+\(Size:([0-9\.]*)(k|M|G|T)\)/ ) {
+		    my $image = "lun".$1;
+		    my $size = $3;
+		    my $unit = $4;
+
+		    $list->{$image} = {
+			name => $image,
+			size => $size * $unittobytes{$unit},
 			format => 'raw',
-	            };
-	        }
+		    };
+		}
 	    });
     };
 
     my $err = $@;
-    die $err if $err && $err !~ m/TESTUNITREADY failed with SENSE KEY/ ;
+    die $err if $err && $err !~ m/TESTUNITREADY failed with SENSE KEY/;
 
     return $list;
-
 }
 
 # Configuration
@@ -130,42 +128,33 @@ sub free_image {
     die "can't free space in iscsi storage\n";
 }
 
-
 sub list_images {
     my ($class, $storeid, $scfg, $vmid, $vollist, $cache) = @_;
 
     my $res = [];
 
-    $cache->{directiscsi} = iscsi_ls($scfg,$storeid) if !$cache->{directiscsi};
-
     # we have no owner for iscsi devices
 
-    my $target = $scfg->{target};
+    my $dat = iscsi_ls($scfg);
+    foreach my $volname (keys %$dat) {
+	my $volid = "$storeid:$volname";
 
-    if (my $dat = $cache->{directiscsi}->{$storeid}) {
+	if ($vollist) {
+	    my $found = grep { $_ eq $volid } @$vollist;
+	    next if !$found;
+	} else {
+	    # we have no owner for iscsi devices
+	    next if defined($vmid);
+	}
 
-        foreach my $volname (keys %$dat) {
+	my $info = $dat->{$volname};
+	$info->{volid} = $volid;
 
-            my $volid = "$storeid:$volname";
-
-            if ($vollist) {
-                my $found = grep { $_ eq $volid } @$vollist;
-                next if !$found;
-            } else {
-                # we have no owner for iscsi devices
-                next if defined($vmid);
-            }
-
-            my $info = $dat->{$volname};
-            $info->{volid} = $volid;
-
-            push @$res, $info;
-        }
+	push @$res, $info;
     }
 
     return $res;
 }
-
 
 sub status {
     my ($class, $storeid, $scfg, $cache) = @_;
@@ -208,8 +197,8 @@ sub deactivate_volume {
 sub volume_size_info {
     my ($class, $scfg, $storeid, $volname, $timeout) = @_;
 
-    my $vollist = iscsi_ls($scfg,$storeid);
-    my $info = $vollist->{$storeid}->{$volname};
+    my $vollist = iscsi_ls($scfg);
+    my $info = $vollist->{$volname};
 
     return wantarray ? ($info->{size}, 'raw', 0, undef) : $info->{size};
 }
@@ -236,7 +225,7 @@ sub volume_snapshot_delete {
 
 sub volume_has_feature {
     my ($class, $scfg, $feature, $storeid, $volname, $snapname, $running) = @_;
-    
+
     my $features = {
 	copy => { current => 1},
     };
