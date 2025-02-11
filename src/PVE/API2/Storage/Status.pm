@@ -438,8 +438,8 @@ __PACKAGE__->register_method ({
 
 	my $cfg = PVE::Storage::config();
 
-	my $node = $param->{node};
-	my $scfg = PVE::Storage::storage_check_enabled($cfg, $param->{storage}, $node);
+	my ($node, $storage) = $param->@{qw(node storage)};
+	my $scfg = PVE::Storage::storage_check_enabled($cfg, $storage, $node);
 
 	die "can't upload to storage type '$scfg->{type}'\n"
 	    if !defined($scfg->{path});
@@ -461,24 +461,24 @@ __PACKAGE__->register_method ({
 	    if ($filename !~ m![^/]+$PVE::Storage::ISO_EXT_RE_0$!) {
 		raise_param_exc({ filename => "wrong file extension" });
 	    }
-	    $path = PVE::Storage::get_iso_dir($cfg, $param->{storage});
+	    $path = PVE::Storage::get_iso_dir($cfg, $storage);
 	} elsif ($content eq 'vztmpl') {
 	    if ($filename !~ m![^/]+$PVE::Storage::VZTMPL_EXT_RE_1$!) {
 		raise_param_exc({ filename => "wrong file extension" });
 	    }
-	    $path = PVE::Storage::get_vztmpl_dir($cfg, $param->{storage});
+	    $path = PVE::Storage::get_vztmpl_dir($cfg, $storage);
 	} elsif ($content eq 'import') {
 	    if ($filename !~ m!${PVE::Storage::SAFE_CHAR_CLASS_RE}+$PVE::Storage::UPLOAD_IMPORT_EXT_RE_1$!) {
 		raise_param_exc({ filename => "invalid filename or wrong extension" });
 	    }
 
 	    $isOva = 1;
-	    $path = PVE::Storage::get_import_dir($cfg, $param->{storage});
+	    $path = PVE::Storage::get_import_dir($cfg, $storage);
 	} else {
 	    raise_param_exc({ content => "upload content type '$content' not allowed" });
 	}
 
-	die "storage '$param->{storage}' does not support '$content' content\n"
+	die "storage '$storage' does not support '$content' content\n"
 	    if !$scfg->{content}->{$content};
 
 	my $dest = "$path/$filename";
@@ -498,9 +498,9 @@ __PACKAGE__->register_method ({
 	    my @remcmd = ('/usr/bin/ssh', $ssh_options->@*, $remip, '--');
 
 	    eval { # activate remote storage
-		run_command([@remcmd, '/usr/sbin/pvesm', 'status', '--storage', $param->{storage}]);
+		run_command([@remcmd, '/usr/sbin/pvesm', 'status', '--storage', $storage]);
 	    };
-	    die "can't activate storage '$param->{storage}' on node '$node': $@\n" if $@;
+	    die "can't activate storage '$storage' on node '$node': $@\n" if $@;
 
 	    run_command(
 		[@remcmd, '/bin/mkdir', '-p', '--', PVE::Tools::shell_quote($dirname)],
@@ -511,7 +511,7 @@ __PACKAGE__->register_method ({
 
 	    $err_cleanup = sub { run_command([@remcmd, 'rm', '-f', '--', $dest]) };
 	} else {
-	    PVE::Storage::activate_storage($cfg, $param->{storage});
+	    PVE::Storage::activate_storage($cfg, $storage);
 	    File::Path::make_path($dirname);
 	    $cmd = ['cp', '--', $tmpfilename, $dest];
 	}
@@ -687,7 +687,7 @@ __PACKAGE__->register_method({
 		$isOva = 1;
 	    }
 
-	    $path = PVE::Storage::get_import_dir($cfg, $param->{storage});
+	    $path = PVE::Storage::get_import_dir($cfg, $storage);
 	} else {
 	    raise_param_exc({ content => "upload content-type '$content' is not allowed" });
 	}
