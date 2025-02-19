@@ -405,14 +405,14 @@ my sub path_is_subvolume : prototype($) {
     return S_ISDIR($mode) && $ino == BTRFS_FIRST_FREE_OBJECTID;
 }
 
-my $BTRFS_VOL_REGEX = qr/((?:vm|base|subvol)-\d+-disk-\d+(?:\.subvol)?)(?:\@(\S+))$/;
+my $BTRFS_SNAPSHOT_REGEX = qr/((?:vm|base|subvol)-\d+-disk-\d+(?:\.subvol)?)(?:\@(\S+))$/;
 
 # Calls `$code->($volume, $name, $snapshot)` for each subvol in a directory matching our volume
 # regex.
 my sub foreach_subvol : prototype($$) {
     my ($dir, $code) = @_;
 
-    dir_glob_foreach($dir, $BTRFS_VOL_REGEX, sub {
+    dir_glob_foreach($dir, $BTRFS_SNAPSHOT_REGEX, sub {
 	my ($volume, $name, $snapshot) = ($1, $2, $3);
 	return if !path_is_subvolume("$dir/$volume");
 	$code->($volume, $name, $snapshot);
@@ -869,7 +869,7 @@ sub volume_import {
 	$dh->rewind;
 	while (defined(my $entry = $dh->read)) {
 	    next if $entry eq '.' || $entry eq '..';
-	    next if $entry !~ /^$BTRFS_VOL_REGEX$/;
+	    next if $entry !~ /^$BTRFS_SNAPSHOT_REGEX$/;
 	    my ($cur_diskname, $cur_snapshot) = ($1, $2);
 
 	    die "send stream included a non-snapshot subvolume\n"
