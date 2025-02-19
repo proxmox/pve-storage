@@ -450,19 +450,16 @@ sub free_image {
 	$subvol = raw_file_to_subvol($path);
     }
 
-    my $dir = dirname($subvol);
-    my $basename = basename($subvol);
     my @snapshot_vols;
-    foreach_subvol($dir, sub {
-	my ($volume, $name, $snapshot) = @_;
-	return if $name ne $basename;
-	return if !defined $snapshot;
-	push @snapshot_vols, "$dir/$volume";
+    foreach_snapshot_of_subvol($subvol, sub {
+	my ($snap_name) = @_;
+	push @snapshot_vols, "$subvol\@$snap_name";
     });
 
     $class->btrfs_cmd(['subvolume', 'delete', '--', @snapshot_vols, $subvol]);
     # try to cleanup directory to not clutter storage with empty $vmid dirs if
     # all images from a guest got deleted
+    my $dir = dirname($subvol);
     rmdir($dir);
 
     return undef;
