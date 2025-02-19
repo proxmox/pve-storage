@@ -895,7 +895,7 @@ sub volume_import {
 	# Rotate the disk into place, first the current state:
 	# Note that read-only subvolumes cannot be moved into different directories, but for the
 	# "current" state we also want a writable copy, so start with that:
-	$class->btrfs_cmd(['property', 'set', "$tmppath/$diskname\@$snapshot", 'ro', 'false']);
+	$class->btrfs_cmd(['property', 'set', '-f', "$tmppath/$diskname\@$snapshot", 'ro', 'false']);
 	PVE::Tools::renameat2(
 	    -1,
 	    "$tmppath/$diskname\@$snapshot",
@@ -917,7 +917,7 @@ sub volume_import {
 
 	# Now go through the remaining snapshots (if any)
 	foreach my $snap (@snapshots) {
-	    $class->btrfs_cmd(['property', 'set', "$tmppath/$diskname\@$snap", 'ro', 'false']);
+	    $class->btrfs_cmd(['property', 'set', '-f', "$tmppath/$diskname\@$snap", 'ro', 'false']);
 	    PVE::Tools::renameat2(
 		-1,
 		"$tmppath/$diskname\@$snap",
