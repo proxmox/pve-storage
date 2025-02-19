@@ -796,8 +796,9 @@ sub volume_export {
     if (ref($with_snapshots) eq 'ARRAY') {
 	push @$cmd, (map { "$path\@$_" } ($with_snapshots // [])->@*), $path;
     } else {
-	dir_glob_foreach(dirname($path), $BTRFS_VOL_REGEX, sub {
-	    push @$cmd, "$path\@$_[2]" if !(defined($snapshot) && $_[2] eq $snapshot);
+	foreach_snapshot_of_subvol($path, sub {
+	    my ($snap_name) = @_;
+	    push @$cmd, "$path\@$snap_name" if !(defined($snapshot) && $snap_name eq $snapshot);
 	});
     }
     $path .= "\@$snapshot" if defined($snapshot);
