@@ -419,6 +419,20 @@ my sub foreach_subvol : prototype($$) {
     })
 }
 
+# Calls `$code->($snapshot)` for each snapshot of the BTRFS subvolume.
+my sub foreach_snapshot_of_subvol : prototype($$) {
+    my ($subvol, $code) = @_;
+
+    my $basename = basename($subvol);
+    my $dir = dirname($subvol);
+    foreach_subvol($dir, sub {
+	my ($volume, $name, $snapshot) = @_;
+	return if $name ne $basename;
+	return if !defined $snapshot;
+	$code->($snapshot);
+    });
+}
+
 sub free_image {
     my ($class, $storeid, $scfg, $volname, $isBase, $_format) = @_;
 
