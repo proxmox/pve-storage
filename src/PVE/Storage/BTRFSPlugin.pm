@@ -407,18 +407,18 @@ my sub path_is_subvolume : prototype($) {
 
 my $BTRFS_SNAPSHOT_REGEX = qr/((?:vm|base|subvol)-\d+-disk-\d+(?:\.subvol)?)(?:\@(\S+))$/;
 
-# Calls `$code->($snapshot)` for each snapshot of the BTRFS subvolume.
+# Calls `$code->($snap_name)` for each snapshot of the BTRFS subvolume.
 my sub foreach_snapshot_of_subvol : prototype($$) {
     my ($subvol, $code) = @_;
 
     my $basename = basename($subvol);
     my $dir = dirname($subvol);
     dir_glob_foreach($dir, $BTRFS_SNAPSHOT_REGEX, sub {
-	my ($volume, $name, $snapshot) = ($1, $2, $3);
+	my ($volume, $name, $snap_name) = ($1, $2, $3);
 	return if !path_is_subvolume("$dir/$volume");
 	return if $name ne $basename;
-	return if !defined $snapshot;
-	$code->($snapshot);
+	return if !defined $snap_name;
+	$code->($snap_name);
     });
 }
 
