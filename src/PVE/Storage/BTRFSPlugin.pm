@@ -417,7 +417,6 @@ my sub foreach_snapshot_of_subvol : prototype($$) {
 	my ($volume, $name, $snap_name) = ($1, $2, $3);
 	return if !path_is_subvolume("$dir/$volume");
 	return if $name ne $basename;
-	return if !defined $snap_name;
 	$code->($snap_name);
     });
 }
