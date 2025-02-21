@@ -824,6 +824,7 @@ sub volume_import {
 
     if (defined($base_snapshot)) {
 	my $path = $class->path($scfg, $volname, $storeid, $base_snapshot);
+	$path = raw_file_to_subvol($path) if $volume_format eq 'raw';
 	die "base snapshot '$base_snapshot' not found - no such directory '$path'\n"
 	    if !path_is_subvolume($path);
     }
