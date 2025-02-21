@@ -308,7 +308,7 @@ __PACKAGE__->register_method ({
 
 	my $with_snapshots = $param->{'with-snapshots'};
 	if (defined(my $list = $param->{'snapshot-list'})) {
-	    $with_snapshots = PVE::Tools::split_list($list);
+	    $with_snapshots = [PVE::Tools::split_list($list)];
 	}
 
 	my $filename = $param->{filename};
