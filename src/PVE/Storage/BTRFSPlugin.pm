@@ -780,7 +780,8 @@ sub volume_export {
     }
     push @$cmd, '--';
     if (ref($with_snapshots) eq 'ARRAY') {
-	push @$cmd, (map { "$path\@$_" } ($with_snapshots // [])->@*), $path;
+	push @$cmd, (map { "$path\@$_" } ($with_snapshots // [])->@*);
+	push @$cmd, $path if !defined($base_snapshot);
     } else {
 	foreach_snapshot_of_subvol($path, sub {
 	    my ($snap_name) = @_;
