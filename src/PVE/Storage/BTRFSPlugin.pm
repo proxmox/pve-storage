@@ -783,6 +783,7 @@ sub volume_export {
     } else {
 	foreach_snapshot_of_subvol($path, sub {
 	    my ($snap_name) = @_;
+	    # NOTE: if there is a $snapshot specified via the arguments, it is added last below.
 	    push @$cmd, "$path\@$snap_name" if !(defined($snapshot) && $snap_name eq $snapshot);
 	});
     }
