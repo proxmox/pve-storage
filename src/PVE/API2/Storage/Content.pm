@@ -322,7 +322,9 @@ __PACKAGE__->register_method ({
 
 	my $path = PVE::Storage::path($cfg, $volid);
 	my ($size, $format, $used, $parent) =  PVE::Storage::volume_size_info($cfg, $volid);
-	die "volume_size_info on '$volid' failed\n" if !($format && $size);
+	die "volume_size_info on '$volid' failed - no format\n" if !$format;
+	die "volume_size_info on '$volid' failed - no size\n" if !defined($size);
+	die "volume '$volid' has size zero\n" if !$size && $format ne 'subvol';
 
 	my $entry = {
 	    path => $path,
