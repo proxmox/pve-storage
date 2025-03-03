@@ -487,7 +487,7 @@ sub volume_size_info {
 	my $ctime = (stat($path))[10];
 	my ($used, $size) = (0, 0);
 	#my ($used, $size) = btrfs_subvol_quota($class, $path); # uses wantarray
-	return wantarray ? ($size, 'subvol', $used, undef, $ctime) : 1;
+	return wantarray ? ($size, 'subvol', $used, undef, $ctime) : $size;
     }
 
     return PVE::Storage::Plugin::file_size_info($path, $timeout, $format);
