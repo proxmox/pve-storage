@@ -1032,7 +1032,7 @@ sub file_size_info {
     if (S_ISDIR($st->mode)) {
 	$handle_error->("expected format '$file_format', but '$filename' is a directory\n")
 	    if $file_format && $file_format ne 'subvol';
-	return wantarray ? (0, 'subvol', 0, undef, $st->ctime) : 1;
+	return wantarray ? (0, 'subvol', 0, undef, $st->ctime) : 0;
     } elsif ($file_format && $file_format eq 'subvol') {
 	$handle_error->("expected format '$file_format', but '$filename' is not a directory\n");
     }
