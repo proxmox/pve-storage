@@ -1758,10 +1758,7 @@ sub volume_export {
 sub volume_export_formats {
     my ($class, $scfg, $storeid, $volname, $snapshot, $base_snapshot, $with_snapshots) = @_;
     if ($scfg->{path} && !defined($snapshot) && !defined($base_snapshot)) {
-	my ($file) = $class->path($scfg, $volname, $storeid)
-	    or return;
 	my $format = ($class->parse_volname($volname))[6];
-	my $size = file_size_info($file, undef, $format);
 
 	if ($with_snapshots) {
 	    return ($format.'+size') if ($format eq 'qcow2' || $format eq 'vmdk');
