@@ -233,14 +233,15 @@ sub btrfs_cmd {
     return $msg;
 }
 
-sub btrfs_get_subvol_id {
-    my ($class, $path) = @_;
-    my $info = $class->btrfs_cmd(['subvolume', 'show', '--', $path]);
-    if ($info !~ /^\s*(?:Object|Subvolume) ID:\s*(\d+)$/m) {
-	die "failed to get btrfs subvolume ID from: $info\n";
-    }
-    return $1;
-}
+# NOTE: this function is currently boken, because btrfs_cmd uses '-q' so there will be no output.
+#sub btrfs_get_subvol_id {
+#    my ($class, $path) = @_;
+#    my $info = $class->btrfs_cmd(['subvolume', 'show', '--', $path]);
+#    if ($info !~ /^\s*(?:Object|Subvolume) ID:\s*(\d+)$/m) {
+#	die "failed to get btrfs subvolume ID from: $info\n";
+#    }
+#    return $1;
+#}
 
 my sub chattr : prototype($$$) {
     my ($fh, $mask, $xor) = @_;
@@ -498,10 +499,13 @@ sub volume_resize {
 
     my $format = ($class->parse_volname($volname))[6];
     if ($format eq 'subvol') {
-	my $path = $class->filesystem_path($scfg, $volname);
-	my $id = '0/' . $class->btrfs_get_subvol_id($path);
-	$class->btrfs_cmd(['qgroup', 'limit', '--', "${size}k", "0/$id", $path]);
-	return undef;
+	# NOTE: `btrfs send/recv` actually drops quota information so supporting subvolumes with
+	# quotas doesn't play nice with send/recv.
+	die "cannot resize subvolume - btrfs quotas are currently not supported\n";
+	# my $path = $class->filesystem_path($scfg, $volname);
+	# my $id = '0/' . $class->btrfs_get_subvol_id($path);
+	# $class->btrfs_cmd(['qgroup', 'limit', '--', "${size}k", "0/$id", $path]);
+	# return undef;
     }
 
     return PVE::Storage::Plugin::volume_resize(@_);
