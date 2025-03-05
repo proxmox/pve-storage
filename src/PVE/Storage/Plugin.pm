@@ -953,7 +953,7 @@ sub free_image {
 }
 
 # TODO taken from PVE/QemuServer/Drive.pm, avoiding duplication would be nice
-my @checked_qemu_img_formats = qw(raw cow qcow qcow2 qed vmdk cloop);
+my @checked_qemu_img_formats = qw(raw qcow qcow2 qed vmdk cloop);
 
 # set $untrusted if the file in question might be malicious since it isn't
 # created by our stack
