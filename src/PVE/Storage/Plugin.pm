@@ -346,7 +346,7 @@ PVE::JSONSchema::register_format('pve-storage-format', \&verify_format);
 sub verify_format {
     my ($fmt, $noerr) = @_;
 
-    if ($fmt !~ m/(raw|qcow2|vmdk|subvol)/) {
+    if ($fmt !~ m/^(raw|qcow2|vmdk|subvol)$/) {
 	return undef if $noerr;
 	die "invalid format '$fmt'\n";
     }
