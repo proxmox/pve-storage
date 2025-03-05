@@ -6,7 +6,7 @@ use warnings;
 use PVE::SafeSyslog;
 use PVE::Cluster;
 use PVE::Storage;
-use PVE::Storage::Plugin; # for 'pve-storage-format' format
+use PVE::Storage::Common; # for 'pve-storage-image-format' standard option
 use PVE::INotify;
 use PVE::Exception qw(raise_param_exc);
 use PVE::RPCEnvironment;
@@ -178,12 +178,10 @@ __PACKAGE__->register_method ({
 		type => 'string',
 		pattern => '\d+[MG]?',
 	    },
-	    'format' => {
-		type => 'string',
-		format => 'pve-storage-format',
+	    format => get_standard_option('pve-storage-image-format', {
 		requires => 'size',
 		optional => 1,
-	    },
+	    }),
 	},
     },
     returns => {

@@ -3,6 +3,8 @@ package PVE::Storage::Common;
 use strict;
 use warnings;
 
+use PVE::JSONSchema;
+
 =pod
 
 =head1 NAME
@@ -24,6 +26,31 @@ be grouped in a submodule can also be found here.
 =over
 
 =back
+
+=head1 STANDARD OPTIONS FOR JSON SCHEMA
+
+=over
+
+=back
+
+=head3 pve-storage-image-format
+
+Possible formats a guest image can have.
+
+=cut
+
+# TODO PVE 9 - Note that currently, qemu-server allows more formats for VM images, so third party
+# storage plugins might potentially allow more too, but none of the plugins we are aware of do that.
+# Those formats should either be allowed here or support for them should be phased out (at least in
+# the storage layer). Can still be added again in the future, should any plugin provider request it.
+
+PVE::JSONSchema::register_standard_option('pve-storage-image-format', {
+    type => 'string',
+    enum => ['raw', 'qcow2', 'subvol', 'vmdk'],
+    description => "Format of the image.",
+});
+
+=pod
 
 =head1 FUNCTIONS
 

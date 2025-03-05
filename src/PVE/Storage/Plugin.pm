@@ -184,11 +184,10 @@ my $defaultData = {
 	    type => 'string', format => 'pve-storage-path',
 	    optional => 1,
 	},
-	'format' => {
+	format => get_standard_option('pve-storage-image-format', {
 	    description => "Default image format.",
-	    type => 'string', format => 'pve-storage-format',
 	    optional => 1,
-	},
+	}),
 	preallocation => {
 	    description => "Preallocation mode for raw and qcow2 images. " .
 		"Using 'metadata' on raw images results in preallocation=off.",
@@ -342,6 +341,10 @@ sub verify_content {
     return $ct;
 }
 
+# NOTE the 'pve-storage-format' is deprecated, use the 'pve-storage-image-format' standard option
+# from Storage/Common.pm instead
+# TODO PVE 9 - remove after doing a versioned breaks for pve-guest-common, which was using this
+# format.
 PVE::JSONSchema::register_format('pve-storage-format', \&verify_format);
 sub verify_format {
     my ($fmt, $noerr) = @_;
