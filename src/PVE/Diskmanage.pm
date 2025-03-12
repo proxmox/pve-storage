@@ -328,7 +328,7 @@ sub get_udev_info {
     return if !defined($data->{devpath});
 
     $data->{serial} = 'unknown';
-    $data->{serial} = $1 if $info =~ m/^E: ID_SERIAL_SHORT=(\S+)$/m;
+    $data->{serial} = $1 if $info =~ m/^E: ID_SERIAL_SHORT=\s*(\S+)$/m;
 
     $data->{gpt} = $info =~ m/^E: ID_PART_TABLE_TYPE=gpt$/m ? 1 : 0;
 
