@@ -58,9 +58,30 @@ sub iscsi_session_list {
     return $res;
 }
 
-sub iscsi_test_portal {
-    my ($portal) = @_;
+sub iscsi_test_session {
+    my ($sid) = @_;
 
+    if ($sid !~ m/^[0-9]+$/) {
+	die "session_id: '$sid' is not a number\n";
+    }
+    my $state = file_read_firstline("/sys/class/iscsi_session/session${sid}/state");
+    return defined($state) && $state eq 'LOGGED_IN';
+}
+
+sub iscsi_test_portal {
+    my ($target, $portal, $cache) = @_;
+    $cache //= {};
+
+    if (defined($target)) {
+	# check session state instead if available
+	my $sessions = iscsi_session($cache, $target);
+	for my $session ($sessions->@*) {
+	    next if $session->{portal} ne $portal;
+	    my $state = iscsi_test_session($session->{session_id});
+	    return $state if $state;
+	}
+    }
+    # check portal via tcp
     my ($server, $port) = PVE::Tools::parse_host_and_port($portal);
     return 0 if !$server;
     return PVE::Network::tcp_ping($server, $port || 3260, 2);
@@ -97,13 +118,13 @@ sub iscsi_portals {
 }
 
 sub iscsi_discovery {
-    my ($portals) = @_;
+    my ($target_in, $portals, $cache) = @_;
 
     assert_iscsi_support();
 
     my $res = {};
     for my $portal ($portals->@*) {
-	next if !iscsi_test_portal($portal); # fixme: raise exception here?
+	next if !iscsi_test_portal($target_in, $portal, $cache); # fixme: raise exception here?
 
 	my $cmd = [$ISCSIADM, '--mode', 'discovery', '--type', 'sendtargets', '--portal', $portal];
 	eval {
@@ -127,11 +148,11 @@ sub iscsi_discovery {
 }
 
 sub iscsi_login {
-    my ($target, $portals) = @_;
+    my ($target, $portals, $cache) = @_;
 
     assert_iscsi_support();
 
-    eval { iscsi_discovery($portals); };
+    eval { iscsi_discovery($target, $portals, $cache); };
     warn $@ if $@;
 
     # Disable retries to avoid blocking pvestatd for too long, next iteration will retry anyway
@@ -445,7 +466,7 @@ sub activate_storage {
     }
 
     if ($do_login) {
-	eval { iscsi_login($scfg->{target}, $portals); };
+	eval { iscsi_login($scfg->{target}, $portals, $cache); };
 	warn $@ if $@;
     } else {
 	# make sure we get all devices
@@ -559,11 +580,11 @@ sub activate_volume {
 
 sub check_connection {
     my ($class, $storeid, $scfg) = @_;
-
+    my $cache = {};
     my $portals = iscsi_portals($scfg->{target}, $scfg->{portal});
 
     for my $portal (@$portals) {
-	my $result = iscsi_test_portal($portal);
+	my $result = iscsi_test_portal($scfg->{target}, $portal, $cache);
 	return $result if $result;
     }
 
