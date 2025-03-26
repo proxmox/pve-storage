@@ -700,6 +700,7 @@ __PACKAGE__->register_method({
 	    hash_required => 0,
 	    verify_certificates => $param->{'verify-certificates'} // 1,
 	    http_proxy => $dccfg->{http_proxy},
+	    https_proxy => $dccfg->{http_proxy},
 	};
 
 	my ($checksum, $checksum_algorithm) = $param->@{'checksum', 'checksum-algorithm'};
