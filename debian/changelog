@@ -1,3 +1,30 @@
+libpve-storage-perl (8.3.4) bookworm; urgency=medium
+
+  * rbd plugin: drop broken cache for pool specific information in list image.
+
+  * iSCSI direct: drop broken cache for storeid-specific information in list
+    image.
+
+  * fix #3873: btrfs: volume export: avoid that snapshots of other disks get
+    picked up to fix storage migration with multiple volumes and snapshots.
+
+  * btrfs: volume import: forcefully set image to readwrite to be able to
+    recreate snapshots.
+
+  * fix #957: iscsi: improve check for already available sessions to a portal,
+    reducing log-noise on the iSCSI server.
+
+  * plugin: file size info: remove ancient 'cow' from formats, dropped
+    upstream in QEMU version 2.2.
+
+  * api: alloc: allow explicitly passing 'vmdk' for the 'format' option
+    instead of just detecting that format indirectly.
+
+  * introduce 'pve-storage-image-format' standard option for image schema
+    format
+
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 03 Apr 2025 19:20:17 +0200
+
 libpve-storage-perl (8.3.3) bookworm; urgency=medium
 
   * plugin: export/import: fix calls to path() method
