@@ -4,6 +4,12 @@ use strict;
 use warnings;
 
 use PVE::JSONSchema;
+use PVE::Syscall;
+
+use constant {
+    FALLOC_FL_KEEP_SIZE => 0x01, # see linux/falloc.h
+    FALLOC_FL_PUNCH_HOLE => 0x02, # see linux/falloc.h
+};
 
 =pod
 
@@ -76,6 +82,29 @@ sub align_size_up : prototype($$) {
     print "size $size is not aligned to granularity $granularity, rounding up to $aligned_size\n"
 	if $aligned_size != $size;
     return $aligned_size;
+}
+
+=pod
+
+=head3 deallocate
+
+    deallocate($file_handle, $offset, $length)
+
+Deallocates the range with C<$length> many bytes starting from offset C<$offset>
+for the file associated to the file handle C<$file_handle>. Dies on failure.
+
+=cut
+
+sub deallocate : prototype($$$) {
+    my ($file_handle, $offset, $length) = @_;
+
+    my $mode = FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE;
+    $offset = int($offset);
+    $length = int($length);
+
+    if (syscall(PVE::Syscall::fallocate, fileno($file_handle), $mode, $offset, $length) != 0) {
+	die "fallocate: punch hole failed (offset: $offset, length: $length) - $!\n";
+    }
 }
 
 1;
