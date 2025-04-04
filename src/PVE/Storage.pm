@@ -2027,6 +2027,14 @@ sub volume_export_start {
     PVE::Tools::run_command($cmds, %$run_command_params);
 }
 
+sub new_backup_provider {
+    my ($cfg, $storeid, $log_function) = @_;
+
+    my $scfg = storage_config($cfg, $storeid);
+    my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
+    return $plugin->new_backup_provider($scfg, $storeid, $log_function);
+}
+
 # bash completion helper
 
 sub complete_storage {

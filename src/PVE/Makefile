@@ -9,6 +9,7 @@ install:
 	make -C Storage install
 	make -C GuestImport install
 	make -C API2 install
+	make -C BackupProvider install
 	make -C CLI install
 
 .PHONY: test

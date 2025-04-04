@@ -1871,6 +1871,21 @@ sub rename_volume {
     return "${storeid}:${base}${target_vmid}/${target_volname}";
 }
 
+# Used by storage plugins for external backup providers. See PVE::BackupProvider::Plugin for the API
+# the provider needs to implement.
+#
+# $scfg - the storage configuration
+# $storeid - the storage ID
+# $log_function($log_level, $message) - this log function can be used to write to the backup task
+#   log in Proxmox VE. $log_level is 'info', 'warn' or 'err', $message is the message to be printed.
+#
+# Returns a blessed reference to the backup provider class.
+sub new_backup_provider {
+    my ($class, $scfg, $storeid, $log_function) = @_;
+
+    die "implement me if enabling the feature 'backup-provider' in plugindata()->{features}\n";
+}
+
 sub config_aware_base_mkdir {
     my ($class, $scfg, $path) = @_;
 
