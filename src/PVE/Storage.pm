@@ -1759,6 +1759,17 @@ sub extract_vzdump_config {
 	    storage_check_enabled($cfg, $storeid);
 	    return PVE::Storage::PBSPlugin->extract_vzdump_config($scfg, $volname, $storeid);
 	}
+
+	if (storage_has_feature($cfg, $storeid, 'backup-provider')) {
+	    my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
+	    my $log_function = sub {
+		my ($log_level, $message) = @_;
+		my $prefix = $log_level eq 'err' ? 'ERROR' : uc($log_level);
+		print "$prefix: $message\n";
+	    };
+	    my $backup_provider = $plugin->new_backup_provider($scfg, $storeid, $log_function);
+	    return $backup_provider->archive_get_guest_config($volname, $storeid);
+	}
     }
 
     my $archive = abs_filesystem_path($cfg, $volid);
