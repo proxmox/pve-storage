@@ -42,11 +42,11 @@ use PVE::Storage::BTRFSPlugin;
 use PVE::Storage::ESXiPlugin;
 
 # Storage API version. Increment it on changes in storage API interface.
-use constant APIVER => 10;
+use constant APIVER => 11;
 # Age is the number of versions we're backward compatible with.
 # This is like having 'current=APIVER' and age='APIAGE' in libtool,
 # see https://www.gnu.org/software/libtool/manual/html_node/Libtool-versioning.html
-use constant APIAGE => 1;
+use constant APIAGE => 2;
 
 our $KNOWN_EXPORT_FORMATS = ['raw+size', 'tar+size', 'qcow2+size', 'vmdk+size', 'zfs', 'btrfs'];
 

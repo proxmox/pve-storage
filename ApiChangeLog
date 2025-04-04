@@ -6,6 +6,38 @@ without breaking anything unaware of it.)
 
 Future changes should be documented in here.
 
+##  Version 11:
+
+* Allow declaring storage features via plugin data
+
+  A new `storage_has_feature()` helper function was added that checks a storage plugin's features.
+  Plugins can indicate support for certain features in their `plugindata`. The first such feature is
+  `backup-provider`, see below for more details. To declare support for this feature, return
+  `features => { 'backup-provider' => 1 }` as part of the plugin data.
+
+* Introduce new_backup_provider() plugin method
+
+  Proxmox VE now supports a `Backup Provider API` that can be used to implement custom backup
+  solutions tightly integrated in the Proxmox VE stack. See the `PVE::BackupProvider::Plugin::Base`
+  module for detailed documentation. A backup provider also needs to implement an associated storage
+  plugin for user-facing integration in Proxmox VE. Such a plugin needds to opt-in to the
+  `backup-provider` feature (see above) and implement the new_backup_provider() method, returning a
+  blessed reference to the backup provider class. The rest of the plugin methods, e.g. listing
+  content, providing usage information, etc., follow the same API as usual.
+
+* Allow declaring sensitive properties via plugin data
+
+  A new `sensitive_properties()` helper function was added to get the list of sensitive properties
+  a plugin uses via the plugin's `plugindata`. The sensitive properties are passed separately from
+  other properties to the `on_add_hook()` and `on_update_hook()` methods and should not be written
+  to the storage configuration file directly, but stored in the more restricted
+  `/etc/pve/priv/storage` directory on the Proxmox Cluster File System. For example, to declare that
+  a `ssh-private-key` property used by the plugin is sensitive, return
+  `'sensitive-properties' => { 'ssh-private-key' => 1 }` as part of the plugin data. The list of
+  sensitive properties was hard-coded previously, as `encryption-key`, `keyring`, `master-pubkey`,
+  `password`. For backwards compatibility, this list is still used if a plugin doesn't declare its
+  own sensitive properties.
+
 ##  Version 10:
 
 * a new `rename_volume` method has been added
