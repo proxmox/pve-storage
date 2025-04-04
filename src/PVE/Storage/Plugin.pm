@@ -245,6 +245,16 @@ sub dirs_hash_to_string {
     return join(',', map { "$_=$hash->{$_}" } sort keys %$hash);
 }
 
+sub storage_has_feature {
+    my ($type, $feature) = @_;
+
+    my $data = $defaultData->{plugindata}->{$type};
+    if (my $features = $data->{features}) {
+	return $features->{$feature};
+    }
+    return;
+}
+
 sub default_format {
     my ($scfg) = @_;
 

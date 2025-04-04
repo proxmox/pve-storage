@@ -213,6 +213,14 @@ sub storage_check_enabled {
     return storage_check_node($cfg, $storeid, $node, $noerr);
 }
 
+sub storage_has_feature {
+    my ($cfg, $storeid, $feature) = @_;
+
+    my $scfg = storage_config($cfg, $storeid);
+
+    return PVE::Storage::Plugin::storage_has_feature($scfg->{type}, $feature);
+}
+
 # storage_can_replicate:
 # return true if storage supports replication
 # (volumes allocated with vdisk_alloc() has replication feature)
