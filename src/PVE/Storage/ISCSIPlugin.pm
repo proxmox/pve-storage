@@ -305,6 +305,7 @@ sub plugindata {
     return {
 	content => [ {images => 1, none => 1}, { images => 1 }],
 	select_existing => 1,
+	'sensitive-properties' => {},
     };
 }
 

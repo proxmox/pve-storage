@@ -190,8 +190,6 @@ __PACKAGE__->register_method ({
 	return &$api_storage_config($cfg, $param->{storage});
     }});
 
-my $sensitive_params = [qw(password encryption-key master-pubkey keyring)];
-
 __PACKAGE__->register_method ({
     name => 'create',
     protected => 1,
@@ -239,6 +237,7 @@ __PACKAGE__->register_method ({
 	# fix me in section config create never need an empty entity.
 	delete $param->{nodes} if !$param->{nodes};
 
+	my $sensitive_params = PVE::Storage::Plugin::sensitive_properties($type);
 	my $sensitive = extract_sensitive_params($param, $sensitive_params, []);
 
 	my $plugin = PVE::Storage::Plugin->lookup($type);
@@ -344,6 +343,7 @@ __PACKAGE__->register_method ({
 	    my $scfg = PVE::Storage::storage_config($cfg, $storeid);
 	    $type = $scfg->{type};
 
+	    my $sensitive_params = PVE::Storage::Plugin::sensitive_properties($type);
 	    my $sensitive = extract_sensitive_params($param, $sensitive_params, $delete);
 
 	    my $plugin = PVE::Storage::Plugin->lookup($type);

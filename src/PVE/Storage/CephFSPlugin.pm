@@ -118,6 +118,7 @@ sub plugindata {
     return {
 	content => [ { vztmpl => 1, iso => 1, backup => 1, snippets => 1, import => 1 },
 		     { backup => 1 }],
+	'sensitive-properties' => { keyring => 1 },
     };
 }
 

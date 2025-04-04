@@ -245,6 +245,18 @@ sub dirs_hash_to_string {
     return join(',', map { "$_=$hash->{$_}" } sort keys %$hash);
 }
 
+sub sensitive_properties {
+    my ($type) = @_;
+
+    my $data = $defaultData->{plugindata}->{$type};
+    if (my $sensitive_properties = $data->{'sensitive-properties'}) {
+	return [sort keys $sensitive_properties->%*];
+    }
+
+    # For backwards compatibility. This list was hardcoded in the API module previously.
+    return [qw(encryption-key keyring master-pubkey password)];
+}
+
 sub storage_has_feature {
     my ($type, $feature) = @_;
 

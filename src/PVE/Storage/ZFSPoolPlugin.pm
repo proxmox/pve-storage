@@ -22,6 +22,7 @@ sub plugindata {
     return {
 	content => [ {images => 1, rootdir => 1}, {images => 1 , rootdir => 1}],
 	format => [ { raw => 1, subvol => 1 } , 'raw' ],
+	'sensitive-properties' => {},
     };
 }
 
