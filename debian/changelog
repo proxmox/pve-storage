@@ -1,3 +1,25 @@
+libpve-storage-perl (8.3.5) bookworm; urgency=medium
+
+  * fix #3716: api: download from url: use proxy option for https, not just
+    http.
+
+  * extend the storage plugin interface providing:
+    + helper to query features that plugins can declare to support
+    + add new_backup_provider plugin method to allow creating a storage that
+      implements backup functionality that natively integrates into PVE.
+    + declare which properties are sensitive or not centrally in a plugin.
+
+  * disk management: allow leading white space in the serial number property.
+
+  * btrs: various small fixes in preparation for fully supported volume
+    export.
+
+  * fix #3986: directory plugin: remove trailing slashes to avoid multiple
+    consecutive slashes; while they do not have any effect they rather look
+    odd and users might misinterpret them as causing problems.
+
+ -- Proxmox Support Team <support@proxmox.com>  Sun, 06 Apr 2025 21:18:38 +0200
+
 libpve-storage-perl (8.3.4) bookworm; urgency=medium
 
   * rbd plugin: drop broken cache for pool specific information in list image.
