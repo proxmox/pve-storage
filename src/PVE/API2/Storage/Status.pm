@@ -455,7 +455,7 @@ __PACKAGE__->register_method ({
 	my $filename = PVE::Storage::normalize_content_filename($param->{filename});
 
 	my $path;
-	my $isOva = 0;
+	my $is_ova = 0;
 
 	if ($content eq 'iso') {
 	    if ($filename !~ m![^/]+$PVE::Storage::ISO_EXT_RE_0$!) {
@@ -472,7 +472,7 @@ __PACKAGE__->register_method ({
 		raise_param_exc({ filename => "invalid filename or wrong extension" });
 	    }
 
-	    $isOva = 1;
+	    $is_ova = 1;
 	    $path = PVE::Storage::get_import_dir($cfg, $storage);
 	} else {
 	    raise_param_exc({ content => "upload content type '$content' not allowed" });
@@ -541,7 +541,7 @@ __PACKAGE__->register_method ({
 		    PVE::Storage::assert_iso_content($tmpfilename);
 		}
 
-		if ($isOva) {
+		if ($is_ova) {
 		    assert_ova_contents($tmpfilename);
 		}
 	    };
@@ -666,7 +666,7 @@ __PACKAGE__->register_method({
 	my $filename = PVE::Storage::normalize_content_filename($param->{filename});
 
 	my $path;
-	my $isOva = 0;
+	my $is_ova = 0;
 
 	if ($content eq 'iso') {
 	    if ($filename !~ m![^/]+$PVE::Storage::ISO_EXT_RE_0$!) {
@@ -684,7 +684,7 @@ __PACKAGE__->register_method({
 	    }
 
 	    if ($filename =~ m/\.ova$/) {
-		$isOva = 1;
+		$is_ova = 1;
 	    }
 
 	    $path = PVE::Storage::get_import_dir($cfg, $storage);
@@ -716,7 +716,7 @@ __PACKAGE__->register_method({
 		PVE::Storage::assert_iso_content($tmp_path);
 	    }
 
-	    if ($isOva) {
+	    if ($is_ova) {
 		assert_ova_contents($tmp_path);
 	    }
 	};
