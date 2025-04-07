@@ -116,7 +116,7 @@ our $BACKUP_EXT_RE_2 = qr/\.(tgz|(?:tar|vma)(?:\.(${\PVE::Storage::Plugin::COMPR
 
 our $IMPORT_EXT_RE_1 = qr/\.(ova|ovf|qcow2|raw|vmdk)/;
 
-our $UPLOAD_IMPORT_EXT_RE_1 = qr/\.(ova)/;
+our $UPLOAD_IMPORT_EXT_RE_1 = qr/\.(ova|qcow2|raw|vmdk)/;
 
 our $SAFE_CHAR_CLASS_RE = qr/[a-zA-Z0-9\-\.\+\=\_]/;
 our $SAFE_CHAR_WITH_WHITESPACE_CLASS_RE = qr/[ a-zA-Z0-9\-\.\+\=\_]/;
