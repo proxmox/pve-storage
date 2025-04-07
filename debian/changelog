@@ -1,3 +1,18 @@
+libpve-storage-perl (8.3.6) bookworm; urgency=medium
+
+  * plugin: file size info: be consistent about size of directory subvol to
+    avoid breakage at use sites, like storage migration with btrfs.
+
+  * plugin: volume export formats: avoid superfluous file_size_info() call.
+
+  * api: volume info: do not fail for zero-sized subvolumes.
+
+  * btrfs: die early for broken subvolume resize.
+
+  * import: allow upload of guest images files into import storage.
+
+ -- Proxmox Support Team <support@proxmox.com>  Mon, 07 Apr 2025 22:18:14 +0200
+
 libpve-storage-perl (8.3.5) bookworm; urgency=medium
 
   * fix #3716: api: download from url: use proxy option for https, not just
