@@ -216,7 +216,7 @@ __PACKAGE__->register_method({
 
         my $disk = PVE::Diskmanage::verify_blockdev_path($param->{disk});
 
-        my $result = PVE::Diskmanage::get_smart_data($disk, $param->{healthonly});
+        my $result = eval { PVE::Diskmanage::get_smart_data($disk, $param->{healthonly}) };
 
         $result->{health} = 'UNKNOWN' if !defined $result->{health};
         $result = { health => $result->{health} } if $param->{healthonly};
