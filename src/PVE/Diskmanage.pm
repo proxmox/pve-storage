@@ -160,10 +160,10 @@ sub get_smart_data {
             },
         );
     };
-    my $err = $@;
+    die "Error getting S.M.A.R.T. data: $@\n" if $@;
 
     # bit 0 and 1 mark a fatal error, other bits are for disk status -> ignore (see man 8 smartctl)
-    if ((defined($returncode) && ($returncode & 0b00000011)) || $err) {
+    if (defined($returncode) && ($returncode & 0b00000011)) {
         die "Error getting S.M.A.R.T. data: Exit code: $returncode\n";
     }
 
