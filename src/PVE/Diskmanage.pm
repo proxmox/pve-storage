@@ -102,6 +102,7 @@ sub get_smart_data {
         run_command(
             $cmd,
             noerr => 1,
+            timeout => 10,
             outfunc => sub {
                 my ($line) = @_;
 
