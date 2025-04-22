@@ -84,14 +84,13 @@ my sub get_rbd_dev_path {
     return $pve_path;
 }
 
-my $build_cmd = sub {
-    my ($binary, $scfg, $storeid, $op, @options) = @_;
+my $rbd_cmd = sub {
+    my ($scfg, $storeid, $op, @options) = @_;
 
     my $cmd_option = PVE::CephConfig::ceph_connect_option($scfg, $storeid);
     my $pool =  $scfg->{pool} ? $scfg->{pool} : 'rbd';
 
-
-    my $cmd = [$binary];
+    my $cmd = ['/usr/bin/rbd'];
     if ($op eq 'import') {
 	push $cmd->@*, '--dest-pool', $pool;
     } else {
@@ -116,12 +115,6 @@ my $build_cmd = sub {
     push @$cmd, @options if scalar(@options);
 
     return $cmd;
-};
-
-my $rbd_cmd = sub {
-    my ($scfg, $storeid, $op, @options) = @_;
-
-    return $build_cmd->('/usr/bin/rbd', $scfg, $storeid, $op, @options);
 };
 
 # needed for volumes created using ceph jewel (or higher)
