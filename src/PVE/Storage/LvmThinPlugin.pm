@@ -340,8 +340,13 @@ sub create_base {
     my $cmd = ['/sbin/lvrename', $vg, $volname, $newname];
     run_command($cmd, errmsg => "lvrename '$vg/$volname' => '$vg/$newname' error");
 
-    # set inactive, read-only and activationskip flags
-    $cmd = ['/sbin/lvchange', '-an', '-pr', '-ky', "$vg/$newname"];
+    # set read-only and activationskip flags
+    $cmd = ['/sbin/lvchange', '-pr', '-ky', "$vg/$newname"];
+    eval { run_command($cmd); };
+    warn $@ if $@;
+
+    # LVM warns when changing properties and activation at the same time, so inactivate separately
+    $cmd = ['/sbin/lvchange', '-an', "$vg/$newname"];
     eval { run_command($cmd); };
     warn $@ if $@;
 
