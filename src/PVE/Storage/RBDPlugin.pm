@@ -124,12 +124,6 @@ my $rbd_cmd = sub {
     return $build_cmd->('/usr/bin/rbd', $scfg, $storeid, $op, @options);
 };
 
-my $rados_cmd = sub {
-    my ($scfg, $storeid, $op, @options) = @_;
-
-    return $build_cmd->('/usr/bin/rados', $scfg, $storeid, $op, @options);
-};
-
 # needed for volumes created using ceph jewel (or higher)
 my $krbd_feature_update = sub {
     my ($scfg, $storeid, $name) = @_;
