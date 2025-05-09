@@ -92,7 +92,7 @@ sub parse_volname {
 sub path {
     my ($class, $scfg, $volname, $storeid, $snapname) = @_;
 
-    die "volume snapshot is not possible on iscsi device"
+    die "volume snapshot is not possible on iscsi device\n"
 	if defined($snapname);
 
     my ($vtype, $lun, $vmid) = $class->parse_volname($volname);
@@ -182,7 +182,7 @@ sub deactivate_storage {
 sub activate_volume {
     my ($class, $storeid, $scfg, $volname, $snapname, $cache) = @_;
 
-    die "volume snapshot is not possible on iscsi device" if $snapname;
+    die "volume snapshot is not possible on iscsi device\n" if $snapname;
 
     return 1;
 }
@@ -190,7 +190,7 @@ sub activate_volume {
 sub deactivate_volume {
     my ($class, $storeid, $scfg, $volname, $snapname, $cache) = @_;
 
-    die "volume snapshot is not possible on iscsi device" if $snapname;
+    die "volume snapshot is not possible on iscsi device\n" if $snapname;
 
     return 1;
 }
@@ -206,22 +206,22 @@ sub volume_size_info {
 
 sub volume_resize {
     my ($class, $scfg, $storeid, $volname, $size, $running) = @_;
-    die "volume resize is not possible on iscsi device";
+    die "volume resize is not possible on iscsi device\n";
 }
 
 sub volume_snapshot {
     my ($class, $scfg, $storeid, $volname, $snap) = @_;
-    die "volume snapshot is not possible on iscsi device";
+    die "volume snapshot is not possible on iscsi device\n";
 }
 
 sub volume_snapshot_rollback {
     my ($class, $scfg, $storeid, $volname, $snap) = @_;
-    die "volume snapshot rollback is not possible on iscsi device";
+    die "volume snapshot rollback is not possible on iscsi device\n";
 }
 
 sub volume_snapshot_delete {
     my ($class, $scfg, $storeid, $volname, $snap) = @_;
-    die "volume snapshot delete is not possible on iscsi device";
+    die "volume snapshot delete is not possible on iscsi device\n";
 }
 
 sub volume_has_feature {
