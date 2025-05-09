@@ -477,7 +477,6 @@ sub path {
 
     die "storage '$class' does not support snapshots\n" if defined $snapname;
 
-    # FIXME: activate/mount:
     return mount_dir($storeid) . '/' . $volname;
 }
 
