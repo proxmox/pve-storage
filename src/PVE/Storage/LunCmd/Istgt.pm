@@ -306,7 +306,7 @@ my $parser = sub {
     $CONFIG =~ s/\n$//;
     die "$scfg->{target}: Target not found" unless $SETTINGS->{targets};
     my $max = $SETTINGS->{targets};
-    my $base = get_base;
+    my $base = get_base($scfg);
 
     for (my $i = 1; $i <= $max; $i++) {
         my $target = $SETTINGS->{nodebase} . ':' . $SETTINGS->{"LogicalUnit$i"}->{TargetName};
@@ -612,7 +612,8 @@ sub run_lun_command {
 }
 
 sub get_base {
-    return '/dev/zvol';
+    my ($scfg) = @_;
+    return $scfg->{'zfs-base-path'} || '/dev/zvol';
 }
 
 1;

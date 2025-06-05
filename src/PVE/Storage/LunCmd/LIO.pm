@@ -231,7 +231,7 @@ my $extract_volname = sub {
     my ($scfg, $lunpath) = @_;
     my $volname = undef;
 
-    my $base = get_base;
+    my $base = get_base($scfg);
     if ($lunpath =~ /^$base\/$scfg->{pool}\/([\w\-]+)$/) {
         $volname = $1;
         my $prefix = $get_backstore_prefix->($scfg);
@@ -422,7 +422,8 @@ sub run_lun_command {
 }
 
 sub get_base {
-    return '/dev';
+    my ($scfg) = @_;
+    return $scfg->{'zfs-base-path'} || '/dev';
 }
 
 1;

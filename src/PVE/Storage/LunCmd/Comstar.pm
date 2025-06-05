@@ -32,7 +32,8 @@ my $get_lun_cmd_map = sub {
 };
 
 sub get_base {
-    return '/dev/zvol/rdsk';
+    my ($scfg) = @_;
+    return $scfg->{'zfs-base-path'} || '/dev/zvol/rdsk';
 }
 
 sub run_lun_command {

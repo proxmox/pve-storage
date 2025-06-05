@@ -38,13 +38,13 @@ my $zfs_get_base = sub {
     my ($scfg) = @_;
 
     if ($scfg->{iscsiprovider} eq 'comstar') {
-        return PVE::Storage::LunCmd::Comstar::get_base;
+        return PVE::Storage::LunCmd::Comstar::get_base($scfg);
     } elsif ($scfg->{iscsiprovider} eq 'istgt') {
-        return PVE::Storage::LunCmd::Istgt::get_base;
+        return PVE::Storage::LunCmd::Istgt::get_base($scfg);
     } elsif ($scfg->{iscsiprovider} eq 'iet') {
-        return PVE::Storage::LunCmd::Iet::get_base;
+        return PVE::Storage::LunCmd::Iet::get_base($scfg);
     } elsif ($scfg->{iscsiprovider} eq 'LIO') {
-        return PVE::Storage::LunCmd::LIO::get_base;
+        return PVE::Storage::LunCmd::LIO::get_base($scfg);
     } else {
         $zfs_unknown_scsi_provider->($scfg->{iscsiprovider});
     }
@@ -204,6 +204,12 @@ sub properties {
             description => "target portal group for Linux LIO targets",
             type => 'string',
         },
+        'zfs-base-path' => {
+            description => "Base path where to look for the created ZFS block devices. Set"
+                . " automatically during creation if not specified. Usually '/dev/zvol'.",
+            type => 'string',
+            format => 'pve-storage-path',
+        },
     };
 }
 
@@ -223,10 +229,35 @@ sub options {
         lio_tpg => { optional => 1 },
         content => { optional => 1 },
         bwlimit => { optional => 1 },
+        'zfs-base-path' => { optional => 1 },
     };
 }
 
 # Storage implementation
+
+sub on_add_hook {
+    my ($class, $storeid, $scfg, %param) = @_;
+
+    if (!$scfg->{'zfs-base-path'}) {
+        my $base_path;
+        if ($scfg->{iscsiprovider} eq 'comstar') {
+            $base_path = PVE::Storage::LunCmd::Comstar::get_base($scfg);
+        } elsif ($scfg->{iscsiprovider} eq 'istgt') {
+            $base_path = PVE::Storage::LunCmd::Istgt::get_base($scfg);
+        } elsif ($scfg->{iscsiprovider} eq 'iet' || $scfg->{iscsiprovider} eq 'LIO') {
+            # Provider implementations hard-code '/dev/', which does not work for distributions like
+            # Debian 12. Keep that implementation as-is for backwards compatibility, but use
+            # '/dev/zvol' here.
+            $base_path = '/dev/zvol';
+        } else {
+            $zfs_unknown_scsi_provider->($scfg->{iscsiprovider});
+        }
+
+        $scfg->{'zfs-base-path'} = $base_path;
+    }
+
+    return;
+}
 
 sub path {
     my ($class, $scfg, $volname, $storeid, $snapname) = @_;

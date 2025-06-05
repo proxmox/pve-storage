@@ -138,7 +138,7 @@ my $parser = sub {
 
     my $line = 0;
 
-    my $base = get_base;
+    my $base = get_base($scfg);
     my $config = $get_config->($scfg);
     my @cfgfile = split "\n", $config;
 
@@ -482,7 +482,8 @@ sub run_lun_command {
 }
 
 sub get_base {
-    return '/dev';
+    my ($scfg) = @_;
+    return $scfg->{'zfs-base-path'} || '/dev';
 }
 
 1;
