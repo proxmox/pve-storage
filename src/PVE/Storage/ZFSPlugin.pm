@@ -3,9 +3,10 @@ package PVE::Storage::ZFSPlugin;
 use strict;
 use warnings;
 use IO::File;
-use POSIX;
+use POSIX qw(ENOENT);
 use PVE::Tools qw(run_command);
 use PVE::Storage::ZFSPoolPlugin;
+use PVE::RESTEnvironment qw(log_warn);
 use PVE::RPCEnvironment;
 
 use base qw(PVE::Storage::ZFSPoolPlugin);
@@ -246,9 +247,26 @@ sub on_add_hook {
             $base_path = PVE::Storage::LunCmd::Istgt::get_base($scfg);
         } elsif ($scfg->{iscsiprovider} eq 'iet' || $scfg->{iscsiprovider} eq 'LIO') {
             # Provider implementations hard-code '/dev/', which does not work for distributions like
-            # Debian 12. Keep that implementation as-is for backwards compatibility, but use
-            # '/dev/zvol' here.
-            $base_path = '/dev/zvol';
+	    # Debian 12. Keep that implementation as-is for backwards compatibility, but use custom
+	    # logic here.
+	    my $target = 'root@' . $scfg->{portal};
+	    my $cmd = [@ssh_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", $target];
+	    push $cmd->@*, 'ls', '/dev/zvol';
+
+	    my $rc = eval { run_command($cmd, timeout => 10, noerr => 1, quiet => 1) };
+	    my $err = $@;
+	    if (defined($rc) && $rc == 0) {
+		$base_path = '/dev/zvol';
+	    } elsif (defined($rc) && $rc == ENOENT) {
+		$base_path = '/dev';
+	    } else {
+		my $message = $err ? $err : "remote command failed";
+		chomp($message);
+		$message .= " ($rc)" if defined($rc);
+		$message .= " - check 'zfs-base-path' setting manually!";
+		log_warn($message);
+		$base_path = '/dev/zvol';
+	    }
         } else {
             $zfs_unknown_scsi_provider->($scfg->{iscsiprovider});
         }
