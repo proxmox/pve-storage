@@ -10,6 +10,10 @@ DEB=$(PACKAGE)_$(DEB_VERSION_UPSTREAM_REVISION)_all.deb
 
 all:
 
+.PHONY: tidy
+tidy:
+	git ls-files ':*.p[ml]'| xargs -n4 -P0 proxmox-perltidy
+
 .PHONY: dinstall
 dinstall: deb
 	dpkg -i $(DEB)
