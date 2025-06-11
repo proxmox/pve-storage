@@ -36,7 +36,7 @@ my @resources = (
     { id => 17, dtmf_name => 'Disk Drive' },
     { id => 18, dtmf_name => 'Tape Drive' },
     { id => 19, dtmf_name => 'Storage Extent' },
-    { id => 20, dtmf_name => 'Other storage device', pve_type => 'sata'},
+    { id => 20, dtmf_name => 'Other storage device', pve_type => 'sata' },
     { id => 21, dtmf_name => 'Serial port' },
     { id => 22, dtmf_name => 'Parallel port' },
     { id => 23, dtmf_name => 'USB Controller' },
@@ -51,7 +51,7 @@ my @resources = (
     { id => 32, dtmf_name => 'Storage Volume' },
     { id => 33, dtmf_name => 'Ethernet Connection' },
     { id => 34, dtmf_name => 'DMTF reserved' },
-    { id => 35, dtmf_name => 'Vendor Reserved'}
+    { id => 35, dtmf_name => 'Vendor Reserved' },
 );
 
 # see https://schemas.dmtf.org/wbem/cim-html/2.55.0+/CIM_OperatingSystem.html
@@ -120,17 +120,15 @@ sub get_ostype {
 }
 
 my $allowed_nic_models = [
-    'e1000',
-    'e1000e',
-    'vmxnet3',
+    'e1000', 'e1000e', 'vmxnet3',
 ];
 
 sub find_by {
     my ($key, $param) = @_;
     foreach my $resource (@resources) {
-	if ($resource->{$key} eq $param) {
-	    return ($resource);
-	}
+        if ($resource->{$key} eq $param) {
+            return ($resource);
+        }
     }
     return;
 }
@@ -139,9 +137,9 @@ sub dtmf_name_to_id {
     my ($dtmf_name) = @_;
     my $found = find_by('dtmf_name', $dtmf_name);
     if ($found) {
-	return $found->{id};
+        return $found->{id};
     } else {
-	return;
+        return;
     }
 }
 
@@ -149,9 +147,9 @@ sub id_to_pve {
     my ($id) = @_;
     my $resource = find_by('id', $id);
     if ($resource) {
-	return $resource->{pve_type};
+        return $resource->{pve_type};
     } else {
-	return;
+        return;
     }
 }
 
@@ -161,9 +159,9 @@ sub try_parse_capacity_unit {
     my ($unit_text) = @_;
 
     if ($unit_text =~ m/^\s*byte\s*\*\s*([0-9]+)\s*\^\s*([0-9]+)\s*$/) {
-	my $base = $1;
-	my $exp = $2;
-	return $base ** $exp;
+        my $base = $1;
+        my $exp = $2;
+        return $base**$exp;
     }
 
     return undef;
@@ -176,25 +174,32 @@ sub parse_ovf {
     # we have to ignore missing disk images for ova
     my $dom;
     if ($isOva) {
-	my $raw = "";
-	PVE::Tools::run_command(['tar', '-xO', '--wildcards', '--occurrence=1', '-f', $ovf, '*.ovf'], outfunc => sub {
-	    my $line = shift;
-	    $raw .= $line;
-	});
-	$dom = XML::LibXML->load_xml(string => $raw, no_blanks => 1);
+        my $raw = "";
+        PVE::Tools::run_command(
+            ['tar', '-xO', '--wildcards', '--occurrence=1', '-f', $ovf, '*.ovf'],
+            outfunc => sub {
+                my $line = shift;
+                $raw .= $line;
+            },
+        );
+        $dom = XML::LibXML->load_xml(string => $raw, no_blanks => 1);
     } else {
-	$dom = XML::LibXML->load_xml(location => $ovf, no_blanks => 1);
+        $dom = XML::LibXML->load_xml(location => $ovf, no_blanks => 1);
     }
-
 
     # register the xml namespaces in a xpath context object
     # 'ovf' is the default namespace so it will prepended to each xml element
     my $xpc = XML::LibXML::XPathContext->new($dom);
     $xpc->registerNs('ovf', 'http://schemas.dmtf.org/ovf/envelope/1');
     $xpc->registerNs('vmw', 'http://www.vmware.com/schema/ovf');
-    $xpc->registerNs('rasd', 'http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/CIM_ResourceAllocationSettingData');
-    $xpc->registerNs('vssd', 'http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/CIM_VirtualSystemSettingData');
-
+    $xpc->registerNs(
+        'rasd',
+        'http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/CIM_ResourceAllocationSettingData',
+    );
+    $xpc->registerNs(
+        'vssd',
+        'http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/CIM_VirtualSystemSettingData',
+    );
 
     # hash to save qm.conf parameters
     my $qm;
@@ -206,48 +211,55 @@ sub parse_ovf {
     # walk down the dom until we find the matching XML element
     my $ovf_name = $xpc->findvalue("/ovf:Envelope/ovf:VirtualSystem/ovf:Name");
     if (!$ovf_name) {
-	# this is a bit of a hack, but best-effort and can only win here
-	my @nodes = $xpc->findnodes("/ovf:Envelope/ovf:VirtualSystem");
-	if (my $virtual_system_node = shift @nodes) {
-	    for my $attr ($virtual_system_node->attributes()) {
-		if ($attr->nodeName() eq 'ovf:id') {
-		    $ovf_name = $attr->getValue();
-		    last;
-		}
-	    }
-	}
+        # this is a bit of a hack, but best-effort and can only win here
+        my @nodes = $xpc->findnodes("/ovf:Envelope/ovf:VirtualSystem");
+        if (my $virtual_system_node = shift @nodes) {
+            for my $attr ($virtual_system_node->attributes()) {
+                if ($attr->nodeName() eq 'ovf:id') {
+                    $ovf_name = $attr->getValue();
+                    last;
+                }
+            }
+        }
     }
     if ($ovf_name) {
-	# PVE::QemuServer::confdesc requires a valid DNS name
-	$ovf_name =~ s/\s+/-/g;
-	($qm->{name} = $ovf_name) =~ s/[^a-zA-Z0-9\-\.]//g;
+        # PVE::QemuServer::confdesc requires a valid DNS name
+        $ovf_name =~ s/\s+/-/g;
+        ($qm->{name} = $ovf_name) =~ s/[^a-zA-Z0-9\-\.]//g;
     } else {
-	warn "warning: unable to parse the VM name in this OVF manifest, generating a default value\n";
+        warn
+            "warning: unable to parse the VM name in this OVF manifest, generating a default value\n";
     }
 
     # middle level xpath
     # element[child] search the elements which have this [child]
     my $processor_id = dtmf_name_to_id('Processor');
-    my $xpath_find_vcpu_count = "/ovf:Envelope/ovf:VirtualSystem/ovf:VirtualHardwareSection/ovf:Item[rasd:ResourceType=${processor_id}]/rasd:VirtualQuantity";
+    my $xpath_find_vcpu_count =
+        "/ovf:Envelope/ovf:VirtualSystem/ovf:VirtualHardwareSection/ovf:Item[rasd:ResourceType=${processor_id}]/rasd:VirtualQuantity";
     $qm->{'cores'} = $xpc->findvalue($xpath_find_vcpu_count);
 
     my $memory_id = dtmf_name_to_id('Memory');
-    my $xpath_find_memory = ("/ovf:Envelope/ovf:VirtualSystem/ovf:VirtualHardwareSection/ovf:Item[rasd:ResourceType=${memory_id}]/rasd:VirtualQuantity");
+    my $xpath_find_memory = (
+        "/ovf:Envelope/ovf:VirtualSystem/ovf:VirtualHardwareSection/ovf:Item[rasd:ResourceType=${memory_id}]/rasd:VirtualQuantity"
+    );
     $qm->{'memory'} = $xpc->findvalue($xpath_find_memory);
 
     # middle level xpath
     # here we expect multiple results, so we do not read the element value with
     # findvalue() but store multiple elements with findnodes()
     my $disk_id = dtmf_name_to_id('Disk Drive');
-    my $xpath_find_disks = "/ovf:Envelope/ovf:VirtualSystem/ovf:VirtualHardwareSection/ovf:Item[rasd:ResourceType=${disk_id}]";
+    my $xpath_find_disks =
+        "/ovf:Envelope/ovf:VirtualSystem/ovf:VirtualHardwareSection/ovf:Item[rasd:ResourceType=${disk_id}]";
     my @disk_items = $xpc->findnodes($xpath_find_disks);
 
-    my $xpath_find_ostype_id = "/ovf:Envelope/ovf:VirtualSystem/ovf:OperatingSystemSection/\@ovf:id";
+    my $xpath_find_ostype_id =
+        "/ovf:Envelope/ovf:VirtualSystem/ovf:OperatingSystemSection/\@ovf:id";
     my $ostype_id = $xpc->findvalue($xpath_find_ostype_id);
     $qm->{ostype} = get_ostype($ostype_id);
 
     # vmware specific firmware config, seems to not be standardized in ovf ?
-    my $xpath_find_firmware = "/ovf:Envelope/ovf:VirtualSystem/ovf:VirtualHardwareSection/vmw:Config[\@vmw:key=\"firmware\"]/\@vmw:value";
+    my $xpath_find_firmware =
+        "/ovf:Envelope/ovf:VirtualSystem/ovf:VirtualHardwareSection/vmw:Config[\@vmw:key=\"firmware\"]/\@vmw:value";
     my $firmware = $xpc->findvalue($xpath_find_firmware) || 'seabios';
     $qm->{bios} = 'ovmf' if $firmware eq 'efi';
 
@@ -265,130 +277,141 @@ sub parse_ovf {
     my $boot_order = [];
 
     for my $item_node (@disk_items) {
-	my ($disk_node, $file_node, $controller_node, $pve_disk);
+        my ($disk_node, $file_node, $controller_node, $pve_disk);
 
-	print "disk item:\n", $item_node->toString(1), "\n" if $debug;
+        print "disk item:\n", $item_node->toString(1), "\n" if $debug;
 
-	# from Item, find corresponding Disk node
-	# here the dot means the search should start from the current element in dom
-	my $host_resource = $xpc->findvalue('rasd:HostResource', $item_node);
-	my $disk_section_path;
-	my $disk_id;
+        # from Item, find corresponding Disk node
+        # here the dot means the search should start from the current element in dom
+        my $host_resource = $xpc->findvalue('rasd:HostResource', $item_node);
+        my $disk_section_path;
+        my $disk_id;
 
-	# RFC 3986 "2.3.  Unreserved Characters"
-	my $valid_uripath_chars = qr/[[:alnum:]]|[\-\._~]/;
+        # RFC 3986 "2.3.  Unreserved Characters"
+        my $valid_uripath_chars = qr/[[:alnum:]]|[\-\._~]/;
 
-	if ($host_resource =~ m|^(?:ovf:)?/(${valid_uripath_chars}+)/(${valid_uripath_chars}+)$|) {
-	    $disk_section_path = $1;
-	    $disk_id = $2;
-	} else {
-	   warn "invalid host resource $host_resource, skipping\n";
-	   next;
-	}
-	printf "disk section path: $disk_section_path and disk id: $disk_id\n" if $debug;
+        if ($host_resource =~ m|^(?:ovf:)?/(${valid_uripath_chars}+)/(${valid_uripath_chars}+)$|) {
+            $disk_section_path = $1;
+            $disk_id = $2;
+        } else {
+            warn "invalid host resource $host_resource, skipping\n";
+            next;
+        }
+        printf "disk section path: $disk_section_path and disk id: $disk_id\n" if $debug;
 
-	# tricky xpath
-	# @ means we filter the result query based on a the value of an item attribute ( @ = attribute)
-	# @ needs to be escaped to prevent Perl double quote interpolation
-	my $xpath_find_fileref = sprintf("/ovf:Envelope/ovf:DiskSection/\
-ovf:Disk[\@ovf:diskId='%s']/\@ovf:fileRef", $disk_id);
-	my $xpath_find_capacity = sprintf("/ovf:Envelope/ovf:DiskSection/\
-ovf:Disk[\@ovf:diskId='%s']/\@ovf:capacity", $disk_id);
-	my $xpath_find_capacity_unit = sprintf("/ovf:Envelope/ovf:DiskSection/\
-ovf:Disk[\@ovf:diskId='%s']/\@ovf:capacityAllocationUnits", $disk_id);
-	my $fileref = $xpc->findvalue($xpath_find_fileref);
-	my $capacity = $xpc->findvalue($xpath_find_capacity);
-	my $capacity_unit = $xpc->findvalue($xpath_find_capacity_unit);
-	my $virtual_size;
-	if (my $factor = try_parse_capacity_unit($capacity_unit)) {
-	    $virtual_size = $capacity * $factor;
-	}
+        # tricky xpath
+        # @ means we filter the result query based on a the value of an item attribute ( @ = attribute)
+        # @ needs to be escaped to prevent Perl double quote interpolation
+        my $xpath_find_fileref = sprintf(
+            "/ovf:Envelope/ovf:DiskSection/\
+ovf:Disk[\@ovf:diskId='%s']/\@ovf:fileRef", $disk_id,
+        );
+        my $xpath_find_capacity = sprintf(
+            "/ovf:Envelope/ovf:DiskSection/\
+ovf:Disk[\@ovf:diskId='%s']/\@ovf:capacity", $disk_id,
+        );
+        my $xpath_find_capacity_unit = sprintf(
+            "/ovf:Envelope/ovf:DiskSection/\
+ovf:Disk[\@ovf:diskId='%s']/\@ovf:capacityAllocationUnits", $disk_id,
+        );
+        my $fileref = $xpc->findvalue($xpath_find_fileref);
+        my $capacity = $xpc->findvalue($xpath_find_capacity);
+        my $capacity_unit = $xpc->findvalue($xpath_find_capacity_unit);
+        my $virtual_size;
+        if (my $factor = try_parse_capacity_unit($capacity_unit)) {
+            $virtual_size = $capacity * $factor;
+        }
 
-	my $valid_url_chars = qr@${valid_uripath_chars}|/@;
-	if (!$fileref || $fileref !~ m/^${valid_url_chars}+$/) {
-	    warn "invalid host resource $host_resource, skipping\n";
-	    next;
-	}
+        my $valid_url_chars = qr@${valid_uripath_chars}|/@;
+        if (!$fileref || $fileref !~ m/^${valid_url_chars}+$/) {
+            warn "invalid host resource $host_resource, skipping\n";
+            next;
+        }
 
-	# from Item, find owning Controller type
-	my $controller_id = $xpc->findvalue('rasd:Parent', $item_node);
-	my $xpath_find_parent_type = sprintf("/ovf:Envelope/ovf:VirtualSystem/ovf:VirtualHardwareSection/\
-ovf:Item[rasd:InstanceID='%s']/rasd:ResourceType", $controller_id);
-	my $controller_type = $xpc->findvalue($xpath_find_parent_type);
-	if (!$controller_type) {
-	    warn "invalid or missing controller: $controller_type, skipping\n";
-	    next;
-	}
-	print "owning controller type: $controller_type\n" if $debug;
+        # from Item, find owning Controller type
+        my $controller_id = $xpc->findvalue('rasd:Parent', $item_node);
+        my $xpath_find_parent_type = sprintf(
+            "/ovf:Envelope/ovf:VirtualSystem/ovf:VirtualHardwareSection/\
+ovf:Item[rasd:InstanceID='%s']/rasd:ResourceType", $controller_id,
+        );
+        my $controller_type = $xpc->findvalue($xpath_find_parent_type);
+        if (!$controller_type) {
+            warn "invalid or missing controller: $controller_type, skipping\n";
+            next;
+        }
+        print "owning controller type: $controller_type\n" if $debug;
 
-	# extract corresponding Controller node details
-	my $adress_on_controller = $xpc->findvalue('rasd:AddressOnParent', $item_node);
-	my $pve_disk_address = id_to_pve($controller_type) . $adress_on_controller;
+        # extract corresponding Controller node details
+        my $adress_on_controller = $xpc->findvalue('rasd:AddressOnParent', $item_node);
+        my $pve_disk_address = id_to_pve($controller_type) . $adress_on_controller;
 
-	# from Disk Node, find corresponding filepath
-	my $xpath_find_filepath = sprintf("/ovf:Envelope/ovf:References/ovf:File[\@ovf:id='%s']/\@ovf:href", $fileref);
-	my $filepath = $xpc->findvalue($xpath_find_filepath);
-	if (!$filepath) {
-	    warn "invalid file reference $fileref, skipping\n";
-	    next;
-	}
-	print "file path: $filepath\n" if $debug;
-	my $original_filepath = $filepath;
-	($filepath) = $filepath =~ m|^(${PVE::Storage::SAFE_CHAR_WITH_WHITESPACE_CLASS_RE}+)$|; # untaint & check no sub/parent dirs
-	die "referenced path '$original_filepath' is invalid\n" if !$filepath || $filepath eq "." || $filepath eq "..";
+        # from Disk Node, find corresponding filepath
+        my $xpath_find_filepath =
+            sprintf("/ovf:Envelope/ovf:References/ovf:File[\@ovf:id='%s']/\@ovf:href", $fileref);
+        my $filepath = $xpc->findvalue($xpath_find_filepath);
+        if (!$filepath) {
+            warn "invalid file reference $fileref, skipping\n";
+            next;
+        }
+        print "file path: $filepath\n" if $debug;
+        my $original_filepath = $filepath;
+        ($filepath) = $filepath =~ m|^(${PVE::Storage::SAFE_CHAR_WITH_WHITESPACE_CLASS_RE}+)$|; # untaint & check no sub/parent dirs
+        die "referenced path '$original_filepath' is invalid\n"
+            if !$filepath || $filepath eq "." || $filepath eq "..";
 
-	# resolve symlinks and relative path components
-	# and die if the diskimage is not somewhere under the $ovf path
-	my $ovf_dir = realpath(dirname(File::Spec->rel2abs($ovf)))
-	    or die "could not get absolute path of $ovf: $!\n";
-	my $backing_file_path = realpath(join ('/', $ovf_dir, $filepath))
-	    or die "could not get absolute path of $filepath: $!\n";
-	if ($backing_file_path !~ /^\Q${ovf_dir}\E/) {
-	    die "error parsing $filepath, are you using a symlink ?\n";
-	}
+        # resolve symlinks and relative path components
+        # and die if the diskimage is not somewhere under the $ovf path
+        my $ovf_dir = realpath(dirname(File::Spec->rel2abs($ovf)))
+            or die "could not get absolute path of $ovf: $!\n";
+        my $backing_file_path = realpath(join('/', $ovf_dir, $filepath))
+            or die "could not get absolute path of $filepath: $!\n";
+        if ($backing_file_path !~ /^\Q${ovf_dir}\E/) {
+            die "error parsing $filepath, are you using a symlink ?\n";
+        }
 
-	($backing_file_path) = $backing_file_path =~ m|^(/.*)|; # untaint
+        ($backing_file_path) = $backing_file_path =~ m|^(/.*)|; # untaint
 
-	if (!-e $backing_file_path && !$isOva) {
-	    die "error parsing $filepath, file seems not to exist at $backing_file_path\n";
-	}
+        if (!-e $backing_file_path && !$isOva) {
+            die "error parsing $filepath, file seems not to exist at $backing_file_path\n";
+        }
 
-	if (!$isOva) {
-	    my $size = PVE::Storage::file_size_info($backing_file_path, undef, 'auto-detect');
-	    die "error parsing $backing_file_path, cannot determine file size\n"
-		if !$size;
+        if (!$isOva) {
+            my $size = PVE::Storage::file_size_info($backing_file_path, undef, 'auto-detect');
+            die "error parsing $backing_file_path, cannot determine file size\n"
+                if !$size;
 
-	    $virtual_size = $size;
-	}
-	$pve_disk = {
-	    disk_address => $pve_disk_address,
-	    backing_file => $backing_file_path,
-	    virtual_size => $virtual_size,
-	    relative_path => $filepath,
-	};
-	$pve_disk->{virtual_size} = $virtual_size if defined($virtual_size);
-	push @disks, $pve_disk;
-	push @$boot_order, $pve_disk_address;
+            $virtual_size = $size;
+        }
+        $pve_disk = {
+            disk_address => $pve_disk_address,
+            backing_file => $backing_file_path,
+            virtual_size => $virtual_size,
+            relative_path => $filepath,
+        };
+        $pve_disk->{virtual_size} = $virtual_size if defined($virtual_size);
+        push @disks, $pve_disk;
+        push @$boot_order, $pve_disk_address;
     }
 
     $qm->{boot} = "order=" . join(';', @$boot_order) if scalar(@$boot_order) > 0;
 
     my $nic_id = dtmf_name_to_id('Ethernet Adapter');
-    my $xpath_find_nics = "/ovf:Envelope/ovf:VirtualSystem/ovf:VirtualHardwareSection/ovf:Item[rasd:ResourceType=${nic_id}]";
+    my $xpath_find_nics =
+        "/ovf:Envelope/ovf:VirtualSystem/ovf:VirtualHardwareSection/ovf:Item[rasd:ResourceType=${nic_id}]";
     my @nic_items = $xpc->findnodes($xpath_find_nics);
 
     my $net = {};
 
     my $net_count = 0;
     for my $item_node (@nic_items) {
-	my $model = $xpc->findvalue('rasd:ResourceSubType', $item_node);
-	$model = lc($model);
-	$model = 'e1000' if ! grep { $_ eq $model } @$allowed_nic_models;
-	$net->{"net${net_count}"} = { model => $model };
-	$net_count++;
+        my $model = $xpc->findvalue('rasd:ResourceSubType', $item_node);
+        $model = lc($model);
+        $model = 'e1000' if !grep { $_ eq $model } @$allowed_nic_models;
+        $net->{"net${net_count}"} = { model => $model };
+        $net_count++;
     }
 
-    return {qm => $qm, disks => \@disks, net => $net};
+    return { qm => $qm, disks => \@disks, net => $net };
 }
 
 1;

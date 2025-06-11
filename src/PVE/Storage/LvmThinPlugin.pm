@@ -30,28 +30,29 @@ sub type {
 
 sub plugindata {
     return {
-	content => [ {images => 1, rootdir => 1}, { images => 1, rootdir => 1}],
-	'sensitive-properties' => {},
+        content => [{ images => 1, rootdir => 1 }, { images => 1, rootdir => 1 }],
+        'sensitive-properties' => {},
     };
 }
 
 sub properties {
     return {
-	thinpool => {
-	    description => "LVM thin pool LV name.",
-	    type => 'string', format => 'pve-storage-vgname',
-	},
+        thinpool => {
+            description => "LVM thin pool LV name.",
+            type => 'string',
+            format => 'pve-storage-vgname',
+        },
     };
 }
 
 sub options {
     return {
-	thinpool => { fixed => 1 },
-	vgname => { fixed => 1 },
+        thinpool => { fixed => 1 },
+        vgname => { fixed => 1 },
         nodes => { optional => 1 },
-	disable => { optional => 1 },
-	content => { optional => 1 },
-	bwlimit => { optional => 1 },
+        disable => { optional => 1 },
+        content => { optional => 1 },
+        bwlimit => { optional => 1 },
     };
 }
 
@@ -64,7 +65,7 @@ sub parse_volname {
     PVE::Storage::Plugin::parse_lvm_name($volname);
 
     if ($volname =~ m/^((vm|base)-(\d+)-\S+)$/) {
-	return ('images', $1, $3, undef, undef, $2 eq 'base', 'raw');
+        return ('images', $1, $3, undef, undef, $2 eq 'base', 'raw');
     }
 
     die "unable to parse lvm volume name '$volname'\n";
@@ -77,7 +78,7 @@ sub filesystem_path {
 
     my $vg = $scfg->{vgname};
 
-    my $path = defined($snapname) ? "/dev/$vg/snap_${name}_$snapname": "/dev/$vg/$name";
+    my $path = defined($snapname) ? "/dev/$vg/snap_${name}_$snapname" : "/dev/$vg/$name";
 
     return wantarray ? ($path, $vmid, $vtype) : $path;
 }
@@ -88,19 +89,27 @@ sub alloc_image {
     die "unsupported format '$fmt'" if $fmt ne 'raw';
 
     die "illegal name '$name' - should be 'vm-$vmid-*'\n"
-	if  $name && $name !~ m/^vm-$vmid-/;
+        if $name && $name !~ m/^vm-$vmid-/;
 
     my $vgs = PVE::Storage::LVMPlugin::lvm_vgs();
 
     my $vg = $scfg->{vgname};
 
-    die "no such volume group '$vg'\n" if !defined ($vgs->{$vg});
+    die "no such volume group '$vg'\n" if !defined($vgs->{$vg});
 
     $name = $class->find_free_diskname($storeid, $scfg, $vmid)
-	if !$name;
+        if !$name;
 
-    my $cmd = ['/sbin/lvcreate', '-aly', '-V', "${size}k", '--name', $name,
-	       '--thinpool', "$vg/$scfg->{thinpool}" ];
+    my $cmd = [
+        '/sbin/lvcreate',
+        '-aly',
+        '-V',
+        "${size}k",
+        '--name',
+        $name,
+        '--thinpool',
+        "$vg/$scfg->{thinpool}",
+    ];
 
     run_command($cmd, errmsg => "lvcreate '$vg/$name' error");
 
@@ -114,20 +123,20 @@ sub free_image {
 
     my $lvs = PVE::Storage::LVMPlugin::lvm_list_volumes($vg);
 
-    if (my $dat = $lvs->{$scfg->{vgname}}) {
+    if (my $dat = $lvs->{ $scfg->{vgname} }) {
 
-	# remove all volume snapshots first
-	foreach my $lv (keys %$dat) {
-	    next if $lv !~ m/^snap_${volname}_${PVE::JSONSchema::CONFIGID_RE}$/;
-	    my $cmd = ['/sbin/lvremove', '-f', "$vg/$lv"];
-	    run_command($cmd, errmsg => "lvremove snapshot '$vg/$lv' error");
-	}
+        # remove all volume snapshots first
+        foreach my $lv (keys %$dat) {
+            next if $lv !~ m/^snap_${volname}_${PVE::JSONSchema::CONFIGID_RE}$/;
+            my $cmd = ['/sbin/lvremove', '-f', "$vg/$lv"];
+            run_command($cmd, errmsg => "lvremove snapshot '$vg/$lv' error");
+        }
 
-	# finally remove original (if exists)
-	if ($dat->{$volname}) {
-	    my $cmd = ['/sbin/lvremove', '-f', "$vg/$volname"];
-	    run_command($cmd, errmsg => "lvremove '$vg/$volname' error");
-	}
+        # finally remove original (if exists)
+        if ($dat->{$volname}) {
+            my $cmd = ['/sbin/lvremove', '-f', "$vg/$volname"];
+            run_command($cmd, errmsg => "lvremove '$vg/$volname' error");
+        }
     }
 
     return undef;
@@ -144,31 +153,35 @@ sub list_images {
 
     if (my $dat = $cache->{lvs}->{$vgname}) {
 
-	foreach my $volname (keys %$dat) {
+        foreach my $volname (keys %$dat) {
 
-	    next if $volname !~ m/^(vm|base)-(\d+)-/;
-	    my $owner = $2;
+            next if $volname !~ m/^(vm|base)-(\d+)-/;
+            my $owner = $2;
 
-	    my $info = $dat->{$volname};
+            my $info = $dat->{$volname};
 
-	    next if $info->{lv_type} ne 'V';
+            next if $info->{lv_type} ne 'V';
 
-	    next if $info->{pool_lv} ne $scfg->{thinpool};
+            next if $info->{pool_lv} ne $scfg->{thinpool};
 
-	    my $volid = "$storeid:$volname";
+            my $volid = "$storeid:$volname";
 
-	    if ($vollist) {
-		my $found = grep { $_ eq $volid } @$vollist;
-		next if !$found;
-	    } else {
-		next if defined($vmid) && ($owner ne $vmid);
-	    }
+            if ($vollist) {
+                my $found = grep { $_ eq $volid } @$vollist;
+                next if !$found;
+            } else {
+                next if defined($vmid) && ($owner ne $vmid);
+            }
 
-	    push @$res, {
-		volid => $volid, format => 'raw', size => $info->{lv_size}, vmid => $owner,
-		ctime => $info->{ctime},
-	    };
-	}
+            push @$res,
+                {
+                    volid => $volid,
+                    format => 'raw',
+                    size => $info->{lv_size},
+                    vmid => $owner,
+                    ctime => $info->{ctime},
+                };
+        }
     }
 
     return $res;
@@ -181,13 +194,13 @@ sub list_thinpools {
     my $thinpools = [];
 
     foreach my $vg (keys %$lvs) {
-	foreach my $lvname (keys %{$lvs->{$vg}}) {
-	    next if $lvs->{$vg}->{$lvname}->{lv_type} ne 't';
-	    my $lv = $lvs->{$vg}->{$lvname};
-	    $lv->{lv} = $lvname;
-	    $lv->{vg} = $vg;
-	    push @$thinpools, $lv;
-	}
+        foreach my $lvname (keys %{ $lvs->{$vg} }) {
+            next if $lvs->{$vg}->{$lvname}->{lv_type} ne 't';
+            my $lv = $lvs->{$vg}->{$lvname};
+            $lv->{lv} = $lvname;
+            $lv->{vg} = $vg;
+            push @$thinpools, $lv;
+        }
     }
 
     return $thinpools;
@@ -198,17 +211,17 @@ sub status {
 
     my $lvs = $cache->{lvs} ||= PVE::Storage::LVMPlugin::lvm_list_volumes();
 
-    return if !$lvs->{$scfg->{vgname}};
+    return if !$lvs->{ $scfg->{vgname} };
 
-    my $info = $lvs->{$scfg->{vgname}}->{$scfg->{thinpool}};
+    my $info = $lvs->{ $scfg->{vgname} }->{ $scfg->{thinpool} };
 
     return if !$info || $info->{lv_type} ne 't' || !$info->{lv_size};
 
     return (
-	$info->{lv_size},
-	$info->{lv_size} - $info->{used},
-	$info->{used},
-	$info->{lv_state} eq 'a' ? 1 : 0,
+        $info->{lv_size},
+        $info->{lv_size} - $info->{used},
+        $info->{used},
+        $info->{lv_state} eq 'a' ? 1 : 0,
     );
 }
 
@@ -221,7 +234,10 @@ my $activate_lv = sub {
 
     return if $lvs->{$vg}->{$lv}->{lv_state} eq 'a';
 
-    run_command(['lvchange', '-ay', '-K', "$vg/$lv"], errmsg => "activating LV '$vg/$lv' failed");
+    run_command(
+        ['lvchange', '-ay', '-K', "$vg/$lv"],
+        errmsg => "activating LV '$vg/$lv' failed",
+    );
 
     $lvs->{$vg}->{$lv}->{lv_state} = 'a'; # update cache
 
@@ -256,7 +272,7 @@ sub deactivate_volume {
     run_command(['lvchange', '-an', "$vg/$lv"], errmsg => "deactivate_volume '$vg/$lv' error");
 
     $cache->{lvs}->{$vg}->{$lv}->{lv_state} = '-' # update cache
-	if $cache->{lvs} && $cache->{lvs}->{$vg} && $cache->{lvs}->{$vg}->{$lv};
+        if $cache->{lvs} && $cache->{lvs}->{$vg} && $cache->{lvs}->{$vg}->{$lv};
 
     return;
 }
@@ -269,14 +285,13 @@ sub clone_image {
     my $lv;
 
     if ($snap) {
-	$lv = "$vg/snap_${volname}_$snap";
+        $lv = "$vg/snap_${volname}_$snap";
     } else {
-	my ($vtype, undef, undef, undef, undef, $isBase, $format) =
-	    $class->parse_volname($volname);
+        my ($vtype, undef, undef, undef, undef, $isBase, $format) = $class->parse_volname($volname);
 
-	die "clone_image only works on base images\n" if !$isBase;
+        die "clone_image only works on base images\n" if !$isBase;
 
-	$lv = "$vg/$volname";
+        $lv = "$vg/$volname";
     }
 
     my $name = $class->find_free_diskname($storeid, $scfg, $vmid);
@@ -290,8 +305,7 @@ sub clone_image {
 sub create_base {
     my ($class, $storeid, $scfg, $volname) = @_;
 
-    my ($vtype, $name, $vmid, $basename, $basevmid, $isBase) =
-        $class->parse_volname($volname);
+    my ($vtype, $name, $vmid, $basename, $basevmid, $isBase) = $class->parse_volname($volname);
 
     die "create_base not possible with base image\n" if $isBase;
 
@@ -299,11 +313,11 @@ sub create_base {
     my $lvs = PVE::Storage::LVMPlugin::lvm_list_volumes($vg);
 
     if (my $dat = $lvs->{$vg}) {
-	# to avoid confusion, reject if we find volume snapshots
-	foreach my $lv (keys %$dat) {
-	    die "unable to create base volume - found snaphost '$lv'\n"
-		if $lv =~ m/^snap_${volname}_(\w+)$/;
-	}
+        # to avoid confusion, reject if we find volume snapshots
+        foreach my $lv (keys %$dat) {
+            die "unable to create base volume - found snaphost '$lv'\n"
+                if $lv =~ m/^snap_${volname}_(\w+)$/;
+        }
     }
 
     my $newname = $name;
@@ -362,22 +376,21 @@ sub volume_has_feature {
     my ($class, $scfg, $feature, $storeid, $volname, $snapname, $running) = @_;
 
     my $features = {
-	snapshot => { current => 1 },
-	clone => { base => 1, snap => 1},
-	template => { current => 1},
-	copy => { base => 1, current => 1, snap => 1},
-	sparseinit => { base => 1, current => 1},
-	rename => {current => 1},
+        snapshot => { current => 1 },
+        clone => { base => 1, snap => 1 },
+        template => { current => 1 },
+        copy => { base => 1, current => 1, snap => 1 },
+        sparseinit => { base => 1, current => 1 },
+        rename => { current => 1 },
     };
 
-    my ($vtype, $name, $vmid, $basename, $basevmid, $isBase) =
-	$class->parse_volname($volname);
+    my ($vtype, $name, $vmid, $basename, $basevmid, $isBase) = $class->parse_volname($volname);
 
     my $key = undef;
-    if($snapname){
-	$key = 'snap';
-    }else{
-	$key =  $isBase ? 'base' : 'current';
+    if ($snapname) {
+        $key = 'snap';
+    } else {
+        $key = $isBase ? 'base' : 'current';
     }
     return 1 if $features->{$feature}->{$key};
 
@@ -385,51 +398,62 @@ sub volume_has_feature {
 }
 
 sub volume_import {
-    my ($class, $scfg, $storeid, $fh, $volname, $format, $snapshot, $base_snapshot, $with_snapshots, $allow_rename) = @_;
+    my (
+        $class,
+        $scfg,
+        $storeid,
+        $fh,
+        $volname,
+        $format,
+        $snapshot,
+        $base_snapshot,
+        $with_snapshots,
+        $allow_rename,
+    ) = @_;
 
     my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $file_format) =
-	$class->parse_volname($volname);
+        $class->parse_volname($volname);
 
     if (!$isBase) {
-	return $class->SUPER::volume_import(
-	    $scfg,
-	    $storeid,
-	    $fh,
-	    $volname,
-	    $format,
-	    $snapshot,
-	    $base_snapshot,
-	    $with_snapshots,
-	    $allow_rename
-	);
+        return $class->SUPER::volume_import(
+            $scfg,
+            $storeid,
+            $fh,
+            $volname,
+            $format,
+            $snapshot,
+            $base_snapshot,
+            $with_snapshots,
+            $allow_rename,
+        );
     } else {
-	my $tempname;
-	my $vg = $scfg->{vgname};
-	my $lvs = PVE::Storage::LVMPlugin::lvm_list_volumes($vg);
-	if ($lvs->{$vg}->{$volname}) {
-	    die "volume $vg/$volname already exists\n" if !$allow_rename;
-	    warn "volume $vg/$volname already exists - importing with a different name\n";
+        my $tempname;
+        my $vg = $scfg->{vgname};
+        my $lvs = PVE::Storage::LVMPlugin::lvm_list_volumes($vg);
+        if ($lvs->{$vg}->{$volname}) {
+            die "volume $vg/$volname already exists\n" if !$allow_rename;
+            warn "volume $vg/$volname already exists - importing with a different name\n";
 
-	    $tempname = $class->find_free_diskname($storeid, $scfg, $vmid);
-	} else {
-	    $tempname = $volname;
-	    $tempname =~ s/base/vm/;
-	}
+            $tempname = $class->find_free_diskname($storeid, $scfg, $vmid);
+        } else {
+            $tempname = $volname;
+            $tempname =~ s/base/vm/;
+        }
 
-	my $newvolid = $class->SUPER::volume_import(
-	    $scfg,
-	    $storeid,
-	    $fh,
-	    $tempname,
-	    $format,
-	    $snapshot,
-	    $base_snapshot,
-	    $with_snapshots,
-	    $allow_rename
-	);
-	($storeid,my $newname) = PVE::Storage::parse_volume_id($newvolid);
+        my $newvolid = $class->SUPER::volume_import(
+            $scfg,
+            $storeid,
+            $fh,
+            $tempname,
+            $format,
+            $snapshot,
+            $base_snapshot,
+            $with_snapshots,
+            $allow_rename,
+        );
+        ($storeid, my $newname) = PVE::Storage::parse_volume_id($newvolid);
 
-	$volname = $class->create_base($storeid, $scfg, $newname);
+        $volname = $class->create_base($storeid, $scfg, $newname);
     }
 
     return "$storeid:$volname";
@@ -438,8 +462,10 @@ sub volume_import {
 # used in LVMPlugin->volume_import
 sub volume_import_write {
     my ($class, $input_fh, $output_file) = @_;
-    run_command(['dd', "of=$output_file", 'conv=sparse', 'bs=64k'],
-	input => '<&'.fileno($input_fh));
+    run_command(
+        ['dd', "of=$output_file", 'conv=sparse', 'bs=64k'],
+        input => '<&' . fileno($input_fh),
+    );
 }
 
 1;

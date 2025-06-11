@@ -29,51 +29,53 @@ sub type {
 
 sub plugindata {
     return {
-	content => [ {backup => 1, none => 1}, { backup => 1 }],
-	'sensitive-properties' => {
-	    'encryption-key' => 1,
-	    'master-pubkey' => 1,
-	    password => 1,
-	},
+        content => [{ backup => 1, none => 1 }, { backup => 1 }],
+        'sensitive-properties' => {
+            'encryption-key' => 1,
+            'master-pubkey' => 1,
+            password => 1,
+        },
     };
 }
 
 sub properties {
     return {
-	datastore => {
-	    description => "Proxmox Backup Server datastore name.",
-	    type => 'string',
-	},
-	# openssl s_client -connect <host>:8007 2>&1 |openssl x509 -fingerprint -sha256
-	fingerprint => get_standard_option('fingerprint-sha256'),
-	'encryption-key' => {
-	    description => "Encryption key. Use 'autogen' to generate one automatically without passphrase.",
-	    type => 'string',
-	},
-	'master-pubkey' => {
-	    description => "Base64-encoded, PEM-formatted public RSA key. Used to encrypt a copy of the encryption-key which will be added to each encrypted backup.",
-	    type => 'string',
-	},
+        datastore => {
+            description => "Proxmox Backup Server datastore name.",
+            type => 'string',
+        },
+        # openssl s_client -connect <host>:8007 2>&1 |openssl x509 -fingerprint -sha256
+        fingerprint => get_standard_option('fingerprint-sha256'),
+        'encryption-key' => {
+            description =>
+                "Encryption key. Use 'autogen' to generate one automatically without passphrase.",
+            type => 'string',
+        },
+        'master-pubkey' => {
+            description =>
+                "Base64-encoded, PEM-formatted public RSA key. Used to encrypt a copy of the encryption-key which will be added to each encrypted backup.",
+            type => 'string',
+        },
     };
 }
 
 sub options {
     return {
-	server => { fixed => 1 },
-	datastore => { fixed => 1 },
-	namespace => { optional => 1 },
-	port => { optional => 1 },
-	nodes => { optional => 1},
-	disable => { optional => 1},
-	content => { optional => 1},
-	username => { optional => 1 },
-	password => { optional => 1 },
-	'encryption-key' => { optional => 1 },
-	'master-pubkey' => { optional => 1 },
-	maxfiles => { optional => 1 },
-	'prune-backups' => { optional => 1 },
-	'max-protected-backups' => { optional => 1 },
-	fingerprint => { optional => 1 },
+        server => { fixed => 1 },
+        datastore => { fixed => 1 },
+        namespace => { optional => 1 },
+        port => { optional => 1 },
+        nodes => { optional => 1 },
+        disable => { optional => 1 },
+        content => { optional => 1 },
+        username => { optional => 1 },
+        password => { optional => 1 },
+        'encryption-key' => { optional => 1 },
+        'master-pubkey' => { optional => 1 },
+        maxfiles => { optional => 1 },
+        'prune-backups' => { optional => 1 },
+        'max-protected-backups' => { optional => 1 },
+        fingerprint => { optional => 1 },
     };
 }
 
@@ -131,8 +133,8 @@ sub pbs_delete_encryption_key {
     my $pwfile = pbs_encryption_key_file_name($scfg, $storeid);
 
     if (!unlink $pwfile) {
-	return if $! == ENOENT;
-	die "failed to delete encryption key! $!\n";
+        return if $! == ENOENT;
+        die "failed to delete encryption key! $!\n";
     }
     delete $scfg->{'encryption-key'};
 }
@@ -153,13 +155,13 @@ sub pbs_open_encryption_key {
 
     my $keyfd;
     if (!open($keyfd, '<', $encryption_key_file)) {
-	if ($! == ENOENT) {
-	    my $encryption_fp = $scfg->{'encryption-key'};
-	    die "encryption configured ('$encryption_fp') but no encryption key file found!\n"
-		if $encryption_fp;
-	    return undef;
-	}
-	die "failed to open encryption key: $encryption_key_file: $!\n";
+        if ($! == ENOENT) {
+            my $encryption_fp = $scfg->{'encryption-key'};
+            die "encryption configured ('$encryption_fp') but no encryption key file found!\n"
+                if $encryption_fp;
+            return undef;
+        }
+        die "failed to open encryption key: $encryption_key_file: $!\n";
     }
 
     return $keyfd;
@@ -186,8 +188,8 @@ sub pbs_delete_master_pubkey {
     my $pwfile = pbs_master_pubkey_file_name($scfg, $storeid);
 
     if (!unlink $pwfile) {
-	return if $! == ENOENT;
-	die "failed to delete master public key! $!\n";
+        return if $! == ENOENT;
+        die "failed to delete master public key! $!\n";
     }
     delete $scfg->{'master-pubkey'};
 }
@@ -208,12 +210,12 @@ sub pbs_open_master_pubkey {
 
     my $keyfd;
     if (!open($keyfd, '<', $master_pubkey_file)) {
-	if ($! == ENOENT) {
-	    die "master public key configured but no key file found!\n"
-		if $scfg->{'master-pubkey'};
-	    return undef;
-	}
-	die "failed to open master public key: $master_pubkey_file: $!\n";
+        if ($! == ENOENT) {
+            die "master public key configured but no key file found!\n"
+                if $scfg->{'master-pubkey'};
+            return undef;
+        }
+        die "failed to open master public key: $master_pubkey_file: $!\n";
     }
 
     return $keyfd;
@@ -244,24 +246,24 @@ my sub api_param_from_volname : prototype($$$) {
 
     my @tm = (POSIX::strptime($timestr, "%FT%TZ"));
     # expect sec, min, hour, mday, mon, year
-    die "error parsing time from '$volname'" if grep { !defined($_) } @tm[0..5];
+    die "error parsing time from '$volname'" if grep { !defined($_) } @tm[0 .. 5];
 
     my $btime;
     {
-	local $ENV{TZ} = 'UTC'; # $timestr is UTC
+        local $ENV{TZ} = 'UTC'; # $timestr is UTC
 
-	# Fill in isdst to avoid undef warning. No daylight saving time for UTC.
-	$tm[8] //= 0;
+        # Fill in isdst to avoid undef warning. No daylight saving time for UTC.
+        $tm[8] //= 0;
 
-	my $since_epoch = mktime(@tm) or die "error converting time from '$volname'\n";
-	$btime = int($since_epoch);
+        my $since_epoch = mktime(@tm) or die "error converting time from '$volname'\n";
+        $btime = int($since_epoch);
     }
 
     return {
-	(ns($scfg, 'ns')),
-	'backup-type' => $btype,
-	'backup-id' => $bid,
-	'backup-time' => $btime,
+        (ns($scfg, 'ns')),
+        'backup-type' => $btype,
+        'backup-id' => $bid,
+        'backup-time' => $btime,
     };
 }
 
@@ -283,7 +285,7 @@ my sub do_raw_client_cmd {
 
     my $client_exe = '/usr/bin/proxmox-backup-client';
     die "executable not found '$client_exe'! Proxmox backup client not installed?\n"
-	if ! -x $client_exe;
+        if !-x $client_exe;
 
     my $repo = PVE::PBSClient::get_repository($scfg);
 
@@ -298,29 +300,29 @@ my sub do_raw_client_cmd {
     # This must live in the top scope to not get closed before the `run_command`
     my ($keyfd, $master_fd);
     if ($use_crypto) {
-	if (defined($keyfd = pbs_open_encryption_key($scfg, $storeid))) {
-	    my $flags = fcntl($keyfd, F_GETFD, 0)
-		// die "failed to get file descriptor flags: $!\n";
-	    fcntl($keyfd, F_SETFD, $flags & ~FD_CLOEXEC)
-		or die "failed to remove FD_CLOEXEC from encryption key file descriptor\n";
-	    push @$cmd, '--crypt-mode=encrypt', '--keyfd='.fileno($keyfd);
-	    if ($use_master && defined($master_fd = pbs_open_master_pubkey($scfg, $storeid))) {
-		my $flags = fcntl($master_fd, F_GETFD, 0)
-		    // die "failed to get file descriptor flags: $!\n";
-		fcntl($master_fd, F_SETFD, $flags & ~FD_CLOEXEC)
-		    or die "failed to remove FD_CLOEXEC from master public key file descriptor\n";
-		push @$cmd, '--master-pubkey-fd='.fileno($master_fd);
-	    }
-	} else {
-	    push @$cmd, '--crypt-mode=none';
-	}
+        if (defined($keyfd = pbs_open_encryption_key($scfg, $storeid))) {
+            my $flags = fcntl($keyfd, F_GETFD, 0)
+                // die "failed to get file descriptor flags: $!\n";
+            fcntl($keyfd, F_SETFD, $flags & ~FD_CLOEXEC)
+                or die "failed to remove FD_CLOEXEC from encryption key file descriptor\n";
+            push @$cmd, '--crypt-mode=encrypt', '--keyfd=' . fileno($keyfd);
+            if ($use_master && defined($master_fd = pbs_open_master_pubkey($scfg, $storeid))) {
+                my $flags = fcntl($master_fd, F_GETFD, 0)
+                    // die "failed to get file descriptor flags: $!\n";
+                fcntl($master_fd, F_SETFD, $flags & ~FD_CLOEXEC)
+                    or die "failed to remove FD_CLOEXEC from master public key file descriptor\n";
+                push @$cmd, '--master-pubkey-fd=' . fileno($master_fd);
+            }
+        } else {
+            push @$cmd, '--crypt-mode=none';
+        }
     }
 
     push @$cmd, @$param if defined($param);
 
     push @$cmd, "--repository", $repo;
     if ($client_cmd ne 'status' && defined(my $ns = $scfg->{namespace})) {
-	push @$cmd, '--ns', $ns;
+        push @$cmd, '--ns', $ns;
     }
 
     local $ENV{PBS_PASSWORD} = pbs_get_password($scfg, $storeid);
@@ -332,7 +334,7 @@ my sub do_raw_client_cmd {
     local $ENV{PROXMOX_OUTPUT_NO_HEADER} = 1;
 
     if (my $logfunc = $opts{logfunc}) {
-	$logfunc->("run: " . join(' ', @$cmd));
+        $logfunc->("run: " . join(' ', @$cmd));
     }
 
     run_command($cmd, %opts);
@@ -357,12 +359,15 @@ sub run_client_cmd {
     my $outfunc = sub { $json_str .= "$_[0]\n" };
 
     $param = [] if !defined($param);
-    $param = [ $param ] if !ref($param);
+    $param = [$param] if !ref($param);
 
     $param = [@$param, '--output-format=json'] if !$no_output;
 
-    do_raw_client_cmd($scfg, $storeid, $client_cmd, $param,
-		      outfunc => $outfunc, errmsg => 'proxmox-backup-client failed');
+    do_raw_client_cmd(
+        $scfg, $storeid, $client_cmd, $param,
+        outfunc => $outfunc,
+        errmsg => 'proxmox-backup-client failed',
+    );
 
     return undef if $no_output;
 
@@ -383,15 +388,18 @@ sub extract_vzdump_config {
 
     my $config_name;
     if ($format eq 'pbs-vm') {
-	$config_name = 'qemu-server.conf';
-    } elsif  ($format eq 'pbs-ct') {
-	$config_name = 'pct.conf';
+        $config_name = 'qemu-server.conf';
+    } elsif ($format eq 'pbs-ct') {
+        $config_name = 'pct.conf';
     } else {
-	die "unable to extract configuration for backup format '$format'\n";
+        die "unable to extract configuration for backup format '$format'\n";
     }
 
-    do_raw_client_cmd($scfg, $storeid, 'restore', [ $name, $config_name, '-' ],
-		      outfunc => $outfunc, errmsg => 'proxmox-backup-client failed');
+    do_raw_client_cmd(
+        $scfg, $storeid, 'restore', [$name, $config_name, '-'],
+        outfunc => $outfunc,
+        errmsg => 'proxmox-backup-client failed',
+    );
 
     return $config;
 }
@@ -407,19 +415,19 @@ sub prune_backups {
     my $backup_groups = {};
 
     if (defined($vmid) && defined($type)) {
-	# no need to get the list of volumes, we only got a single backup group anyway
-	$backup_groups->{"$type/$vmid"} = 1;
+        # no need to get the list of volumes, we only got a single backup group anyway
+        $backup_groups->{"$type/$vmid"} = 1;
     } else {
-	my $backups = eval { $class->list_volumes($storeid, $scfg, $vmid, ['backup']) };
-	die "failed to get list of all backups to prune - $@" if $@;
+        my $backups = eval { $class->list_volumes($storeid, $scfg, $vmid, ['backup']) };
+        die "failed to get list of all backups to prune - $@" if $@;
 
-	foreach my $backup (@{$backups}) {
-	    (my $backup_type = $backup->{format}) =~ s/^pbs-//;
-	    next if defined($type) && $backup_type ne $type;
+        foreach my $backup (@{$backups}) {
+            (my $backup_type = $backup->{format}) =~ s/^pbs-//;
+            next if defined($type) && $backup_type ne $type;
 
-	    my $backup_group = "$backup_type/$backup->{vmid}";
-	    $backup_groups->{$backup_group} = 1;
-	}
+            my $backup_group = "$backup_type/$backup->{vmid}";
+            $backup_groups->{$backup_group} = 1;
+        }
     }
 
     my @param;
@@ -427,13 +435,13 @@ sub prune_backups {
     my $keep_all = delete $keep->{'keep-all'};
 
     if (!$keep_all) {
-	foreach my $opt (keys %{$keep}) {
-	    next if $keep->{$opt} == 0;
-	    push @param, "--$opt";
-	    push @param, "$keep->{$opt}";
-	}
+        foreach my $opt (keys %{$keep}) {
+            next if $keep->{$opt} == 0;
+            push @param, "--$opt";
+            push @param, "$keep->{$opt}";
+        }
     } else { # no need to pass anything to PBS
-	$keep = { 'keep-all' => 1 };
+        $keep = { 'keep-all' => 1 };
     }
 
     push @param, '--dry-run' if $dryrun;
@@ -442,39 +450,40 @@ sub prune_backups {
     my $failed;
 
     foreach my $backup_group (keys %{$backup_groups}) {
-	$logfunc->('info', "running 'proxmox-backup-client prune' for '$backup_group'")
-	    if !$dryrun;
-	eval {
-	    my $res = run_client_cmd($scfg, $storeid, 'prune', [ $backup_group, @param ]);
+        $logfunc->('info', "running 'proxmox-backup-client prune' for '$backup_group'")
+            if !$dryrun;
+        eval {
+            my $res = run_client_cmd($scfg, $storeid, 'prune', [$backup_group, @param]);
 
-	    foreach my $backup (@{$res}) {
-		die "result from proxmox-backup-client is not as expected\n"
-		    if !defined($backup->{'backup-time'})
-		    || !defined($backup->{'backup-type'})
-		    || !defined($backup->{'backup-id'})
-		    || !defined($backup->{'keep'});
+            foreach my $backup (@{$res}) {
+                die "result from proxmox-backup-client is not as expected\n"
+                    if !defined($backup->{'backup-time'})
+                    || !defined($backup->{'backup-type'})
+                    || !defined($backup->{'backup-id'})
+                    || !defined($backup->{'keep'});
 
-		my $ctime = $backup->{'backup-time'};
-		my $type = $backup->{'backup-type'};
-		my $vmid = $backup->{'backup-id'};
-		my $volid = print_volid($storeid, $type, $vmid, $ctime);
+                my $ctime = $backup->{'backup-time'};
+                my $type = $backup->{'backup-type'};
+                my $vmid = $backup->{'backup-id'};
+                my $volid = print_volid($storeid, $type, $vmid, $ctime);
 
-		my $mark = $backup->{keep} ? 'keep' : 'remove';
-		$mark = 'protected' if $backup->{protected};
+                my $mark = $backup->{keep} ? 'keep' : 'remove';
+                $mark = 'protected' if $backup->{protected};
 
-		push @{$prune_list}, {
-		    ctime => $ctime,
-		    mark => $mark,
-		    type => $type eq 'vm' ? 'qemu' : 'lxc',
-		    vmid => $vmid,
-		    volid => $volid,
-		};
-	    }
-	};
-	if (my $err = $@) {
-	    $logfunc->('err', "prune '$backup_group': $err\n");
-	    $failed = 1;
-	}
+                push @{$prune_list},
+                    {
+                        ctime => $ctime,
+                        mark => $mark,
+                        type => $type eq 'vm' ? 'qemu' : 'lxc',
+                        vmid => $vmid,
+                        volid => $volid,
+                    };
+            }
+        };
+        if (my $err = $@) {
+            $logfunc->('err', "prune '$backup_group': $err\n");
+            $failed = 1;
+        }
     }
     die "error pruning backups - check log\n" if $failed;
 
@@ -485,7 +494,7 @@ my $autogen_encryption_key = sub {
     my ($scfg, $storeid) = @_;
     my $encfile = pbs_encryption_key_file_name($scfg, $storeid);
     if (-f $encfile) {
-	rename $encfile, "$encfile.old";
+        rename $encfile, "$encfile.old";
     }
     my $cmd = ['proxmox-backup-client', 'key', 'create', '--kdf', 'none', $encfile];
     run_command($cmd, errmsg => 'failed to create encryption key');
@@ -498,38 +507,38 @@ sub on_add_hook {
     my $res = {};
 
     if (defined(my $password = $param{password})) {
-	pbs_set_password($scfg, $storeid, $password);
+        pbs_set_password($scfg, $storeid, $password);
     } else {
-	pbs_delete_password($scfg, $storeid);
+        pbs_delete_password($scfg, $storeid);
     }
 
     if (defined(my $encryption_key = $param{'encryption-key'})) {
-	my $decoded_key;
-	if ($encryption_key eq 'autogen') {
-	    $res->{'encryption-key'} = $autogen_encryption_key->($scfg, $storeid);
-	    $decoded_key = decode_json($res->{'encryption-key'});
-	} else {
-	    $decoded_key = eval { decode_json($encryption_key) };
-	    if ($@ || !exists($decoded_key->{data})) {
-		die "Value does not seems like a valid, JSON formatted encryption key!\n";
-	    }
-	    pbs_set_encryption_key($scfg, $storeid, $encryption_key);
-	    $res->{'encryption-key'} = $encryption_key;
-	}
-	$scfg->{'encryption-key'} = $decoded_key->{fingerprint} || 1;
+        my $decoded_key;
+        if ($encryption_key eq 'autogen') {
+            $res->{'encryption-key'} = $autogen_encryption_key->($scfg, $storeid);
+            $decoded_key = decode_json($res->{'encryption-key'});
+        } else {
+            $decoded_key = eval { decode_json($encryption_key) };
+            if ($@ || !exists($decoded_key->{data})) {
+                die "Value does not seems like a valid, JSON formatted encryption key!\n";
+            }
+            pbs_set_encryption_key($scfg, $storeid, $encryption_key);
+            $res->{'encryption-key'} = $encryption_key;
+        }
+        $scfg->{'encryption-key'} = $decoded_key->{fingerprint} || 1;
     } else {
-	pbs_delete_encryption_key($scfg, $storeid);
+        pbs_delete_encryption_key($scfg, $storeid);
     }
 
     if (defined(my $master_key = delete $param{'master-pubkey'})) {
-	die "'master-pubkey' can only be used together with 'encryption-key'\n"
-	    if !defined($scfg->{'encryption-key'});
+        die "'master-pubkey' can only be used together with 'encryption-key'\n"
+            if !defined($scfg->{'encryption-key'});
 
-	my $decoded = decode_base64($master_key);
-	pbs_set_master_pubkey($scfg, $storeid, $decoded);
-	$scfg->{'master-pubkey'} = 1;
+        my $decoded = decode_base64($master_key);
+        pbs_set_master_pubkey($scfg, $storeid, $decoded);
+        $scfg->{'master-pubkey'} = 1;
     } else {
-	pbs_delete_master_pubkey($scfg, $storeid);
+        pbs_delete_master_pubkey($scfg, $storeid);
     }
 
     return $res;
@@ -541,43 +550,43 @@ sub on_update_hook {
     my $res = {};
 
     if (exists($param{password})) {
-	if (defined($param{password})) {
-	    pbs_set_password($scfg, $storeid, $param{password});
-	} else {
-	    pbs_delete_password($scfg, $storeid);
-	}
+        if (defined($param{password})) {
+            pbs_set_password($scfg, $storeid, $param{password});
+        } else {
+            pbs_delete_password($scfg, $storeid);
+        }
     }
 
     if (exists($param{'encryption-key'})) {
-	if (defined(my $encryption_key = delete($param{'encryption-key'}))) {
-	    my $decoded_key;
-	    if ($encryption_key eq 'autogen') {
-		$res->{'encryption-key'} = $autogen_encryption_key->($scfg, $storeid);
-		$decoded_key = decode_json($res->{'encryption-key'});
-	    } else {
-		$decoded_key = eval { decode_json($encryption_key) };
-		if ($@ || !exists($decoded_key->{data})) {
-		    die "Value does not seems like a valid, JSON formatted encryption key!\n";
-		}
-		pbs_set_encryption_key($scfg, $storeid, $encryption_key);
-		$res->{'encryption-key'} = $encryption_key;
-	    }
-	    $scfg->{'encryption-key'} = $decoded_key->{fingerprint} || 1;
-	} else {
-	    pbs_delete_encryption_key($scfg, $storeid);
-	    delete $scfg->{'encryption-key'};
-	}
+        if (defined(my $encryption_key = delete($param{'encryption-key'}))) {
+            my $decoded_key;
+            if ($encryption_key eq 'autogen') {
+                $res->{'encryption-key'} = $autogen_encryption_key->($scfg, $storeid);
+                $decoded_key = decode_json($res->{'encryption-key'});
+            } else {
+                $decoded_key = eval { decode_json($encryption_key) };
+                if ($@ || !exists($decoded_key->{data})) {
+                    die "Value does not seems like a valid, JSON formatted encryption key!\n";
+                }
+                pbs_set_encryption_key($scfg, $storeid, $encryption_key);
+                $res->{'encryption-key'} = $encryption_key;
+            }
+            $scfg->{'encryption-key'} = $decoded_key->{fingerprint} || 1;
+        } else {
+            pbs_delete_encryption_key($scfg, $storeid);
+            delete $scfg->{'encryption-key'};
+        }
     }
 
     if (exists($param{'master-pubkey'})) {
-	if (defined(my $master_key = delete($param{'master-pubkey'}))) {
-	    my $decoded = decode_base64($master_key);
+        if (defined(my $master_key = delete($param{'master-pubkey'}))) {
+            my $decoded = decode_base64($master_key);
 
-	    pbs_set_master_pubkey($scfg, $storeid, $decoded);
-	    $scfg->{'master-pubkey'} = 1;
-	} else {
-	    pbs_delete_master_pubkey($scfg, $storeid);
-	}
+            pbs_set_master_pubkey($scfg, $storeid, $decoded);
+            $scfg->{'master-pubkey'} = 1;
+        } else {
+            pbs_delete_master_pubkey($scfg, $storeid);
+        }
     }
 
     return $res;
@@ -596,19 +605,21 @@ sub on_delete_hook {
 sub parse_volname {
     my ($class, $volname) = @_;
 
-    if ($volname =~ m!^backup/([^\s_]+)/([^\s_]+)/([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z)$!) {
-	my $btype = $1;
-	my $bid = $2;
-	my $btime = $3;
-	my $format = "pbs-$btype";
+    if ($volname =~
+        m!^backup/([^\s_]+)/([^\s_]+)/([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z)$!
+    ) {
+        my $btype = $1;
+        my $bid = $2;
+        my $btime = $3;
+        my $format = "pbs-$btype";
 
-	my $name = "$btype/$bid/$btime";
+        my $name = "$btype/$bid/$btime";
 
-	if ($bid =~ m/^\d+$/) {
-	    return ('backup', $name, $bid, undef, undef, undef, $format);
-	} else {
-	    return ('backup', $name, undef, undef, undef, undef, $format);
-	}
+        if ($bid =~ m/^\d+$/) {
+            return ('backup', $name, $bid, undef, undef, undef, $format);
+        } else {
+            return ('backup', $name, undef, undef, undef, undef, $format);
+        }
     }
 
     die "unable to parse PBS volume name '$volname'\n";
@@ -618,7 +629,7 @@ sub path {
     my ($class, $scfg, $volname, $storeid, $snapname) = @_;
 
     die "volume snapshot is not possible on pbs storage"
-	if defined($snapname);
+        if defined($snapname);
 
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
 
@@ -627,8 +638,8 @@ sub path {
     # artificial url - we currently do not use that anywhere
     my $path = "pbs://$repo/$name";
     if (defined(my $ns = $scfg->{namespace})) {
-	$ns =~ s|/|%2f|g; # other characters to escape aren't allowed in the namespace schema
-	$path .= "?ns=$ns";
+        $ns =~ s|/|%2f|g; # other characters to escape aren't allowed in the namespace schema
+        $path .= "?ns=$ns";
     }
 
     return ($path, $vmid, $vtype);
@@ -657,11 +668,10 @@ sub free_image {
 
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
 
-    run_client_cmd($scfg, $storeid, "forget", [ $name ], 1);
+    run_client_cmd($scfg, $storeid, "forget", [$name], 1);
 
     return;
 }
-
 
 sub list_images {
     my ($class, $storeid, $scfg, $vmid, $vollist, $cache) = @_;
@@ -678,13 +688,13 @@ my sub snapshot_files_encrypted {
     my $any;
     my $all = 1;
     for my $file (@$files) {
-	my $fn = $file->{filename};
-	next if $fn eq 'client.log.blob' || $fn eq 'index.json.blob';
+        my $fn = $file->{filename};
+        next if $fn eq 'client.log.blob' || $fn eq 'index.json.blob';
 
-	my $crypt = $file->{'crypt-mode'};
+        my $crypt = $file->{'crypt-mode'};
 
-	$all = 0 if !$crypt || $crypt ne 'encrypt';
-	$any ||= defined($crypt) && $crypt eq 'encrypt';
+        $all = 0 if !$crypt || $crypt ne 'encrypt';
+        $any ||= defined($crypt) && $crypt eq 'encrypt';
     }
     return $any && $all;
 }
@@ -699,22 +709,22 @@ my sub pbs_api_connect {
     my $user = $scfg->{username} // 'root@pam';
 
     if (my $tokenid = PVE::AccessControl::pve_verify_tokenid($user, 1)) {
-	$params->{apitoken} = "PBSAPIToken=${tokenid}:${password}";
+        $params->{apitoken} = "PBSAPIToken=${tokenid}:${password}";
     } else {
-	$params->{password} = $password;
-	$params->{username} = $user;
+        $params->{password} = $password;
+        $params->{username} = $user;
     }
 
     if (my $fp = $scfg->{fingerprint}) {
-	$params->{cached_fingerprints}->{uc($fp)} = 1;
+        $params->{cached_fingerprints}->{ uc($fp) } = 1;
     }
 
     my $conn = PVE::APIClient::LWP->new(
-	%$params,
-	host => $scfg->{server},
-	port => $scfg->{port} // 8007,
-	timeout => ($timeout // 7), # cope with a 401 (3s api delay) and high latency
-	cookie_name => 'PBSAuthCookie',
+        %$params,
+        host => $scfg->{server},
+        port => $scfg->{port} // 8007,
+        timeout => ($timeout // 7), # cope with a 401 (3s api delay) and high latency
+        cookie_name => 'PBSAuthCookie',
     );
 
     return $conn;
@@ -738,37 +748,37 @@ sub list_volumes {
     die "error listing snapshots - $@" if $@;
 
     foreach my $item (@$data) {
-	my $btype = $item->{"backup-type"};
-	my $bid = $item->{"backup-id"};
-	my $epoch = $item->{"backup-time"};
-	my $size = $item->{size} // 1;
+        my $btype = $item->{"backup-type"};
+        my $bid = $item->{"backup-id"};
+        my $epoch = $item->{"backup-time"};
+        my $size = $item->{size} // 1;
 
-	next if !($btype eq 'vm' || $btype eq 'ct');
-	next if $bid !~ m/^\d+$/;
-	next if defined($vmid) && $bid ne $vmid;
+        next if !($btype eq 'vm' || $btype eq 'ct');
+        next if $bid !~ m/^\d+$/;
+        next if defined($vmid) && $bid ne $vmid;
 
-	my $volid = print_volid($storeid, $btype, $bid, $epoch);
+        my $volid = print_volid($storeid, $btype, $bid, $epoch);
 
-	my $info = {
-	    volid => $volid,
-	    format => "pbs-$btype",
-	    size => $size,
-	    content => 'backup',
-	    vmid => int($bid),
-	    ctime => $epoch,
-	    subtype => $btype eq 'vm' ? 'qemu' : 'lxc', # convert to PVE backup type
-	};
+        my $info = {
+            volid => $volid,
+            format => "pbs-$btype",
+            size => $size,
+            content => 'backup',
+            vmid => int($bid),
+            ctime => $epoch,
+            subtype => $btype eq 'vm' ? 'qemu' : 'lxc', # convert to PVE backup type
+        };
 
-	$info->{verification} = $item->{verification} if defined($item->{verification});
-	$info->{notes} = $item->{comment} if defined($item->{comment});
-	$info->{protected} = 1 if $item->{protected};
-	if (defined($item->{fingerprint})) {
-	    $info->{encrypted} = $item->{fingerprint};
-	} elsif (snapshot_files_encrypted($item->{files})) {
-	    $info->{encrypted} = '1';
-	}
+        $info->{verification} = $item->{verification} if defined($item->{verification});
+        $info->{notes} = $item->{comment} if defined($item->{comment});
+        $info->{protected} = 1 if $item->{protected};
+        if (defined($item->{fingerprint})) {
+            $info->{encrypted} = $item->{fingerprint};
+        } elsif (snapshot_files_encrypted($item->{files})) {
+            $info->{encrypted} = '1';
+        }
 
-	push @$res, $info;
+        push @$res, $info;
     }
 
     return $res;
@@ -783,15 +793,15 @@ sub status {
     my $active = 0;
 
     eval {
-	my $res = run_client_cmd($scfg, $storeid, "status");
+        my $res = run_client_cmd($scfg, $storeid, "status");
 
-	$active = 1;
-	$total = $res->{total};
-	$used = $res->{used};
-	$free = $res->{avail};
+        $active = 1;
+        $total = $res->{total};
+        $used = $res->{used};
+        $free = $res->{avail};
     };
     if (my $err = $@) {
-	warn $err;
+        warn $err;
     }
 
     return ($total, $free, $used, $active);
@@ -826,9 +836,9 @@ sub activate_storage {
     my $datastore = $scfg->{datastore};
 
     for my $ds (@$datastores) {
-	if ($ds->{store} eq $datastore) {
-	    return 1;
-	}
+        if ($ds->{store} eq $datastore) {
+            return 1;
+        }
     }
 
     die "$storeid: Cannot find datastore '$datastore', check permissions and existence!\n";
@@ -860,9 +870,9 @@ sub deactivate_volume {
 sub get_volume_notes {
     my ($class, $scfg, $storeid, $volname, $timeout) = @_;
 
-    my (undef, $name,  undef, undef, undef, undef, $format) = $class->parse_volname($volname);
+    my (undef, $name, undef, undef, undef, undef, $format) = $class->parse_volname($volname);
 
-    my $data = run_client_cmd($scfg, $storeid, "snapshot", [ "notes", "show", $name ]);
+    my $data = run_client_cmd($scfg, $storeid, "snapshot", ["notes", "show", $name]);
 
     return $data->{notes};
 }
@@ -872,9 +882,9 @@ sub get_volume_notes {
 sub update_volume_notes {
     my ($class, $scfg, $storeid, $volname, $notes, $timeout) = @_;
 
-    my (undef, $name,  undef, undef, undef, undef, $format) = $class->parse_volname($volname);
+    my (undef, $name, undef, undef, undef, undef, $format) = $class->parse_volname($volname);
 
-    run_client_cmd($scfg, $storeid, "snapshot", [ "notes", "update", $name, $notes ], 1);
+    run_client_cmd($scfg, $storeid, "snapshot", ["notes", "update", $name, $notes], 1);
 
     return undef;
 }
@@ -883,22 +893,22 @@ sub get_volume_attribute {
     my ($class, $scfg, $storeid, $volname, $attribute) = @_;
 
     if ($attribute eq 'notes') {
-	return $class->get_volume_notes($scfg, $storeid, $volname);
+        return $class->get_volume_notes($scfg, $storeid, $volname);
     }
 
     if ($attribute eq 'protected') {
-	my $param = api_param_from_volname($class, $scfg, $volname);
+        my $param = api_param_from_volname($class, $scfg, $volname);
 
-	my $password = pbs_get_password($scfg, $storeid);
-	my $conn = pbs_api_connect($scfg, $password);
-	my $datastore = $scfg->{datastore};
+        my $password = pbs_get_password($scfg, $storeid);
+        my $conn = pbs_api_connect($scfg, $password);
+        my $datastore = $scfg->{datastore};
 
-	my $res = eval { $conn->get("/api2/json/admin/datastore/$datastore/$attribute", $param); };
-	if (my $err = $@) {
-	    return if $err->{code} == 404; # not supported
-	    die $err;
-	}
-	return $res;
+        my $res = eval { $conn->get("/api2/json/admin/datastore/$datastore/$attribute", $param); };
+        if (my $err = $@) {
+            return if $err->{code} == 404; # not supported
+            die $err;
+        }
+        return $res;
     }
 
     return;
@@ -908,24 +918,24 @@ sub update_volume_attribute {
     my ($class, $scfg, $storeid, $volname, $attribute, $value) = @_;
 
     if ($attribute eq 'notes') {
-	return $class->update_volume_notes($scfg, $storeid, $volname, $value);
+        return $class->update_volume_notes($scfg, $storeid, $volname, $value);
     }
 
     if ($attribute eq 'protected') {
-	my $param = api_param_from_volname($class, $scfg, $volname);
-	$param->{$attribute} = $value;
+        my $param = api_param_from_volname($class, $scfg, $volname);
+        $param->{$attribute} = $value;
 
-	my $password = pbs_get_password($scfg, $storeid);
-	my $conn = pbs_api_connect($scfg, $password);
-	my $datastore = $scfg->{datastore};
+        my $password = pbs_get_password($scfg, $storeid);
+        my $conn = pbs_api_connect($scfg, $password);
+        my $datastore = $scfg->{datastore};
 
-	eval { $conn->put("/api2/json/admin/datastore/$datastore/$attribute", $param); };
-	if (my $err = $@) {
-	    die "Server is not recent enough to support feature '$attribute'\n"
-		if $err->{code} == 404;
-	    die $err;
-	}
-	return;
+        eval { $conn->put("/api2/json/admin/datastore/$datastore/$attribute", $param); };
+        if (my $err = $@) {
+            die "Server is not recent enough to support feature '$attribute'\n"
+                if $err->{code} == 404;
+            die $err;
+        }
+        return;
     }
 
     die "attribute '$attribute' is not supported for storage type '$scfg->{type}'\n";
@@ -934,15 +944,15 @@ sub update_volume_attribute {
 sub volume_size_info {
     my ($class, $scfg, $storeid, $volname, $timeout) = @_;
 
-    my ($vtype, $name,  undef, undef, undef, undef, $format) = $class->parse_volname($volname);
+    my ($vtype, $name, undef, undef, undef, undef, $format) = $class->parse_volname($volname);
 
-    my $data = run_client_cmd($scfg, $storeid, "files", [ $name ]);
+    my $data = run_client_cmd($scfg, $storeid, "files", [$name]);
 
     my $size = 0;
     foreach my $info (@$data) {
-	if ($info->{size} && $info->{size} =~ /^(\d+)$/) { # untaints
-	    $size += $1;
-	}
+        if ($info->{size} && $info->{size} =~ /^(\d+)$/) { # untaints
+            $size += $1;
+        }
     }
 
     my $used = $size;

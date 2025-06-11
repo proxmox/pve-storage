@@ -22,43 +22,48 @@ my $get_active_server = sub {
     my $defaultserver = $scfg->{server} ? $scfg->{server} : 'localhost';
 
     if ($return_default_if_offline && !defined($scfg->{server2})) {
-	# avoid delays (there is no backup server anyways)
-	return $defaultserver;
+        # avoid delays (there is no backup server anyways)
+        return $defaultserver;
     }
 
-    my $serverlist = [ $defaultserver ];
+    my $serverlist = [$defaultserver];
     push @$serverlist, $scfg->{server2} if $scfg->{server2};
 
     my $ctime = time();
     foreach my $server (@$serverlist) {
-	my $stat = $server_test_results->{$server};
-	return $server if $stat && $stat->{active} && (($ctime - $stat->{time}) <= 2); 
+        my $stat = $server_test_results->{$server};
+        return $server if $stat && $stat->{active} && (($ctime - $stat->{time}) <= 2);
     }
 
     foreach my $server (@$serverlist) {
-	my $status = 0;
+        my $status = 0;
 
-	if ($server && $server ne 'localhost' && $server ne '127.0.0.1' && $server ne '::1') {
-	    # ping the gluster daemon default port (24007) as heuristic
-	    $status = PVE::Network::tcp_ping($server, 24007, 2);
+        if ($server && $server ne 'localhost' && $server ne '127.0.0.1' && $server ne '::1') {
+            # ping the gluster daemon default port (24007) as heuristic
+            $status = PVE::Network::tcp_ping($server, 24007, 2);
 
-	} else {
+        } else {
 
-	    my $parser = sub {
-		my $line = shift;
+            my $parser = sub {
+                my $line = shift;
 
-		if ($line =~ m/Status: Started$/) {
-		    $status = 1;
-		}
-	    };
+                if ($line =~ m/Status: Started$/) {
+                    $status = 1;
+                }
+            };
 
-	    my $cmd = ['/usr/sbin/gluster', 'volume', 'info', $scfg->{volume}];
+            my $cmd = ['/usr/sbin/gluster', 'volume', 'info', $scfg->{volume}];
 
-	    run_command($cmd, errmsg => "glusterfs error", errfunc => sub {}, outfunc => $parser);
-	}
+            run_command(
+                $cmd,
+                errmsg => "glusterfs error",
+                errfunc => sub { },
+                outfunc => $parser,
+            );
+        }
 
-	$server_test_results->{$server} = { time => time(), active => $status };
-	return $server if $status;
+        $server_test_results->{$server} = { time => time(), active => $status };
+        return $server if $status;
     }
 
     return $defaultserver if $return_default_if_offline;
@@ -72,9 +77,9 @@ sub glusterfs_is_mounted {
     $mountdata = PVE::ProcFSTools::parse_proc_mounts() if !$mountdata;
 
     return $mountpoint if grep {
-	$_->[2] eq 'fuse.glusterfs' &&
-	$_->[0] =~ /^\S+:\Q$volume\E$/ &&
-	$_->[1] eq $mountpoint
+        $_->[2] eq 'fuse.glusterfs'
+            && $_->[0] =~ /^\S+:\Q$volume\E$/
+            && $_->[1] eq $mountpoint
     } @$mountdata;
     return undef;
 }
@@ -97,54 +102,56 @@ sub type {
 
 sub plugindata {
     return {
-	content => [ { images => 1, vztmpl => 1, iso => 1, backup => 1, snippets => 1, import => 1},
-		     { images => 1 }],
-	format => [ { raw => 1, qcow2 => 1, vmdk => 1 } , 'raw' ],
-	'sensitive-properties' => {},
+        content => [
+            { images => 1, vztmpl => 1, iso => 1, backup => 1, snippets => 1, import => 1 },
+            { images => 1 },
+        ],
+        format => [{ raw => 1, qcow2 => 1, vmdk => 1 }, 'raw'],
+        'sensitive-properties' => {},
     };
 }
 
 sub properties {
     return {
-	volume => {
-	    description => "Glusterfs Volume.",
-	    type => 'string',
-	},
-	server2 => {
-	    description => "Backup volfile server IP or DNS name.",
-	    type => 'string', format => 'pve-storage-server',
-	    requires => 'server',
-	},
-	transport => {
-	    description => "Gluster transport: tcp or rdma",
-	    type => 'string',
-	    enum => ['tcp', 'rdma', 'unix'],
-    	},
+        volume => {
+            description => "Glusterfs Volume.",
+            type => 'string',
+        },
+        server2 => {
+            description => "Backup volfile server IP or DNS name.",
+            type => 'string',
+            format => 'pve-storage-server',
+            requires => 'server',
+        },
+        transport => {
+            description => "Gluster transport: tcp or rdma",
+            type => 'string',
+            enum => ['tcp', 'rdma', 'unix'],
+        },
     };
 }
 
 sub options {
     return {
-	path => { fixed => 1 },
-	server => { optional => 1 },
-	server2 => { optional => 1 },
-	volume => { fixed => 1 },
-	transport => { optional => 1 },
-	nodes => { optional => 1 },
-	disable => { optional => 1 },
-	maxfiles => { optional => 1 },
-	'prune-backups' => { optional => 1 },
-	'max-protected-backups' => { optional => 1 },
-	content => { optional => 1 },
-	format => { optional => 1 },
-	mkdir => { optional => 1 },
-	'create-base-path' => { optional => 1 },
-	'create-subdirs' => { optional => 1 },
-	bwlimit => { optional => 1 },
-	preallocation => { optional => 1 },
+        path => { fixed => 1 },
+        server => { optional => 1 },
+        server2 => { optional => 1 },
+        volume => { fixed => 1 },
+        transport => { optional => 1 },
+        nodes => { optional => 1 },
+        disable => { optional => 1 },
+        maxfiles => { optional => 1 },
+        'prune-backups' => { optional => 1 },
+        'max-protected-backups' => { optional => 1 },
+        content => { optional => 1 },
+        format => { optional => 1 },
+        mkdir => { optional => 1 },
+        'create-base-path' => { optional => 1 },
+        'create-subdirs' => { optional => 1 },
+        bwlimit => { optional => 1 },
+        preallocation => { optional => 1 },
     };
 }
-
 
 sub check_config {
     my ($class, $sectionId, $config, $create, $skipSchemaCheck) = @_;
@@ -169,31 +176,30 @@ sub parse_name_dir {
 sub path {
     my ($class, $scfg, $volname, $storeid, $snapname) = @_;
 
-    my ($vtype, $name, $vmid, undef, undef, $isBase, $format) =
-	$class->parse_volname($volname);
+    my ($vtype, $name, $vmid, undef, undef, $isBase, $format) = $class->parse_volname($volname);
 
     # Note: qcow2/qed has internal snapshot, so path is always
     # the same (with or without snapshot => same file).
-    die "can't snapshot this image format\n" 
-	if defined($snapname) && $format !~ m/^(qcow2|qed)$/;
+    die "can't snapshot this image format\n"
+        if defined($snapname) && $format !~ m/^(qcow2|qed)$/;
 
     my $path = undef;
     if ($vtype eq 'images') {
 
-	my $server = &$get_active_server($scfg, 1);
-	my $glustervolume = $scfg->{volume};
-	my $transport = $scfg->{transport};
-	my $protocol = "gluster";
+        my $server = &$get_active_server($scfg, 1);
+        my $glustervolume = $scfg->{volume};
+        my $transport = $scfg->{transport};
+        my $protocol = "gluster";
 
-	if ($transport) {
-	    $protocol = "gluster+$transport";
-	}
+        if ($transport) {
+            $protocol = "gluster+$transport";
+        }
 
-	$path = "$protocol://$server/$glustervolume/images/$vmid/$name";
+        $path = "$protocol://$server/$glustervolume/images/$vmid/$name";
 
     } else {
-	my $dir = $class->get_subdir($scfg, $vtype);
-	$path = "$dir/$name";
+        my $dir = $class->get_subdir($scfg, $vtype);
+        $path = "$dir/$name";
     }
 
     return wantarray ? ($path, $vmid, $vtype) : $path;
@@ -205,7 +211,7 @@ sub clone_image {
     die "storage definition has no path\n" if !$scfg->{path};
 
     my ($vtype, $basename, $basevmid, undef, undef, $isBase, $format) =
-	$class->parse_volname($volname);
+        $class->parse_volname($volname);
 
     die "clone_image on wrong vtype '$vtype'\n" if $vtype ne 'images';
 
@@ -232,8 +238,17 @@ sub clone_image {
     my $glustervolume = $scfg->{volume};
     my $volumepath = "gluster://$server/$glustervolume/images/$vmid/$name";
 
-    my $cmd = ['/usr/bin/qemu-img', 'create', '-b', "../$basevmid/$basename",
-	       '-F', $format, '-f', 'qcow2', $volumepath];
+    my $cmd = [
+        '/usr/bin/qemu-img',
+        'create',
+        '-b',
+        "../$basevmid/$basename",
+        '-F',
+        $format,
+        '-f',
+        'qcow2',
+        $volumepath,
+    ];
 
     run_command($cmd, errmsg => "unable to create image");
 
@@ -272,9 +287,9 @@ sub alloc_image {
 
     eval { run_command($cmd, errmsg => "unable to create image"); };
     if ($@) {
-	unlink $path;
-	rmdir $imagedir;
-	die "$@";
+        unlink $path;
+        rmdir $imagedir;
+        die "$@";
     }
 
     return "$vmid/$name";
@@ -284,7 +299,7 @@ sub status {
     my ($class, $storeid, $scfg, $cache) = @_;
 
     $cache->{mountdata} = PVE::ProcFSTools::parse_proc_mounts()
-	if !$cache->{mountdata};
+        if !$cache->{mountdata};
 
     my $path = $scfg->{path};
 
@@ -299,20 +314,20 @@ sub activate_storage {
     my ($class, $storeid, $scfg, $cache) = @_;
 
     $cache->{mountdata} = PVE::ProcFSTools::parse_proc_mounts()
-	if !$cache->{mountdata};
+        if !$cache->{mountdata};
 
     my $path = $scfg->{path};
     my $volume = $scfg->{volume};
 
     if (!glusterfs_is_mounted($volume, $path, $cache->{mountdata})) {
-	$class->config_aware_base_mkdir($scfg, $path);
+        $class->config_aware_base_mkdir($scfg, $path);
 
-	die "unable to activate storage '$storeid' - " .
-	    "directory '$path' does not exist\n" if ! -d $path;
+        die "unable to activate storage '$storeid' - " . "directory '$path' does not exist\n"
+            if !-d $path;
 
-	my $server = &$get_active_server($scfg, 1);
+        my $server = &$get_active_server($scfg, 1);
 
-	glusterfs_mount($server, $volume, $path);
+        glusterfs_mount($server, $volume, $path);
     }
 
     $class->SUPER::activate_storage($storeid, $scfg, $cache);
@@ -322,14 +337,14 @@ sub deactivate_storage {
     my ($class, $storeid, $scfg, $cache) = @_;
 
     $cache->{mountdata} = PVE::ProcFSTools::parse_proc_mounts()
-	if !$cache->{mountdata};
+        if !$cache->{mountdata};
 
     my $path = $scfg->{path};
     my $volume = $scfg->{volume};
 
     if (glusterfs_is_mounted($volume, $path, $cache->{mountdata})) {
-	my $cmd = ['/bin/umount', $path];
-	run_command($cmd, errmsg => 'umount error');
+        my $cmd = ['/bin/umount', $path];
+        run_command($cmd, errmsg => 'umount error');
     }
 }
 

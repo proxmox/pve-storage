@@ -9,7 +9,8 @@ use IO::File;
 
 use PVE::JSONSchema qw(get_standard_option);
 use PVE::Storage::Plugin;
-use PVE::Tools qw(run_command file_read_firstline trim dir_glob_regex dir_glob_foreach $IPV4RE $IPV6RE);
+use PVE::Tools
+    qw(run_command file_read_firstline trim dir_glob_regex dir_glob_foreach $IPV4RE $IPV6RE);
 
 use base qw(PVE::Storage::Plugin);
 
@@ -25,8 +26,8 @@ my sub assert_iscsi_support {
     $found_iscsi_adm_exe = -x $ISCSIADM;
 
     if (!$found_iscsi_adm_exe) {
-	die "error: no iscsi support - please install open-iscsi\n" if !$noerr;
-	warn "warning: no iscsi support - please install open-iscsi\n";
+        die "error: no iscsi support - please install open-iscsi\n" if !$noerr;
+        warn "warning: no iscsi support - please install open-iscsi\n";
     }
     return $found_iscsi_adm_exe;
 }
@@ -41,18 +42,24 @@ sub iscsi_session_list {
 
     my $res = {};
     eval {
-	run_command($cmd, errmsg => 'iscsi session scan failed', outfunc => sub {
-	    my $line = shift;
-	    # example: tcp: [1] 192.168.122.252:3260,1 iqn.2003-01.org.linux-iscsi.proxmox-nfs.x8664:sn.00567885ba8f (non-flash)
-	    if ($line =~ m/^tcp:\s+\[(\S+)\]\s+((?:$IPV4RE|\[$IPV6RE\]):\d+)\,\S+\s+(\S+)\s+\S+?\s*$/) {
-		my ($session_id, $portal, $target) = ($1, $2, $3);
-		# there can be several sessions per target (multipath)
-		push @{$res->{$target}}, { session_id => $session_id, portal => $portal };
-	    }
-	});
+        run_command(
+            $cmd,
+            errmsg => 'iscsi session scan failed',
+            outfunc => sub {
+                my $line = shift;
+                # example: tcp: [1] 192.168.122.252:3260,1 iqn.2003-01.org.linux-iscsi.proxmox-nfs.x8664:sn.00567885ba8f (non-flash)
+                if ($line =~
+                    m/^tcp:\s+\[(\S+)\]\s+((?:$IPV4RE|\[$IPV6RE\]):\d+)\,\S+\s+(\S+)\s+\S+?\s*$/
+                ) {
+                    my ($session_id, $portal, $target) = ($1, $2, $3);
+                    # there can be several sessions per target (multipath)
+                    push @{ $res->{$target} }, { session_id => $session_id, portal => $portal };
+                }
+            },
+        );
     };
     if (my $err = $@) {
-	die $err if $err !~ m/: No active sessions.$/i;
+        die $err if $err !~ m/: No active sessions.$/i;
     }
 
     return $res;
@@ -62,7 +69,7 @@ sub iscsi_test_session {
     my ($sid) = @_;
 
     if ($sid !~ m/^[0-9]+$/) {
-	die "session_id: '$sid' is not a number\n";
+        die "session_id: '$sid' is not a number\n";
     }
     my $state = file_read_firstline("/sys/class/iscsi_session/session${sid}/state");
     return defined($state) && $state eq 'LOGGED_IN';
@@ -73,13 +80,13 @@ sub iscsi_test_portal {
     $cache //= {};
 
     if (defined($target)) {
-	# check session state instead if available
-	my $sessions = iscsi_session($cache, $target);
-	for my $session ($sessions->@*) {
-	    next if $session->{portal} ne $portal;
-	    my $state = iscsi_test_session($session->{session_id});
-	    return $state if $state;
-	}
+        # check session state instead if available
+        my $sessions = iscsi_session($cache, $target);
+        for my $session ($sessions->@*) {
+            next if $session->{portal} ne $portal;
+            my $state = iscsi_test_session($session->{session_id});
+            return $state if $state;
+        }
     }
     # check portal via tcp
     my ($server, $port) = PVE::Tools::parse_host_and_port($portal);
@@ -95,25 +102,28 @@ sub iscsi_portals {
     my $res = [];
     my $cmd = [$ISCSIADM, '--mode', 'node'];
     eval {
-	run_command($cmd, outfunc => sub {
-	    my $line = shift;
+        run_command(
+            $cmd,
+            outfunc => sub {
+                my $line = shift;
 
-	    if ($line =~ $ISCSI_TARGET_RE) {
-		my ($portal, $portal_target) = ($1, $2);
-		if ($portal_target eq $target) {
-		    push @{$res}, $portal;
-		}
-	    }
-	});
+                if ($line =~ $ISCSI_TARGET_RE) {
+                    my ($portal, $portal_target) = ($1, $2);
+                    if ($portal_target eq $target) {
+                        push @{$res}, $portal;
+                    }
+                }
+            },
+        );
     };
 
     my $err = $@;
     warn $err if $err;
 
     if ($err || !scalar(@$res)) {
-	return [ $portal_in ];
+        return [$portal_in];
     } else {
-	return $res;
+        return $res;
     }
 }
 
@@ -124,24 +134,27 @@ sub iscsi_discovery {
 
     my $res = {};
     for my $portal ($portals->@*) {
-	next if !iscsi_test_portal($target_in, $portal, $cache); # fixme: raise exception here?
+        next if !iscsi_test_portal($target_in, $portal, $cache); # fixme: raise exception here?
 
-	my $cmd = [$ISCSIADM, '--mode', 'discovery', '--type', 'sendtargets', '--portal', $portal];
-	eval {
-	    run_command($cmd, outfunc => sub {
-		my $line = shift;
+        my $cmd = [$ISCSIADM, '--mode', 'discovery', '--type', 'sendtargets', '--portal', $portal];
+        eval {
+            run_command(
+                $cmd,
+                outfunc => sub {
+                    my $line = shift;
 
-		if ($line =~ $ISCSI_TARGET_RE) {
-		    my ($portal, $target) = ($1, $2);
-		    # one target can have more than one portal (multipath)
-		    # and sendtargets should return all of them in single call
-		    push @{$res->{$target}}, $portal;
-		}
-	    });
-	};
+                    if ($line =~ $ISCSI_TARGET_RE) {
+                        my ($portal, $target) = ($1, $2);
+                        # one target can have more than one portal (multipath)
+                        # and sendtargets should return all of them in single call
+                        push @{ $res->{$target} }, $portal;
+                    }
+                },
+            );
+        };
 
-	# In case of multipath we can stop after receiving targets from any available portal
-	last if scalar(keys %$res) > 0;
+        # In case of multipath we can stop after receiving targets from any available portal
+        last if scalar(keys %$res) > 0;
     }
 
     return $res;
@@ -157,19 +170,24 @@ sub iscsi_login {
 
     # Disable retries to avoid blocking pvestatd for too long, next iteration will retry anyway
     eval {
-	my $cmd = [
-	    $ISCSIADM,
-	    '--mode', 'node',
-	    '--targetname', $target,
-	    '--op', 'update',
-	    '--name', 'node.session.initial_login_retry_max',
-	    '--value', '0',
-	];
-	run_command($cmd);
+        my $cmd = [
+            $ISCSIADM,
+            '--mode',
+            'node',
+            '--targetname',
+            $target,
+            '--op',
+            'update',
+            '--name',
+            'node.session.initial_login_retry_max',
+            '--value',
+            '0',
+        ];
+        run_command($cmd);
     };
     warn $@ if $@;
 
-    run_command([$ISCSIADM, '--mode', 'node', '--targetname',  $target, '--login']);
+    run_command([$ISCSIADM, '--mode', 'node', '--targetname', $target, '--login']);
 }
 
 sub iscsi_logout {
@@ -190,22 +208,24 @@ sub iscsi_session_rescan {
     my $rstat = stat($rescan_filename);
 
     if (!$rstat) {
-	if (my $fh = IO::File->new($rescan_filename, "a")) {
-	    utime undef, undef, $fh;
-	    close($fh);
-	}
+        if (my $fh = IO::File->new($rescan_filename, "a")) {
+            utime undef, undef, $fh;
+            close($fh);
+        }
     } else {
-	my $atime = $rstat->atime;
-	my $tdiff = time() - $atime;
-	# avoid frequent rescans
-	return if !($tdiff < 0 || $tdiff > 10);
-	utime undef, undef, $rescan_filename;
+        my $atime = $rstat->atime;
+        my $tdiff = time() - $atime;
+        # avoid frequent rescans
+        return if !($tdiff < 0 || $tdiff > 10);
+        utime undef, undef, $rescan_filename;
     }
 
     foreach my $session (@$session_list) {
-	my $cmd = [$ISCSIADM, '--mode', 'session', '--sid', $session->{session_id}, '--rescan'];
-	eval { run_command($cmd, outfunc => sub {}); };
-	warn $@ if $@;
+        my $cmd = [$ISCSIADM, '--mode', 'session', '--sid', $session->{session_id}, '--rescan'];
+        eval {
+            run_command($cmd, outfunc => sub { });
+        };
+        warn $@ if $@;
     }
 }
 
@@ -216,19 +236,19 @@ sub load_stable_scsi_paths {
     my $stabledir = "/dev/disk/by-id";
 
     if (my $dh = IO::Dir->new($stabledir)) {
-	foreach my $tmp (sort $dh->read) {
-           # exclude filenames with part in name (same disk but partitions)
-           # use only filenames with scsi(with multipath i have the same device
-	   # with dm-uuid-mpath , dm-name and scsi in name)
-           if($tmp !~ m/-part\d+$/ && ($tmp =~ m/^scsi-/ || $tmp =~ m/^dm-uuid-mpath-/)) {
-                 my $path = "$stabledir/$tmp";
-                 my $bdevdest = readlink($path);
-		 if ($bdevdest && $bdevdest =~ m|^../../([^/]+)|) {
-		     $stable_paths->{$1}=$tmp;
-		 }
-	   }
-       }
-       $dh->close;
+        foreach my $tmp (sort $dh->read) {
+            # exclude filenames with part in name (same disk but partitions)
+            # use only filenames with scsi(with multipath i have the same device
+            # with dm-uuid-mpath , dm-name and scsi in name)
+            if ($tmp !~ m/-part\d+$/ && ($tmp =~ m/^scsi-/ || $tmp =~ m/^dm-uuid-mpath-/)) {
+                my $path = "$stabledir/$tmp";
+                my $bdevdest = readlink($path);
+                if ($bdevdest && $bdevdest =~ m|^../../([^/]+)|) {
+                    $stable_paths->{$1} = $tmp;
+                }
+            }
+        }
+        $dh->close;
     }
     return $stable_paths;
 }
@@ -241,56 +261,67 @@ sub iscsi_device_list {
 
     my $stable_paths = load_stable_scsi_paths();
 
-    dir_glob_foreach($dirname, 'session(\d+)', sub {
-	my ($ent, $session) = @_;
+    dir_glob_foreach(
+        $dirname,
+        'session(\d+)',
+        sub {
+            my ($ent, $session) = @_;
 
-	my $target = file_read_firstline("$dirname/$ent/targetname");
-	return if !$target;
+            my $target = file_read_firstline("$dirname/$ent/targetname");
+            return if !$target;
 
-	my (undef, $host) = dir_glob_regex("$dirname/$ent/device", 'target(\d+):.*');
-	return if !defined($host);
+            my (undef, $host) = dir_glob_regex("$dirname/$ent/device", 'target(\d+):.*');
+            return if !defined($host);
 
-	dir_glob_foreach("/sys/bus/scsi/devices", "$host:" . '(\d+):(\d+):(\d+)', sub {
-	    my ($tmp, $channel, $id, $lun) = @_;
+            dir_glob_foreach(
+                "/sys/bus/scsi/devices",
+                "$host:" . '(\d+):(\d+):(\d+)',
+                sub {
+                    my ($tmp, $channel, $id, $lun) = @_;
 
-	    my $type = file_read_firstline("/sys/bus/scsi/devices/$tmp/type");
-	    return if !defined($type) || $type ne '0'; # list disks only
+                    my $type = file_read_firstline("/sys/bus/scsi/devices/$tmp/type");
+                    return if !defined($type) || $type ne '0'; # list disks only
 
-	    my $bdev;
-	    if (-d "/sys/bus/scsi/devices/$tmp/block") { # newer kernels
-		(undef, $bdev) = dir_glob_regex("/sys/bus/scsi/devices/$tmp/block/", '([A-Za-z]\S*)');
-	    } else {
-		(undef, $bdev) = dir_glob_regex("/sys/bus/scsi/devices/$tmp", 'block:(\S+)');
-	    }
-	    return if !$bdev;
+                    my $bdev;
+                    if (-d "/sys/bus/scsi/devices/$tmp/block") { # newer kernels
+                        (undef, $bdev) =
+                            dir_glob_regex("/sys/bus/scsi/devices/$tmp/block/", '([A-Za-z]\S*)');
+                    } else {
+                        (undef, $bdev) =
+                            dir_glob_regex("/sys/bus/scsi/devices/$tmp", 'block:(\S+)');
+                    }
+                    return if !$bdev;
 
-	    #check multipath
-	    if (-d "/sys/block/$bdev/holders") {
-		my $multipathdev = dir_glob_regex("/sys/block/$bdev/holders", '[A-Za-z]\S*');
-		$bdev = $multipathdev if $multipathdev;
-	    }
+                    #check multipath
+                    if (-d "/sys/block/$bdev/holders") {
+                        my $multipathdev =
+                            dir_glob_regex("/sys/block/$bdev/holders", '[A-Za-z]\S*');
+                        $bdev = $multipathdev if $multipathdev;
+                    }
 
-	    my $blockdev = $stable_paths->{$bdev};
-	    return if !$blockdev;
+                    my $blockdev = $stable_paths->{$bdev};
+                    return if !$blockdev;
 
-	    my $size = file_read_firstline("/sys/block/$bdev/size");
-	    return if !$size;
+                    my $size = file_read_firstline("/sys/block/$bdev/size");
+                    return if !$size;
 
-	    my $volid = "$channel.$id.$lun.$blockdev";
+                    my $volid = "$channel.$id.$lun.$blockdev";
 
-	    $res->{$target}->{$volid} = {
-		'format' => 'raw',
-		'size' => int($size * 512),
-		'vmid' => 0, # not assigned to any vm
-		'channel' => int($channel),
-		'id' => int($id),
-		'lun' => int($lun),
-	    };
+                    $res->{$target}->{$volid} = {
+                        'format' => 'raw',
+                        'size' => int($size * 512),
+                        'vmid' => 0, # not assigned to any vm
+                        'channel' => int($channel),
+                        'id' => int($id),
+                        'lun' => int($lun),
+                    };
 
-	    #print "TEST: $target $session $host,$bus,$tg,$lun $blockdev\n";
-	});
+                    #print "TEST: $target $session $host,$bus,$tg,$lun $blockdev\n";
+                },
+            );
 
-    });
+        },
+    );
 
     return $res;
 }
@@ -303,22 +334,23 @@ sub type {
 
 sub plugindata {
     return {
-	content => [ {images => 1, none => 1}, { images => 1 }],
-	select_existing => 1,
-	'sensitive-properties' => {},
+        content => [{ images => 1, none => 1 }, { images => 1 }],
+        select_existing => 1,
+        'sensitive-properties' => {},
     };
 }
 
 sub properties {
     return {
-	target => {
-	    description => "iSCSI target.",
-	    type => 'string',
-	},
-	portal => {
-	    description => "iSCSI portal (IP or DNS name with optional port).",
-	    type => 'string', format => 'pve-storage-portal-dns',
-	},
+        target => {
+            description => "iSCSI target.",
+            type => 'string',
+        },
+        portal => {
+            description => "iSCSI portal (IP or DNS name with optional port).",
+            type => 'string',
+            format => 'pve-storage-portal-dns',
+        },
     };
 }
 
@@ -326,10 +358,10 @@ sub options {
     return {
         portal => { fixed => 1 },
         target => { fixed => 1 },
-        nodes => { optional => 1},
-	disable => { optional => 1},
-	content => { optional => 1},
-	bwlimit => { optional => 1 },
+        nodes => { optional => 1 },
+        disable => { optional => 1 },
+        content => { optional => 1 },
+        bwlimit => { optional => 1 },
     };
 }
 
@@ -339,7 +371,7 @@ sub parse_volname {
     my ($class, $volname) = @_;
 
     if ($volname =~ m!^\d+\.\d+\.\d+\.([^/\s]+)$!) {
-	return ('images', $1, undef, undef, undef, undef, 'raw');
+        return ('images', $1, undef, undef, undef, undef, 'raw');
     }
 
     die "unable to parse iscsi volume name '$volname'\n";
@@ -389,7 +421,7 @@ sub list_volumes {
     my $res = $class->list_images($storeid, $scfg, $vmid);
 
     for my $item (@$res) {
-	$item->{content} = 'images'; # we only have images
+        $item->{content} = 'images'; # we only have images
     }
 
     return $res;
@@ -408,23 +440,23 @@ sub list_images {
 
     if (my $dat = $cache->{iscsi_devices}->{$target}) {
 
-	foreach my $volname (keys %$dat) {
+        foreach my $volname (keys %$dat) {
 
-	    my $volid = "$storeid:$volname";
+            my $volid = "$storeid:$volname";
 
-	    if ($vollist) {
-		my $found = grep { $_ eq $volid } @$vollist;
-		next if !$found;
-	    } else {
-		# we have no owner for iscsi devices
-		next if defined($vmid);
-	    }
+            if ($vollist) {
+                my $found = grep { $_ eq $volid } @$vollist;
+                next if !$found;
+            } else {
+                # we have no owner for iscsi devices
+                next if defined($vmid);
+            }
 
-	    my $info = $dat->{$volname};
-	    $info->{volid} = $volid;
+            my $info = $dat->{$volname};
+            $info->{volid} = $volid;
 
-	    push @$res, $info;
-	}
+            push @$res, $info;
+        }
     }
 
     return $res;
@@ -455,23 +487,23 @@ sub activate_storage {
     my $do_login = !defined($sessions);
 
     if (!$do_login) {
-	# We should check that sessions for all portals are available
-	my $session_portals = [ map { $_->{portal} } (@$sessions) ];
+        # We should check that sessions for all portals are available
+        my $session_portals = [map { $_->{portal} } (@$sessions)];
 
-	for my $portal (@$portals) {
-	    if (!grep(/^\Q$portal\E$/, @$session_portals)) {
-		$do_login = 1;
-		last;
-	    }
-	}
+        for my $portal (@$portals) {
+            if (!grep(/^\Q$portal\E$/, @$session_portals)) {
+                $do_login = 1;
+                last;
+            }
+        }
     }
 
     if ($do_login) {
-	eval { iscsi_login($scfg->{target}, $portals, $cache); };
-	warn $@ if $@;
+        eval { iscsi_login($scfg->{target}, $portals, $cache); };
+        warn $@ if $@;
     } else {
-	# make sure we get all devices
-	iscsi_session_rescan($sessions);
+        # make sure we get all devices
+        iscsi_session_rescan($sessions);
     }
 }
 
@@ -481,7 +513,7 @@ sub deactivate_storage {
     return if !assert_iscsi_support(1);
 
     if (defined(iscsi_session($cache, $scfg->{target}))) {
-	iscsi_logout($scfg->{target});
+        iscsi_logout($scfg->{target});
     }
 }
 
@@ -490,17 +522,17 @@ my $check_devices_part_of_target = sub {
 
     my $found = 0;
     for my $path (@$device_paths) {
-	if ($path =~ m!^/devices/platform/host\d+/session(\d+)/target\d+:\d:\d!) {
-	    my $session_id = $1;
+        if ($path =~ m!^/devices/platform/host\d+/session(\d+)/target\d+:\d:\d!) {
+            my $session_id = $1;
 
-	    my $targetname = file_read_firstline(
-		"/sys/class/iscsi_session/session$session_id/targetname",
-	    );
-	    if ($targetname && ($targetname eq $target)) {
-		$found = 1;
-		last;
-	    }
-	}
+            my $targetname = file_read_firstline(
+                "/sys/class/iscsi_session/session$session_id/targetname",
+            );
+            if ($targetname && ($targetname eq $target)) {
+                $found = 1;
+                last;
+            }
+        }
     }
     return $found;
 };
@@ -514,15 +546,15 @@ my $udev_query_path = sub {
 
     my $device_path;
     my $cmd = [
-	'udevadm',
-	'info',
-	'--query=path',
-	$dev,
+        'udevadm', 'info', '--query=path', $dev,
     ];
     eval {
-	run_command($cmd, outfunc => sub {
-	    $device_path = shift;
-	});
+        run_command(
+            $cmd,
+            outfunc => sub {
+                $device_path = shift;
+            },
+        );
     };
     die "failed to query device path for '$dev': $@\n" if $@;
 
@@ -540,23 +572,27 @@ $resolve_virtual_devices = sub {
 
     my $resolved = [];
     if ($dev =~ m!^/devices/virtual/block/!) {
-	dir_glob_foreach("/sys/$dev/slaves", '([^.].+)', sub {
-	    my ($slave) = @_;
+        dir_glob_foreach(
+            "/sys/$dev/slaves",
+            '([^.].+)',
+            sub {
+                my ($slave) = @_;
 
-	    # don't check devices multiple times
-	    return if $visited->{$slave};
-	    $visited->{$slave} = 1;
+                # don't check devices multiple times
+                return if $visited->{$slave};
+                $visited->{$slave} = 1;
 
-	    my $path;
-	    eval { $path = $udev_query_path->("/dev/$slave"); };
-	    return if $@;
+                my $path;
+                eval { $path = $udev_query_path->("/dev/$slave"); };
+                return if $@;
 
-	    my $nested_resolved = $resolve_virtual_devices->($path, $visited);
+                my $nested_resolved = $resolve_virtual_devices->($path, $visited);
 
-	    push @$resolved, @$nested_resolved;
-	});
+                push @$resolved, @$nested_resolved;
+            },
+        );
     } else {
-	push @$resolved, $dev;
+        push @$resolved, $dev;
     }
 
     return $resolved;
@@ -570,7 +606,7 @@ sub activate_volume {
     die "failed to get realpath for '$path': $!\n" if !$real_path;
     # in case $path does not exist or is not a symlink, check if the returned
     # $real_path is a block device
-    die "resolved realpath '$real_path' is not a block device\n" if ! -b $real_path;
+    die "resolved realpath '$real_path' is not a block device\n" if !-b $real_path;
 
     my $device_path = $udev_query_path->($real_path);
     my $resolved_paths = $resolve_virtual_devices->($device_path);
@@ -585,8 +621,8 @@ sub check_connection {
     my $portals = iscsi_portals($scfg->{target}, $scfg->{portal});
 
     for my $portal (@$portals) {
-	my $result = iscsi_test_portal($scfg->{target}, $portal, $cache);
-	return $result if $result;
+        my $result = iscsi_test_portal($scfg->{target}, $portal, $cache);
+        return $result if $result;
     }
 
     return 0;
@@ -601,17 +637,16 @@ sub volume_has_feature {
     my ($class, $scfg, $feature, $storeid, $volname, $snapname, $running) = @_;
 
     my $features = {
-	copy => { current => 1},
+        copy => { current => 1 },
     };
 
-    my ($vtype, $name, $vmid, $basename, $basevmid, $isBase) =
-	$class->parse_volname($volname);
+    my ($vtype, $name, $vmid, $basename, $basevmid, $isBase) = $class->parse_volname($volname);
 
     my $key = undef;
-    if ($snapname){
-	$key = 'snap';
+    if ($snapname) {
+        $key = 'snap';
     } else {
-	$key = $isBase ? 'base' : 'current';
+        $key = $isBase ? 'base' : 'current';
     }
     return 1 if $features->{$feature}->{$key};
 
@@ -629,15 +664,15 @@ sub volume_export_formats {
 
 sub volume_export {
     my (
-	$class,
-	$scfg,
-	$storeid,
-	$fh,
-	$volname,
-	$format,
-	$snapshot,
-	$base_snapshot,
-	$with_snapshots,
+        $class,
+        $scfg,
+        $storeid,
+        $fh,
+        $volname,
+        $format,
+        $snapshot,
+        $base_snapshot,
+        $with_snapshots,
     ) = @_;
 
     die "volume export format $format not available for $class\n" if $format ne 'raw+size';
@@ -647,13 +682,16 @@ sub volume_export {
 
     my $file = $class->filesystem_path($scfg, $volname, $snapshot);
     my $size;
-    run_command(['/sbin/blockdev', '--getsize64', $file], outfunc => sub {
-	my ($line) = @_;
-	die "unexpected output from /sbin/blockdev: $line\n" if $line !~ /^(\d+)$/;
-	$size = int($1);
-    });
+    run_command(
+        ['/sbin/blockdev', '--getsize64', $file],
+        outfunc => sub {
+            my ($line) = @_;
+            die "unexpected output from /sbin/blockdev: $line\n" if $line !~ /^(\d+)$/;
+            $size = int($1);
+        },
+    );
     PVE::Storage::Plugin::write_common_header($fh, $size);
-    run_command(['dd', "if=$file", "bs=64k", "status=progress"], output => '>&'.fileno($fh));
+    run_command(['dd', "if=$file", "bs=64k", "status=progress"], output => '>&' . fileno($fh));
     return;
 }
 

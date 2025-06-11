@@ -10,12 +10,12 @@ use warnings;
 use PVE::Tools qw(run_command file_read_firstline trim dir_glob_regex dir_glob_foreach);
 
 my @CONFIG_FILES = (
-    '/usr/local/etc/istgt/istgt.conf',  # FreeBSD, FreeNAS
-    '/var/etc/iscsi/istgt.conf'         # NAS4Free
+    '/usr/local/etc/istgt/istgt.conf', # FreeBSD, FreeNAS
+    '/var/etc/iscsi/istgt.conf' # NAS4Free
 );
 my @DAEMONS = (
-    '/usr/local/etc/rc.d/istgt',        # FreeBSD, FreeNAS
-    '/var/etc/rc.d/istgt'               # NAS4Free
+    '/usr/local/etc/rc.d/istgt', # FreeBSD, FreeNAS
+    '/var/etc/rc.d/istgt' # NAS4Free
 );
 
 # A logical unit can max have 63 LUNs
@@ -69,13 +69,13 @@ my $read_config = sub {
     $timeout = 10 if !$timeout;
 
     my $output = sub {
-    my $line = shift;
-    $msg .= "$line\n";
+        my $line = shift;
+        $msg .= "$line\n";
     };
 
     my $errfunc = sub {
-    my $line = shift;
-    $err .= "$line";
+        my $line = shift;
+        $err .= "$line";
     };
 
     $target = 'root@' . $scfg->{portal};
@@ -83,7 +83,8 @@ my $read_config = sub {
     my $daemon = 0;
     foreach my $config (@CONFIG_FILES) {
         $err = undef;
-        my $cmd = [@ssh_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", $target, $luncmd, $config];
+        my $cmd =
+            [@ssh_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", $target, $luncmd, $config];
         eval {
             run_command($cmd, outfunc => $output, errfunc => $errfunc, timeout => $timeout);
         };
@@ -119,17 +120,17 @@ my $parse_size = sub {
     return 0 if !$text;
 
     if ($text =~ m/^(\d+(\.\d+)?)([TGMK]B)?$/) {
-    my ($size, $reminder, $unit) = ($1, $2, $3);
-    return $size if !$unit;
-    if ($unit eq 'KB') {
-        $size *= 1024;
-    } elsif ($unit eq 'MB') {
-        $size *= 1024*1024;
-    } elsif ($unit eq 'GB') {
-        $size *= 1024*1024*1024;
-    } elsif ($unit eq 'TB') {
-        $size *= 1024*1024*1024*1024;
-    }
+        my ($size, $reminder, $unit) = ($1, $2, $3);
+        return $size if !$unit;
+        if ($unit eq 'KB') {
+            $size *= 1024;
+        } elsif ($unit eq 'MB') {
+            $size *= 1024 * 1024;
+        } elsif ($unit eq 'GB') {
+            $size *= 1024 * 1024 * 1024;
+        } elsif ($unit eq 'TB') {
+            $size *= 1024 * 1024 * 1024 * 1024;
+        }
         if ($reminder) {
             $size = ceil($size);
         }
@@ -151,9 +152,9 @@ my $size_with_unit = sub {
     if ($size =~ m/^\d+$/) {
         ++$n and $size /= 1024 until $size < 1024;
         if ($size =~ /\./) {
-            return sprintf "%.2f%s", $size, ( qw[bytes KB MB GB TB] )[ $n ];
+            return sprintf "%.2f%s", $size, (qw[bytes KB MB GB TB])[$n];
         } else {
-            return sprintf "%d%s", $size, ( qw[bytes KB MB GB TB] )[ $n ];
+            return sprintf "%d%s", $size, (qw[bytes KB MB GB TB])[$n];
         }
     }
     die "$size: Not a number";
@@ -164,18 +165,18 @@ my $lun_dumper = sub {
     my $config = '';
 
     $config .= "\n[$lun]\n";
-    $config .=  'TargetName ' . $SETTINGS->{$lun}->{TargetName} . "\n";
-    $config .=  'Mapping ' . $SETTINGS->{$lun}->{Mapping} . "\n";
-    $config .=  'AuthGroup ' . $SETTINGS->{$lun}->{AuthGroup} . "\n";
-    $config .=  'UnitType ' . $SETTINGS->{$lun}->{UnitType} . "\n";
-    $config .=  'QueueDepth ' . $SETTINGS->{$lun}->{QueueDepth} . "\n";
+    $config .= 'TargetName ' . $SETTINGS->{$lun}->{TargetName} . "\n";
+    $config .= 'Mapping ' . $SETTINGS->{$lun}->{Mapping} . "\n";
+    $config .= 'AuthGroup ' . $SETTINGS->{$lun}->{AuthGroup} . "\n";
+    $config .= 'UnitType ' . $SETTINGS->{$lun}->{UnitType} . "\n";
+    $config .= 'QueueDepth ' . $SETTINGS->{$lun}->{QueueDepth} . "\n";
 
-    foreach my $conf (@{$SETTINGS->{$lun}->{luns}}) {
-        $config .=  "$conf->{lun} Storage " . $conf->{Storage};
+    foreach my $conf (@{ $SETTINGS->{$lun}->{luns} }) {
+        $config .= "$conf->{lun} Storage " . $conf->{Storage};
         $config .= ' ' . $size_with_unit->($conf->{Size}) . "\n";
         foreach ($conf->{options}) {
             if ($_) {
-                $config .=  "$conf->{lun} Option " . $_ . "\n";
+                $config .= "$conf->{lun} Option " . $_ . "\n";
             }
         }
     }
@@ -189,11 +190,11 @@ my $get_lu_name = sub {
     my $used = ();
     my $i;
 
-    if (! exists $SETTINGS->{$target}->{used}) {
+    if (!exists $SETTINGS->{$target}->{used}) {
         for ($i = 0; $i < $MAX_LUNS; $i++) {
             $used->{$i} = 0;
         }
-        foreach my $lun (@{$SETTINGS->{$target}->{luns}}) {
+        foreach my $lun (@{ $SETTINGS->{$target}->{luns} }) {
             $lun->{lun} =~ /^LUN(\d+)$/;
             $used->{$1} = 1;
         }
@@ -213,13 +214,13 @@ my $init_lu_name = sub {
     my ($target) = @_;
     my $used = ();
 
-    if (! exists($SETTINGS->{$target}->{used})) {
+    if (!exists($SETTINGS->{$target}->{used})) {
         for (my $i = 0; $i < $MAX_LUNS; $i++) {
             $used->{$i} = 0;
         }
         $SETTINGS->{$target}->{used} = $used;
     }
-    foreach my $lun (@{$SETTINGS->{$target}->{luns}}) {
+    foreach my $lun (@{ $SETTINGS->{$target}->{luns} }) {
         $lun->{lun} =~ /^LUN(\d+)$/;
         $SETTINGS->{$target}->{used}->{$1} = 1;
     }
@@ -236,7 +237,8 @@ my $make_lun = sub {
     my ($scfg, $path) = @_;
 
     my $target = $SETTINGS->{current};
-    die 'Maximum number of LUNs per target is 63' if scalar @{$SETTINGS->{$target}->{luns}} >= $MAX_LUNS;
+    die 'Maximum number of LUNs per target is 63'
+        if scalar @{ $SETTINGS->{$target}->{luns} } >= $MAX_LUNS;
 
     my @options = ();
     my $lun = $get_lu_name->($target);
@@ -249,7 +251,7 @@ my $make_lun = sub {
         Size => 'AUTO',
         options => @options,
     };
-    push @{$SETTINGS->{$target}->{luns}}, $conf;
+    push @{ $SETTINGS->{$target}->{luns} }, $conf;
 
     return $conf->{lun};
 };
@@ -290,7 +292,7 @@ my $parser = sub {
                 if ($arg2 =~ /^Storage\s*(.+)/i) {
                     $SETTINGS->{$lun}->{$arg1}->{storage} = $1;
                 } elsif ($arg2 =~ /^Option\s*(.+)/i) {
-                    push @{$SETTINGS->{$lun}->{$arg1}->{options}}, $1;
+                    push @{ $SETTINGS->{$lun}->{$arg1}->{options} }, $1;
                 } else {
                     $SETTINGS->{$lun}->{$arg1} = $arg2;
                 }
@@ -307,10 +309,10 @@ my $parser = sub {
     my $base = get_base;
 
     for (my $i = 1; $i <= $max; $i++) {
-        my $target = $SETTINGS->{nodebase}.':'.$SETTINGS->{"LogicalUnit$i"}->{TargetName};
+        my $target = $SETTINGS->{nodebase} . ':' . $SETTINGS->{"LogicalUnit$i"}->{TargetName};
         if ($target eq $scfg->{target}) {
             my $lu = ();
-            while ((my $key, my $val) = each(%{$SETTINGS->{"LogicalUnit$i"}})) {
+            while ((my $key, my $val) = each(%{ $SETTINGS->{"LogicalUnit$i"} })) {
                 if ($key =~ /^LUN\d+/) {
                     $val->{storage} =~ /^([\w\/\-]+)\s+(\w+)/;
                     my $storage = $1;
@@ -318,7 +320,7 @@ my $parser = sub {
                     my $conf = undef;
                     my @options = ();
                     if ($val->{options}) {
-                        @options = @{$val->{options}};
+                        @options = @{ $val->{options} };
                     }
                     if ($storage =~ /^$base\/$scfg->{pool}\/([\w\-]+)$/) {
                         $conf = {
@@ -326,7 +328,7 @@ my $parser = sub {
                             Storage => $storage,
                             Size => $size,
                             options => @options,
-                        }
+                        };
                     }
                     push @$lu, $conf if $conf;
                     delete $SETTINGS->{"LogicalUnit$i"}->{$key};
@@ -349,9 +351,9 @@ my $list_lun = sub {
     my $name = undef;
 
     my $object = $params[0];
-    for my $key (keys %$SETTINGS)  {
+    for my $key (keys %$SETTINGS) {
         next unless $key =~ /^LogicalUnit\d+$/;
-        foreach my $lun (@{$SETTINGS->{$key}->{luns}}) {
+        foreach my $lun (@{ $SETTINGS->{$key}->{luns} }) {
             if ($lun->{Storage} =~ /^$object$/) {
                 return $lun->{Storage};
             }
@@ -399,7 +401,7 @@ my $delete_lun = sub {
     my $target = $SETTINGS->{current};
     my $luns = ();
 
-    foreach my $conf (@{$SETTINGS->{$target}->{luns}}) {
+    foreach my $conf (@{ $SETTINGS->{$target}->{luns} }) {
         if ($conf->{Storage} =~ /^$params[0]$/) {
             $free_lu_name->($target, $conf->{lun});
         } else {
@@ -448,7 +450,7 @@ my $add_view = sub {
             params => \@params,
         };
     } else {
-        @params = ('-HUP', '`cat '. "$SETTINGS->{pidfile}`");
+        @params = ('-HUP', '`cat ' . "$SETTINGS->{pidfile}`");
         $cmdmap = {
             cmd => 'ssh',
             method => 'kill',
@@ -477,9 +479,9 @@ my $list_view = sub {
     my $lun = undef;
 
     my $object = $params[0];
-    for my $key (keys %$SETTINGS)  {
+    for my $key (keys %$SETTINGS) {
         next unless $key =~ /^LogicalUnit\d+$/;
-        foreach my $lun (@{$SETTINGS->{$key}->{luns}}) {
+        foreach my $lun (@{ $SETTINGS->{$key}->{luns} }) {
             if ($lun->{Storage} =~ /^$object$/) {
                 if ($lun->{lun} =~ /^LUN(\d+)/) {
                     return $1;
@@ -496,13 +498,13 @@ my $get_lun_cmd_map = sub {
     my ($method) = @_;
 
     my $cmdmap = {
-        create_lu   => { cmd => $create_lun },
-        delete_lu   => { cmd => $delete_lun },
-        import_lu   => { cmd => $import_lun },
-        modify_lu   => { cmd => $modify_lun },
-        add_view    => { cmd => $add_view },
-        list_view   => { cmd => $list_view },
-        list_lu     => { cmd => $list_lun },
+        create_lu => { cmd => $create_lun },
+        delete_lu => { cmd => $delete_lun },
+        import_lu => { cmd => $import_lun },
+        modify_lu => { cmd => $modify_lun },
+        add_view => { cmd => $add_view },
+        list_view => { cmd => $list_view },
+        list_lu => { cmd => $list_lun },
     };
 
     die "unknown command '$method'" unless exists $cmdmap->{$method};
@@ -522,8 +524,8 @@ sub run_lun_command {
     my $is_add_view = 0;
 
     my $output = sub {
-    my $line = shift;
-    $msg .= "$line\n";
+        my $line = shift;
+        $msg .= "$line\n";
     };
 
     $target = 'root@' . $scfg->{portal};
@@ -531,18 +533,31 @@ sub run_lun_command {
     $parser->($scfg) unless $SETTINGS;
     my $cmdmap = $get_lun_cmd_map->($method);
     if ($method eq 'add_view') {
-        $is_add_view = 1 ;
+        $is_add_view = 1;
         $timeout = 15;
     }
     if (ref $cmdmap->{cmd} eq 'CODE') {
         $res = $cmdmap->{cmd}->($scfg, $timeout, $method, @params);
         if (ref $res) {
             $method = $res->{method};
-            @params = @{$res->{params}};
+            @params = @{ $res->{params} };
             if ($res->{cmd} eq 'scp') {
-                $cmd = [@scp_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", $method, "$target:$params[0]"];
+                $cmd = [
+                    @scp_cmd,
+                    '-i',
+                    "$id_rsa_path/$scfg->{portal}_id_rsa",
+                    $method,
+                    "$target:$params[0]",
+                ];
             } else {
-                $cmd = [@ssh_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", $target, $method, @params];
+                $cmd = [
+                    @ssh_cmd,
+                    '-i',
+                    "$id_rsa_path/$scfg->{portal}_id_rsa",
+                    $target,
+                    $method,
+                    @params,
+                ];
             }
         } else {
             return $res;
@@ -550,12 +565,18 @@ sub run_lun_command {
     } else {
         $luncmd = $cmdmap->{cmd};
         $method = $cmdmap->{method};
-        $cmd = [@ssh_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", $target, $luncmd, $method, @params];
+        $cmd = [
+            @ssh_cmd,
+            '-i',
+            "$id_rsa_path/$scfg->{portal}_id_rsa",
+            $target,
+            $luncmd,
+            $method,
+            @params,
+        ];
     }
 
-    eval {
-        run_command($cmd, outfunc => $output, timeout => $timeout);
-    };
+    eval { run_command($cmd, outfunc => $output, timeout => $timeout); };
     if ($@ && $is_add_view) {
         my $err = $@;
         if ($OLD_CONFIG) {
@@ -565,15 +586,11 @@ sub run_lun_command {
             print $fh $OLD_CONFIG;
             close $fh;
             $cmd = [@scp_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", $file, $CONFIG_FILE];
-            eval {
-                run_command($cmd, outfunc => $output, timeout => $timeout);
-            };
+            eval { run_command($cmd, outfunc => $output, timeout => $timeout); };
             $err1 = $@ if $@;
             unlink $file;
             die "$err\n$err1" if $err1;
-            eval {
-                run_lun_command($scfg, undef, 'add_view', 'restart');
-            };
+            eval { run_lun_command($scfg, undef, 'add_view', 'restart'); };
             die "$err\n$@" if ($@);
         }
         die $err;

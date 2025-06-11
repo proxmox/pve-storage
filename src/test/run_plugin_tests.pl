@@ -8,7 +8,7 @@ $ENV{TZ} = 'UTC';
 
 use TAP::Harness;
 
-my $harness = TAP::Harness->new( { verbosity => -1 });
+my $harness = TAP::Harness->new({ verbosity => -1 });
 my $res = $harness->runtests(
     "archive_info_test.pm",
     "parse_volname_test.pm",

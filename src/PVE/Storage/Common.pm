@@ -50,11 +50,14 @@ Possible formats a guest image can have.
 # Those formats should either be allowed here or support for them should be phased out (at least in
 # the storage layer). Can still be added again in the future, should any plugin provider request it.
 
-PVE::JSONSchema::register_standard_option('pve-storage-image-format', {
-    type => 'string',
-    enum => ['raw', 'qcow2', 'subvol', 'vmdk'],
-    description => "Format of the image.",
-});
+PVE::JSONSchema::register_standard_option(
+    'pve-storage-image-format',
+    {
+        type => 'string',
+        enum => ['raw', 'qcow2', 'subvol', 'vmdk'],
+        description => "Format of the image.",
+    },
+);
 
 =pod
 
@@ -80,7 +83,7 @@ sub align_size_up : prototype($$) {
     my $padding = ($granularity - $size % $granularity) % $granularity;
     my $aligned_size = $size + $padding;
     print "size $size is not aligned to granularity $granularity, rounding up to $aligned_size\n"
-	if $aligned_size != $size;
+        if $aligned_size != $size;
     return $aligned_size;
 }
 
@@ -103,7 +106,7 @@ sub deallocate : prototype($$$) {
     $length = int($length);
 
     if (syscall(PVE::Syscall::fallocate, fileno($file_handle), $mode, $offset, $length) != 0) {
-	die "fallocate: punch hole failed (offset: $offset, length: $length) - $!\n";
+        die "fallocate: punch hole failed (offset: $offset, length: $length) - $!\n";
     }
 }
 

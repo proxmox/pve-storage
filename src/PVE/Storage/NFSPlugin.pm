@@ -24,9 +24,9 @@ sub nfs_is_mounted {
 
     $mountdata = PVE::ProcFSTools::parse_proc_mounts() if !$mountdata;
     return $mountpoint if grep {
-	$_->[2] =~ /^nfs/ &&
-	$_->[0] =~ m|^\Q$source\E/?$| &&
-	$_->[1] eq $mountpoint
+        $_->[2] =~ /^nfs/
+            && $_->[0] =~ m|^\Q$source\E/?$|
+            && $_->[1] eq $mountpoint
     } @$mountdata;
     return undef;
 }
@@ -39,8 +39,8 @@ sub nfs_mount {
 
     my $cmd = ['/bin/mount', '-t', 'nfs', $source, $mountpoint];
     if ($options) {
-	push @$cmd, '-o', $options;
-    } 
+        push @$cmd, '-o', $options;
+    }
 
     run_command($cmd, errmsg => "mount error");
 }
@@ -53,48 +53,59 @@ sub type {
 
 sub plugindata {
     return {
-	content => [ { images => 1, rootdir => 1, vztmpl => 1, iso => 1, backup => 1, snippets => 1, import => 1 },
-		     { images => 1 }],
-	format => [ { raw => 1, qcow2 => 1, vmdk => 1 } , 'raw' ],
-	'sensitive-properties' => {},
+        content => [
+            {
+                images => 1,
+                rootdir => 1,
+                vztmpl => 1,
+                iso => 1,
+                backup => 1,
+                snippets => 1,
+                import => 1,
+            },
+            { images => 1 },
+        ],
+        format => [{ raw => 1, qcow2 => 1, vmdk => 1 }, 'raw'],
+        'sensitive-properties' => {},
     };
-}   
+}
 
 sub properties {
     return {
-	export => {
-	    description => "NFS export path.",
-	    type => 'string', format => 'pve-storage-path',
-	},
-	server => {
-	    description => "Server IP or DNS name.",
-	    type => 'string', format => 'pve-storage-server',
-	},
+        export => {
+            description => "NFS export path.",
+            type => 'string',
+            format => 'pve-storage-path',
+        },
+        server => {
+            description => "Server IP or DNS name.",
+            type => 'string',
+            format => 'pve-storage-server',
+        },
     };
 }
 
 sub options {
     return {
-	path => { fixed => 1 },
-	'content-dirs' => { optional => 1 },
-	server => { fixed => 1 },
-	export => { fixed => 1 },
-	nodes => { optional => 1 },
-	disable => { optional => 1 },
-	maxfiles => { optional => 1 },
-	'prune-backups' => { optional => 1 },
-	'max-protected-backups' => { optional => 1 },
-	options => { optional => 1 },
-	content => { optional => 1 },
-	format => { optional => 1 },
-	mkdir => { optional => 1 },
-	'create-base-path' => { optional => 1 },
-	'create-subdirs' => { optional => 1 },
-	bwlimit => { optional => 1 },
-	preallocation => { optional => 1 },
+        path => { fixed => 1 },
+        'content-dirs' => { optional => 1 },
+        server => { fixed => 1 },
+        export => { fixed => 1 },
+        nodes => { optional => 1 },
+        disable => { optional => 1 },
+        maxfiles => { optional => 1 },
+        'prune-backups' => { optional => 1 },
+        'max-protected-backups' => { optional => 1 },
+        options => { optional => 1 },
+        content => { optional => 1 },
+        format => { optional => 1 },
+        mkdir => { optional => 1 },
+        'create-base-path' => { optional => 1 },
+        'create-subdirs' => { optional => 1 },
+        bwlimit => { optional => 1 },
+        preallocation => { optional => 1 },
     };
 }
-
 
 sub check_config {
     my ($class, $sectionId, $config, $create, $skipSchemaCheck) = @_;
@@ -110,13 +121,13 @@ sub status {
     my ($class, $storeid, $scfg, $cache) = @_;
 
     $cache->{mountdata} = PVE::ProcFSTools::parse_proc_mounts()
-	if !$cache->{mountdata};
+        if !$cache->{mountdata};
 
     my $path = $scfg->{path};
     my $server = $scfg->{server};
     my $export = $scfg->{export};
 
-    return undef if !nfs_is_mounted($server, $export, $path, $cache->{mountdata}); 
+    return undef if !nfs_is_mounted($server, $export, $path, $cache->{mountdata});
 
     return $class->SUPER::status($storeid, $scfg, $cache);
 }
@@ -125,20 +136,20 @@ sub activate_storage {
     my ($class, $storeid, $scfg, $cache) = @_;
 
     $cache->{mountdata} = PVE::ProcFSTools::parse_proc_mounts()
-	if !$cache->{mountdata};
+        if !$cache->{mountdata};
 
     my $path = $scfg->{path};
     my $server = $scfg->{server};
     my $export = $scfg->{export};
 
     if (!nfs_is_mounted($server, $export, $path, $cache->{mountdata})) {
-	# NOTE: only call mkpath when not mounted (avoid hang when NFS server is offline
-	$class->config_aware_base_mkdir($scfg, $path);
+        # NOTE: only call mkpath when not mounted (avoid hang when NFS server is offline
+        $class->config_aware_base_mkdir($scfg, $path);
 
-	die "unable to activate storage '$storeid' - " .
-	    "directory '$path' does not exist\n" if ! -d $path;
+        die "unable to activate storage '$storeid' - " . "directory '$path' does not exist\n"
+            if !-d $path;
 
-	nfs_mount($server, $export, $path, $scfg->{options});
+        nfs_mount($server, $export, $path, $scfg->{options});
     }
 
     $class->SUPER::activate_storage($storeid, $scfg, $cache);
@@ -148,15 +159,15 @@ sub deactivate_storage {
     my ($class, $storeid, $scfg, $cache) = @_;
 
     $cache->{mountdata} = PVE::ProcFSTools::parse_proc_mounts()
-	if !$cache->{mountdata};
+        if !$cache->{mountdata};
 
     my $path = $scfg->{path};
     my $server = $scfg->{server};
     my $export = $scfg->{export};
 
-    if (nfs_is_mounted($server, $export, $path, $cache->{mountdata})) {    
-	my $cmd = ['/bin/umount', $path];
-	run_command($cmd, errmsg => 'umount error'); 
+    if (nfs_is_mounted($server, $export, $path, $cache->{mountdata})) {
+        my $cmd = ['/bin/umount', $path];
+        run_command($cmd, errmsg => 'umount error');
     }
 }
 
@@ -170,33 +181,35 @@ sub check_connection {
 
     my $is_v4 = defined($opts) && $opts =~ /vers=4.*/;
     if ($is_v4) {
-	my $ip = PVE::JSONSchema::pve_verify_ip($server, 1);
-	if (!defined($ip)) {
-	    $ip = PVE::Network::get_ip_from_hostname($server);
-	}
+        my $ip = PVE::JSONSchema::pve_verify_ip($server, 1);
+        if (!defined($ip)) {
+            $ip = PVE::Network::get_ip_from_hostname($server);
+        }
 
-	my $transport = PVE::JSONSchema::pve_verify_ipv4($ip, 1) ? 'tcp' : 'tcp6';
+        my $transport = PVE::JSONSchema::pve_verify_ipv4($ip, 1) ? 'tcp' : 'tcp6';
 
-	# nfsv4 uses a pseudo-filesystem always beginning with /
-	# no exports are listed
-	$cmd = ['/usr/sbin/rpcinfo', '-T', $transport, $ip, 'nfs', '4'];
+        # nfsv4 uses a pseudo-filesystem always beginning with /
+        # no exports are listed
+        $cmd = ['/usr/sbin/rpcinfo', '-T', $transport, $ip, 'nfs', '4'];
     } else {
-	$cmd = ['/sbin/showmount', '--no-headers', '--exports', $server];
+        $cmd = ['/sbin/showmount', '--no-headers', '--exports', $server];
     }
 
-    eval { run_command($cmd, timeout => 10, outfunc => sub {}, errfunc => sub {}) };
+    eval {
+        run_command($cmd, timeout => 10, outfunc => sub { }, errfunc => sub { });
+    };
     if (my $err = $@) {
-	if ($is_v4) {
-	    my $port = 2049;
-	    $port = $1 if defined($opts) && $opts =~ /port=(\d+)/;
+        if ($is_v4) {
+            my $port = 2049;
+            $port = $1 if defined($opts) && $opts =~ /port=(\d+)/;
 
-	    # rpcinfo is expected to work when the port is 0 (see 'man 5 nfs') and tcp_ping()
-	    # defaults to port 7 when passing in 0.
-	    return 0 if $port == 0;
+            # rpcinfo is expected to work when the port is 0 (see 'man 5 nfs') and tcp_ping()
+            # defaults to port 7 when passing in 0.
+            return 0 if $port == 0;
 
-	    return PVE::Network::tcp_ping($server, $port, 2);
-	}
-	return 0;
+            return PVE::Network::tcp_ping($server, $port, 2);
+        }
+        return 0;
     }
 
     return 1;

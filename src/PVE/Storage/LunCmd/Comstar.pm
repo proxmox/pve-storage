@@ -17,12 +17,12 @@ my $get_lun_cmd_map = sub {
     my $sbdadmcmd = "/usr/sbin/sbdadm";
 
     my $cmdmap = {
-        create_lu   => { cmd => $stmfadmcmd, method => 'create-lu' },
-        delete_lu   => { cmd => $stmfadmcmd, method => 'delete-lu' },
-        import_lu   => { cmd => $stmfadmcmd, method => 'import-lu' },
-        modify_lu   => { cmd => $stmfadmcmd, method => 'modify-lu' },
-        add_view    => { cmd => $stmfadmcmd, method => 'add-view' },
-        list_view   => { cmd => $stmfadmcmd, method => 'list-view' },
+        create_lu => { cmd => $stmfadmcmd, method => 'create-lu' },
+        delete_lu => { cmd => $stmfadmcmd, method => 'delete-lu' },
+        import_lu => { cmd => $stmfadmcmd, method => 'import-lu' },
+        modify_lu => { cmd => $stmfadmcmd, method => 'modify-lu' },
+        add_view => { cmd => $stmfadmcmd, method => 'add-view' },
+        list_view => { cmd => $stmfadmcmd, method => 'list-view' },
         list_lu => { cmd => $sbdadmcmd, method => 'list-lu' },
     };
 
@@ -45,15 +45,15 @@ sub run_lun_command {
     $timeout = 10 if !$timeout;
 
     my $output = sub {
-    my $line = shift;
-    $msg .= "$line\n";
+        my $line = shift;
+        $msg .= "$line\n";
     };
 
     if ($method eq 'create_lu') {
-        my $wcd = 'false'; 
+        my $wcd = 'false';
         if ($scfg->{nowritecache}) {
-          $wcd = 'true';
-	}
+            $wcd = 'true';
+        }
         my $prefix = '600144f';
         my $digest = md5_hex($params[0]);
         $digest =~ /(\w{7}(.*))/;
@@ -68,13 +68,13 @@ sub run_lun_command {
         @params = undef;
     } elsif ($method eq 'add_view') {
         if ($scfg->{comstar_tg}) {
-          unshift @params, $scfg->{comstar_tg};
-          unshift @params, '--target-group';
-	}
+            unshift @params, $scfg->{comstar_tg};
+            unshift @params, '--target-group';
+        }
         if ($scfg->{comstar_hg}) {
-          unshift @params, $scfg->{comstar_hg};
-          unshift @params, '--host-group';
-	}
+            unshift @params, $scfg->{comstar_hg};
+            unshift @params, '--host-group';
+        }
     }
 
     my $cmdmap = $get_lun_cmd_map->($method);
@@ -83,7 +83,15 @@ sub run_lun_command {
 
     $target = 'root@' . $scfg->{portal};
 
-    my $cmd = [@ssh_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", $target, $luncmd, $lunmethod, @params];
+    my $cmd = [
+        @ssh_cmd,
+        '-i',
+        "$id_rsa_path/$scfg->{portal}_id_rsa",
+        $target,
+        $luncmd,
+        $lunmethod,
+        @params,
+    ];
 
     run_command($cmd, outfunc => $output, timeout => $timeout);
 

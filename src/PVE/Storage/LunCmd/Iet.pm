@@ -48,36 +48,42 @@ my $execute_command = sub {
     $timeout = 10 if !$timeout;
 
     my $output = sub {
-    my $line = shift;
-    $msg .= "$line\n";
+        my $line = shift;
+        $msg .= "$line\n";
     };
 
     my $errfunc = sub {
-    my $line = shift;
-    $err .= "$line";
+        my $line = shift;
+        $err .= "$line";
     };
 
     if ($exec eq 'scp') {
         $target = 'root@[' . $scfg->{portal} . ']';
-        $cmd = [@scp_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", '--', $method, "$target:$params[0]"];
+        $cmd = [
+            @scp_cmd,
+            '-i',
+            "$id_rsa_path/$scfg->{portal}_id_rsa",
+            '--',
+            $method,
+            "$target:$params[0]",
+        ];
     } else {
         $target = 'root@' . $scfg->{portal};
-        $cmd = [@ssh_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", $target, '--', $method, @params];
+        $cmd = [@ssh_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", $target, '--', $method,
+            @params];
     }
 
-    eval {
-        run_command($cmd, outfunc => $output, errfunc => $errfunc, timeout => $timeout);
-    };
+    eval { run_command($cmd, outfunc => $output, errfunc => $errfunc, timeout => $timeout); };
     if ($@) {
         $res = {
             result => 0,
             msg => $err,
-        }
+        };
     } else {
         $res = {
             result => 1,
             msg => $msg,
-        }
+        };
     }
 
     return $res;
@@ -104,10 +110,9 @@ my $read_config = sub {
 
     $target = 'root@' . $scfg->{portal};
 
-    my $cmd = [@ssh_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", $target, $luncmd, $CONFIG_FILE];
-    eval {
-        run_command($cmd, outfunc => $output, errfunc => $errfunc, timeout => $timeout);
-    };
+    my $cmd =
+        [@ssh_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", $target, $luncmd, $CONFIG_FILE];
+    eval { run_command($cmd, outfunc => $output, errfunc => $errfunc, timeout => $timeout); };
     if ($@) {
         die $err if ($err !~ /No such file or directory/);
         die "No configuration found. Install iet on $scfg->{portal}" if $msg eq '';
@@ -141,7 +146,7 @@ my $parser = sub {
     foreach (@cfgfile) {
         $line++;
         if ($_ =~ /^\s*Target\s*([\w\-\:\.]+)\s*$/) {
-            if ($1 eq $scfg->{target} && ! $cfg_target) {
+            if ($1 eq $scfg->{target} && !$cfg_target) {
                 # start colect info
                 die "$line: Parse error [$_]" if $SETTINGS;
                 $SETTINGS->{target} = $1;
@@ -157,7 +162,7 @@ my $parser = sub {
         } else {
             if ($cfg_target) {
                 $SETTINGS->{text} .= "$_\n";
-                next if ($_ =~ /^\s*#/ || ! $_);
+                next if ($_ =~ /^\s*#/ || !$_);
                 my $option = $_;
                 if ($_ =~ /^(\w+)\s*#/) {
                     $option = $1;
@@ -176,7 +181,7 @@ my $parser = sub {
                     foreach (@lun) {
                         my @lun_opt = split '=', $_;
                         die "$line: Parse error [$option]" unless (scalar(@lun_opt) == 2);
-                        $conf->{$lun_opt[0]} = $lun_opt[1];
+                        $conf->{ $lun_opt[0] } = $lun_opt[1];
                     }
                     if ($conf->{Path} && $conf->{Path} =~ /^$base\/$scfg->{pool}\/([\w\-]+)$/) {
                         $conf->{include} = 1;
@@ -184,7 +189,7 @@ my $parser = sub {
                         $conf->{include} = 0;
                     }
                     $conf->{lun} = $num;
-                    push @{$SETTINGS->{luns}}, $conf;
+                    push @{ $SETTINGS->{luns} }, $conf;
                 } else {
                     die "$line: Parse error [$option]";
                 }
@@ -202,19 +207,24 @@ my $update_config = sub {
     my $config = '';
 
     while ((my $option, my $value) = each(%$SETTINGS)) {
-        next if ($option eq 'include' || $option eq 'luns' || $option eq 'Path' || $option eq 'text' || $option eq 'used');
+        next
+            if ($option eq 'include'
+                || $option eq 'luns'
+                || $option eq 'Path'
+                || $option eq 'text'
+                || $option eq 'used');
         if ($option eq 'target') {
             $config = "\n\nTarget " . $SETTINGS->{target} . "\n" . $config;
         } else {
             $config .= "\t$option\t\t\t$value\n";
         }
     }
-    foreach my $lun (@{$SETTINGS->{luns}}) {
+    foreach my $lun (@{ $SETTINGS->{luns} }) {
         my $lun_opt = '';
         while ((my $option, my $value) = each(%$lun)) {
             next if ($option eq 'include' || $option eq 'lun' || $option eq 'Path');
             if ($lun_opt eq '') {
-            $lun_opt = $option . '=' . $value;
+                $lun_opt = $option . '=' . $value;
             } else {
                 $lun_opt .= ',' . $option . '=' . $value;
             }
@@ -260,12 +270,12 @@ my $get_lu_name = sub {
     my $used = ();
     my $i;
 
-    if (! exists $SETTINGS->{used}) {
+    if (!exists $SETTINGS->{used}) {
         for ($i = 0; $i < $MAX_LUNS; $i++) {
             $used->{$i} = 0;
         }
-        foreach my $lun (@{$SETTINGS->{luns}}) {
-            $used->{$lun->{lun}} = 1;
+        foreach my $lun (@{ $SETTINGS->{luns} }) {
+            $used->{ $lun->{lun} } = 1;
         }
         $SETTINGS->{used} = $used;
     }
@@ -282,14 +292,14 @@ my $get_lu_name = sub {
 my $init_lu_name = sub {
     my $used = ();
 
-    if (! exists($SETTINGS->{used})) {
+    if (!exists($SETTINGS->{used})) {
         for (my $i = 0; $i < $MAX_LUNS; $i++) {
             $used->{$i} = 0;
         }
         $SETTINGS->{used} = $used;
     }
-    foreach my $lun (@{$SETTINGS->{luns}}) {
-        $SETTINGS->{used}->{$lun->{lun}} = 1;
+    foreach my $lun (@{ $SETTINGS->{luns} }) {
+        $SETTINGS->{used}->{ $lun->{lun} } = 1;
     }
 };
 
@@ -297,7 +307,7 @@ my $free_lu_name = sub {
     my ($lu_name) = @_;
     my $new;
 
-    foreach my $lun (@{$SETTINGS->{luns}}) {
+    foreach my $lun (@{ $SETTINGS->{luns} }) {
         if ($lun->{lun} != $lu_name) {
             push @$new, $lun;
         }
@@ -310,7 +320,8 @@ my $free_lu_name = sub {
 my $make_lun = sub {
     my ($scfg, $path) = @_;
 
-    die 'Maximum number of LUNs per target is 16384' if scalar @{$SETTINGS->{luns}} >= $MAX_LUNS;
+    die 'Maximum number of LUNs per target is 16384'
+        if scalar @{ $SETTINGS->{luns} } >= $MAX_LUNS;
 
     my $lun = $get_lu_name->();
     my $conf = {
@@ -319,7 +330,7 @@ my $make_lun = sub {
         Type => 'blockio',
         include => 1,
     };
-    push @{$SETTINGS->{luns}}, $conf;
+    push @{ $SETTINGS->{luns} }, $conf;
 
     return $conf;
 };
@@ -329,7 +340,7 @@ my $list_view = sub {
     my $lun = undef;
 
     my $object = $params[0];
-    foreach my $lun (@{$SETTINGS->{luns}}) {
+    foreach my $lun (@{ $SETTINGS->{luns} }) {
         next unless $lun->{include} == 1;
         if ($lun->{Path} =~ /^$object$/) {
             return $lun->{lun} if (defined($lun->{lun}));
@@ -345,7 +356,7 @@ my $list_lun = sub {
     my $name = undef;
 
     my $object = $params[0];
-    foreach my $lun (@{$SETTINGS->{luns}}) {
+    foreach my $lun (@{ $SETTINGS->{luns} }) {
         next unless $lun->{include} == 1;
         if ($lun->{Path} =~ /^$object$/) {
             return $lun->{Path};
@@ -381,12 +392,12 @@ my $create_lun = sub {
 
 my $delete_lun = sub {
     my ($scfg, $timeout, $method, @params) = @_;
-    my $res = {msg => undef};
+    my $res = { msg => undef };
 
     my $path = $params[0];
     my $tid = $get_target_tid->($scfg);
 
-    foreach my $lun (@{$SETTINGS->{luns}}) {
+    foreach my $lun (@{ $SETTINGS->{luns} }) {
         if ($lun->{Path} eq $path) {
             @params = ('--op', 'delete', "--tid=$tid", "--lun=$lun->{lun}");
             $res = $execute_command->($scfg, 'ssh', $timeout, $ietadm, @params);
@@ -417,7 +428,7 @@ my $modify_lun = sub {
     my $path = $params[1];
     my $tid = $get_target_tid->($scfg);
 
-    foreach my $cfg (@{$SETTINGS->{luns}}) {
+    foreach my $cfg (@{ $SETTINGS->{luns} }) {
         if ($cfg->{Path} eq $path) {
             $lun = $cfg;
             last;
@@ -446,13 +457,13 @@ my $get_lun_cmd_map = sub {
     my ($method) = @_;
 
     my $cmdmap = {
-        create_lu   =>  { cmd => $create_lun },
-        delete_lu   =>  { cmd => $delete_lun },
-        import_lu   =>  { cmd => $import_lun },
-        modify_lu   =>  { cmd => $modify_lun },
-        add_view    =>  { cmd => $add_view },
-        list_view   =>  { cmd => $list_view },
-        list_lu     =>  { cmd => $list_lun },
+        create_lu => { cmd => $create_lun },
+        delete_lu => { cmd => $delete_lun },
+        import_lu => { cmd => $import_lun },
+        modify_lu => { cmd => $modify_lun },
+        add_view => { cmd => $add_view },
+        list_view => { cmd => $list_view },
+        list_lu => { cmd => $list_lun },
     };
 
     die "unknown command '$method'" unless exists $cmdmap->{$method};

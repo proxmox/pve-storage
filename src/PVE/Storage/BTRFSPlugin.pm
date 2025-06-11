@@ -31,55 +31,55 @@ sub type {
 
 sub plugindata {
     return {
-	content => [
-	    {
-		images => 1,
-		rootdir => 1,
-		vztmpl => 1,
-		iso => 1,
-		backup => 1,
-		snippets => 1,
-		none => 1,
-		import => 1,
-	    },
-	    { images => 1, rootdir => 1 },
-	],
-	format => [ { raw => 1, subvol => 1 }, 'raw', ],
-	'sensitive-properties' => {},
+        content => [
+            {
+                images => 1,
+                rootdir => 1,
+                vztmpl => 1,
+                iso => 1,
+                backup => 1,
+                snippets => 1,
+                none => 1,
+                import => 1,
+            },
+            { images => 1, rootdir => 1 },
+        ],
+        format => [{ raw => 1, subvol => 1 }, 'raw'],
+        'sensitive-properties' => {},
     };
 }
 
 sub properties {
     return {
-	nocow => {
-	    description => "Set the NOCOW flag on files."
-		. " Disables data checksumming and causes data errors to be unrecoverable from"
-		. " while allowing direct I/O. Only use this if data does not need to be any more"
-		. " safe than on a single ext4 formatted disk with no underlying raid system.",
-	    type => 'boolean',
-	    default => 0,
-	},
+        nocow => {
+            description => "Set the NOCOW flag on files."
+                . " Disables data checksumming and causes data errors to be unrecoverable from"
+                . " while allowing direct I/O. Only use this if data does not need to be any more"
+                . " safe than on a single ext4 formatted disk with no underlying raid system.",
+            type => 'boolean',
+            default => 0,
+        },
     };
 }
 
 sub options {
     return {
-	path => { fixed => 1 },
-	nodes => { optional => 1 },
-	shared => { optional => 1 },
-	disable => { optional => 1 },
-	maxfiles => { optional => 1 },
-	'prune-backups' => { optional => 1 },
-	'max-protected-backups' => { optional => 1 },
-	content => { optional => 1 },
-	format => { optional => 1 },
-	is_mountpoint => { optional => 1 },
-	nocow => { optional => 1 },
-	mkdir => { optional => 1 },
-	'create-base-path' => { optional => 1 },
-	'create-subdirs' => { optional => 1 },
-	preallocation => { optional => 1 },
-	# TODO: The new variant of mkdir with  `populate` vs `create`...
+        path => { fixed => 1 },
+        nodes => { optional => 1 },
+        shared => { optional => 1 },
+        disable => { optional => 1 },
+        maxfiles => { optional => 1 },
+        'prune-backups' => { optional => 1 },
+        'max-protected-backups' => { optional => 1 },
+        content => { optional => 1 },
+        format => { optional => 1 },
+        is_mountpoint => { optional => 1 },
+        nocow => { optional => 1 },
+        mkdir => { optional => 1 },
+        'create-base-path' => { optional => 1 },
+        'create-subdirs' => { optional => 1 },
+        preallocation => { optional => 1 },
+        # TODO: The new variant of mkdir with  `populate` vs `create`...
     };
 }
 
@@ -95,7 +95,8 @@ sub options {
 # Reuse `DirPlugin`'s `check_config`. This simply checks for invalid paths.
 sub check_config {
     my ($self, $sectionId, $config, $create, $skipSchemaCheck) = @_;
-    return PVE::Storage::DirPlugin::check_config($self, $sectionId, $config, $create, $skipSchemaCheck);
+    return PVE::Storage::DirPlugin::check_config($self, $sectionId, $config, $create,
+        $skipSchemaCheck);
 }
 
 my sub getfsmagic($) {
@@ -106,7 +107,7 @@ my sub getfsmagic($) {
     # Just round up and extract what we need:
     my $buf = pack('x160');
     if (0 != syscall(&PVE::Syscall::SYS_statfs, $path, $buf)) {
-	die "statfs on '$path' failed - $!\n";
+        die "statfs on '$path' failed - $!\n";
     }
 
     return unpack('L!', $buf);
@@ -115,7 +116,7 @@ my sub getfsmagic($) {
 my sub assert_btrfs($) {
     my ($path) = @_;
     die "'$path' is not a btrfs file system\n"
-	if getfsmagic($path) != BTRFS_MAGIC;
+        if getfsmagic($path) != BTRFS_MAGIC;
 }
 
 sub activate_storage {
@@ -126,8 +127,8 @@ sub activate_storage {
 
     my $mp = PVE::Storage::DirPlugin::parse_is_mountpoint($scfg);
     if (defined($mp) && !PVE::Storage::DirPlugin::path_is_mounted($mp, $cache->{mountdata})) {
-	die "unable to activate storage '$storeid' - directory is expected to be a mount point but"
-	." is not mounted: '$mp'\n";
+        die "unable to activate storage '$storeid' - directory is expected to be a mount point but"
+            . " is not mounted: '$mp'\n";
     }
 
     assert_btrfs($path); # only assert this stuff now, ensures $path is there and better UX
@@ -142,18 +143,14 @@ sub status {
 
 sub get_volume_attribute {
     my ($class, $scfg, $storeid, $volname, $attribute) = @_;
-    return PVE::Storage::DirPlugin::get_volume_attribute($class, $scfg, $storeid, $volname, $attribute);
+    return PVE::Storage::DirPlugin::get_volume_attribute($class, $scfg, $storeid, $volname,
+        $attribute);
 }
 
 sub update_volume_attribute {
     my ($class, $scfg, $storeid, $volname, $attribute, $value) = @_;
     return PVE::Storage::DirPlugin::update_volume_attribute(
-	$class,
-	$scfg,
-	$storeid,
-	$volname,
-	$attribute,
-	$value,
+        $class, $scfg, $storeid, $volname, $attribute, $value,
     );
 }
 
@@ -171,7 +168,7 @@ sub raw_name_to_dir($) {
 
     # For the subvolume directory Strip the `.<format>` suffix:
     if ($raw =~ /^(.*)\.raw$/) {
-	return $1;
+        return $1;
     }
 
     __error "internal error: bad disk name: $raw";
@@ -181,7 +178,7 @@ sub raw_file_to_subvol($) {
     my ($file) = @_;
 
     if ($file =~ m|^(.*)/disk\.raw$|) {
-	return "$1";
+        return "$1";
     }
 
     __error "internal error: bad raw path: $file";
@@ -190,26 +187,25 @@ sub raw_file_to_subvol($) {
 sub filesystem_path {
     my ($class, $scfg, $volname, $snapname) = @_;
 
-    my ($vtype, $name, $vmid, undef, undef, $isBase, $format) =
-	$class->parse_volname($volname);
+    my ($vtype, $name, $vmid, undef, undef, $isBase, $format) = $class->parse_volname($volname);
 
     my $path = $class->get_subdir($scfg, $vtype);
 
     $path .= "/$vmid" if $vtype eq 'images';
 
     if ($vtype eq 'images' && defined($format) && $format eq 'raw') {
-	my $dir = raw_name_to_dir($name);
-	if ($snapname) {
-	    $dir .= "\@$snapname";
-	}
-	$path .= "/$dir/disk.raw";
+        my $dir = raw_name_to_dir($name);
+        if ($snapname) {
+            $dir .= "\@$snapname";
+        }
+        $path .= "/$dir/disk.raw";
     } elsif ($vtype eq 'images' && defined($format) && $format eq 'subvol') {
-	$path .= "/$name";
-	if ($snapname) {
-	    $path .= "\@$snapname";
-	}
+        $path .= "/$name";
+        if ($snapname) {
+            $path .= "\@$snapname";
+        }
     } else {
-	$path .= "/$name";
+        $path .= "/$name";
     }
 
     return wantarray ? ($path, $vmid, $vtype) : $path;
@@ -221,12 +217,12 @@ sub btrfs_cmd {
     my $msg = '';
     my $func;
     if (defined($outfunc)) {
-	$func = sub {
-	    my $part = &$outfunc(@_);
-	    $msg .= $part if defined($part);
-	};
+        $func = sub {
+            my $part = &$outfunc(@_);
+            $msg .= $part if defined($part);
+        };
     } else {
-	$func = sub { $msg .= "$_[0]\n" };
+        $func = sub { $msg .= "$_[0]\n" };
     }
     run_command(['btrfs', '-q', @$cmd], errmsg => "command 'btrfs @$cmd' failed", outfunc => $func);
 
@@ -257,7 +253,7 @@ sub create_base {
     my ($class, $storeid, $scfg, $volname) = @_;
 
     my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $format) =
-	$class->parse_volname($volname);
+        $class->parse_volname($volname);
 
     my $newname = $name;
     $newname =~ s/^vm-/base-/;
@@ -265,7 +261,7 @@ sub create_base {
     # If we're not working with a 'raw' file, which is the only thing that's "different" for btrfs,
     # or a subvolume, we forward to the DirPlugin
     if ($format ne 'raw' && $format ne 'subvol') {
-	return PVE::Storage::Plugin::create_base(@_);
+        return PVE::Storage::Plugin::create_base(@_);
     }
 
     my $path = $class->filesystem_path($scfg, $volname);
@@ -275,12 +271,12 @@ sub create_base {
     my $subvol = $path;
     my $newsubvol = $newpath;
     if ($format eq 'raw') {
-	$subvol = raw_file_to_subvol($subvol);
-	$newsubvol = raw_file_to_subvol($newsubvol);
+        $subvol = raw_file_to_subvol($subvol);
+        $newsubvol = raw_file_to_subvol($newsubvol);
     }
 
     rename($subvol, $newsubvol)
-	|| die "rename '$subvol' to '$newsubvol' failed - $!\n";
+        || die "rename '$subvol' to '$newsubvol' failed - $!\n";
     eval { $class->btrfs_cmd(['property', 'set', $newsubvol, 'ro', 'true']) };
     warn $@ if $@;
 
@@ -291,12 +287,12 @@ sub clone_image {
     my ($class, $scfg, $storeid, $volname, $vmid, $snap) = @_;
 
     my ($vtype, $basename, $basevmid, undef, undef, $isBase, $format) =
-	$class->parse_volname($volname);
+        $class->parse_volname($volname);
 
     # If we're not working with a 'raw' file, which is the only thing that's "different" for btrfs,
     # or a subvolume, we forward to the DirPlugin
     if ($format ne 'raw' && $format ne 'subvol') {
-	return PVE::Storage::DirPlugin::clone_image(@_);
+        return PVE::Storage::DirPlugin::clone_image(@_);
     }
 
     my $imagedir = $class->get_subdir($scfg, 'images');
@@ -314,8 +310,8 @@ sub clone_image {
     my $subvol = $path;
     my $newsubvol = $newpath;
     if ($format eq 'raw') {
-	$subvol = raw_file_to_subvol($subvol);
-	$newsubvol = raw_file_to_subvol($newsubvol);
+        $subvol = raw_file_to_subvol($subvol);
+        $newsubvol = raw_file_to_subvol($newsubvol);
     }
 
     $class->btrfs_cmd(['subvolume', 'snapshot', '--', $subvol, $newsubvol]);
@@ -327,7 +323,7 @@ sub alloc_image {
     my ($class, $storeid, $scfg, $vmid, $fmt, $name, $size) = @_;
 
     if ($fmt ne 'raw' && $fmt ne 'subvol') {
-	return $class->SUPER::alloc_image($storeid, $scfg, $vmid, $fmt, $name, $size);
+        return $class->SUPER::alloc_image($storeid, $scfg, $vmid, $fmt, $name, $size);
     }
 
     # From Plugin.pm:
@@ -341,7 +337,7 @@ sub alloc_image {
     my (undef, $tmpfmt) = PVE::Storage::Plugin::parse_name_dir($name);
 
     die "illegal name '$name' - wrong extension for format ('$tmpfmt != '$fmt')\n"
-	if $tmpfmt ne $fmt;
+        if $tmpfmt ne $fmt;
 
     # End copy from Plugin.pm
 
@@ -353,46 +349,46 @@ sub alloc_image {
 
     my $path;
     if ($fmt eq 'raw') {
-	$path = "$subvol/disk.raw";
+        $path = "$subvol/disk.raw";
     }
 
     if ($fmt eq 'subvol' && !!$size) {
-	# NOTE: `btrfs send/recv` actually drops quota information so supporting subvolumes with
-	# quotas doesn't play nice with send/recv.
-	die "btrfs quotas are currently not supported, use an unsized subvolume or a raw file\n";
+        # NOTE: `btrfs send/recv` actually drops quota information so supporting subvolumes with
+        # quotas doesn't play nice with send/recv.
+        die "btrfs quotas are currently not supported, use an unsized subvolume or a raw file\n";
     }
 
     $class->btrfs_cmd(['subvolume', 'create', '--', $subvol]);
 
     eval {
-	if ($fmt eq 'subvol') {
-	    # Nothing to do for now...
+        if ($fmt eq 'subvol') {
+            # Nothing to do for now...
 
-	    # This is how we *would* do it:
-	    # # Use the subvol's default 0/$id qgroup
-	    # eval {
-	    #     # This call should happen at storage creation instead and therefore governed by a
-	    #     # configuration option!
-	    #     # $class->btrfs_cmd(['quota', 'enable', $subvol]);
-	    #     my $id = $class->btrfs_get_subvol_id($subvol);
-	    #     $class->btrfs_cmd(['qgroup', 'limit', "${size}k", "0/$id", $subvol]);
-	    # };
-	} elsif ($fmt eq 'raw') {
-	    sysopen my $fh, $path, O_WRONLY | O_CREAT | O_EXCL
-		or die "failed to create raw file '$path' - $!\n";
-	    chattr($fh, ~FS_NOCOW_FL, FS_NOCOW_FL) if $scfg->{nocow};
-	    truncate($fh, $size * 1024)
-		or die "failed to set file size for '$path' - $!\n";
-	    close($fh);
-	} else {
-	    die "internal format error (format = $fmt)\n";
-	}
+            # This is how we *would* do it:
+            # # Use the subvol's default 0/$id qgroup
+            # eval {
+            #     # This call should happen at storage creation instead and therefore governed by a
+            #     # configuration option!
+            #     # $class->btrfs_cmd(['quota', 'enable', $subvol]);
+            #     my $id = $class->btrfs_get_subvol_id($subvol);
+            #     $class->btrfs_cmd(['qgroup', 'limit', "${size}k", "0/$id", $subvol]);
+            # };
+        } elsif ($fmt eq 'raw') {
+            sysopen my $fh, $path, O_WRONLY | O_CREAT | O_EXCL
+                or die "failed to create raw file '$path' - $!\n";
+            chattr($fh, ~FS_NOCOW_FL, FS_NOCOW_FL) if $scfg->{nocow};
+            truncate($fh, $size * 1024)
+                or die "failed to set file size for '$path' - $!\n";
+            close($fh);
+        } else {
+            die "internal format error (format = $fmt)\n";
+        }
     };
 
     if (my $err = $@) {
-	eval { $class->btrfs_cmd(['subvolume', 'delete', '--', $subvol]); };
-	warn $@ if $@;
-	die $err;
+        eval { $class->btrfs_cmd(['subvolume', 'delete', '--', $subvol]); };
+        warn $@ if $@;
+        die $err;
     }
 
     return "$vmid/$name";
@@ -402,7 +398,7 @@ sub alloc_image {
 my sub path_is_subvolume : prototype($) {
     my ($path) = @_;
     my @stat = stat($path)
-	or die "stat failed on '$path' - $!\n";
+        or die "stat failed on '$path' - $!\n";
     my ($ino, $mode) = @stat[1, 2];
     return S_ISDIR($mode) && $ino == BTRFS_FIRST_FREE_OBJECTID;
 }
@@ -415,36 +411,42 @@ my sub foreach_snapshot_of_subvol : prototype($$) {
 
     my $basename = basename($subvol);
     my $dir = dirname($subvol);
-    dir_glob_foreach($dir, $BTRFS_SNAPSHOT_REGEX, sub {
-	my ($volume, $name, $snap_name) = ($1, $2, $3);
-	return if !path_is_subvolume("$dir/$volume");
-	return if $name ne $basename;
-	$code->($snap_name);
-    });
+    dir_glob_foreach(
+        $dir,
+        $BTRFS_SNAPSHOT_REGEX,
+        sub {
+            my ($volume, $name, $snap_name) = ($1, $2, $3);
+            return if !path_is_subvolume("$dir/$volume");
+            return if $name ne $basename;
+            $code->($snap_name);
+        },
+    );
 }
 
 sub free_image {
     my ($class, $storeid, $scfg, $volname, $isBase, $_format) = @_;
 
-    my ($vtype, undef, $vmid, undef, undef, undef, $format) =
-	$class->parse_volname($volname);
+    my ($vtype, undef, $vmid, undef, undef, undef, $format) = $class->parse_volname($volname);
 
     if (!defined($format) || $vtype ne 'images' || ($format ne 'subvol' && $format ne 'raw')) {
-	return $class->SUPER::free_image($storeid, $scfg, $volname, $isBase, $_format);
+        return $class->SUPER::free_image($storeid, $scfg, $volname, $isBase, $_format);
     }
 
     my $path = $class->filesystem_path($scfg, $volname);
 
     my $subvol = $path;
     if ($format eq 'raw') {
-	$subvol = raw_file_to_subvol($path);
+        $subvol = raw_file_to_subvol($path);
     }
 
     my @snapshot_vols;
-    foreach_snapshot_of_subvol($subvol, sub {
-	my ($snap_name) = @_;
-	push @snapshot_vols, "$subvol\@$snap_name";
-    });
+    foreach_snapshot_of_subvol(
+        $subvol,
+        sub {
+            my ($snap_name) = @_;
+            push @snapshot_vols, "$subvol\@$snap_name";
+        },
+    );
 
     $class->btrfs_cmd(['subvolume', 'delete', '--', @snapshot_vols, $subvol]);
     # try to cleanup directory to not clutter storage with empty $vmid dirs if
@@ -485,10 +487,10 @@ sub volume_size_info {
     my $format = ($class->parse_volname($volname))[6];
 
     if (defined($format) && $format eq 'subvol') {
-	my $ctime = (stat($path))[10];
-	my ($used, $size) = (0, 0);
-	#my ($used, $size) = btrfs_subvol_quota($class, $path); # uses wantarray
-	return wantarray ? ($size, 'subvol', $used, undef, $ctime) : $size;
+        my $ctime = (stat($path))[10];
+        my ($used, $size) = (0, 0);
+        #my ($used, $size) = btrfs_subvol_quota($class, $path); # uses wantarray
+        return wantarray ? ($size, 'subvol', $used, undef, $ctime) : $size;
     }
 
     return PVE::Storage::Plugin::file_size_info($path, $timeout, $format);
@@ -499,13 +501,13 @@ sub volume_resize {
 
     my $format = ($class->parse_volname($volname))[6];
     if ($format eq 'subvol') {
-	# NOTE: `btrfs send/recv` actually drops quota information so supporting subvolumes with
-	# quotas doesn't play nice with send/recv.
-	die "cannot resize subvolume - btrfs quotas are currently not supported\n";
-	# my $path = $class->filesystem_path($scfg, $volname);
-	# my $id = '0/' . $class->btrfs_get_subvol_id($path);
-	# $class->btrfs_cmd(['qgroup', 'limit', '--', "${size}k", "0/$id", $path]);
-	# return undef;
+        # NOTE: `btrfs send/recv` actually drops quota information so supporting subvolumes with
+        # quotas doesn't play nice with send/recv.
+        die "cannot resize subvolume - btrfs quotas are currently not supported\n";
+        # my $path = $class->filesystem_path($scfg, $volname);
+        # my $id = '0/' . $class->btrfs_get_subvol_id($path);
+        # $class->btrfs_cmd(['qgroup', 'limit', '--', "${size}k", "0/$id", $path]);
+        # return undef;
     }
 
     return PVE::Storage::Plugin::volume_resize(@_);
@@ -514,17 +516,17 @@ sub volume_resize {
 sub volume_snapshot {
     my ($class, $scfg, $storeid, $volname, $snap) = @_;
 
-    my ($name, $vmid, $format) = ($class->parse_volname($volname))[1,2,6];
+    my ($name, $vmid, $format) = ($class->parse_volname($volname))[1, 2, 6];
     if ($format ne 'subvol' && $format ne 'raw') {
-	return PVE::Storage::Plugin::volume_snapshot(@_);
+        return PVE::Storage::Plugin::volume_snapshot(@_);
     }
 
     my $path = $class->filesystem_path($scfg, $volname);
     my $snap_path = $class->filesystem_path($scfg, $volname, $snap);
 
     if ($format eq 'raw') {
-	$path = raw_file_to_subvol($path);
-	$snap_path = raw_file_to_subvol($snap_path);
+        $path = raw_file_to_subvol($path);
+        $snap_path = raw_file_to_subvol($snap_path);
     }
 
     my $snapshot_dir = $class->get_subdir($scfg, 'images') . "/$vmid";
@@ -537,24 +539,24 @@ sub volume_snapshot {
 sub volume_rollback_is_possible {
     my ($class, $scfg, $storeid, $volname, $snap, $blockers) = @_;
 
-    return 1; 
+    return 1;
 }
 
 sub volume_snapshot_rollback {
     my ($class, $scfg, $storeid, $volname, $snap) = @_;
 
-    my ($name, $format) = ($class->parse_volname($volname))[1,6];
+    my ($name, $format) = ($class->parse_volname($volname))[1, 6];
 
     if ($format ne 'subvol' && $format ne 'raw') {
-	return PVE::Storage::Plugin::volume_snapshot_rollback(@_);
+        return PVE::Storage::Plugin::volume_snapshot_rollback(@_);
     }
 
     my $path = $class->filesystem_path($scfg, $volname);
     my $snap_path = $class->filesystem_path($scfg, $volname, $snap);
 
     if ($format eq 'raw') {
-	$path = raw_file_to_subvol($path);
-	$snap_path = raw_file_to_subvol($snap_path);
+        $path = raw_file_to_subvol($path);
+        $snap_path = raw_file_to_subvol($snap_path);
     }
 
     # Simple version would be:
@@ -562,7 +564,7 @@ sub volume_snapshot_rollback {
     #   create new
     #   on error rename temp back
     # But for atomicity in case the rename after create-failure *also* fails, we create the new
-    # subvol first, then use RENAME_EXCHANGE, 
+    # subvol first, then use RENAME_EXCHANGE,
     my $tmp_path = "$path.tmp.$$";
     $class->btrfs_cmd(['subvolume', 'snapshot', '--', $snap_path, $tmp_path]);
     # The paths are absolute, so pass -1 as file descriptors.
@@ -572,7 +574,7 @@ sub volume_snapshot_rollback {
     warn "failed to remove '$tmp_path' subvolume: $@" if $@;
 
     if (!$ok) {
-	die "failed to rotate '$tmp_path' into place at '$path' - $!\n";
+        die "failed to rotate '$tmp_path' into place at '$path' - $!\n";
     }
 
     return undef;
@@ -581,16 +583,16 @@ sub volume_snapshot_rollback {
 sub volume_snapshot_delete {
     my ($class, $scfg, $storeid, $volname, $snap, $running) = @_;
 
-    my ($name, $vmid, $format) = ($class->parse_volname($volname))[1,2,6];
+    my ($name, $vmid, $format) = ($class->parse_volname($volname))[1, 2, 6];
 
     if ($format ne 'subvol' && $format ne 'raw') {
-	return PVE::Storage::Plugin::volume_snapshot_delete(@_);
+        return PVE::Storage::Plugin::volume_snapshot_delete(@_);
     }
 
     my $path = $class->filesystem_path($scfg, $volname, $snap);
 
     if ($format eq 'raw') {
-	$path = raw_file_to_subvol($path);
+        $path = raw_file_to_subvol($path);
     }
 
     $class->btrfs_cmd(['subvolume', 'delete', '--', $path]);
@@ -602,39 +604,40 @@ sub volume_has_feature {
     my ($class, $scfg, $feature, $storeid, $volname, $snapname, $running) = @_;
 
     my $features = {
-	snapshot => {
-	    current => { qcow2 => 1, raw => 1, subvol => 1 },
-	    snap => { qcow2 => 1, raw => 1, subvol => 1 }
-	},
-	clone => {
-	    base => { qcow2 => 1, raw => 1, subvol => 1, vmdk => 1 },
-	    current => { raw => 1 },
-	    snap => { raw => 1 },
-	},
-	template => {
-	    current => { qcow2 => 1, raw => 1, vmdk => 1, subvol => 1 },
-	},
-	copy => {
-	    base => { qcow2 => 1, raw => 1, subvol => 1, vmdk => 1 },
-	    current => { qcow2 => 1, raw => 1, subvol => 1, vmdk => 1 },
-	    snap => { qcow2 => 1, raw => 1, subvol => 1 },
-	},
-	sparseinit => {
-	    base => { qcow2 => 1, raw => 1, vmdk => 1 },
-	    current => { qcow2 => 1, raw => 1, vmdk => 1 },
-	},
-	rename => {
-	    current => { qcow2 => 1, raw => 1, vmdk => 1 },
-	},
+        snapshot => {
+            current => { qcow2 => 1, raw => 1, subvol => 1 },
+            snap => { qcow2 => 1, raw => 1, subvol => 1 },
+        },
+        clone => {
+            base => { qcow2 => 1, raw => 1, subvol => 1, vmdk => 1 },
+            current => { raw => 1 },
+            snap => { raw => 1 },
+        },
+        template => {
+            current => { qcow2 => 1, raw => 1, vmdk => 1, subvol => 1 },
+        },
+        copy => {
+            base => { qcow2 => 1, raw => 1, subvol => 1, vmdk => 1 },
+            current => { qcow2 => 1, raw => 1, subvol => 1, vmdk => 1 },
+            snap => { qcow2 => 1, raw => 1, subvol => 1 },
+        },
+        sparseinit => {
+            base => { qcow2 => 1, raw => 1, vmdk => 1 },
+            current => { qcow2 => 1, raw => 1, vmdk => 1 },
+        },
+        rename => {
+            current => { qcow2 => 1, raw => 1, vmdk => 1 },
+        },
     };
 
-    my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $format) = $class->parse_volname($volname);
+    my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $format) =
+        $class->parse_volname($volname);
 
     my $key = undef;
     if ($snapname) {
         $key = 'snap';
     } else {
-        $key =  $isBase ? 'base' : 'current';
+        $key = $isBase ? 'base' : 'current';
     }
 
     return 1 if defined($features->{$feature}->{$key}->{$format});
@@ -650,51 +653,54 @@ sub list_images {
 
     # Copied from Plugin.pm, with file_size_info calls adapted:
     foreach my $fn (<$imagedir/[0-9][0-9]*/*>) {
-	# different to in Plugin.pm the regex below also excludes '@' as valid file name
-	next if $fn !~ m@^(/.+/(\d+)/([^/\@.]+(?:\.(qcow2|vmdk|subvol))?))$@;
-	$fn = $1; # untaint
+        # different to in Plugin.pm the regex below also excludes '@' as valid file name
+        next if $fn !~ m@^(/.+/(\d+)/([^/\@.]+(?:\.(qcow2|vmdk|subvol))?))$@;
+        $fn = $1; # untaint
 
-	my $owner = $2;
-	my $name = $3;
-	my $ext = $4;
+        my $owner = $2;
+        my $name = $3;
+        my $ext = $4;
 
-	next if !$vollist && defined($vmid) && ($owner ne $vmid);
+        next if !$vollist && defined($vmid) && ($owner ne $vmid);
 
-	my $volid = "$storeid:$owner/$name";
-	my ($size, $format, $used, $parent, $ctime);
+        my $volid = "$storeid:$owner/$name";
+        my ($size, $format, $used, $parent, $ctime);
 
-	if (!$ext) { # raw
-	    $volid .= '.raw';
-	    $format = 'raw';
-	    ($size, undef, $used, $parent, $ctime) =
-		PVE::Storage::Plugin::file_size_info("$fn/disk.raw", undef, $format);
-	} elsif ($ext eq 'subvol') {
-	    ($used, $size) = (0, 0);
-	    #($used, $size) = btrfs_subvol_quota($class, $fn);
-	    $format = 'subvol';
-	} else {
-	    $format = $ext;
-	    ($size, undef, $used, $parent, $ctime) = eval {
-		PVE::Storage::Plugin::file_size_info($fn, undef, $format);
-	    };
-	    if (my $err = $@) {
-		die $err if $err !~ m/Image is not in \S+ format$/;
-		warn "image '$fn' is not in expected format '$format', querying as raw\n";
-		($size, undef, $used, $parent, $ctime) =
-		    PVE::Storage::Plugin::file_size_info($fn, undef, 'raw');
-		$format = 'invalid';
-	    }
-	}
-	next if !defined($size);
+        if (!$ext) { # raw
+            $volid .= '.raw';
+            $format = 'raw';
+            ($size, undef, $used, $parent, $ctime) =
+                PVE::Storage::Plugin::file_size_info("$fn/disk.raw", undef, $format);
+        } elsif ($ext eq 'subvol') {
+            ($used, $size) = (0, 0);
+            #($used, $size) = btrfs_subvol_quota($class, $fn);
+            $format = 'subvol';
+        } else {
+            $format = $ext;
+            ($size, undef, $used, $parent, $ctime) =
+                eval { PVE::Storage::Plugin::file_size_info($fn, undef, $format); };
+            if (my $err = $@) {
+                die $err if $err !~ m/Image is not in \S+ format$/;
+                warn "image '$fn' is not in expected format '$format', querying as raw\n";
+                ($size, undef, $used, $parent, $ctime) =
+                    PVE::Storage::Plugin::file_size_info($fn, undef, 'raw');
+                $format = 'invalid';
+            }
+        }
+        next if !defined($size);
 
-	if ($vollist) {
-	    next if ! grep { $_ eq $volid } @$vollist;
-	}
+        if ($vollist) {
+            next if !grep { $_ eq $volid } @$vollist;
+        }
 
-	my $info = {
-	    volid => $volid, format => $format,
-	    size => $size, vmid => $owner, used => $used, parent => $parent,
-	};
+        my $info = {
+            volid => $volid,
+            format => $format,
+            size => $size,
+            vmid => $owner,
+            used => $used,
+            parent => $parent,
+        };
 
         $info->{ctime} = $ctime if $ctime;
 
@@ -730,118 +736,116 @@ sub volume_import_formats {
 
     # Same as export-formats, beware the parameter order:
     return volume_export_formats(
-	$class,
-	$scfg,
-	$storeid,
-	$volname,
-	$snapshot,
-	$base_snapshot,
-	$with_snapshots,
+        $class, $scfg, $storeid, $volname, $snapshot, $base_snapshot, $with_snapshots,
     );
 }
 
 sub volume_export {
     my (
-	$class,
-	$scfg,
-	$storeid,
-	$fh,
-	$volname,
-	$format,
-	$snapshot,
-	$base_snapshot,
-	$with_snapshots,
+        $class,
+        $scfg,
+        $storeid,
+        $fh,
+        $volname,
+        $format,
+        $snapshot,
+        $base_snapshot,
+        $with_snapshots,
     ) = @_;
 
     if ($format ne 'btrfs') {
-	return PVE::Storage::Plugin::volume_export(@_);
+        return PVE::Storage::Plugin::volume_export(@_);
     }
 
     die "format 'btrfs' only works on snapshots\n"
-	if !defined $snapshot;
+        if !defined $snapshot;
 
     die "'btrfs' format in incremental mode requires snapshots to be listed explicitly\n"
-	if defined($base_snapshot) && $with_snapshots && ref($with_snapshots) ne 'ARRAY';
+        if defined($base_snapshot) && $with_snapshots && ref($with_snapshots) ne 'ARRAY';
 
     my $volume_format = ($class->parse_volname($volname))[6];
 
     die "btrfs-sending volumes of type $volume_format ('$volname') is not supported\n"
-	if $volume_format ne 'raw' && $volume_format ne 'subvol';
+        if $volume_format ne 'raw' && $volume_format ne 'subvol';
 
     my $path = $class->path($scfg, $volname, $storeid);
 
     if ($volume_format eq 'raw') {
-	$path = raw_file_to_subvol($path);
+        $path = raw_file_to_subvol($path);
     }
 
     my $cmd = ['btrfs', '-q', 'send', '-e'];
     if ($base_snapshot) {
-	my $base = $class->path($scfg, $volname, $storeid, $base_snapshot);
-	if ($volume_format eq 'raw') {
-	    $base = raw_file_to_subvol($base);
-	}
-	push @$cmd, '-p', $base;
+        my $base = $class->path($scfg, $volname, $storeid, $base_snapshot);
+        if ($volume_format eq 'raw') {
+            $base = raw_file_to_subvol($base);
+        }
+        push @$cmd, '-p', $base;
     }
     push @$cmd, '--';
     if (ref($with_snapshots) eq 'ARRAY') {
-	push @$cmd, (map { "$path\@$_" } ($with_snapshots // [])->@*);
-	push @$cmd, $path if !defined($base_snapshot);
+        push @$cmd, (map { "$path\@$_" } ($with_snapshots // [])->@*);
+        push @$cmd, $path if !defined($base_snapshot);
     } else {
-	foreach_snapshot_of_subvol($path, sub {
-	    my ($snap_name) = @_;
-	    # NOTE: if there is a $snapshot specified via the arguments, it is added last below.
-	    push @$cmd, "$path\@$snap_name" if !(defined($snapshot) && $snap_name eq $snapshot);
-	});
+        foreach_snapshot_of_subvol(
+            $path,
+            sub {
+                my ($snap_name) = @_;
+                # NOTE: if there is a $snapshot specified via the arguments, it is added last below.
+                push @$cmd, "$path\@$snap_name"
+                    if !(defined($snapshot) && $snap_name eq $snapshot);
+            },
+        );
     }
     $path .= "\@$snapshot" if defined($snapshot);
     push @$cmd, $path;
 
-    run_command($cmd, output => '>&'.fileno($fh));
+    run_command($cmd, output => '>&' . fileno($fh));
     return;
 }
 
 sub volume_import {
     my (
-	$class,
-	$scfg,
-	$storeid,
-	$fh,
-	$volname,
-	$format,
-	$snapshot,
-	$base_snapshot,
-	$with_snapshots,
-	$allow_rename,
+        $class,
+        $scfg,
+        $storeid,
+        $fh,
+        $volname,
+        $format,
+        $snapshot,
+        $base_snapshot,
+        $with_snapshots,
+        $allow_rename,
     ) = @_;
 
     if ($format ne 'btrfs') {
-	return PVE::Storage::Plugin::volume_import(@_);
+        return PVE::Storage::Plugin::volume_import(@_);
     }
 
     die "format 'btrfs' only works on snapshots\n"
-	if !defined $snapshot;
+        if !defined $snapshot;
 
     my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $volume_format) =
-	$class->parse_volname($volname);
+        $class->parse_volname($volname);
 
     die "btrfs-receiving volumes of type $volume_format ('$volname') is not supported\n"
-	if $volume_format ne 'raw' && $volume_format ne 'subvol';
+        if $volume_format ne 'raw' && $volume_format ne 'subvol';
 
     if (defined($base_snapshot)) {
-	my $path = $class->path($scfg, $volname, $storeid, $base_snapshot);
-	$path = raw_file_to_subvol($path) if $volume_format eq 'raw';
-	die "base snapshot '$base_snapshot' not found - no such directory '$path'\n"
-	    if !path_is_subvolume($path);
+        my $path = $class->path($scfg, $volname, $storeid, $base_snapshot);
+        $path = raw_file_to_subvol($path) if $volume_format eq 'raw';
+        die "base snapshot '$base_snapshot' not found - no such directory '$path'\n"
+            if !path_is_subvolume($path);
     }
 
     my $destination = $class->filesystem_path($scfg, $volname);
     if ($volume_format eq 'raw') {
-	$destination = raw_file_to_subvol($destination);
+        $destination = raw_file_to_subvol($destination);
     }
 
     if (!defined($base_snapshot) && -e $destination) {
-	die "volume $volname already exists\n" if !$allow_rename;
-	$volname = $class->find_free_diskname($storeid, $scfg, $vmid, $volume_format, 1);
+        die "volume $volname already exists\n" if !$allow_rename;
+        $volname = $class->find_free_diskname($storeid, $scfg, $vmid, $volume_format, 1);
     }
 
     my $imagedir = $class->get_subdir($scfg, $vtype);
@@ -850,105 +854,110 @@ sub volume_import {
     my $tmppath = "$imagedir/recv.$vmid.tmp";
     mkdir($imagedir); # FIXME: if $scfg->{mkdir};
     if (!mkdir($tmppath)) {
-	die "temp receive directory already exists at '$tmppath', incomplete concurrent import?\n"
-	    if $! == EEXIST;
-	die "failed to create temporary receive directory at '$tmppath' - $!\n";
+        die "temp receive directory already exists at '$tmppath', incomplete concurrent import?\n"
+            if $! == EEXIST;
+        die "failed to create temporary receive directory at '$tmppath' - $!\n";
     }
 
     my $dh = IO::Dir->new($tmppath)
-	or die "failed to open temporary receive directory '$tmppath' - $!\n";
+        or die "failed to open temporary receive directory '$tmppath' - $!\n";
     eval {
-	run_command(['btrfs', '-q', 'receive', '-e', '--', $tmppath], input => '<&'.fileno($fh));
+        run_command(
+            ['btrfs', '-q', 'receive', '-e', '--', $tmppath],
+            input => '<&' . fileno($fh),
+        );
 
-	# Analyze the received subvolumes;
-	my ($diskname, $found_snapshot, @snapshots);
-	$dh->rewind;
-	while (defined(my $entry = $dh->read)) {
-	    next if $entry eq '.' || $entry eq '..';
-	    next if $entry !~ /^$BTRFS_SNAPSHOT_REGEX$/;
-	    my ($cur_diskname, $cur_snapshot) = ($1, $2);
+        # Analyze the received subvolumes;
+        my ($diskname, $found_snapshot, @snapshots);
+        $dh->rewind;
+        while (defined(my $entry = $dh->read)) {
+            next if $entry eq '.' || $entry eq '..';
+            next if $entry !~ /^$BTRFS_SNAPSHOT_REGEX$/;
+            my ($cur_diskname, $cur_snapshot) = ($1, $2);
 
-	    die "send stream included a non-snapshot subvolume\n"
-		if !defined($cur_snapshot);
+            die "send stream included a non-snapshot subvolume\n"
+                if !defined($cur_snapshot);
 
-	    if (!defined($diskname)) {
-		$diskname = $cur_diskname;
-	    } else {
-		die "multiple disks contained in stream ('$diskname' vs '$cur_diskname')\n"
-		    if $diskname ne $cur_diskname;
-	    }
+            if (!defined($diskname)) {
+                $diskname = $cur_diskname;
+            } else {
+                die "multiple disks contained in stream ('$diskname' vs '$cur_diskname')\n"
+                    if $diskname ne $cur_diskname;
+            }
 
-	    if ($cur_snapshot eq $snapshot) {
-		$found_snapshot = 1;
-	    } else {
-		push @snapshots, $cur_snapshot;
-	    }
-	}
+            if ($cur_snapshot eq $snapshot) {
+                $found_snapshot = 1;
+            } else {
+                push @snapshots, $cur_snapshot;
+            }
+        }
 
-	die "send stream did not contain the expected current snapshot '$snapshot'\n"
-	    if !$found_snapshot;
+        die "send stream did not contain the expected current snapshot '$snapshot'\n"
+            if !$found_snapshot;
 
-	# Rotate the disk into place, first the current state:
-	# Note that read-only subvolumes cannot be moved into different directories, but for the
-	# "current" state we also want a writable copy, so start with that:
-	$class->btrfs_cmd(['property', 'set', '-f', "$tmppath/$diskname\@$snapshot", 'ro', 'false']);
-	PVE::Tools::renameat2(
-	    -1,
-	    "$tmppath/$diskname\@$snapshot",
-	    -1,
-	    $destination,
-	    &PVE::Tools::RENAME_NOREPLACE,
-	) or die "failed to move received snapshot '$tmppath/$diskname\@$snapshot'"
-	    . " into place at '$destination' - $!\n";
+        # Rotate the disk into place, first the current state:
+        # Note that read-only subvolumes cannot be moved into different directories, but for the
+        # "current" state we also want a writable copy, so start with that:
+        $class->btrfs_cmd(
+            ['property', 'set', '-f', "$tmppath/$diskname\@$snapshot", 'ro', 'false']);
+        PVE::Tools::renameat2(
+            -1,
+            "$tmppath/$diskname\@$snapshot",
+            -1,
+            $destination,
+            &PVE::Tools::RENAME_NOREPLACE,
+            )
+            or die "failed to move received snapshot '$tmppath/$diskname\@$snapshot'"
+            . " into place at '$destination' - $!\n";
 
-	# Now recreate the actual snapshot:
-	$class->btrfs_cmd([
-	    'subvolume',
-	    'snapshot',
-	    '-r',
-	    '--',
-	    $destination,
-	    "$destination\@$snapshot",
-	]);
+        # Now recreate the actual snapshot:
+        $class->btrfs_cmd([
+            'subvolume', 'snapshot', '-r', '--', $destination, "$destination\@$snapshot",
+        ]);
 
-	# Now go through the remaining snapshots (if any)
-	foreach my $snap (@snapshots) {
-	    $class->btrfs_cmd(['property', 'set', '-f', "$tmppath/$diskname\@$snap", 'ro', 'false']);
-	    PVE::Tools::renameat2(
-		-1,
-		"$tmppath/$diskname\@$snap",
-		-1,
-		"$destination\@$snap",
-		&PVE::Tools::RENAME_NOREPLACE,
-	    ) or die "failed to move received snapshot '$tmppath/$diskname\@$snap'"
-		. " into place at '$destination\@$snap' - $!\n";
-	    eval { $class->btrfs_cmd(['property', 'set', "$destination\@$snap", 'ro', 'true']) };
-	    warn "failed to make $destination\@$snap read-only - $!\n" if $@;
-	}
+        # Now go through the remaining snapshots (if any)
+        foreach my $snap (@snapshots) {
+            $class->btrfs_cmd(
+                ['property', 'set', '-f', "$tmppath/$diskname\@$snap", 'ro', 'false']);
+            PVE::Tools::renameat2(
+                -1,
+                "$tmppath/$diskname\@$snap",
+                -1,
+                "$destination\@$snap",
+                &PVE::Tools::RENAME_NOREPLACE,
+                )
+                or die "failed to move received snapshot '$tmppath/$diskname\@$snap'"
+                . " into place at '$destination\@$snap' - $!\n";
+            eval {
+                $class->btrfs_cmd(['property', 'set', "$destination\@$snap", 'ro', 'true']);
+            };
+            warn "failed to make $destination\@$snap read-only - $!\n" if $@;
+        }
     };
     my $err = $@;
 
     eval {
-	# Cleanup all the received snapshots we did not move into place, so we can remove the temp
-	# directory.
-	if ($dh) {
-	    $dh->rewind;
-	    while (defined(my $entry = $dh->read)) {
-		next if $entry eq '.' || $entry eq '..';
-		eval { $class->btrfs_cmd(['subvolume', 'delete', '--', "$tmppath/$entry"]) };
-		warn $@ if $@;
-	    }
-	    $dh->close; undef $dh;
-	}
-	if (!rmdir($tmppath)) {
-	    warn "failed to remove temporary directory '$tmppath' - $!\n"
-	}
+        # Cleanup all the received snapshots we did not move into place, so we can remove the temp
+        # directory.
+        if ($dh) {
+            $dh->rewind;
+            while (defined(my $entry = $dh->read)) {
+                next if $entry eq '.' || $entry eq '..';
+                eval { $class->btrfs_cmd(['subvolume', 'delete', '--', "$tmppath/$entry"]) };
+                warn $@ if $@;
+            }
+            $dh->close;
+            undef $dh;
+        }
+        if (!rmdir($tmppath)) {
+            warn "failed to remove temporary directory '$tmppath' - $!\n";
+        }
     };
     warn $@ if $@;
     if ($err) {
-	# clean up if the directory ended up being empty after an error
-	rmdir($tmppath);
-	die $err;
+        # clean up if the directory ended up being empty after an error
+        rmdir($tmppath);
+        die $err;
     }
 
     return "$storeid:$volname";
@@ -961,11 +970,13 @@ sub rename_volume {
     my $format = ($class->parse_volname($source_volname))[6];
 
     if ($format ne 'raw' && $format ne 'subvol') {
-       return $class->SUPER::rename_volume($scfg, $storeid, $source_volname, $target_vmid, $target_volname);
+        return $class->SUPER::rename_volume(
+            $scfg, $storeid, $source_volname, $target_vmid, $target_volname,
+        );
     }
 
     $target_volname = $class->find_free_diskname($storeid, $scfg, $target_vmid, $format, 1)
-	if !$target_volname;
+        if !$target_volname;
     $target_volname = "$target_vmid/$target_volname";
 
     my $basedir = $class->get_subdir($scfg, 'images');
@@ -978,8 +989,8 @@ sub rename_volume {
     my $new_path = "${basedir}/${target_dir}";
 
     die "target volume '${target_volname}' already exists\n" if -e $new_path;
-    rename $old_path, $new_path ||
-	die "rename '$old_path' to '$new_path' failed - $!\n";
+    rename $old_path, $new_path
+        || die "rename '$old_path' to '$new_path' failed - $!\n";
 
     return "${storeid}:$target_volname";
 }

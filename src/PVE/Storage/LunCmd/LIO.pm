@@ -29,8 +29,8 @@ sub get_base;
 # targetcli constants
 # config file location differs from distro to distro
 my @CONFIG_FILES = (
-	'/etc/rtslib-fb-target/saveconfig.json',	# Debian 9.x et al
-	'/etc/target/saveconfig.json' ,			# ArchLinux, CentOS
+    '/etc/rtslib-fb-target/saveconfig.json', # Debian 9.x et al
+    '/etc/target/saveconfig.json', # ArchLinux, CentOS
 );
 my $BACKSTORE = '/backstores/block';
 
@@ -58,21 +58,27 @@ my $execute_remote_command = sub {
     my $errfunc = sub { $err .= "$_[0]\n" };
 
     $target = 'root@' . $scfg->{portal};
-    $cmd = [@ssh_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", $target, '--', $remote_command, @params];
+    $cmd = [
+        @ssh_cmd,
+        '-i',
+        "$id_rsa_path/$scfg->{portal}_id_rsa",
+        $target,
+        '--',
+        $remote_command,
+        @params,
+    ];
 
-    eval {
-	run_command($cmd, outfunc => $output, errfunc => $errfunc, timeout => $timeout);
-    };
+    eval { run_command($cmd, outfunc => $output, errfunc => $errfunc, timeout => $timeout); };
     if ($@) {
-	$res = {
-	    result => 0,
-	    msg => $err,
-	}
+        $res = {
+            result => 0,
+            msg => $err,
+        };
     } else {
-	$res = {
-	    result => 1,
-	    msg => $msg,
-	}
+        $res = {
+            result => 1,
+            msg => $msg,
+        };
     }
 
     return $res;
@@ -96,14 +102,15 @@ my $read_config = sub {
     $target = 'root@' . $scfg->{portal};
 
     foreach my $oneFile (@CONFIG_FILES) {
-	my $cmd = [@ssh_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", $target, $luncmd, $oneFile];
-	eval {
-	    run_command($cmd, outfunc => $output, errfunc => $errfunc, timeout => $timeout);
-	};
-	if ($@) {
-	    die $err if ($err !~ /No such file or directory/);
-	}
-	return $msg if $msg ne '';
+        my $cmd =
+            [@ssh_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", $target, $luncmd, $oneFile];
+        eval {
+            run_command($cmd, outfunc => $output, errfunc => $errfunc, timeout => $timeout);
+        };
+        if ($@) {
+            die $err if ($err !~ /No such file or directory/);
+        }
+        return $msg if $msg ne '';
     }
 
     die "No configuration found. Install targetcli on $scfg->{portal}\n" if $msg eq '';
@@ -123,11 +130,11 @@ my $get_config = sub {
 
 # Return settings of a specific target
 my $get_target_settings = sub {
-   my ($scfg) = @_;
+    my ($scfg) = @_;
 
-   my $id = "$scfg->{portal}.$scfg->{target}";
-   return undef if !$SETTINGS;
-   return $SETTINGS->{$id};
+    my $id = "$scfg->{portal}.$scfg->{target}";
+    return undef if !$SETTINGS;
+    return $SETTINGS->{$id};
 };
 
 # fetches and parses targetcli config from the portal
@@ -137,46 +144,47 @@ my $parser = sub {
     my $tpg_tag;
 
     if ($tpg =~ /^tpg(\d+)$/) {
-	$tpg_tag = $1;
+        $tpg_tag = $1;
     } else {
-	die "Target Portal Group has invalid value, must contain string 'tpg' and a suffix number, eg 'tpg17'\n";
+        die
+            "Target Portal Group has invalid value, must contain string 'tpg' and a suffix number, eg 'tpg17'\n";
     }
 
     my $config = $get_config->($scfg);
     my $jsonconfig = JSON->new->utf8->decode($config);
 
     my $haveTarget = 0;
-    foreach my $target (@{$jsonconfig->{targets}}) {
-	# only interested in iSCSI targets
-	next if !($target->{fabric} eq 'iscsi' && $target->{wwn} eq $scfg->{target});
-	# find correct TPG
-	foreach my $tpg (@{$target->{tpgs}}) {
-	    if ($tpg->{tag} == $tpg_tag) {
-		my $res = [];
-		foreach my $lun (@{$tpg->{luns}}) {
-		    my ($idx, $storage_object);
-		    if ($lun->{index} =~ /^(\d+)$/) {
-			$idx = $1;
-		    }
-		    if ($lun->{storage_object} =~ m|^($BACKSTORE/.*)$|) {
-			$storage_object = $1;
-		    }
-		    die "Invalid lun definition in config!\n"
-			if !(defined($idx) && defined($storage_object));
-		    push @$res, { index => $idx, storage_object => $storage_object };
-		}
+    foreach my $target (@{ $jsonconfig->{targets} }) {
+        # only interested in iSCSI targets
+        next if !($target->{fabric} eq 'iscsi' && $target->{wwn} eq $scfg->{target});
+        # find correct TPG
+        foreach my $tpg (@{ $target->{tpgs} }) {
+            if ($tpg->{tag} == $tpg_tag) {
+                my $res = [];
+                foreach my $lun (@{ $tpg->{luns} }) {
+                    my ($idx, $storage_object);
+                    if ($lun->{index} =~ /^(\d+)$/) {
+                        $idx = $1;
+                    }
+                    if ($lun->{storage_object} =~ m|^($BACKSTORE/.*)$|) {
+                        $storage_object = $1;
+                    }
+                    die "Invalid lun definition in config!\n"
+                        if !(defined($idx) && defined($storage_object));
+                    push @$res, { index => $idx, storage_object => $storage_object };
+                }
 
-		my $id = "$scfg->{portal}.$scfg->{target}";
-		$SETTINGS->{$id}->{luns} = $res;
-		$haveTarget = 1;
-		last;
-	    }
-	}
+                my $id = "$scfg->{portal}.$scfg->{target}";
+                $SETTINGS->{$id}->{luns} = $res;
+                $haveTarget = 1;
+                last;
+            }
+        }
     }
 
     # seriously unhappy if the target server lacks iSCSI target configuration ...
     if (!$haveTarget) {
-	die "target portal group tpg$tpg_tag not found!\n";
+        die "target portal group tpg$tpg_tag not found!\n";
     }
 };
 
@@ -194,10 +202,10 @@ my $free_lu_name = sub {
 
     my $new = [];
     my $target = $get_target_settings->($scfg);
-    foreach my $lun (@{$target->{luns}}) {
-	if ($lun->{storage_object} ne "$BACKSTORE/$lu_name") {
-	    push @$new, $lun;
-	}
+    foreach my $lun (@{ $target->{luns} }) {
+        if ($lun->{storage_object} ne "$BACKSTORE/$lu_name") {
+            push @$new, $lun;
+        }
     }
 
     $target->{luns} = $new;
@@ -208,12 +216,12 @@ my $register_lun = sub {
     my ($scfg, $idx, $volname) = @_;
 
     my $conf = {
-	index => $idx,
-	storage_object => "$BACKSTORE/$volname",
-	is_new => 1,
+        index => $idx,
+        storage_object => "$BACKSTORE/$volname",
+        is_new => 1,
     };
     my $target = $get_target_settings->($scfg);
-    push @{$target->{luns}}, $conf;
+    push @{ $target->{luns} }, $conf;
 
     return $conf;
 };
@@ -225,17 +233,17 @@ my $extract_volname = sub {
 
     my $base = get_base;
     if ($lunpath =~ /^$base\/$scfg->{pool}\/([\w\-]+)$/) {
-	$volname = $1;
-	my $prefix = $get_backstore_prefix->($scfg);
-	my $target = $get_target_settings->($scfg);
-	foreach my $lun (@{$target->{luns}}) {
-	    # If we have a lun with the pool prefix matching this vol, then return this one
-	    # like pool-pve-vm-100-disk-0
-	    # Else, just fallback to the old name scheme which is vm-100-disk-0
-	    if ($lun->{storage_object} =~ /^$BACKSTORE\/($prefix$volname)$/) {
-		return $1;
-	    }
-	}
+        $volname = $1;
+        my $prefix = $get_backstore_prefix->($scfg);
+        my $target = $get_target_settings->($scfg);
+        foreach my $lun (@{ $target->{luns} }) {
+            # If we have a lun with the pool prefix matching this vol, then return this one
+            # like pool-pve-vm-100-disk-0
+            # Else, just fallback to the old name scheme which is vm-100-disk-0
+            if ($lun->{storage_object} =~ /^$BACKSTORE\/($prefix$volname)$/) {
+                return $1;
+            }
+        }
     }
 
     return $volname;
@@ -252,10 +260,10 @@ my $list_view = sub {
 
     return undef if !defined($volname); # nothing to search for..
 
-    foreach my $lun (@{$target->{luns}}) {
-	if ($lun->{storage_object} eq "$BACKSTORE/$volname") {
-	    return $lun->{index};
-	}
+    foreach my $lun (@{ $target->{luns} }) {
+        if ($lun->{storage_object} eq "$BACKSTORE/$volname") {
+            return $lun->{index};
+        }
     }
 
     return $lun;
@@ -269,10 +277,10 @@ my $list_lun = sub {
     my $volname = $extract_volname->($scfg, $object);
     my $target = $get_target_settings->($scfg);
 
-    foreach my $lun (@{$target->{luns}}) {
-	if ($lun->{storage_object} eq "$BACKSTORE/$volname") {
-	    return $object;
-	}
+    foreach my $lun (@{ $target->{luns} }) {
+        if ($lun->{storage_object} eq "$BACKSTORE/$volname") {
+            return $object;
+        }
     }
 
     return undef;
@@ -283,7 +291,7 @@ my $create_lun = sub {
     my ($scfg, $timeout, $method, @params) = @_;
 
     if ($list_lun->($scfg, $timeout, $method, @params)) {
-	die "$params[0]: LUN already exists!";
+        die "$params[0]: LUN already exists!";
     }
 
     my $device = $params[0];
@@ -294,18 +302,18 @@ my $create_lun = sub {
     my $tpg = $scfg->{lio_tpg} || die "Target Portal Group not set, aborting!\n";
 
     # step 1: create backstore for device
-    my @cliparams = ($BACKSTORE, 'create', "name=$volname", "dev=$device" );
+    my @cliparams = ($BACKSTORE, 'create', "name=$volname", "dev=$device");
     my $res = $execute_remote_command->($scfg, $timeout, $targetcli, @cliparams);
     die $res->{msg} if !$res->{result};
 
     # step 2: enable unmap support on the backstore
-    @cliparams = ($BACKSTORE . '/' . $volname, 'set', 'attribute', 'emulate_tpu=1' );
+    @cliparams = ($BACKSTORE . '/' . $volname, 'set', 'attribute', 'emulate_tpu=1');
     $res = $execute_remote_command->($scfg, $timeout, $targetcli, @cliparams);
     die $res->{msg} if !$res->{result};
 
     # step 3: register lun with target
     # targetcli /iscsi/iqn.2018-04.at.bestsolution.somehost:target/tpg1/luns/ create /backstores/block/foobar
-    @cliparams = ("/iscsi/$scfg->{target}/$tpg/luns/", 'create', "$BACKSTORE/$volname" );
+    @cliparams = ("/iscsi/$scfg->{target}/$tpg/luns/", 'create', "$BACKSTORE/$volname");
     $res = $execute_remote_command->($scfg, $timeout, $targetcli, @cliparams);
     die $res->{msg} if !$res->{result};
 
@@ -314,9 +322,9 @@ my $create_lun = sub {
     # changed without our knowledge, so relying on the number that targetcli returns
     my $lun_idx;
     if ($res->{msg} =~ /LUN (\d+)/) {
-	$lun_idx = $1;
+        $lun_idx = $1;
     } else {
-	die "unable to determine new LUN index: $res->{msg}";
+        die "unable to determine new LUN index: $res->{msg}";
     }
 
     $register_lun->($scfg, $lun_idx, $volname);
@@ -330,7 +338,7 @@ my $create_lun = sub {
 
 my $delete_lun = sub {
     my ($scfg, $timeout, $method, @params) = @_;
-    my $res = {msg => undef};
+    my $res = { msg => undef };
 
     my $tpg = $scfg->{lio_tpg} || die "Target Portal Group not set, aborting!\n";
 
@@ -338,30 +346,30 @@ my $delete_lun = sub {
     my $volname = $extract_volname->($scfg, $path);
     my $target = $get_target_settings->($scfg);
 
-    foreach my $lun (@{$target->{luns}}) {
-	next if $lun->{storage_object} ne "$BACKSTORE/$volname";
+    foreach my $lun (@{ $target->{luns} }) {
+        next if $lun->{storage_object} ne "$BACKSTORE/$volname";
 
-	# step 1: delete the lun
-	my @cliparams = ("/iscsi/$scfg->{target}/$tpg/luns/", 'delete', "lun$lun->{index}" );
-	my $res = $execute_remote_command->($scfg, $timeout, $targetcli, @cliparams);
-	do {
-	    die $res->{msg};
-	} unless $res->{result};
+        # step 1: delete the lun
+        my @cliparams = ("/iscsi/$scfg->{target}/$tpg/luns/", 'delete', "lun$lun->{index}");
+        my $res = $execute_remote_command->($scfg, $timeout, $targetcli, @cliparams);
+        do {
+            die $res->{msg};
+        } unless $res->{result};
 
-	# step 2: delete the backstore
-	@cliparams = ($BACKSTORE, 'delete', $volname);
-	$res = $execute_remote_command->($scfg, $timeout, $targetcli, @cliparams);
-	do {
-	    die $res->{msg};
-	} unless $res->{result};
+        # step 2: delete the backstore
+        @cliparams = ($BACKSTORE, 'delete', $volname);
+        $res = $execute_remote_command->($scfg, $timeout, $targetcli, @cliparams);
+        do {
+            die $res->{msg};
+        } unless $res->{result};
 
-	# step 3: save to be safe ...
-	$execute_remote_command->($scfg, $timeout, $targetcli, 'saveconfig');
+        # step 3: save to be safe ...
+        $execute_remote_command->($scfg, $timeout, $targetcli, 'saveconfig');
 
-	# update internal cache
-	$free_lu_name->($scfg, $volname);
+        # update internal cache
+        $free_lu_name->($scfg, $volname);
 
-	last;
+        last;
     }
 
     return $res->{msg};
@@ -387,13 +395,13 @@ my $add_view = sub {
 };
 
 my %lun_cmd_map = (
-    create_lu   =>  $create_lun,
-    delete_lu   =>  $delete_lun,
-    import_lu   =>  $import_lun,
-    modify_lu   =>  $modify_lun,
-    add_view    =>  $add_view,
-    list_view   =>  $list_view,
-    list_lu     =>  $list_lun,
+    create_lu => $create_lun,
+    delete_lu => $delete_lun,
+    import_lu => $import_lun,
+    modify_lu => $modify_lun,
+    add_view => $add_view,
+    list_view => $list_view,
+    list_lu => $list_lun,
 );
 
 sub run_lun_command {
@@ -403,8 +411,8 @@ sub run_lun_command {
     my $timediff = time - $SETTINGS_TIMESTAMP;
     my $target = $get_target_settings->($scfg);
     if (!$target || $timediff > $SETTINGS_MAXAGE) {
-	$SETTINGS_TIMESTAMP = time;
-	$parser->($scfg);
+        $SETTINGS_TIMESTAMP = time;
+        $parser->($scfg);
     }
 
     die "unknown command '$method'" unless exists $lun_cmd_map{$method};

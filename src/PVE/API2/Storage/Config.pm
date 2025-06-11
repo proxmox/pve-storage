@@ -29,10 +29,12 @@ my $api_storage_config = sub {
     my $scfg = dclone(PVE::Storage::storage_config($cfg, $storeid));
     $scfg->{storage} = $storeid;
     $scfg->{digest} = $cfg->{digest};
-    $scfg->{content} = PVE::Storage::Plugin->encode_value($scfg->{type}, 'content', $scfg->{content});
+    $scfg->{content} =
+        PVE::Storage::Plugin->encode_value($scfg->{type}, 'content', $scfg->{content});
 
     if ($scfg->{nodes}) {
-	$scfg->{nodes} = PVE::Storage::Plugin->encode_value($scfg->{type}, 'nodes', $scfg->{nodes});
+        $scfg->{nodes} =
+            PVE::Storage::Plugin->encode_value($scfg->{type}, 'nodes', $scfg->{nodes});
     }
 
     return $scfg;
@@ -47,21 +49,21 @@ sub cleanup_storages_for_node {
     my $cluster_nodes = PVE::Cluster::get_nodelist();
 
     for my $storeid (keys $config->{ids}->%*) {
-	my $scfg = PVE::Storage::storage_config($config, $storeid);
-	next if !$match->($scfg);
+        my $scfg = PVE::Storage::storage_config($config, $storeid);
+        next if !$match->($scfg);
 
-	my $nodes = $scfg->{nodes} || { map { $_ => 1 } $cluster_nodes->@* };
-	next if !$nodes->{$node}; # not configured on $node, so nothing to do
-	delete $nodes->{$node};
+        my $nodes = $scfg->{nodes} || { map { $_ => 1 } $cluster_nodes->@* };
+        next if !$nodes->{$node}; # not configured on $node, so nothing to do
+        delete $nodes->{$node};
 
-	if (scalar(keys $nodes->%*) > 0) {
-	    $self->update({
-		nodes => join(',', sort keys $nodes->%*),
-		storage => $storeid,
-	    });
-	} else {
-	    $self->delete({storage => $storeid});
-	}
+        if (scalar(keys $nodes->%*) > 0) {
+            $self->update({
+                nodes => join(',', sort keys $nodes->%*),
+                storage => $storeid,
+            });
+        } else {
+            $self->delete({ storage => $storeid });
+        }
     }
 }
 
@@ -80,355 +82,375 @@ sub create_or_update {
     my $scfg = PVE::Storage::storage_config($cfg, $sid, 1);
 
     if ($scfg) {
-	die "storage config for '${sid}' exists but no parameters to verify were provided\n"
-	    if !$verify_params;
+        die "storage config for '${sid}' exists but no parameters to verify were provided\n"
+            if !$verify_params;
 
-	$node = PVE::INotify::nodename() if !$node || ($node eq 'localhost');
-	die "Storage ID '${sid}' already exists on node ${node}\n"
-	    if !defined($scfg->{nodes}) || $scfg->{nodes}->{$node};
+        $node = PVE::INotify::nodename() if !$node || ($node eq 'localhost');
+        die "Storage ID '${sid}' already exists on node ${node}\n"
+            if !defined($scfg->{nodes}) || $scfg->{nodes}->{$node};
 
-	# check for type mismatch first to get a clear error
-	for my $key ('type', $verify_params->@*) {
-	    if (!defined($scfg->{$key})) {
-		die "Option '${key}' is not configured for storage '$sid', "
-		    ."expected it to be '$storage_params->{$key}'";
-	    }
-	    if ($storage_params->{$key} ne $scfg->{$key}) {
-		die "Option '${key}' ($storage_params->{$key}) does not match "
-		    ."existing storage configuration '$scfg->{$key}'\n";
-	    }
-	}
+        # check for type mismatch first to get a clear error
+        for my $key ('type', $verify_params->@*) {
+            if (!defined($scfg->{$key})) {
+                die "Option '${key}' is not configured for storage '$sid', "
+                    . "expected it to be '$storage_params->{$key}'";
+            }
+            if ($storage_params->{$key} ne $scfg->{$key}) {
+                die "Option '${key}' ($storage_params->{$key}) does not match "
+                    . "existing storage configuration '$scfg->{$key}'\n";
+            }
+        }
     }
 
     if (!$dryrun) {
-	if ($scfg) {
-	    if ($scfg->{nodes}) {
-		$scfg->{nodes}->{$node} = 1;
-		$self->update({
-		    nodes => join(',', sort keys $scfg->{nodes}->%*),
-		    storage => $sid,
-		});
-		print "Added '${node}' to nodes for storage '${sid}'\n";
-	    }
-	} else {
-	    $self->create($storage_params);
-	}
+        if ($scfg) {
+            if ($scfg->{nodes}) {
+                $scfg->{nodes}->{$node} = 1;
+                $self->update({
+                    nodes => join(',', sort keys $scfg->{nodes}->%*),
+                    storage => $sid,
+                });
+                print "Added '${node}' to nodes for storage '${sid}'\n";
+            }
+        } else {
+            $self->create($storage_params);
+        }
     }
 }
 
-__PACKAGE__->register_method ({
+__PACKAGE__->register_method({
     name => 'index',
     path => '',
     method => 'GET',
     description => "Storage index.",
     permissions => {
-	description => "Only list entries where you have 'Datastore.Audit' or 'Datastore.AllocateSpace' permissions on '/storage/<storage>'",
-	user => 'all',
+        description =>
+            "Only list entries where you have 'Datastore.Audit' or 'Datastore.AllocateSpace' permissions on '/storage/<storage>'",
+        user => 'all',
     },
     parameters => {
-	additionalProperties => 0,
-	properties => {
-	    type => {
-		description => "Only list storage of specific type",
-		type => 'string',
-		enum => $storage_type_enum,
-		optional => 1,
-	    },
-	},
+        additionalProperties => 0,
+        properties => {
+            type => {
+                description => "Only list storage of specific type",
+                type => 'string',
+                enum => $storage_type_enum,
+                optional => 1,
+            },
+        },
     },
     returns => {
-	type => 'array',
-	items => {
-	    type => "object",
-	    properties => { storage => { type => 'string'} },
-	},
-	links => [ { rel => 'child', href => "{storage}" } ],
+        type => 'array',
+        items => {
+            type => "object",
+            properties => { storage => { type => 'string' } },
+        },
+        links => [{ rel => 'child', href => "{storage}" }],
     },
     code => sub {
-	my ($param) = @_;
+        my ($param) = @_;
 
-	my $rpcenv = PVE::RPCEnvironment::get();
-	my $authuser = $rpcenv->get_user();
+        my $rpcenv = PVE::RPCEnvironment::get();
+        my $authuser = $rpcenv->get_user();
 
-	my $cfg = PVE::Storage::config();
+        my $cfg = PVE::Storage::config();
 
-	my @sids = PVE::Storage::storage_ids($cfg);
+        my @sids = PVE::Storage::storage_ids($cfg);
 
-	my $res = [];
-	foreach my $storeid (@sids) {
-	    my $privs = [ 'Datastore.Audit', 'Datastore.AllocateSpace' ];
-	    next if !$rpcenv->check_any($authuser, "/storage/$storeid", $privs, 1);
+        my $res = [];
+        foreach my $storeid (@sids) {
+            my $privs = ['Datastore.Audit', 'Datastore.AllocateSpace'];
+            next if !$rpcenv->check_any($authuser, "/storage/$storeid", $privs, 1);
 
-	    my $scfg = &$api_storage_config($cfg, $storeid);
-	    next if $param->{type} && $param->{type} ne $scfg->{type};
-	    push @$res, $scfg;
-	}
+            my $scfg = &$api_storage_config($cfg, $storeid);
+            next if $param->{type} && $param->{type} ne $scfg->{type};
+            push @$res, $scfg;
+        }
 
-	return $res;
-    }});
+        return $res;
+    },
+});
 
-__PACKAGE__->register_method ({
+__PACKAGE__->register_method({
     name => 'read',
     path => '{storage}',
     method => 'GET',
     description => "Read storage configuration.",
     permissions => {
-	check => ['perm', '/storage/{storage}', ['Datastore.Allocate']],
+        check => ['perm', '/storage/{storage}', ['Datastore.Allocate']],
     },
     parameters => {
-	additionalProperties => 0,
-	properties => {
-	    storage => get_standard_option('pve-storage-id'),
-	},
+        additionalProperties => 0,
+        properties => {
+            storage => get_standard_option('pve-storage-id'),
+        },
     },
     returns => { type => 'object' },
     code => sub {
-	my ($param) = @_;
+        my ($param) = @_;
 
-	my $cfg = PVE::Storage::config();
+        my $cfg = PVE::Storage::config();
 
-	return &$api_storage_config($cfg, $param->{storage});
-    }});
+        return &$api_storage_config($cfg, $param->{storage});
+    },
+});
 
-__PACKAGE__->register_method ({
+__PACKAGE__->register_method({
     name => 'create',
     protected => 1,
     path => '',
     method => 'POST',
     description => "Create a new storage.",
     permissions => {
-	check => ['perm', '/storage', ['Datastore.Allocate']],
+        check => ['perm', '/storage', ['Datastore.Allocate']],
     },
     parameters => PVE::Storage::Plugin->createSchema(),
     returns => {
-	type => 'object',
-	properties => {
-	    storage => {
-		description => "The ID of the created storage.",
-		type => 'string',
-	    },
-	    type => {
-		description => "The type of the created storage.",
-		type => 'string',
-		enum => $storage_type_enum,
-	    },
-	    config => {
-		description => "Partial, possible server generated, configuration properties.",
-		type => 'object',
-		optional => 1,
-		additionalProperties => 1,
-		properties => {
-		    'encryption-key' => {
-			description => "The, possible auto-generated, encryption-key.",
-			optional => 1,
-			type => 'string',
-		    },
-		},
-	    },
-	},
+        type => 'object',
+        properties => {
+            storage => {
+                description => "The ID of the created storage.",
+                type => 'string',
+            },
+            type => {
+                description => "The type of the created storage.",
+                type => 'string',
+                enum => $storage_type_enum,
+            },
+            config => {
+                description => "Partial, possible server generated, configuration properties.",
+                type => 'object',
+                optional => 1,
+                additionalProperties => 1,
+                properties => {
+                    'encryption-key' => {
+                        description => "The, possible auto-generated, encryption-key.",
+                        optional => 1,
+                        type => 'string',
+                    },
+                },
+            },
+        },
     },
     code => sub {
-	my ($param) = @_;
+        my ($param) = @_;
 
-	my $type = extract_param($param, 'type');
-	my $storeid = extract_param($param, 'storage');
+        my $type = extract_param($param, 'type');
+        my $storeid = extract_param($param, 'storage');
 
-	# revent an empty nodelist.
-	# fix me in section config create never need an empty entity.
-	delete $param->{nodes} if !$param->{nodes};
+        # revent an empty nodelist.
+        # fix me in section config create never need an empty entity.
+        delete $param->{nodes} if !$param->{nodes};
 
-	my $sensitive_params = PVE::Storage::Plugin::sensitive_properties($type);
-	my $sensitive = extract_sensitive_params($param, $sensitive_params, []);
+        my $sensitive_params = PVE::Storage::Plugin::sensitive_properties($type);
+        my $sensitive = extract_sensitive_params($param, $sensitive_params, []);
 
-	my $plugin = PVE::Storage::Plugin->lookup($type);
-	my $opts = $plugin->check_config($storeid, $param, 1, 1);
+        my $plugin = PVE::Storage::Plugin->lookup($type);
+        my $opts = $plugin->check_config($storeid, $param, 1, 1);
 
-	my $returned_config;
-	PVE::Storage::lock_storage_config(sub {
-	    my $cfg = PVE::Storage::config();
+        my $returned_config;
+        PVE::Storage::lock_storage_config(
+            sub {
+                my $cfg = PVE::Storage::config();
 
-	    if (my $scfg = PVE::Storage::storage_config($cfg, $storeid, 1)) {
-		die "storage ID '$storeid' already defined\n";
-	    }
+                if (my $scfg = PVE::Storage::storage_config($cfg, $storeid, 1)) {
+                    die "storage ID '$storeid' already defined\n";
+                }
 
-	    $cfg->{ids}->{$storeid} = $opts;
+                $cfg->{ids}->{$storeid} = $opts;
 
-	    $returned_config = $plugin->on_add_hook($storeid, $opts, %$sensitive);
+                $returned_config = $plugin->on_add_hook($storeid, $opts, %$sensitive);
 
-	    if (defined($opts->{mkdir})) { # TODO: remove complete option in Proxmox VE 9
-		warn "NOTE: The 'mkdir' option set for '${storeid}' is deprecated and will be removed"
-		    ." in Proxmox VE 9. Use 'create-base-path' or 'create-subdirs' instead.\n"
-	    }
+                if (defined($opts->{mkdir})) { # TODO: remove complete option in Proxmox VE 9
+                    warn
+                        "NOTE: The 'mkdir' option set for '${storeid}' is deprecated and will be removed"
+                        . " in Proxmox VE 9. Use 'create-base-path' or 'create-subdirs' instead.\n";
+                }
 
-	    eval {
-		# try to activate if enabled on local node,
-		# we only do this to detect errors/problems sooner
-		if (PVE::Storage::storage_check_enabled($cfg, $storeid, undef, 1)) {
-		    PVE::Storage::activate_storage($cfg, $storeid);
-		}
-	    };
-	    if (my $err = $@) {
-		eval { $plugin->on_delete_hook($storeid, $opts) };
-		warn "$@\n" if $@;
-		die $err;
-	    }
+                eval {
+                    # try to activate if enabled on local node,
+                    # we only do this to detect errors/problems sooner
+                    if (PVE::Storage::storage_check_enabled($cfg, $storeid, undef, 1)) {
+                        PVE::Storage::activate_storage($cfg, $storeid);
+                    }
+                };
+                if (my $err = $@) {
+                    eval { $plugin->on_delete_hook($storeid, $opts) };
+                    warn "$@\n" if $@;
+                    die $err;
+                }
 
-	    PVE::Storage::write_config($cfg);
+                PVE::Storage::write_config($cfg);
 
-	}, "create storage failed");
+            },
+            "create storage failed",
+        );
 
-	my $res = {
-	    storage => $storeid,
-	    type => $type,
-	};
-	$res->{config} = $returned_config if $returned_config;
-	return $res;
-    }});
+        my $res = {
+            storage => $storeid,
+            type => $type,
+        };
+        $res->{config} = $returned_config if $returned_config;
+        return $res;
+    },
+});
 
-__PACKAGE__->register_method ({
+__PACKAGE__->register_method({
     name => 'update',
     protected => 1,
     path => '{storage}',
     method => 'PUT',
     description => "Update storage configuration.",
     permissions => {
-	check => ['perm', '/storage', ['Datastore.Allocate']],
+        check => ['perm', '/storage', ['Datastore.Allocate']],
     },
     parameters => PVE::Storage::Plugin->updateSchema(),
     returns => {
-	type => 'object',
-	properties => {
-	    storage => {
-		description => "The ID of the created storage.",
-		type => 'string',
-	    },
-	    type => {
-		description => "The type of the created storage.",
-		type => 'string',
-		enum => $storage_type_enum,
-	    },
-	    config => {
-		description => "Partial, possible server generated, configuration properties.",
-		type => 'object',
-		optional => 1,
-		additionalProperties => 1,
-		properties => {
-		    'encryption-key' => {
-			description => "The, possible auto-generated, encryption-key.",
-			optional => 1,
-			type => 'string',
-		    },
-		},
-	    },
-	},
+        type => 'object',
+        properties => {
+            storage => {
+                description => "The ID of the created storage.",
+                type => 'string',
+            },
+            type => {
+                description => "The type of the created storage.",
+                type => 'string',
+                enum => $storage_type_enum,
+            },
+            config => {
+                description => "Partial, possible server generated, configuration properties.",
+                type => 'object',
+                optional => 1,
+                additionalProperties => 1,
+                properties => {
+                    'encryption-key' => {
+                        description => "The, possible auto-generated, encryption-key.",
+                        optional => 1,
+                        type => 'string',
+                    },
+                },
+            },
+        },
     },
     code => sub {
-	my ($param) = @_;
+        my ($param) = @_;
 
-	my $storeid = extract_param($param, 'storage');
-	my $digest = extract_param($param, 'digest');
-	my $delete = extract_param($param, 'delete');
-	my $type;
+        my $storeid = extract_param($param, 'storage');
+        my $digest = extract_param($param, 'digest');
+        my $delete = extract_param($param, 'delete');
+        my $type;
 
-	if ($delete) {
-	    $delete = [ PVE::Tools::split_list($delete) ];
-	}
+        if ($delete) {
+            $delete = [PVE::Tools::split_list($delete)];
+        }
 
-	my $returned_config;
-        PVE::Storage::lock_storage_config(sub {
-	    my $cfg = PVE::Storage::config();
+        my $returned_config;
+        PVE::Storage::lock_storage_config(
+            sub {
+                my $cfg = PVE::Storage::config();
 
-	    PVE::SectionConfig::assert_if_modified($cfg, $digest);
+                PVE::SectionConfig::assert_if_modified($cfg, $digest);
 
-	    my $scfg = PVE::Storage::storage_config($cfg, $storeid);
-	    $type = $scfg->{type};
+                my $scfg = PVE::Storage::storage_config($cfg, $storeid);
+                $type = $scfg->{type};
 
-	    my $sensitive_params = PVE::Storage::Plugin::sensitive_properties($type);
-	    my $sensitive = extract_sensitive_params($param, $sensitive_params, $delete);
+                my $sensitive_params = PVE::Storage::Plugin::sensitive_properties($type);
+                my $sensitive = extract_sensitive_params($param, $sensitive_params, $delete);
 
-	    my $plugin = PVE::Storage::Plugin->lookup($type);
-	    my $opts = $plugin->check_config($storeid, $param, 0, 1);
+                my $plugin = PVE::Storage::Plugin->lookup($type);
+                my $opts = $plugin->check_config($storeid, $param, 0, 1);
 
-	    if ($delete) {
-		my $options = $plugin->private()->{options}->{$type};
-		foreach my $k (@$delete) {
-		    my $d = $options->{$k} || die "no such option '$k'\n";
-		    die "unable to delete required option '$k'\n" if !$d->{optional};
-		    die "unable to delete fixed option '$k'\n" if $d->{fixed};
-		    die "cannot set and delete property '$k' at the same time!\n"
-			if defined($opts->{$k});
+                if ($delete) {
+                    my $options = $plugin->private()->{options}->{$type};
+                    foreach my $k (@$delete) {
+                        my $d = $options->{$k} || die "no such option '$k'\n";
+                        die "unable to delete required option '$k'\n" if !$d->{optional};
+                        die "unable to delete fixed option '$k'\n" if $d->{fixed};
+                        die "cannot set and delete property '$k' at the same time!\n"
+                            if defined($opts->{$k});
 
-		    delete $scfg->{$k};
-		}
-	    }
+                        delete $scfg->{$k};
+                    }
+                }
 
-	    $returned_config = $plugin->on_update_hook($storeid, $opts, %$sensitive);
+                $returned_config = $plugin->on_update_hook($storeid, $opts, %$sensitive);
 
-	    for my $k (keys %$opts) {
-		$scfg->{$k} = $opts->{$k};
-	    }
+                for my $k (keys %$opts) {
+                    $scfg->{$k} = $opts->{$k};
+                }
 
-	    if (defined($scfg->{mkdir})) { # TODO: remove complete option in Proxmox VE 9
-		warn "NOTE: The 'mkdir' option set for '${storeid}' is deprecated and will be removed"
-		    ." in Proxmox VE 9. Use 'create-base-path' or 'create-subdirs' instead.\n"
-	    }
+                if (defined($scfg->{mkdir})) { # TODO: remove complete option in Proxmox VE 9
+                    warn
+                        "NOTE: The 'mkdir' option set for '${storeid}' is deprecated and will be removed"
+                        . " in Proxmox VE 9. Use 'create-base-path' or 'create-subdirs' instead.\n";
+                }
 
-	    PVE::Storage::write_config($cfg);
+                PVE::Storage::write_config($cfg);
 
-	}, "update storage failed");
+            },
+            "update storage failed",
+        );
 
-	my $res = {
-	    storage => $storeid,
-	    type => $type,
-	};
-	$res->{config} = $returned_config if $returned_config;
-	return $res;
-    }});
+        my $res = {
+            storage => $storeid,
+            type => $type,
+        };
+        $res->{config} = $returned_config if $returned_config;
+        return $res;
+    },
+});
 
-__PACKAGE__->register_method ({
+__PACKAGE__->register_method({
     name => 'delete',
     protected => 1,
     path => '{storage}', # /storage/config/{storage}
     method => 'DELETE',
     description => "Delete storage configuration.",
     permissions => {
-	check => ['perm', '/storage', ['Datastore.Allocate']],
+        check => ['perm', '/storage', ['Datastore.Allocate']],
     },
     parameters => {
-	additionalProperties => 0,
-	properties => {
-	    storage => get_standard_option('pve-storage-id', {
-		completion => \&PVE::Storage::complete_storage,
-	    }),
-	},
+        additionalProperties => 0,
+        properties => {
+            storage => get_standard_option(
+                'pve-storage-id',
+                {
+                    completion => \&PVE::Storage::complete_storage,
+                },
+            ),
+        },
     },
     returns => { type => 'null' },
     code => sub {
-	my ($param) = @_;
+        my ($param) = @_;
 
-	my $storeid = extract_param($param, 'storage');
+        my $storeid = extract_param($param, 'storage');
 
-        PVE::Storage::lock_storage_config(sub {
-	    my $cfg = PVE::Storage::config();
+        PVE::Storage::lock_storage_config(
+            sub {
+                my $cfg = PVE::Storage::config();
 
-	    my $scfg = PVE::Storage::storage_config($cfg, $storeid);
+                my $scfg = PVE::Storage::storage_config($cfg, $storeid);
 
-	    die "can't remove storage - storage is used as base of another storage\n"
-		if PVE::Storage::storage_is_used($cfg, $storeid);
+                die "can't remove storage - storage is used as base of another storage\n"
+                    if PVE::Storage::storage_is_used($cfg, $storeid);
 
-	    my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
+                my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
 
-	    $plugin->on_delete_hook($storeid, $scfg);
+                $plugin->on_delete_hook($storeid, $scfg);
 
-	    delete $cfg->{ids}->{$storeid};
+                delete $cfg->{ids}->{$storeid};
 
-	    PVE::Storage::write_config($cfg);
+                PVE::Storage::write_config($cfg);
 
-	}, "delete storage failed");
+            },
+            "delete storage failed",
+        );
 
-	PVE::AccessControl::remove_storage_access($storeid);
+        PVE::AccessControl::remove_storage_access($storeid);
 
-	return undef;
-    }});
+        return undef;
+    },
+});
 
 1;

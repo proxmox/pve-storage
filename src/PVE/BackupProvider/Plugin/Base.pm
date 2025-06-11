@@ -168,6 +168,7 @@ The message to be printed.
 =back
 
 =cut
+
 sub new {
     my ($class, $storage_plugin, $scfg, $storeid, $log_function) = @_;
 
@@ -183,6 +184,7 @@ Returns the name of the backup provider. It will be printed in some log lines.
 =back
 
 =cut
+
 sub provider_name {
     my ($self) = @_;
 
@@ -211,6 +213,7 @@ Unix time-stamp of when the job started.
 =back
 
 =cut
+
 sub job_init {
     my ($self, $start_time) = @_;
 
@@ -227,6 +230,7 @@ the backup server. Called in both, success and failure scenarios.
 =back
 
 =cut
+
 sub job_cleanup {
     my ($self) = @_;
 
@@ -271,6 +275,7 @@ Unix time-stamp of when the guest backup started.
 =back
 
 =cut
+
 sub backup_init {
     my ($self, $vmid, $vmtype, $start_time) = @_;
 
@@ -326,6 +331,7 @@ Present if there was a failure. The error message indicating the failure.
 =back
 
 =cut
+
 sub backup_cleanup {
     my ($self, $vmid, $vmtype, $success, $info) = @_;
 
@@ -366,6 +372,7 @@ The type of the guest being backed up. Currently, either C<qemu> or C<lxc>.
 =back
 
 =cut
+
 sub backup_get_mechanism {
     my ($self, $vmid, $vmtype) = @_;
 
@@ -396,6 +403,7 @@ Path to the file with the backup log.
 =back
 
 =cut
+
 sub backup_handle_log_file {
     my ($self, $vmid, $filename) = @_;
 
@@ -462,6 +470,7 @@ bitmap and existing ones will be discarded.
 =back
 
 =cut
+
 sub backup_vm_query_incremental {
     my ($self, $vmid, $volumes) = @_;
 
@@ -619,6 +628,7 @@ configuration as raw data.
 =back
 
 =cut
+
 sub backup_vm {
     my ($self, $vmid, $guest_config, $volumes, $info) = @_;
 
@@ -652,6 +662,7 @@ description there.
 =back
 
 =cut
+
 sub backup_container_prepare {
     my ($self, $vmid, $info) = @_;
 
@@ -752,6 +763,7 @@ for unprivileged containers by default.
 =back
 
 =cut
+
 sub backup_container {
     my ($self, $vmid, $guest_config, $exclude_patterns, $info) = @_;
 
@@ -797,6 +809,7 @@ The volume ID of the archive being restored.
 =back
 
 =cut
+
 sub restore_get_mechanism {
     my ($self, $volname) = @_;
 
@@ -824,6 +837,7 @@ The volume ID of the archive being restored.
 =back
 
 =cut
+
 sub archive_get_guest_config {
     my ($self, $volname) = @_;
 
@@ -853,6 +867,7 @@ The volume ID of the archive being restored.
 =back
 
 =cut
+
 sub archive_get_firewall_config {
     my ($self, $volname) = @_;
 
@@ -901,6 +916,7 @@ The volume ID of the archive being restored.
 =back
 
 =cut
+
 sub restore_vm_init {
     my ($self, $volname) = @_;
 
@@ -927,6 +943,7 @@ The volume ID of the archive being restored.
 =back
 
 =cut
+
 sub restore_vm_cleanup {
     my ($self, $volname) = @_;
 
@@ -984,6 +1001,7 @@ empty.
 =back
 
 =cut
+
 sub restore_vm_volume_init {
     my ($self, $volname, $device_name, $info) = @_;
 
@@ -1020,6 +1038,7 @@ empty.
 =back
 
 =cut
+
 sub restore_vm_volume_cleanup {
     my ($self, $volname, $device_name, $info) = @_;
 
@@ -1086,6 +1105,7 @@ empty.
 =back
 
 =cut
+
 sub restore_container_init {
     my ($self, $volname, $info) = @_;
 
@@ -1117,6 +1137,7 @@ empty.
 =back
 
 =cut
+
 sub restore_container_cleanup {
     my ($self, $volname, $info) = @_;
 
