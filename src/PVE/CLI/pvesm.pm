@@ -674,19 +674,6 @@ our $cmddef = {
                 }
             },
         ],
-        glusterfs => [
-            "PVE::API2::Storage::Scan",
-            'glusterfsscan',
-            ['server'],
-            { node => $nodename },
-            sub {
-                my $res = shift;
-
-                foreach my $rec (@$res) {
-                    printf "%s\n", $rec->{volname};
-                }
-            },
-        ],
         iscsi => [
             "PVE::API2::Storage::Scan",
             'iscsiscan',
@@ -753,7 +740,6 @@ our $cmddef = {
     },
     nfsscan => { alias => 'scan nfs' },
     cifsscan => { alias => 'scan cifs' },
-    glusterfsscan => { alias => 'scan glusterfs' },
     iscsiscan => { alias => 'scan iscsi' },
     lvmscan => { alias => 'scan lvm' },
     lvmthinscan => { alias => 'scan lvmthin' },

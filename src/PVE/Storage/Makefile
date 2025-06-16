@@ -9,7 +9,6 @@ SOURCES= \
 	CephFSPlugin.pm \
 	RBDPlugin.pm \
 	ISCSIDirectPlugin.pm \
-	GlusterfsPlugin.pm \
 	ZFSPoolPlugin.pm \
 	ZFSPlugin.pm \
 	PBSPlugin.pm \

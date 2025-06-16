@@ -43,7 +43,6 @@ __PACKAGE__->register_method({
 
         my $res = [
             { method => 'cifs' },
-            { method => 'glusterfs' },
             { method => 'iscsi' },
             { method => 'lvm' },
             { method => 'nfs' },
@@ -242,58 +241,6 @@ __PACKAGE__->register_method({
         my $password = delete $param->{password};
 
         return PVE::Storage::PBSPlugin::scan_datastores($param, $password);
-    },
-});
-
-# Note: GlusterFS currently does not have an equivalent of showmount.
-# As workaround, we simply use nfs showmount.
-# see http://www.gluster.org/category/volumes/
-__PACKAGE__->register_method({
-    name => 'glusterfsscan',
-    path => 'glusterfs',
-    method => 'GET',
-    description => "Scan remote GlusterFS server.",
-    protected => 1,
-    proxyto => "node",
-    permissions => {
-        check => ['perm', '/storage', ['Datastore.Allocate']],
-    },
-    parameters => {
-        additionalProperties => 0,
-        properties => {
-            node => get_standard_option('pve-node'),
-            server => {
-                description => "The server address (name or IP).",
-                type => 'string',
-                format => 'pve-storage-server',
-            },
-        },
-    },
-    returns => {
-        type => 'array',
-        items => {
-            type => "object",
-            properties => {
-                volname => {
-                    description => "The volume name.",
-                    type => 'string',
-                },
-            },
-        },
-    },
-    code => sub {
-        my ($param) = @_;
-
-        my $server = $param->{server};
-        my $res = PVE::Storage::scan_nfs($server);
-
-        my $data = [];
-        foreach my $path (sort keys %$res) {
-            if ($path =~ m!^/([^\s/]+)$!) {
-                push @$data, { volname => $1 };
-            }
-        }
-        return $data;
     },
 });
 
