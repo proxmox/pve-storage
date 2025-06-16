@@ -1,3 +1,16 @@
+libpve-storage-perl (9.0.1) trixie; urgency=medium
+
+  * drop support for accessing Gluster based storage directly due to its
+    effective end of support. The last upstream release happened over 2.5
+    years ago and there's currently no one providing enterprise support or
+    security updates.
+    User can either stay on Proxmox VE 8 until its end-of-life (probably end
+    of June 2026), or mount GlusterFS "manually" (e.g., /etc/fstab) and add it
+    as directory storage to Proxmox VE.
+    We recommend moving to another storage technology altogether though.
+
+ -- Proxmox Support Team <support@proxmox.com>  Mon, 16 Jun 2025 16:12:37 +0200
+
 libpve-storage-perl (9.0.0) trixie; urgency=medium
 
   * re-build for Debian 12 "Trixie" based Proxmox VE 9 release.
