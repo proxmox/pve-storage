@@ -211,7 +211,17 @@ sub esxi_mount : prototype($$$;$) {
     if (!$pid) {
         eval {
             undef $rd;
-            POSIX::setsid();
+
+            # Double fork to properly daemonize
+            POSIX::setsid() or die "failed to create new session: $!\n";
+            my $pid2 = fork();
+            die "second fork failed: $!\n" if !defined($pid2);
+
+            if ($pid2) {
+                # First child exits immediately
+                POSIX::_exit(0);
+            }
+            # Second child (grandchild) enters systemd scope
             PVE::Systemd::enter_systemd_scope(
                 $scope_name_base,
                 "Proxmox VE FUSE mount for ESXi storage $storeid (server $host)",
@@ -243,6 +253,8 @@ sub esxi_mount : prototype($$$;$) {
         }
         POSIX::_exit(1);
     }
+    # Parent wait for first child to exit
+    waitpid($pid, 0);
     undef $wr;
 
     my $result = do { local $/ = undef; <$rd> };
