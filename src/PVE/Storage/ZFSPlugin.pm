@@ -247,6 +247,22 @@ sub path {
     return ($path, $vmid, $vtype);
 }
 
+sub qemu_blockdev_options {
+    my ($class, $scfg, $storeid, $volname) = @_;
+
+    my $name = ($class->parse_volname($volname))[1];
+    my $guid = $class->zfs_get_lu_name($scfg, $name);
+    my $lun = $class->zfs_get_lun_number($scfg, $guid);
+
+    return {
+        driver => 'iscsi',
+        transport => 'tcp',
+        portal => "$scfg->{portal}",
+        target => "$scfg->{target}",
+        lun => int($lun),
+    };
+}
+
 sub create_base {
     my ($class, $storeid, $scfg, $volname) = @_;
 
