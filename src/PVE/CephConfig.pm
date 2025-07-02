@@ -3,6 +3,8 @@ package PVE::CephConfig;
 use strict;
 use warnings;
 use Net::IP;
+
+use PVE::RESTEnvironment qw(log_warn);
 use PVE::Tools qw(run_command);
 use PVE::Cluster qw(cfs_register_file);
 
@@ -420,6 +422,10 @@ sub ceph_connect_option {
         } else {
             $cmd_option->{ceph_conf} = "/etc/pve/priv/ceph/${storeid}.conf";
         }
+    } elsif (!$pveceph_managed) {
+        # No dedicated config for non-PVE-managed cluster, create new
+        # TODO PVE 10 - remove. All such storages already got a configuration upon creation or here.
+        ceph_create_configuration($scfg->{type}, $storeid);
     }
 
     $cmd_option->{keyring} = $keyfile if (-e $keyfile);
@@ -485,6 +491,50 @@ sub ceph_remove_keyfile {
     if (-f $ceph_storage_keyring) {
         unlink($ceph_storage_keyring) or warn "removing keyring of storage failed: $!\n";
     }
+}
+
+sub ceph_create_configuration {
+    my ($type, $storeid) = @_;
+
+    return if $type eq 'cephfs'; # no configuration file needed currently
+
+    my $extension = 'keyring';
+    $extension = 'secret' if $type eq 'cephfs';
+    my $ceph_storage_keyring = "/etc/pve/priv/ceph/${storeid}.$extension";
+
+    return if !-e $ceph_storage_keyring;
+
+    my $ceph_storage_config = "/etc/pve/priv/ceph/${storeid}.conf";
+
+    if (-e $ceph_storage_config) {
+        log_warn(
+            "file $ceph_storage_config already exists, check manually and ensure 'keyring'"
+                . " option is set to '$ceph_storage_keyring'!\n",
+        );
+        return;
+    }
+
+    my $ceph_config = {
+        global => {
+            keyring => $ceph_storage_keyring,
+        },
+    };
+
+    my $contents = PVE::CephConfig::write_ceph_config($ceph_storage_config, $ceph_config);
+    PVE::Tools::file_set_contents($ceph_storage_config, $contents, 0600);
+
+    return;
+}
+
+sub ceph_remove_configuration {
+    my ($storeid) = @_;
+
+    my $ceph_storage_config = "/etc/pve/priv/ceph/${storeid}.conf";
+    if (-f $ceph_storage_config) {
+        unlink $ceph_storage_config or log_warn("removing $ceph_storage_config failed - $!\n");
+    }
+
+    return;
 }
 
 my $ceph_version_parser = sub {

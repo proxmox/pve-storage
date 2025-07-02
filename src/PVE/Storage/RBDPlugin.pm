@@ -448,6 +448,7 @@ sub on_add_hook {
     my ($class, $storeid, $scfg, %param) = @_;
 
     PVE::CephConfig::ceph_create_keyfile($scfg->{type}, $storeid, $param{keyring});
+    PVE::CephConfig::ceph_create_configuration($scfg->{type}, $storeid);
 
     return;
 }
@@ -469,6 +470,8 @@ sub on_update_hook {
 sub on_delete_hook {
     my ($class, $storeid, $scfg) = @_;
     PVE::CephConfig::ceph_remove_keyfile($scfg->{type}, $storeid);
+    PVE::CephConfig::ceph_remove_configuration($storeid);
+
     return;
 }
 
