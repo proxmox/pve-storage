@@ -2009,6 +2009,9 @@ disk of a VM, containing its OMVF variables.
 
 =back
 
+=item C<< $options->{'snapshot-name'} >>: (optional) The snapshot name. Set when the associated snapshot should be opened rather than the
+volume itself.
+
 =back
 
 =back
@@ -2020,9 +2023,15 @@ sub qemu_blockdev_options {
 
     my $blockdev = {};
 
-    my ($path) = $class->filesystem_path($scfg, $volname);
+    my ($path) = $class->filesystem_path($scfg, $volname, $options->{'snapshot-name'});
 
     if ($path =~ m|^/|) {
+        # For qcow2 and qed the path of a snapshot will be the same, but it's not possible to attach
+        # the snapshot alone.
+        my $format = ($class->parse_volname($volname))[6];
+        die "cannot attach only the snapshot of a '$format' image\n"
+            if $options->{'snapshot-name'} && ($format eq 'qcow2' || $format eq 'qed');
+
         # The 'file' driver only works for regular files. The check below is taken from
         # block/file-posix.c:hdev_probe_device() in QEMU. Do not bother with detecting 'host_cdrom'
         # devices here, those are not managed by the storage layer.

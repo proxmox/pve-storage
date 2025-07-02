@@ -530,6 +530,7 @@ sub qemu_blockdev_options {
     my ($name) = ($class->parse_volname($volname))[1];
 
     if ($scfg->{krbd}) {
+        $name .= '@' . $options->{'snapshot-name'} if $options->{'snapshot-name'};
         my $rbd_dev_path = get_rbd_dev_path($scfg, $storeid, $name);
         return { driver => 'host_device', filename => $rbd_dev_path };
     }
@@ -540,6 +541,7 @@ sub qemu_blockdev_options {
         image => "$name",
     };
     $blockdev->{namespace} = "$scfg->{namespace}" if defined($scfg->{namespace});
+    $blockdev->{snapshot} = $options->{'snapshot-name'} if $options->{'snapshot-name'};
 
     $blockdev->{conf} = $cmd_option->{ceph_conf} if $cmd_option->{ceph_conf};
 

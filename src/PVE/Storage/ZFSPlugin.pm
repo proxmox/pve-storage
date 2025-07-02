@@ -250,6 +250,9 @@ sub path {
 sub qemu_blockdev_options {
     my ($class, $scfg, $storeid, $volname, $options) = @_;
 
+    die "direct access to snapshots not implemented\n"
+        if $options->{'snapshot-name'};
+
     my $name = ($class->parse_volname($volname))[1];
     my $guid = $class->zfs_get_lu_name($scfg, $name);
     my $lun = $class->zfs_get_lun_number($scfg, $guid);
