@@ -1972,9 +1972,9 @@ Returns a hash reference with the basic options needed to open the volume via QE
 API. This at least requires a C<< $blockdev->{driver} >> and a reference to the image, e.g.
 C<< $blockdev->{filename} >> for the C<file> driver. For files, the C<file> driver can be used. For
 host block devices, the C<host_device> driver can be used. The plugin must not set options like
-C<cache> or C<aio>. Those are managed by qemu-server and will be overwritten. For other available
-drivers and the exact specification of the options, see
-L<https://qemu.readthedocs.io/en/master/interop/qemu-qmp-ref.html#object-QMP-block-core.BlockdevOptions>
+C<cache> or C<aio>. Those are managed by qemu-server. See C<$allowed_qemu_blockdev_options> in the
+C<PVE/Storage.pm> module for allowed drivers and options. Feel free to request more on the pve-devel
+mailing list based on your requirements.
 
 While Perl does not have explicit types, the result will need to be converted to JSON later and
 match the QMP specification (see link above), so implicit types are important. In the return value,

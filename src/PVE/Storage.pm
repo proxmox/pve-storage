@@ -131,6 +131,102 @@ our $OVA_CONTENT_RE_1 = qr/${SAFE_CHAR_WITH_WHITESPACE_CLASS_RE}+\.(qcow2|raw|vm
 # FIXME remove with PVE 9.0, add versioned breaks for pve-manager
 our $vztmpl_extension_re = $VZTMPL_EXT_RE_1;
 
+# See the QMP reference documentation.
+my $allowed_qemu_blockdev_options_file = {
+    filename => 1,
+    # pr-manager
+    # aio
+    # aio-max-batch
+    # locking
+    # drop-cache
+    # x-check-cache-dropped
+};
+
+# Plugin authors should feel free to request allowing more based on their requirements on the
+# pve-devel mailing list. See the QMP reference documentation:
+# https://qemu.readthedocs.io/en/master/interop/qemu-qmp-ref.html#object-QMP-block-core.BlockdevOptions
+my $allowed_qemu_blockdev_options = {
+    # alloc-track - only works in combination with stream job
+    # blkdebug - for debugging
+    # blklogwrites - for debugging
+    # blkreplay - for debugging
+    # blkverify - for debugging
+    # bochs
+    # cloop
+    # compress
+    # copy-before-write - should not be used directly by storage layer
+    # copy-on-read - should not be used directly by storage layer
+    # dmg
+    file => $allowed_qemu_blockdev_options_file,
+    # snapshot-access - should not be used directly by storage layer
+    # ftp
+    # ftps
+    # gluster - support is expected to be dropped in QEMU 10.1
+    # host_cdrom - storage layer should not access host CD-ROM drive
+    host_device => $allowed_qemu_blockdev_options_file,
+    # http
+    # https
+    # io_uring - disabled by our QEMU build config (would require CONFIG_BLKIO)
+    iscsi => {
+        transport => 1,
+        portal => 1,
+        target => 1,
+        lun => 1,
+        # user - requires 'password-secret'
+        # password-secret - requires adding a 'secret' object on the commandline in qemu-server
+        'initiator-name' => 1,
+        'header-digest' => 1,
+        timeout => 1,
+    },
+    # luks
+    nbd => {
+        server => 1,
+        export => 1,
+        # tls-creds - would require adding a 'secret' object on the commandline in qemu-server
+        # tls-hostname - requires tls-creds
+        # x-dirty-bitmap - would mean allocation information would be reported based on bitmap
+        'reconnect-delay' => 1,
+        'open-timeout' => 1,
+    },
+    # nfs - disabled by our QEMU build config
+    # null-aio - for debugging
+    # null-co - for debugging
+    # nvme
+    # nvme-io_uring - disabled by our QEMU build config (would require CONFIG_BLKIO)
+    # parallels
+    # preallocate
+    # qcow
+    # qcow2 - format node is added by qemu-server
+    # qed
+    # quorum
+    # raw - format node is added by qemu-server
+    rbd => {
+        pool => 1,
+        namespace => 1,
+        image => 1,
+        conf => 1,
+        snapshot => 1,
+        encrypt => 1,
+        user => 1,
+        'auth-client-required' => 1,
+        # key-secret would require adding a 'secret' object on the commandline in qemu-server
+        server => 1,
+    },
+    # replication
+    # pbs
+    # ssh - disabled by our QEMU build config
+    # throttle
+    # vdi
+    # vhdx
+    # virtio-blk-vfio-pci - disabled by our QEMU build config (would require CONFIG_BLKIO)
+    # virtio-blk-vhost-user - disabled by our QEMU build config (would require CONFIG_BLKIO)
+    # virtio-blk-vhost-vdpa - disabled by our QEMU build config (would require CONFIG_BLKIO)
+    # vmdk - format node is added by qemu-server
+    # vpc
+    # vvfat
+    # zeroinit - filter that should not be used directly by storage layer
+};
+
 #  PVE::Storage utility functions
 
 sub config {
@@ -733,7 +829,25 @@ sub qemu_blockdev_options {
     die "cannot use volume of type '$vtype' as a QEMU blockdevice\n"
         if $vtype ne 'images' && $vtype ne 'iso' && $vtype ne 'import';
 
-    return $plugin->qemu_blockdev_options($scfg, $storeid, $volname, $machine_version, $options);
+    my $blockdev =
+        $plugin->qemu_blockdev_options($scfg, $storeid, $volname, $machine_version, $options);
+
+    if (my $driver = $blockdev->{driver}) {
+        my $allowed_opts = $allowed_qemu_blockdev_options->{$driver};
+        for my $opt (keys $blockdev->%*) {
+            next if $opt eq 'driver';
+            if (!$allowed_opts->{$opt}) {
+                delete($blockdev->{$opt});
+                log_warn(
+                    "volume '$volid' - dropping block device option '$opt' set by storage plugin"
+                        . " - not currently part of allowed schema");
+            }
+        }
+    } else {
+        die "storage plugin for '$storeid' did not return a blockdev driver\n";
+    }
+
+    return $blockdev;
 }
 
 # used as last resort to adapt volnames when migrating
