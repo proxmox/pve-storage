@@ -162,6 +162,20 @@ sub path {
     return ($path, $vmid, $vtype);
 }
 
+sub qemu_blockdev_options {
+    my ($class, $scfg, $storeid, $volname) = @_;
+
+    my $format = ($class->parse_volname($volname))[6];
+
+    die "volume '$volname' not usable as VM image\n" if $format ne 'raw';
+
+    my ($path) = $class->path($scfg, $volname, $storeid);
+
+    my $blockdev = { driver => 'host_device', filename => $path };
+
+    return $blockdev;
+}
+
 sub zfs_request {
     my ($class, $scfg, $timeout, $method, @params) = @_;
 
