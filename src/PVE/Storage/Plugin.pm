@@ -1961,6 +1961,34 @@ sub rename_volume {
     return "${storeid}:${base}${target_vmid}/${target_volname}";
 }
 
+my sub blockdev_options_nbd_tcp {
+    my ($host, $port, $export) = @_;
+
+    die "blockdev_options_nbd_tcp: no host" if !defined($host);
+
+    my $blockdev = {};
+
+    my $server = { type => 'inet', host => "$host" };
+    # port is also a string in QAPI, not optional, default for NBD is 10809
+    $server->{port} = defined($port) ? "$port" : "10809";
+    $blockdev = { driver => 'nbd', server => $server };
+    $blockdev->{export} = "$export" if defined($export);
+
+    return $blockdev;
+}
+
+my sub blockdev_options_nbd_unix {
+    my ($socket_path, $export) = @_;
+
+    my $blockdev = {};
+
+    my $server = { type => 'unix', path => "$socket_path" };
+    $blockdev = { driver => 'nbd', server => $server };
+    $blockdev->{export} = "$export" if defined($export);
+
+    return $blockdev;
+}
+
 =pod
 
 =head3 qemu_blockdev_options
@@ -2031,7 +2059,7 @@ sub qemu_blockdev_options {
 
     my $blockdev = {};
 
-    my ($path) = $class->filesystem_path($scfg, $volname, $options->{'snapshot-name'});
+    my ($path) = $class->path($scfg, $volname, $storeid, $options->{'snapshot-name'});
 
     if ($path =~ m|^/|) {
         # For qcow2 and qed the path of a snapshot will be the same, but it's not possible to attach
@@ -2046,6 +2074,71 @@ sub qemu_blockdev_options {
         my $st = File::stat::stat($path) or die "stat for '$path' failed - $!\n";
         my $driver = (S_ISCHR($st->mode) || S_ISBLK($st->mode)) ? 'host_device' : 'file';
         $blockdev = { driver => $driver, filename => $path };
+    } elsif ($path =~ m|^file:(\S+)|) {
+        $blockdev = { driver => 'file', filename => "$1" };
+    } elsif ($path =~ m|^host_device:(\S+)|) {
+        $blockdev = { driver => 'host_device', filename => "$1" };
+    } elsif ($path =~ m|^iscsi://(\S+)/(\S+)/(\d+)$|) {
+        $blockdev =
+            { driver => 'iscsi', portal => "$1", target => "$2", lun => "$3", transport => "tcp" };
+    } elsif ($path =~ m|^iser://(\S+)/(\S+)/(\d+)$|) {
+        $blockdev =
+            { driver => 'iscsi', portal => "$1", target => "$2", lun => "$3", transport => "iser" };
+    } elsif ($path =~ m|^nbd(?:\+tcp)?://(\S+?)(?::(\d+))?/(\S+)?$|) { # new style NBD TCP URI
+        $blockdev = blockdev_options_nbd_tcp($1, $2, $3);
+    } elsif ($path =~ m|^nbd(?:\+tcp)?:(\S+):(\d+)(?::exportname=(\S+))?$|) {
+        # old style NBD TCP URI
+        $blockdev = blockdev_options_nbd_tcp($1, $2, $3);
+    } elsif ($path =~ m|^nbd\+unix:///(\S+)?\?socket=(\S+)$|) { # new style NBD unix URI
+        $blockdev = blockdev_options_nbd_unix($2, $1); # note the order!
+    } elsif ($path =~ m|^nbd:unix:(\S+?)(?::exportname=(\S+))?$|) { # old style NBD unix URI
+        $blockdev = blockdev_options_nbd_unix($1, $2);
+    } elsif ($path =~ m/^rbd:(\S+)$/) {
+        my $rbd_options = $1;
+        $blockdev->{driver} = 'rbd';
+
+        #map options to key=value pair (if not key is provided, this is the image)
+        #options are seprated with : but we need to exclude \: used for ipv6 address
+        my $options = {
+            map {
+                s/\\:/:/g;
+                /^(.*?)=(.*)/ ? ($1 => $2) : (image => $_)
+            } $rbd_options =~ /(?:\\:|\[[^\]]*\]|[^:\\])+/g
+        };
+
+        $blockdev->{'auth-client-required'} = [$options->{'auth_supported'}]
+            if $options->{'auth_supported'};
+        $blockdev->{'conf'} = $options->{'conf'} if $options->{'conf'};
+        $blockdev->{'user'} = $options->{'id'} if $options->{'id'};
+
+        if ($options->{'mon_host'}) {
+            my $server = [];
+            my @mons = split(';', $options->{'mon_host'});
+            for my $mon (@mons) {
+                $mon =~ s/[\[\]]//g;
+                my ($host, $port) = PVE::Tools::parse_host_and_port($mon);
+                $port = '3300' if !$port;
+                push @$server, { host => $host, port => $port };
+            }
+            $blockdev->{server} = $server;
+        }
+
+        if ($options->{'image'} =~ m|^(\S+)/(\S+)$|) {
+            $blockdev->{pool} = $1;
+            $blockdev->{image} = $2;
+            if ($blockdev->{image} =~ m|^(\S+)/(\S+)$|) {
+                $blockdev->{namespace} = $1;
+                $blockdev->{image} = $2;
+            }
+        }
+
+        delete($options->@{qw(auth_supported conf id mon_host image)});
+
+        # Map rest directly. With -drive, it was possible to use arbitrary key-value-pairs. Like
+        # this, there will be warnings for those that are not allowed via blockdev.
+        for my $opt (keys $options->%*) {
+            $blockdev->{$opt} = $options->{$opt};
+        }
     } else {
         die "storage plugin doesn't implement qemu_blockdev_options() method\n";
     }
