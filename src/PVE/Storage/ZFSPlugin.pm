@@ -248,7 +248,7 @@ sub path {
 }
 
 sub qemu_blockdev_options {
-    my ($class, $scfg, $storeid, $volname, $options) = @_;
+    my ($class, $scfg, $storeid, $volname, $machine_version, $options) = @_;
 
     die "direct access to snapshots not implemented\n"
         if $options->{'snapshot-name'};

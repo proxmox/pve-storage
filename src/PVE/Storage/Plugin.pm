@@ -1965,7 +1965,8 @@ sub rename_volume {
 
 =head3 qemu_blockdev_options
 
-    $blockdev = $plugin->qemu_blockdev_options($scfg, $storeid, $volname, $options)
+    $blockdev =
+        $plugin->qemu_blockdev_options($scfg, $storeid, $volname, $machine_version, $options)
 
 Returns a hash reference with the basic options needed to open the volume via QEMU's C<-blockdev>
 API. This at least requires a C<< $blockdev->{driver} >> and a reference to the image, e.g.
@@ -1991,6 +1992,13 @@ Arguments:
 =item C<$storeid>: The storage ID.
 
 =item C<$volume>: The volume name.
+
+=item C<$machine_version>: The QEMU machine version for which the block device will be used. If you
+want to change drivers or change driver options, you should use this as a guard, so that only
+machines with a new enough version will use the new driver or options. Machines with an older
+version should still get the old driver and options. The version is a string
+C<${major}.${minor}+pve${pve_version}>. The pve version is used for certain downstream changes to
+machine models and should be (mostly) irrelevant for third-party plugins.
 
 =item C<$options>: A hash reference with additional options.
 
@@ -2019,7 +2027,7 @@ volume itself.
 =cut
 
 sub qemu_blockdev_options {
-    my ($class, $scfg, $storeid, $volname, $options) = @_;
+    my ($class, $scfg, $storeid, $volname, $machine_version, $options) = @_;
 
     my $blockdev = {};
 

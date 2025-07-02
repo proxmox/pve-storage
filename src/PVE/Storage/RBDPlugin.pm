@@ -524,7 +524,7 @@ sub path {
 }
 
 sub qemu_blockdev_options {
-    my ($class, $scfg, $storeid, $volname, $options) = @_;
+    my ($class, $scfg, $storeid, $volname, $machine_version, $options) = @_;
 
     my $cmd_option = PVE::CephConfig::ceph_connect_option($scfg, $storeid);
     my ($name) = ($class->parse_volname($volname))[1];
