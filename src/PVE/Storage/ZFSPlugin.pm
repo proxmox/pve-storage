@@ -248,7 +248,7 @@ sub path {
 }
 
 sub qemu_blockdev_options {
-    my ($class, $scfg, $storeid, $volname) = @_;
+    my ($class, $scfg, $storeid, $volname, $options) = @_;
 
     my $name = ($class->parse_volname($volname))[1];
     my $guid = $class->zfs_get_lu_name($scfg, $name);

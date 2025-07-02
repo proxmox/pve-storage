@@ -374,6 +374,16 @@ my sub rbd_volume_exists {
     return 0;
 }
 
+# Needs to be public, so qemu-server can mock it for cfg2cmd.
+sub rbd_volume_config_set {
+    my ($scfg, $storeid, $volname, $key, $value) = @_;
+
+    my $cmd = $rbd_cmd->($scfg, $storeid, 'config', 'image', 'set', $volname, $key, $value);
+    run_rbd_command($cmd, errmsg => "rbd config image set $volname $key $value error");
+
+    return;
+}
+
 # Configuration
 
 sub type {
@@ -514,7 +524,7 @@ sub path {
 }
 
 sub qemu_blockdev_options {
-    my ($class, $scfg, $storeid, $volname) = @_;
+    my ($class, $scfg, $storeid, $volname, $options) = @_;
 
     my $cmd_option = PVE::CephConfig::ceph_connect_option($scfg, $storeid);
     my ($name) = ($class->parse_volname($volname))[1];
@@ -546,6 +556,14 @@ sub qemu_blockdev_options {
     }
 
     $blockdev->{user} = "$cmd_option->{userid}" if $cmd_option->{keyring};
+
+    # SPI flash does lots of read-modify-write OPs, without writeback this gets really slow #3329
+    if ($options->{hints}->{'efi-disk'}) {
+        # Querying the value would just cost more and the 'rbd image config get' command will just
+        # fail if the config has not been set yet, so it's not even straight-forward to do so.
+        # Simply set the value (possibly again).
+        rbd_volume_config_set($scfg, $storeid, $name, 'rbd_cache_policy', 'writeback');
+    }
 
     return $blockdev;
 }

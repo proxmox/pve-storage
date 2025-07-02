@@ -1965,7 +1965,7 @@ sub rename_volume {
 
 =head3 qemu_blockdev_options
 
-    $blockdev = $plugin->qemu_blockdev_options($scfg, $storeid, $volname)
+    $blockdev = $plugin->qemu_blockdev_options($scfg, $storeid, $volname, $options)
 
 Returns a hash reference with the basic options needed to open the volume via QEMU's C<-blockdev>
 API. This at least requires a C<< $blockdev->{driver} >> and a reference to the image, e.g.
@@ -1992,12 +1992,31 @@ Arguments:
 
 =item C<$volume>: The volume name.
 
+=item C<$options>: A hash reference with additional options.
+
+=over
+
+=item C<< $options->{hints} >>: A hash reference with hints indicating what the volume will be used
+for. This can be safely ignored if no concrete issues are known with your plugin. For certain use
+cases, setting additional (plugin-specific) options might be very beneficial however. An example is
+setting the correct cache options for an EFI disk on RBD. The list of hints might get expanded in
+the future.
+
+=over
+
+=item C<< $options->{hints}->{'efi-disk'} >>: (optional) If set, the volume will be used as the EFI
+disk of a VM, containing its OMVF variables.
+
+=back
+
+=back
+
 =back
 
 =cut
 
 sub qemu_blockdev_options {
-    my ($class, $scfg, $storeid, $volname) = @_;
+    my ($class, $scfg, $storeid, $volname, $options) = @_;
 
     my $blockdev = {};
 
