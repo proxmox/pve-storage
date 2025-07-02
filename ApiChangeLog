@@ -6,6 +6,22 @@ without breaking anything unaware of it.)
 
 Future changes should be documented in here.
 
+## Version 12:
+
+* Introduce `qemu_blockdev_options()` plugin method
+
+  Proxmox VE will switch to the more modern QEMU command line option `-blockdev` replacing `-drive`.
+  With `-drive`, it was enough to specify a path, where special protocol paths like `iscsi://` were
+  also supported. With `-blockdev`, the data is more structured, a driver needs to be specified
+  alongside the path to an image and each driver supports driver-specific options. Most storage
+  plugins should be fine using driver `host_device` in case of a block device and `file` in case of
+  a file and no special options. See the default implemenation of the base plugin for guidance, also
+  if the plugin uses protocol paths. Implement this method for Proxmox VE 9.
+
+  See `$allowed_qemu_blockdev_options` in `PVE/Storage.pm` for currently allowed drivers and option.
+  Feel free to request allowing more drivers or options on the pve-devel mailing list based on your
+  needs.
+
 ##  Version 11:
 
 * Allow declaring storage features via plugin data
