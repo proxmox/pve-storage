@@ -719,6 +719,23 @@ sub abs_filesystem_path {
     return $path;
 }
 
+# see the documentation for the plugin method
+sub qemu_blockdev_options {
+    my ($cfg, $volid) = @_;
+
+    my ($storeid, $volname) = parse_volume_id($volid);
+
+    my $scfg = storage_config($cfg, $storeid);
+
+    my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
+
+    my ($vtype) = $plugin->parse_volname($volname);
+    die "cannot use volume of type '$vtype' as a QEMU blockdevice\n"
+        if $vtype ne 'images' && $vtype ne 'iso' && $vtype ne 'import';
+
+    return $plugin->qemu_blockdev_options($scfg, $storeid, $volname);
+}
+
 # used as last resort to adapt volnames when migrating
 my $volname_for_storage = sub {
     my ($cfg, $storeid, $name, $vmid, $format) = @_;

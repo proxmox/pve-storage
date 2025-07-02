@@ -1961,6 +1961,62 @@ sub rename_volume {
     return "${storeid}:${base}${target_vmid}/${target_volname}";
 }
 
+=pod
+
+=head3 qemu_blockdev_options
+
+    $blockdev = $plugin->qemu_blockdev_options($scfg, $storeid, $volname)
+
+Returns a hash reference with the basic options needed to open the volume via QEMU's C<-blockdev>
+API. This at least requires a C<< $blockdev->{driver} >> and a reference to the image, e.g.
+C<< $blockdev->{filename} >> for the C<file> driver. For files, the C<file> driver can be used. For
+host block devices, the C<host_device> driver can be used. The plugin must not set options like
+C<cache> or C<aio>. Those are managed by qemu-server and will be overwritten. For other available
+drivers and the exact specification of the options, see
+L<https://qemu.readthedocs.io/en/master/interop/qemu-qmp-ref.html#object-QMP-block-core.BlockdevOptions>
+
+While Perl does not have explicit types, the result will need to be converted to JSON later and
+match the QMP specification (see link above), so implicit types are important. In the return value,
+use C<JSON::true> and C<JSON::false> for booleans, C<"$value"> for strings, and C<int($value)> for
+integers.
+
+The volume is activated before the function is called.
+
+Arguments:
+
+=over
+
+=item C<$scfg>: The hash reference with the storage configuration.
+
+=item C<$storeid>: The storage ID.
+
+=item C<$volume>: The volume name.
+
+=back
+
+=cut
+
+sub qemu_blockdev_options {
+    my ($class, $scfg, $storeid, $volname) = @_;
+
+    my $blockdev = {};
+
+    my ($path) = $class->filesystem_path($scfg, $volname);
+
+    if ($path =~ m|^/|) {
+        # The 'file' driver only works for regular files. The check below is taken from
+        # block/file-posix.c:hdev_probe_device() in QEMU. Do not bother with detecting 'host_cdrom'
+        # devices here, those are not managed by the storage layer.
+        my $st = File::stat::stat($path) or die "stat for '$path' failed - $!\n";
+        my $driver = (S_ISCHR($st->mode) || S_ISBLK($st->mode)) ? 'host_device' : 'file';
+        $blockdev = { driver => $driver, filename => $path };
+    } else {
+        die "storage plugin doesn't implement qemu_blockdev_options() method\n";
+    }
+
+    return $blockdev;
+}
+
 # Used by storage plugins for external backup providers. See PVE::BackupProvider::Plugin for the API
 # the provider needs to implement.
 #
