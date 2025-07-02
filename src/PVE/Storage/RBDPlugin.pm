@@ -513,6 +513,43 @@ sub path {
     return ($path, $vmid, $vtype);
 }
 
+sub qemu_blockdev_options {
+    my ($class, $scfg, $storeid, $volname) = @_;
+
+    my $cmd_option = PVE::CephConfig::ceph_connect_option($scfg, $storeid);
+    my ($name) = ($class->parse_volname($volname))[1];
+
+    if ($scfg->{krbd}) {
+        my $rbd_dev_path = get_rbd_dev_path($scfg, $storeid, $name);
+        return { driver => 'host_device', filename => $rbd_dev_path };
+    }
+
+    my $blockdev = {
+        driver => 'rbd',
+        pool => $scfg->{pool} ? "$scfg->{pool}" : 'rbd',
+        image => "$name",
+    };
+    $blockdev->{namespace} = "$scfg->{namespace}" if defined($scfg->{namespace});
+
+    $blockdev->{conf} = $cmd_option->{ceph_conf} if $cmd_option->{ceph_conf};
+
+    if (my $monhost = $scfg->{'monhost'}) {
+        my $server = [];
+        my @mons = PVE::Tools::split_list($monhost);
+        for my $mon (@mons) {
+            my ($host, $port) = PVE::Tools::parse_host_and_port($mon);
+            $port = '3300' if !$port;
+            push @$server, { host => $host, port => $port };
+        }
+        $blockdev->{server} = $server;
+        $blockdev->{'auth-client-required'} = ["$cmd_option->{auth_supported}"];
+    }
+
+    $blockdev->{user} = "$cmd_option->{userid}" if $cmd_option->{keyring};
+
+    return $blockdev;
+}
+
 sub find_free_diskname {
     my ($class, $storeid, $scfg, $vmid, $fmt, $add_fmt_suffix) = @_;
 
