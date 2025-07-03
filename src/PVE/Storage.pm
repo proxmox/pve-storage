@@ -834,6 +834,8 @@ sub qemu_blockdev_options {
 
     if (my $driver = $blockdev->{driver}) {
         my $allowed_opts = $allowed_qemu_blockdev_options->{$driver};
+        die "blockdev driver '$driver' not allowed\n" if !defined($allowed_opts);
+
         for my $opt (keys $blockdev->%*) {
             next if $opt eq 'driver';
             if (!$allowed_opts->{$opt}) {
