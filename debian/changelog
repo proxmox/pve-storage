@@ -1,3 +1,16 @@
+libpve-storage-perl (9.0.2) trixie; urgency=medium
+
+  * plugin: add method to get qemu blockdevice options for a volume
+
+  * implement qemu_blockdevice_options for iscsi direct, zfs iscsi, zfs pool,
+  * and rbd plugins
+
+  * ceph/rbd: set 'keyring' in ceph configuration for externally managed RBD storages
+
+  * plugin api: bump api version and age
+
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 03 Jul 2025 11:44:15 +0200
+
 libpve-storage-perl (9.0.1) trixie; urgency=medium
 
   * drop support for accessing Gluster based storage directly due to its
