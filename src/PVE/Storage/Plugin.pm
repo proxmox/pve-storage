@@ -631,6 +631,29 @@ sub preallocation_cmd_option {
     return;
 }
 
+=pod
+
+=head3 qemu_img_create
+
+    qemu_img_create($scfg, $fmt, $size, $path)
+
+Create a new qemu image with a specific format C<$format> and size C<$size> for a target C<$path>.
+
+=cut
+
+sub qemu_img_create {
+    my ($scfg, $fmt, $size, $path) = @_;
+
+    my $cmd = ['/usr/bin/qemu-img', 'create'];
+
+    my $prealloc_opt = preallocation_cmd_option($scfg, $fmt);
+    push @$cmd, '-o', $prealloc_opt if defined($prealloc_opt);
+
+    push @$cmd, '-f', $fmt, $path, "${size}K";
+
+    run_command($cmd, errmsg => "unable to create image");
+}
+
 # Storage implementation
 
 # called during addition of storage (before the new storage config got written)
@@ -969,14 +992,7 @@ sub alloc_image {
         umask $old_umask;
         die $err if $err;
     } else {
-        my $cmd = ['/usr/bin/qemu-img', 'create'];
-
-        my $prealloc_opt = preallocation_cmd_option($scfg, $fmt);
-        push @$cmd, '-o', $prealloc_opt if defined($prealloc_opt);
-
-        push @$cmd, '-f', $fmt, $path, "${size}K";
-
-        eval { run_command($cmd, errmsg => "unable to create image"); };
+        eval { qemu_img_create($scfg, $fmt, $size, $path) };
         if ($@) {
             unlink $path;
             rmdir $imagedir;
