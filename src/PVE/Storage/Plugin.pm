@@ -733,6 +733,30 @@ sub qemu_img_measure {
     return PVE::Storage::Common::run_qemu_img_json($cmd, $timeout);
 }
 
+=pod
+
+=head3 qemu_img_resize
+
+    qemu_img_resize($scfg, $path, $format, $size, $timeout)
+
+Resize a qemu image C<$path> with format C<$format> to a target Kb size C<$size>.
+Default timeout C<$timeout> is 10s if not specified.
+=cut
+
+sub qemu_img_resize {
+    my ($scfg, $path, $format, $size, $timeout) = @_;
+
+    die "format is missing" if !$format;
+
+    my $prealloc_opt = preallocation_cmd_option($scfg, $format);
+    my $cmd = ['/usr/bin/qemu-img', 'resize'];
+    push $cmd->@*, "--$prealloc_opt" if $prealloc_opt;
+    push $cmd->@*, '-f', $format, $path, $size;
+
+    $timeout = 10 if !$timeout;
+    run_command($cmd, timeout => $timeout);
+}
+
 # Storage implementation
 
 # called during addition of storage (before the new storage config got written)
@@ -1284,9 +1308,7 @@ sub volume_resize {
 
     my $format = ($class->parse_volname($volname))[6];
 
-    my $cmd = ['/usr/bin/qemu-img', 'resize', '-f', $format, $path, $size];
-
-    run_command($cmd, timeout => 10);
+    qemu_img_resize($scfg, $path, $format, $size, 10);
 
     return undef;
 }
