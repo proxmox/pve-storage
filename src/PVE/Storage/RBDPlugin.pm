@@ -630,9 +630,7 @@ sub create_base {
     eval { $class->unmap_volume($storeid, $scfg, $volname); };
     warn $@ if $@;
 
-    my $running = undef; #fixme : is create_base always offline ?
-
-    $class->volume_snapshot($scfg, $storeid, $newname, $snap, $running);
+    $class->volume_snapshot($scfg, $storeid, $newname, $snap);
 
     my (undef, undef, undef, $protected) = rbd_volume_info($scfg, $storeid, $newname, $snap);
 

@@ -335,9 +335,7 @@ sub create_base {
     my $guid = $class->zfs_create_lu($scfg, $newname);
     $class->zfs_add_lun_mapping_entry($scfg, $newname, $guid);
 
-    my $running = undef; #fixme : is create_base always offline ?
-
-    $class->volume_snapshot($scfg, $storeid, $newname, $snap, $running);
+    $class->volume_snapshot($scfg, $storeid, $newname, $snap);
 
     return $newvolname;
 }
