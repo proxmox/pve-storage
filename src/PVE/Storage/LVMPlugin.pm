@@ -3,6 +3,7 @@ package PVE::Storage::LVMPlugin;
 use strict;
 use warnings;
 
+use File::Basename;
 use IO::File;
 
 use PVE::Tools qw(run_command trim);
@@ -10,6 +11,8 @@ use PVE::Storage::Plugin;
 use PVE::JSONSchema qw(get_standard_option);
 
 use PVE::Storage::Common;
+
+use JSON;
 
 use base qw(PVE::Storage::Plugin);
 
@@ -23,6 +26,15 @@ my $ignore_no_medium_warnings = sub {
         print STDERR "$line\n";
     }
 };
+
+my sub fork_cleanup_worker {
+    my ($cleanup_worker) = @_;
+
+    return if !$cleanup_worker;
+    my $rpcenv = PVE::RPCEnvironment::get();
+    my $authuser = $rpcenv->get_user();
+    $rpcenv->fork_worker('imgdel', undef, $authuser, $cleanup_worker);
+}
 
 sub lvm_pv_info {
     my ($device) = @_;
@@ -267,6 +279,73 @@ sub lvm_list_volumes {
     return $lvs;
 }
 
+my sub free_lvm_volumes {
+    my ($class, $scfg, $storeid, $volnames) = @_;
+
+    my $vg = $scfg->{vgname};
+
+    # we need to zero out LVM data for security reasons
+    # and to allow thin provisioning
+    my $zero_out_worker = sub {
+        # wipe throughput up to 10MB/s by default; may be overwritten with saferemove_throughput
+        my $throughput = '-10485760';
+        if ($scfg->{saferemove_throughput}) {
+            $throughput = $scfg->{saferemove_throughput};
+        }
+        for my $name (@$volnames) {
+            print "zero-out data on image $name (/dev/$vg/del-$name)\n";
+
+            my $cmd = [
+                '/usr/bin/cstream',
+                '-i',
+                '/dev/zero',
+                '-o',
+                "/dev/$vg/del-$name",
+                '-T',
+                '10',
+                '-v',
+                '1',
+                '-b',
+                '1048576',
+                '-t',
+                "$throughput",
+            ];
+            eval {
+                run_command(
+                    $cmd,
+                    errmsg => "zero out finished (note: 'No space left on device' is ok here)",
+                );
+            };
+            warn $@ if $@;
+
+            $class->cluster_lock_storage(
+                $storeid,
+                $scfg->{shared},
+                undef,
+                sub {
+                    my $cmd = ['/sbin/lvremove', '-f', "$vg/del-$name"];
+                    run_command($cmd, errmsg => "lvremove '$vg/del-$name' error");
+                },
+            );
+            print "successfully removed volume $name ($vg/del-$name)\n";
+        }
+    };
+
+    if ($scfg->{saferemove}) {
+        for my $name (@$volnames) {
+            # avoid long running task, so we only rename here
+            my $cmd = ['/sbin/lvrename', $vg, $name, "del-$name"];
+            run_command($cmd, errmsg => "lvrename '$vg/$name' error");
+        }
+        return $zero_out_worker;
+    } else {
+        for my $name (@$volnames) {
+            my $cmd = ['/sbin/lvremove', '-f', "$vg/$name"];
+            run_command($cmd, errmsg => "lvremove '$vg/$name' error");
+        }
+    }
+}
+
 # Configuration
 
 sub type {
@@ -276,6 +355,7 @@ sub type {
 sub plugindata {
     return {
         content => [{ images => 1, rootdir => 1 }, { images => 1 }],
+        format => [{ raw => 1, qcow2 => 1 }, 'raw'],
         'sensitive-properties' => {},
     };
 }
@@ -354,24 +434,74 @@ sub parse_volname {
     PVE::Storage::Plugin::parse_lvm_name($volname);
 
     if ($volname =~ m/^(vm-(\d+)-\S+)$/) {
-        return ('images', $1, $2, undef, undef, undef, 'raw');
+        my $name = $1;
+        my $vmid = $2;
+        my $format = $volname =~ m/\.qcow2$/ ? 'qcow2' : 'raw';
+        return ('images', $name, $vmid, undef, undef, undef, $format);
     }
 
     die "unable to parse lvm volume name '$volname'\n";
 }
 
+#return snapshot name from a file path
+sub get_snapname_from_path {
+    my ($class, $volname, $path) = @_;
+
+    my $basepath = basename($path);
+    my $name = ($volname =~ s/\.[^.]+$//r);
+    if ($basepath =~ m/^snap_${name}_(.*)\.qcow2$/) {
+        return $1;
+    } elsif ($basepath eq $volname) {
+        return 'current';
+    }
+    return undef;
+}
+
+my sub get_snap_name {
+    my ($class, $volname, $snapname) = @_;
+
+    die "missing snapname\n" if !$snapname;
+
+    my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $format) =
+        $class->parse_volname($volname);
+    if ($snapname eq 'current') {
+        return $name;
+    } else {
+        $name =~ s/\.[^.]+$//;
+        return "snap_${name}_${snapname}.qcow2";
+    }
+}
+
+sub get_snap_volname {
+    my ($class, $volname, $snapname) = @_;
+
+    return get_snap_name($class, $volname, $snapname);
+}
+
 sub filesystem_path {
     my ($class, $scfg, $volname, $snapname) = @_;
 
-    die "lvm snapshot is not implemented" if defined($snapname);
+    my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $format) =
+        $class->parse_volname($volname);
 
-    my ($vtype, $name, $vmid) = $class->parse_volname($volname);
+    die "snapshot is working with qcow2 format only" if defined($snapname) && $format ne 'qcow2';
 
     my $vg = $scfg->{vgname};
+    $name = get_snap_name($class, $volname, $snapname) if $snapname;
 
     my $path = "/dev/$vg/$name";
 
     return wantarray ? ($path, $vmid, $vtype) : $path;
+}
+
+sub qemu_blockdev_options {
+    my ($class, $scfg, $storeid, $volname, $machine_version, $options) = @_;
+
+    my ($path) = $class->path($scfg, $volname, $storeid, $options->{'snapshot-name'});
+
+    my $blockdev = { driver => 'host_device', filename => $path };
+
+    return $blockdev;
 }
 
 sub create_base {
@@ -395,7 +525,11 @@ sub find_free_diskname {
 
     my $disk_list = [keys %{ $lvs->{$vg} }];
 
-    return PVE::Storage::Plugin::get_next_vm_diskname($disk_list, $storeid, $vmid, undef, $scfg);
+    $add_fmt_suffix = $fmt eq 'qcow2' ? 1 : undef;
+
+    return PVE::Storage::Plugin::get_next_vm_diskname(
+        $disk_list, $storeid, $vmid, $fmt, $scfg, $add_fmt_suffix,
+    );
 }
 
 sub lvcreate {
@@ -426,7 +560,12 @@ sub lvcreate {
 }
 
 sub lvrename {
-    my ($vg, $oldname, $newname) = @_;
+    my ($scfg, $oldname, $newname) = @_;
+
+    my $vg = $scfg->{vgname};
+    my $lvs = lvm_list_volumes($vg);
+    die "target volume '${newname}' already exists\n"
+        if ($lvs->{$vg}->{$newname});
 
     run_command(
         ['/sbin/lvrename', $vg, $oldname, $newname],
@@ -434,13 +573,46 @@ sub lvrename {
     );
 }
 
-sub alloc_image {
-    my ($class, $storeid, $scfg, $vmid, $fmt, $name, $size) = @_;
+my sub lvm_qcow2_format {
+    my ($class, $storeid, $scfg, $name, $fmt, $backing_snap, $size) = @_;
 
-    die "unsupported format '$fmt'" if $fmt ne 'raw';
+    $class->activate_volume($storeid, $scfg, $name);
+    my $path = $class->path($scfg, $name, $storeid);
 
-    die "illegal name '$name' - should be 'vm-$vmid-*'\n"
-        if $name && $name !~ m/^vm-$vmid-/;
+    if ($backing_snap) {
+        my $backing_path = $class->path($scfg, $name, $storeid, $backing_snap);
+        PVE::Storage::Plugin::qemu_img_create_qcow2_backed($scfg, $path, $backing_path, $fmt);
+    } else {
+        PVE::Storage::Plugin::qemu_img_create($scfg, $fmt, $size, $path);
+    }
+}
+
+my sub calculate_lvm_size {
+    my ($size, $fmt, $backing_snap) = @_;
+    #input size = qcow2 image size in kb
+
+    return $size if $fmt ne 'qcow2';
+
+    my $options = $backing_snap ? ['extended_l2=on', 'cluster_size=128k'] : [];
+
+    my $json = PVE::Storage::Plugin::qemu_img_measure($size, $fmt, 5, $options);
+    die "failed to query file information with qemu-img measure\n" if !$json;
+    my $info = eval { decode_json($json) };
+    if ($@) {
+        die "Invalid JSON: $@\n";
+    }
+
+    die "Missing fully-allocated value from json" if !$info->{'fully-allocated'};
+
+    return $info->{'fully-allocated'} / 1024;
+}
+
+my sub alloc_lvm_image {
+    my ($class, $storeid, $scfg, $vmid, $fmt, $name, $size, $backing_snap) = @_;
+
+    die "unsupported format '$fmt'" if $fmt ne 'raw' && $fmt ne 'qcow2';
+
+    $class->parse_volname($name);
 
     my $vgs = lvm_vgs();
 
@@ -449,86 +621,99 @@ sub alloc_image {
     die "no such volume group '$vg'\n" if !defined($vgs->{$vg});
 
     my $free = int($vgs->{$vg}->{free});
+    my $lvmsize = calculate_lvm_size($size, $fmt, $backing_snap);
 
     die "not enough free space ($free < $size)\n" if $free < $size;
 
-    $name = $class->find_free_diskname($storeid, $scfg, $vmid)
+    my $tags = ["pve-vm-$vmid"];
+    #tags all snapshots volumes with the main volume tag for easier activation of the whole group
+    push @$tags, "\@pve-$name" if $fmt eq 'qcow2';
+    lvcreate($vg, $name, $lvmsize, $tags);
+
+    return if $fmt ne 'qcow2';
+
+    #format the lvm volume with qcow2 format
+    eval { lvm_qcow2_format($class, $storeid, $scfg, $name, $fmt, $backing_snap, $size) };
+    if ($@) {
+        my $err = $@;
+        #no need to safe cleanup as the volume is still empty
+        eval {
+            my $cmd = ['/sbin/lvremove', '-f', "$vg/$name"];
+            run_command($cmd, errmsg => "lvremove '$vg/$name' error");
+        };
+        die $err;
+    }
+
+}
+
+sub alloc_image {
+    my ($class, $storeid, $scfg, $vmid, $fmt, $name, $size) = @_;
+
+    $name = $class->find_free_diskname($storeid, $scfg, $vmid, $fmt)
         if !$name;
 
-    lvcreate($vg, $name, $size, ["pve-vm-$vmid"]);
+    alloc_lvm_image($class, $storeid, $scfg, $vmid, $fmt, $name, $size);
 
     return $name;
 }
 
+my sub alloc_snap_image {
+    my ($class, $storeid, $scfg, $volname, $backing_snap) = @_;
+
+    my ($vmid, $format) = ($class->parse_volname($volname))[2, 6];
+    my $path = $class->path($scfg, $volname, $storeid, $backing_snap);
+
+    #we need to use same size than the backing image qcow2 virtual-size
+    my $size = PVE::Storage::Plugin::file_size_info($path, 5, $format);
+    $size = $size / 1024; #we use kb in lvcreate
+
+    alloc_lvm_image($class, $storeid, $scfg, $vmid, $format, $volname, $size, $backing_snap);
+}
+
+my sub free_snap_image {
+    my ($class, $storeid, $scfg, $volname, $snap) = @_;
+
+    #activate only the snapshot volume
+    my $path = $class->path($scfg, $volname, $storeid, $snap);
+    my $cmd = ['/sbin/lvchange', '-aly', $path];
+    run_command($cmd, errmsg => "can't activate LV '$path' to zero-out its data");
+    $cmd = ['/sbin/lvchange', '--refresh', $path];
+    run_command($cmd, errmsg => "can't refresh LV '$path' to zero-out its data");
+
+    my $snap_volname = get_snap_name($class, $volname, $snap);
+    return free_lvm_volumes($class, $scfg, $storeid, [$snap_volname]);
+}
+
 sub free_image {
-    my ($class, $storeid, $scfg, $volname, $isBase) = @_;
+    my ($class, $storeid, $scfg, $volname, $isBase, $format) = @_;
 
-    my $vg = $scfg->{vgname};
+    my $name = ($class->parse_volname($volname))[1];
 
-    # we need to zero out LVM data for security reasons
-    # and to allow thin provisioning
+    my $volnames = [$volname];
 
-    my $zero_out_worker = sub {
-        print "zero-out data on image $volname (/dev/$vg/del-$volname)\n";
+    if ($format eq 'qcow2') {
+        #activate volumes && snapshot volumes
+        my $path = $class->path($scfg, $volname, $storeid);
+        $path = "\@pve-$name" if $format && $format eq 'qcow2';
+        my $cmd = ['/sbin/lvchange', '-aly', $path];
+        run_command($cmd, errmsg => "can't activate LV '$path' to zero-out its data");
+        $cmd = ['/sbin/lvchange', '--refresh', $path];
+        run_command($cmd, errmsg => "can't refresh LV '$path' to zero-out its data");
 
-        # wipe throughput up to 10MB/s by default; may be overwritten with saferemove_throughput
-        my $throughput = '-10485760';
-        if ($scfg->{saferemove_throughput}) {
-            $throughput = $scfg->{saferemove_throughput};
+        my $snapshots = $class->volume_snapshot_info($scfg, $storeid, $volname);
+        for my $snapid (
+            sort { $snapshots->{$a}->{order} <=> $snapshots->{$b}->{order} }
+            keys %$snapshots
+        ) {
+            my $snap = $snapshots->{$snapid};
+            next if $snapid eq 'current';
+            next if !$snap->{volid};
+            my ($snap_storeid, $snap_volname) = PVE::Storage::parse_volume_id($snap->{volid});
+            push @$volnames, $snap_volname;
         }
-
-        my $cmd = [
-            '/usr/bin/cstream',
-            '-i',
-            '/dev/zero',
-            '-o',
-            "/dev/$vg/del-$volname",
-            '-T',
-            '10',
-            '-v',
-            '1',
-            '-b',
-            '1048576',
-            '-t',
-            "$throughput",
-        ];
-        eval {
-            run_command(
-                $cmd,
-                errmsg => "zero out finished (note: 'No space left on device' is ok here)",
-            );
-        };
-        warn $@ if $@;
-
-        $class->cluster_lock_storage(
-            $storeid,
-            $scfg->{shared},
-            undef,
-            sub {
-                my $cmd = ['/sbin/lvremove', '-f', "$vg/del-$volname"];
-                run_command($cmd, errmsg => "lvremove '$vg/del-$volname' error");
-            },
-        );
-        print "successfully removed volume $volname ($vg/del-$volname)\n";
-    };
-
-    my $cmd = ['/sbin/lvchange', '-aly', "$vg/$volname"];
-    run_command($cmd, errmsg => "can't activate LV '$vg/$volname' to zero-out its data");
-    $cmd = ['/sbin/lvchange', '--refresh', "$vg/$volname"];
-    run_command($cmd, errmsg => "can't refresh LV '$vg/$volname' to zero-out its data");
-
-    if ($scfg->{saferemove}) {
-        # avoid long running task, so we only rename here
-        $cmd = ['/sbin/lvrename', $vg, $volname, "del-$volname"];
-        run_command($cmd, errmsg => "lvrename '$vg/$volname' error");
-        return $zero_out_worker;
-    } else {
-        my $tmpvg = $scfg->{vgname};
-        $cmd = ['/sbin/lvremove', '-f', "$tmpvg/$volname"];
-        run_command($cmd, errmsg => "lvremove '$tmpvg/$volname' error");
     }
 
-    return undef;
+    return free_lvm_volumes($class, $scfg, $storeid, $volnames);
 }
 
 my $check_tags = sub {
@@ -635,6 +820,12 @@ sub activate_volume {
 
     my $lvm_activate_mode = 'ey';
 
+    #activate volume && all snapshots volumes by tag
+    my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $format) =
+        $class->parse_volname($volname);
+
+    $path = "\@pve-$name" if $format eq 'qcow2';
+
     my $cmd = ['/sbin/lvchange', "-a$lvm_activate_mode", $path];
     run_command($cmd, errmsg => "can't activate LV '$path'");
     $cmd = ['/sbin/lvchange', '--refresh', $path];
@@ -647,6 +838,10 @@ sub deactivate_volume {
     my $path = $class->path($scfg, $volname, $storeid, $snapname);
     return if !-b $path;
 
+    my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $format) =
+        $class->parse_volname($volname);
+    $path = "\@pve-$name" if $format eq 'qcow2';
+
     my $cmd = ['/sbin/lvchange', '-aln', $path];
     run_command($cmd, errmsg => "can't deactivate LV '$path'");
 }
@@ -654,10 +849,14 @@ sub deactivate_volume {
 sub volume_resize {
     my ($class, $scfg, $storeid, $volname, $size, $running) = @_;
 
-    $size = ($size / 1024 / 1024) . "M";
+    my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $format) =
+        $class->parse_volname($volname);
+
+    my $lvmsize = calculate_lvm_size($size / 1024, $format);
+    $lvmsize = "${lvmsize}k";
 
     my $path = $class->path($scfg, $volname);
-    my $cmd = ['/sbin/lvextend', '-L', $size, $path];
+    my $cmd = ['/sbin/lvextend', '-L', $lvmsize, $path];
 
     $class->cluster_lock_storage(
         $storeid,
@@ -667,6 +866,10 @@ sub volume_resize {
             run_command($cmd, errmsg => "error resizing volume '$path'");
         },
     );
+
+    if (!$running && $format eq 'qcow2') {
+        PVE::Storage::Plugin::qemu_img_resize($scfg, $path, $format, $size, 10);
+    }
 
     return 1;
 }
@@ -704,30 +907,205 @@ sub volume_size_info {
 sub volume_snapshot {
     my ($class, $scfg, $storeid, $volname, $snap, $running) = @_;
 
-    die "lvm snapshot is not implemented";
+    my ($vmid, $format) = ($class->parse_volname($volname))[2, 6];
+
+    die "can't snapshot '$format' volume\n" if $format ne 'qcow2';
+
+    if ($running) {
+        #rename with blockdev-reopen is done at qemu level when running
+        eval { alloc_snap_image($class, $storeid, $scfg, $volname, $snap) };
+        if ($@) {
+            die "can't allocate new volume $volname: $@\n";
+        }
+        return;
+    }
+
+    #rename current volume to snap volume
+    eval { $class->rename_snapshot($scfg, $storeid, $volname, 'current', $snap) };
+    die "error rename $volname to $snap\n" if $@;
+
+    eval { alloc_snap_image($class, $storeid, $scfg, $volname, $snap) };
+    if ($@) {
+        my $err = $@;
+        eval { $class->rename_snapshot($scfg, $storeid, $volname, $snap, 'current') };
+        die $err;
+    }
+}
+
+# Asserts that a rollback to $snap on $volname is possible.
+# If certain snapshots are preventing the rollback and $blockers is an array
+# reference, the snapshot names can be pushed onto $blockers prior to dying.
+sub volume_rollback_is_possible {
+    my ($class, $scfg, $storeid, $volname, $snap, $blockers) = @_;
+
+    my $format = ($class->parse_volname($volname))[6];
+    die "can't rollback snapshot for '$format' volume\n" if $format ne 'qcow2';
+
+    $class->activate_volume($storeid, $scfg, $volname);
+
+    my $snapshots = $class->volume_snapshot_info($scfg, $storeid, $volname);
+    my $found;
+    $blockers //= []; # not guaranteed to be set by caller
+    for my $snapid (
+        sort { $snapshots->{$b}->{order} <=> $snapshots->{$a}->{order} }
+        keys %$snapshots
+    ) {
+        next if $snapid eq 'current';
+
+        if ($snapid eq $snap) {
+            $found = 1;
+        } elsif ($found) {
+            push $blockers->@*, $snapid;
+        }
+    }
+
+    die "can't rollback, snapshot '$snap' does not exist on '$volname'\n"
+        if !$found;
+
+    die "can't rollback, '$snap' is not most recent snapshot on '$volname'\n"
+        if scalar($blockers->@*) > 0;
+
+    return 1;
 }
 
 sub volume_snapshot_rollback {
     my ($class, $scfg, $storeid, $volname, $snap) = @_;
 
-    die "lvm snapshot rollback is not implemented";
+    my $format = ($class->parse_volname($volname))[6];
+
+    die "can't rollback snapshot for '$format' volume\n" if $format ne 'qcow2';
+
+    my $cleanup_worker = eval { free_snap_image($class, $storeid, $scfg, $volname, 'current'); };
+    die "error deleting snapshot $snap $@\n" if $@;
+
+    eval { alloc_snap_image($class, $storeid, $scfg, $volname, $snap) };
+
+    fork_cleanup_worker($cleanup_worker);
+
+    if ($@) {
+        die "can't allocate new volume $volname: $@\n";
+    }
+
+    return undef;
 }
 
 sub volume_snapshot_delete {
-    my ($class, $scfg, $storeid, $volname, $snap) = @_;
+    my ($class, $scfg, $storeid, $volname, $snap, $running) = @_;
 
-    die "lvm snapshot delete is not implemented";
+    my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $format) =
+        $class->parse_volname($volname);
+
+    die "can't delete snapshot for '$format' volume\n" if $format ne 'qcow2';
+
+    if ($running) {
+        my $cleanup_worker = eval { free_snap_image($class, $storeid, $scfg, $volname, $snap); };
+        die "error deleting snapshot $snap $@\n" if $@;
+        fork_cleanup_worker($cleanup_worker);
+        return;
+    }
+
+    my $cmd = "";
+    my $path = $class->filesystem_path($scfg, $volname);
+
+    my $snapshots = $class->volume_snapshot_info($scfg, $storeid, $volname);
+    my $snappath = $snapshots->{$snap}->{file};
+    my $snapvolname = $snapshots->{$snap}->{volname};
+    die "volume $snappath is missing" if !-e $snappath;
+
+    my $parentsnap = $snapshots->{$snap}->{parent};
+
+    my $childsnap = $snapshots->{$snap}->{child};
+    my $childpath = $snapshots->{$childsnap}->{file};
+    my $childvolname = $snapshots->{$childsnap}->{volname};
+
+    my $err = undef;
+    #if first snapshot,as it should be bigger,  we merge child, and rename the snapshot to child
+    if (!$parentsnap) {
+        print "$volname: deleting snapshot '$snap' by commiting snapshot '$childsnap'\n";
+        print "running 'qemu-img commit $childpath'\n";
+        #can't use -d here, as it's an lvm volume
+        $cmd = ['/usr/bin/qemu-img', 'commit', $childpath];
+        eval { run_command($cmd) };
+        if ($@) {
+            warn
+                "The state of $snap is now invalid. Don't try to clone or rollback it. You can only try to delete it again later\n";
+            die "error commiting $childsnap to $snap; $@\n";
+        }
+        print "delete $childvolname\n";
+        my $cleanup_worker =
+            eval { free_snap_image($class, $storeid, $scfg, $volname, $childsnap) };
+        if ($@) {
+            die "error delete old snapshot volume $childvolname: $@\n";
+        }
+
+        print "rename $snapvolname to $childvolname\n";
+        eval { lvrename($scfg, $snapvolname, $childvolname) };
+        if ($@) {
+            warn $@;
+            $err = "error renaming snapshot: $@\n";
+        }
+        fork_cleanup_worker($cleanup_worker);
+
+    } else {
+        #we rebase the child image on the parent as new backing image
+        my $parentpath = $snapshots->{$parentsnap}->{file};
+        print
+            "$volname: deleting snapshot '$snap' by rebasing '$childsnap' on top of '$parentsnap'\n";
+        print "running 'qemu-img rebase -b $parentpath -F qcow -f qcow2 $childpath'\n";
+        $cmd = [
+            '/usr/bin/qemu-img',
+            'rebase',
+            '-b',
+            $parentpath,
+            '-F',
+            'qcow2',
+            '-f',
+            'qcow2',
+            $childpath,
+        ];
+        eval { run_command($cmd) };
+        if ($@) {
+            #in case of abort, the state of the snap is still clean, just a little bit bigger
+            die "error rebase $childsnap from $parentsnap; $@\n";
+        }
+        #delete the snapshot
+        my $cleanup_worker = eval { free_snap_image($class, $storeid, $scfg, $volname, $snap); };
+        if ($@) {
+            die "error deleting old snapshot volume $snapvolname\n";
+        }
+        fork_cleanup_worker($cleanup_worker);
+    }
+
+    die $err if $err;
 }
 
 sub volume_has_feature {
     my ($class, $scfg, $feature, $storeid, $volname, $snapname, $running) = @_;
 
     my $features = {
-        copy => { base => 1, current => 1 },
-        rename => { current => 1 },
+        copy => {
+            base => { qcow2 => 1, raw => 1 },
+            current => { qcow2 => 1, raw => 1 },
+            snap => { qcow2 => 1 },
+        },
+        'rename' => {
+            current => { qcow2 => 1, raw => 1 },
+        },
+        snapshot => {
+            current => { qcow2 => 1 },
+            snap => { qcow2 => 1 },
+        },
+        #       fixme: add later ? (we need to handle basepath, volume activation,...)
+        #       template => {
+        #           current => { raw => 1, qcow2 => 1},
+        #       },
+        #       clone => {
+        #           base => { qcow2 => 1 },
+        #       },
     };
 
-    my ($vtype, $name, $vmid, $basename, $basevmid, $isBase) = $class->parse_volname($volname);
+    my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $format) =
+        $class->parse_volname($volname);
 
     my $key = undef;
     if ($snapname) {
@@ -735,7 +1113,7 @@ sub volume_has_feature {
     } else {
         $key = $isBase ? 'base' : 'current';
     }
-    return 1 if $features->{$feature}->{$key};
+    return 1 if defined($features->{$feature}->{$key}->{$format});
 
     return undef;
 }
@@ -829,14 +1207,7 @@ sub volume_import {
     if (my $err = $@) {
         my $cleanup_worker = eval { $class->free_image($storeid, $scfg, $volname, 0) };
         warn $@ if $@;
-
-        if ($cleanup_worker) {
-            my $rpcenv = PVE::RPCEnvironment::get();
-            my $authuser = $rpcenv->get_user();
-
-            $rpcenv->fork_worker('imgdel', undef, $authuser, $cleanup_worker);
-        }
-
+        fork_cleanup_worker($cleanup_worker);
         die $err;
     }
 
@@ -862,14 +1233,17 @@ sub rename_volume {
     die "target volume '${target_volname}' already exists\n"
         if ($lvs->{$vg}->{$target_volname});
 
-    lvrename($vg, $source_volname, $target_volname);
+    lvrename($scfg, $source_volname, $target_volname);
     return "${storeid}:${target_volname}";
 }
 
 sub rename_snapshot {
     my ($class, $scfg, $storeid, $volname, $source_snap, $target_snap) = @_;
 
-    die "rename_snapshot is not implemented for $class";
+    my $source_snap_volname = get_snap_name($class, $volname, $source_snap);
+    my $target_snap_volname = get_snap_name($class, $volname, $target_snap);
+
+    lvrename($scfg, $source_snap_volname, $target_snap_volname);
 }
 
 sub volume_support_qemu_snapshot {
