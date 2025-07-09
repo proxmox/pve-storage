@@ -232,6 +232,11 @@ my $defaultData = {
             maximum => 65535,
             optional => 1,
         },
+        'external-snapshots' => {
+            type => 'boolean',
+            description => 'Enable external snapshot.',
+            optional => 1,
+        },
     },
 };
 
@@ -695,17 +700,20 @@ sub qemu_img_create_qcow2_backed {
 
 =head3 qemu_img_info
 
-    qemu_img_info($filename, $file_format, $timeout)
+    qemu_img_info($filename, $file_format, $timeout, $follow_backing_files)
 
 Returns a json with qemu image C<$filename> informations with format <$file_format>.
+If C<$follow_backing_files> option is defined, return a json with the whole chain
+of backing files images.
 
 =cut
 
 sub qemu_img_info {
-    my ($filename, $file_format, $timeout) = @_;
+    my ($filename, $file_format, $timeout, $follow_backing_files) = @_;
 
     my $cmd = ['/usr/bin/qemu-img', 'info', '--output=json', $filename];
     push $cmd->@*, '-f', $file_format if $file_format;
+    push $cmd->@*, '--backing-chain' if $follow_backing_files;
 
     return PVE::Storage::Common::run_qemu_img_json($cmd, $timeout);
 }
@@ -890,10 +898,22 @@ sub get_subdir {
     return "$path/$subdir";
 }
 
+my sub get_snap_name {
+    my ($class, $volname, $snapname) = @_;
+    die "missing snapname\n" if !$snapname;
+
+    my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $format) =
+        $class->parse_volname($volname);
+    $name = $snapname eq 'current' ? $name : "snap-$snapname-$name";
+    return $name;
+}
+
 sub filesystem_path {
     my ($class, $scfg, $volname, $snapname) = @_;
 
     my ($vtype, $name, $vmid, undef, undef, $isBase, $format) = $class->parse_volname($volname);
+    $name = get_snap_name($class, $volname, $snapname)
+        if $scfg->{'external-snapshots'} && $snapname;
 
     # Note: qcow2/qed has internal snapshot, so path is always
     # the same (with or without snapshot => same file).
@@ -1096,6 +1116,28 @@ sub alloc_image {
     return "$vmid/$name";
 }
 
+my sub alloc_backed_image {
+    my ($class, $storeid, $scfg, $volname, $backing_snap) = @_;
+
+    my $path = $class->path($scfg, $volname, $storeid);
+    my ($vmid, $backing_format) = ($class->parse_volname($volname))[2, 6];
+
+    my $backing_volname = get_snap_name($class, $volname, $backing_snap);
+    #qemu_img use relative path from base image for the backing_volname by default
+    eval { qemu_img_create_qcow2_backed($scfg, $path, $backing_volname, $backing_format) };
+    if ($@) {
+        unlink $path;
+        die "$@";
+    }
+}
+
+my sub free_snap_image {
+    my ($class, $storeid, $scfg, $volname, $snap) = @_;
+
+    my $path = $class->path($scfg, $volname, $storeid, $snap);
+    unlink($path) || die "unlink '$path' failed - $!\n";
+}
+
 sub free_image {
     my ($class, $storeid, $scfg, $volname, $isBase, $format) = @_;
 
@@ -1118,7 +1160,25 @@ sub free_image {
             return undef;
         }
 
+        my $snapshots = undef;
+        if ($scfg->{'external-snapshots'}) {
+            $snapshots = $class->volume_snapshot_info($scfg, $storeid, $volname);
+        }
         unlink($path) || die "unlink '$path' failed - $!\n";
+
+        #delete external snapshots
+        if ($scfg->{'external-snapshots'}) {
+            for my $snapid (
+                sort { $snapshots->{$b}->{order} <=> $snapshots->{$a}->{order} }
+                keys %$snapshots
+            ) {
+                my $snap = $snapshots->{$snapid};
+                next if $snapid eq 'current';
+                next if !$snap->{ext};
+                eval { free_snap_image($class, $storeid, $scfg, $volname, $snapid); };
+                warn $@ if $@;
+            }
+        }
     }
 
     # try to cleanup directory to not clutter storage with empty $vmid dirs if
@@ -1319,13 +1379,37 @@ sub volume_resize {
 sub volume_snapshot {
     my ($class, $scfg, $storeid, $volname, $snap, $running) = @_;
 
-    die "can't snapshot this image format\n" if $volname !~ m/\.(qcow2|qed)$/;
+    if ($scfg->{'external-snapshots'}) {
 
-    my $path = $class->filesystem_path($scfg, $volname);
+        die "can't snapshot this image format\n" if $volname !~ m/\.(qcow2)$/;
 
-    my $cmd = ['/usr/bin/qemu-img', 'snapshot', '-c', $snap, $path];
+        my $vmid = ($class->parse_volname($volname))[2];
 
-    run_command($cmd);
+        if (!$running) {
+            #rename volume unless qemu has already done it for us
+            $class->rename_snapshot($scfg, $storeid, $volname, 'current', $snap);
+        }
+        eval { alloc_backed_image($class, $storeid, $scfg, $volname, $snap) };
+        if ($@) {
+            warn "$@ \n";
+            #if running, the revert is done by qemu with blockdev-reopen
+            if (!$running) {
+                eval { $class->rename_snapshot($scfg, $storeid, $volname, $snap, 'current'); };
+                warn $@ if $@;
+            }
+            die "can't allocate new volume $volname with $snap backing image\n";
+        }
+
+    } else {
+
+        die "can't snapshot this image format\n" if $volname !~ m/\.(qcow2|qed)$/;
+
+        my $path = $class->filesystem_path($scfg, $volname);
+
+        my $cmd = ['/usr/bin/qemu-img', 'snapshot', '-c', $snap, $path];
+
+        run_command($cmd);
+    }
 
     return undef;
 }
@@ -1336,6 +1420,35 @@ sub volume_snapshot {
 sub volume_rollback_is_possible {
     my ($class, $scfg, $storeid, $volname, $snap, $blockers) = @_;
 
+    return 1 if !$scfg->{'external-snapshots'};
+
+    #technically, we could manage multibranch, we it need lot more work for snapshot delete
+    #we need to implemente block-stream from deleted snapshot to all others child branchs
+    #when online, we need to do a transaction for multiple disk when delete the last snapshot
+    #and need to merge in current running file
+
+    my $snapshots = $class->volume_snapshot_info($scfg, $storeid, $volname);
+    my $found;
+    $blockers //= []; # not guaranteed to be set by caller
+    for my $snapid (
+        sort { $snapshots->{$b}->{order} <=> $snapshots->{$a}->{order} }
+        keys %$snapshots
+    ) {
+        next if $snapid eq 'current';
+
+        if ($snapid eq $snap) {
+            $found = 1;
+        } elsif ($found) {
+            push $blockers->@*, $snapid;
+        }
+    }
+
+    die "can't rollback, snapshot '$snap' does not exist on '$volname'\n"
+        if !$found;
+
+    die "can't rollback, '$snap' is not most recent snapshot on '$volname'\n"
+        if scalar($blockers->@*) > 0;
+
     return 1;
 }
 
@@ -1344,11 +1457,22 @@ sub volume_snapshot_rollback {
 
     die "can't rollback snapshot this image format\n" if $volname !~ m/\.(qcow2|qed)$/;
 
-    my $path = $class->filesystem_path($scfg, $volname);
+    if ($scfg->{'external-snapshots'}) {
+        #simply delete the current snapshot and recreate it
+        eval { free_snap_image($class, $storeid, $scfg, $volname, 'current') };
+        if ($@) {
+            die "can't delete old volume $volname: $@\n";
+        }
 
-    my $cmd = ['/usr/bin/qemu-img', 'snapshot', '-a', $snap, $path];
-
-    run_command($cmd);
+        eval { alloc_backed_image($class, $storeid, $scfg, $volname, $snap) };
+        if ($@) {
+            die "can't allocate new volume $volname: $@\n";
+        }
+    } else {
+        my $path = $class->filesystem_path($scfg, $volname);
+        my $cmd = ['/usr/bin/qemu-img', 'snapshot', '-a', $snap, $path];
+        run_command($cmd);
+    }
 
     return undef;
 }
@@ -1358,15 +1482,83 @@ sub volume_snapshot_delete {
 
     die "can't delete snapshot for this image format\n" if $volname !~ m/\.(qcow2|qed)$/;
 
-    return 1 if $running;
+    my $cmd = "";
 
-    my $path = $class->filesystem_path($scfg, $volname);
+    if ($scfg->{'external-snapshots'}) {
 
-    $class->deactivate_volume($storeid, $scfg, $volname, $snap, {});
+        #qemu has already live commit|stream the snapshot, therefore we only have to drop the image itself
+        if ($running) {
+            eval { free_snap_image($class, $storeid, $scfg, $volname, $snap) };
+            if ($@) {
+                die "can't delete snapshot $snap of volume $volname: $@\n";
+            }
+            return;
+        }
 
-    my $cmd = ['/usr/bin/qemu-img', 'snapshot', '-d', $snap, $path];
+        my $snapshots = $class->volume_snapshot_info($scfg, $storeid, $volname);
+        my $snappath = $snapshots->{$snap}->{file};
+        my $snap_volname = $snapshots->{$snap}->{volname};
+        die "volume $snappath is missing" if !-e $snappath;
 
-    run_command($cmd);
+        my $parentsnap = $snapshots->{$snap}->{parent};
+        my $childsnap = $snapshots->{$snap}->{child};
+        my $childpath = $snapshots->{$childsnap}->{file};
+
+        #if first snapshot,as it should be bigger,  we merge child, and rename the snapshot to child
+        if (!$parentsnap) {
+            print "$volname: deleting snapshot '$snap' by commiting snapshot '$childsnap'\n";
+            print "running 'qemu-img commit $childpath'\n";
+            $cmd = ['/usr/bin/qemu-img', 'commit', $childpath];
+            eval { run_command($cmd) };
+            if ($@) {
+                warn
+                    "The state of $snap is now invalid. Don't try to clone or rollback it. You can only try to delete it again later\n";
+                die "error commiting $childsnap to $snap; $@\n";
+            }
+
+            print "rename $snappath to $childpath\n";
+            rename($snappath, $childpath)
+                || die "rename '$snappath' to '$childpath' failed - $!\n";
+
+        } else {
+            #we rebase the child image on the parent as new backing image
+            my $parentpath = $snapshots->{$parentsnap}->{file};
+            print
+                "$volname: deleting snapshot '$snap' by rebasing '$childsnap' on top of '$parentsnap'\n";
+            print "running 'qemu-img rebase -b $parentpath -F qcow -f qcow2 $childpath'\n";
+            $cmd = [
+                '/usr/bin/qemu-img',
+                'rebase',
+                '-b',
+                $parentpath,
+                '-F',
+                'qcow2',
+                '-f',
+                'qcow2',
+                $childpath,
+            ];
+            eval { run_command($cmd) };
+            if ($@) {
+                #in case of abort, the state of the snap is still clean, just a little bit bigger
+                die "error rebase $childsnap from $parentsnap; $@\n";
+            }
+            #delete the old snapshot file (not part of the backing chain anymore)
+            eval { free_snap_image($class, $storeid, $scfg, $volname, $snap) };
+            if ($@) {
+                die "error delete old snapshot volume $snap_volname: $@\n";
+            }
+        }
+
+    } else {
+
+        return 1 if $running;
+
+        my $path = $class->filesystem_path($scfg, $volname);
+        $class->deactivate_volume($storeid, $scfg, $volname, $snap, {});
+
+        $cmd = ['/usr/bin/qemu-img', 'snapshot', '-d', $snap, $path];
+        run_command($cmd);
+    }
 
     return undef;
 }
@@ -1639,6 +1831,27 @@ sub status {
     return ($res->{total}, $res->{avail}, $res->{used}, 1);
 }
 
+sub get_snap_volname {
+    my ($class, $volname, $snapname) = @_;
+
+    my $vmid = ($class->parse_volname($volname))[2];
+    my $name = get_snap_name($class, $volname, $snapname);
+    return "$vmid/$name";
+}
+
+#return snapshot name from a file path
+sub get_snapname_from_path {
+    my ($class, $volname, $path) = @_;
+
+    my $basepath = basename($path);
+    if ($basepath =~ m/^snap-(.*)-vm(.*)$/) {
+        return $1;
+    } elsif ($basepath eq basename($volname)) {
+        return 'current';
+    }
+    return undef;
+}
+
 # Returns a hash with the snapshot names as keys and the following data:
 # id        - Unique id to distinguish different snapshots even if the have the same name.
 # timestamp - Creation time of the snapshot (seconds since epoch).
@@ -1646,7 +1859,54 @@ sub status {
 sub volume_snapshot_info {
     my ($class, $scfg, $storeid, $volname) = @_;
 
-    die "volume_snapshot_info is not implemented for $class";
+    my $path = $class->filesystem_path($scfg, $volname);
+    my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $format) =
+        $class->parse_volname($volname);
+
+    my $json = qemu_img_info($path, undef, 10, 1);
+    die "failed to query file information with qemu-img\n" if !$json;
+    my $json_decode = eval { decode_json($json) };
+    if ($@) {
+        die "Can't decode qemu snapshot list. Invalid JSON: $@\n";
+    }
+    my $info = {};
+    my $order = 0;
+    if (ref($json_decode) eq 'HASH') {
+        #internal snapshots is a hashref
+        my $snapshots = $json_decode->{snapshots};
+        for my $snap (@$snapshots) {
+            my $snapname = $snap->{name};
+            $info->{$snapname}->{order} = $snap->{id};
+            $info->{$snapname}->{timestamp} = $snap->{'date-sec'};
+
+        }
+    } elsif (ref($json_decode) eq 'ARRAY') {
+        #no snapshot or external  snapshots is an arrayref
+        my $snapshots = $json_decode;
+        for my $snap (@$snapshots) {
+            my $snapfile = $snap->{filename};
+            my $snapname = $class->get_snapname_from_path($volname, $snapfile);
+            #not a proxmox snapshot
+            next if !$snapname;
+
+            my $snapvolname = $class->get_snap_volname($volname, $snapname);
+            $info->{$snapname}->{order} = $order;
+            $info->{$snapname}->{file} = $snapfile;
+            $info->{$snapname}->{volname} = "$snapvolname";
+            $info->{$snapname}->{volid} = "$storeid:$snapvolname";
+            $info->{$snapname}->{ext} = 1;
+
+            my $parentfile = $snap->{'backing-filename'};
+            if ($parentfile) {
+                my $parentname = $class->get_snapname_from_path($volname, $parentfile);
+                $info->{$snapname}->{parent} = $parentname;
+                $info->{$parentname}->{child} = $snapname;
+            }
+            $order++;
+        }
+    }
+
+    return $info;
 }
 
 sub activate_storage {
@@ -2062,7 +2322,14 @@ Rename a volume source snapshot C<$source_snap> to a target snapshot C<$target_s
 sub rename_snapshot {
     my ($class, $scfg, $storeid, $volname, $source_snap, $target_snap) = @_;
 
-    die "rename_snapshot is not implemented for $class";
+    my $source_snap_path = $class->filesystem_path($scfg, $volname, $source_snap);
+    my $target_snap_path = $class->filesystem_path($scfg, $volname, $target_snap);
+    print "rename $source_snap_path to $target_snap_path\n";
+
+    die "target snapshot '${target_snap}' already exists\n" if -e $target_snap_path;
+
+    rename($source_snap_path, $target_snap_path)
+        || die "rename '$source_snap_path' to '$target_snap_path' failed - $!\n";
 }
 
 my sub blockdev_options_nbd_tcp {
@@ -2170,7 +2437,8 @@ sub qemu_blockdev_options {
         # the snapshot alone.
         my $format = ($class->parse_volname($volname))[6];
         die "cannot attach only the snapshot of a '$format' image\n"
-            if $options->{'snapshot-name'} && ($format eq 'qcow2' || $format eq 'qed');
+            if $options->{'snapshot-name'}
+            && ($format eq 'qcow2' && !$scfg->{'external-snapshots'} || $format eq 'qed');
 
         # The 'file' driver only works for regular files. The check below is taken from
         # block/file-posix.c:hdev_probe_device() in QEMU. Do not bother with detecting 'host_cdrom'

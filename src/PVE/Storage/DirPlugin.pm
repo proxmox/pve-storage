@@ -95,6 +95,7 @@ sub options {
         is_mountpoint => { optional => 1 },
         bwlimit => { optional => 1 },
         preallocation => { optional => 1 },
+        'external-snapshots' => { optional => 1, fixed => 1 },
     };
 }
 
