@@ -1,3 +1,16 @@
+libpve-storage-perl (9.0.3) trixie; urgency=medium
+
+  * fix #4997: lvm: volume create: disable auto-activation for new logical
+    volumes, as that can be problematic for VGs on top of a shared LUN used by
+    multiple cluster nodes, for example those accessed via iSCSI/Fibre
+    Channel/direct-attached SAS.
+
+  * lvm-thin: disable auto-activation for new logical volumes to stay
+    consistent with thick LVM and to avoid the small overhead on activating
+    volumes thatmight not be used.
+
+ -- Proxmox Support Team <support@proxmox.com>  Wed, 09 Jul 2025 17:34:36 +0200
+
 libpve-storage-perl (9.0.2) trixie; urgency=medium
 
   * plugin: add method to get qemu blockdevice options for a volume
