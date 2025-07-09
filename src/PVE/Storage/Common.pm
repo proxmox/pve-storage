@@ -5,6 +5,7 @@ use warnings;
 
 use PVE::JSONSchema;
 use PVE::Syscall;
+use PVE::Tools qw(run_command);
 
 use constant {
     FALLOC_FL_KEEP_SIZE => 0x01, # see linux/falloc.h
@@ -110,4 +111,36 @@ sub deallocate : prototype($$$) {
     }
 }
 
+=pod
+
+=head3 run_qemu_img_json
+
+    run_qemu_img_json($cmd, $timeout)
+
+Execute qemu_img command C<$cmd> with a timeout C<$timeout>.
+Parse the output result and return a json.
+
+=cut
+
+sub run_qemu_img_json {
+    my ($cmd, $timeout) = @_;
+    my $json = '';
+    my $err_output = '';
+    eval {
+        run_command(
+            $cmd,
+            timeout => $timeout,
+            outfunc => sub { $json .= shift },
+            errfunc => sub { $err_output .= shift . "\n" },
+        );
+    };
+    warn $@ if $@;
+    if ($err_output) {
+        # if qemu did not output anything to stdout we die with stderr as an error
+        die $err_output if !$json;
+        # otherwise we warn about it and try to parse the json
+        warn $err_output;
+    }
+    return $json;
+}
 1;

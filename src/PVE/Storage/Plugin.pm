@@ -691,6 +691,25 @@ sub qemu_img_create_qcow2_backed {
     run_command($cmd, errmsg => "unable to create image");
 }
 
+=pod
+
+=head3 qemu_img_info
+
+    qemu_img_info($filename, $file_format, $timeout)
+
+Returns a json with qemu image C<$filename> informations with format <$file_format>.
+
+=cut
+
+sub qemu_img_info {
+    my ($filename, $file_format, $timeout) = @_;
+
+    my $cmd = ['/usr/bin/qemu-img', 'info', '--output=json', $filename];
+    push $cmd->@*, '-f', $file_format if $file_format;
+
+    return PVE::Storage::Common::run_qemu_img_json($cmd, $timeout);
+}
+
 # Storage implementation
 
 # called during addition of storage (before the new storage config got written)
@@ -1127,26 +1146,7 @@ sub file_size_info {
             "file_size_info: '$filename': falling back to 'raw' from unknown format '$file_format'\n";
         $file_format = 'raw';
     }
-    my $cmd = ['/usr/bin/qemu-img', 'info', '--output=json', $filename];
-    push $cmd->@*, '-f', $file_format if $file_format;
-
-    my $json = '';
-    my $err_output = '';
-    eval {
-        run_command(
-            $cmd,
-            timeout => $timeout,
-            outfunc => sub { $json .= shift },
-            errfunc => sub { $err_output .= shift . "\n" },
-        );
-    };
-    warn $@ if $@;
-    if ($err_output) {
-        # if qemu did not output anything to stdout we die with stderr as an error
-        die $err_output if !$json;
-        # otherwise we warn about it and try to parse the json
-        warn $err_output;
-    }
+    my $json = qemu_img_info($filename, $file_format, $timeout);
     if (!$json) {
         die "failed to query file information with qemu-img\n" if $untrusted;
         # skip decoding if there was no output, e.g. if there was a timeout.
