@@ -26,6 +26,9 @@ Future changes should be documented in here.
     The parameter *can* be used if some extra actions need to be done at the storage
     layer when the snapshot has already be done at qemu level when the vm is running.
 
+* Introduce rename_snapshot() plugin method
+    This method allow to rename a vm disk snapshot name to a different snapshot name.
+
 ##  Version 11:
 
 * Allow declaring storage features via plugin data

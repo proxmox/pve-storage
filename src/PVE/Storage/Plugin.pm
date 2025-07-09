@@ -2046,6 +2046,22 @@ sub rename_volume {
     return "${storeid}:${base}${target_vmid}/${target_volname}";
 }
 
+=pod
+
+=head3 rename_snapshot
+
+    $plugin->rename_snapshot($scfg, $storeid, $volname, $source_snap, $target_snap)
+
+Rename a volume source snapshot C<$source_snap> to a target snapshot C<$target_snap>.
+
+=cut
+
+sub rename_snapshot {
+    my ($class, $scfg, $storeid, $volname, $source_snap, $target_snap) = @_;
+
+    die "rename_snapshot is not implemented for $class";
+}
+
 my sub blockdev_options_nbd_tcp {
     my ($host, $port, $export) = @_;
 

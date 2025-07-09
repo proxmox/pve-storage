@@ -483,4 +483,10 @@ sub volume_import_write {
     );
 }
 
+sub rename_snapshot {
+    my ($class, $scfg, $storeid, $volname, $source_snap, $target_snap) = @_;
+
+    die "rename_snapshot is not supported for $class";
+}
+
 1;

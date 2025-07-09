@@ -866,4 +866,10 @@ sub rename_volume {
     return "${storeid}:${target_volname}";
 }
 
+sub rename_snapshot {
+    my ($class, $scfg, $storeid, $volname, $source_snap, $target_snap) = @_;
+
+    die "rename_snapshot is not implemented for $class";
+}
+
 1;

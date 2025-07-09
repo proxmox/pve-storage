@@ -2345,6 +2345,31 @@ sub rename_volume {
     );
 }
 
+sub rename_snapshot {
+    my ($cfg, $volid, $source_snap, $target_snap) = @_;
+
+    die "no volid provided\n" if !$volid;
+    die "no source or target snap provided\n" if !$source_snap && !$target_snap;
+
+    my ($storeid, $volname) = parse_volume_id($volid);
+
+    activate_storage($cfg, $storeid);
+
+    my $scfg = storage_config($cfg, $storeid);
+    my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
+
+    return $plugin->cluster_lock_storage(
+        $storeid,
+        $scfg->{shared},
+        undef,
+        sub {
+            return $plugin->rename_snapshot(
+                $scfg, $storeid, $volname, $source_snap, $target_snap,
+            );
+        },
+    );
+}
+
 # Various io-heavy operations require io/bandwidth limits which can be
 # configured on multiple levels: The global defaults in datacenter.cfg, and
 # per-storage overrides. When we want to do a restore from storage A to storage

@@ -497,6 +497,12 @@ sub rename_volume {
     die "renaming volumes is not supported for $class\n";
 }
 
+sub rename_snapshot {
+    my ($class, $scfg, $storeid, $volname, $source_snap, $target_snap) = @_;
+
+    die "rename_snapshot is not supported for $class";
+}
+
 sub volume_export_formats {
     my ($class, $scfg, $storeid, $volname, $snapshot, $base_snapshot, $with_snapshots) = @_;
 

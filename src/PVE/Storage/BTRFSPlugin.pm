@@ -995,6 +995,12 @@ sub rename_volume {
     return "${storeid}:$target_volname";
 }
 
+sub rename_snapshot {
+    my ($class, $scfg, $storeid, $volname, $source_snap, $target_snap) = @_;
+
+    die "rename_snapshot is not supported for $class";
+}
+
 sub get_import_metadata {
     return PVE::Storage::DirPlugin::get_import_metadata(@_);
 }
