@@ -2370,6 +2370,21 @@ sub rename_snapshot {
     );
 }
 
+sub volume_support_qemu_snapshot {
+    my ($cfg, $volid) = @_;
+
+    my ($storeid, $volname) = parse_volume_id($volid, 1);
+
+    if ($storeid) {
+        my $scfg = storage_config($cfg, $storeid);
+
+        my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
+
+        return $plugin->volume_support_qemu_snapshot($storeid, $scfg, $volname);
+    }
+    return undef;
+}
+
 # Various io-heavy operations require io/bandwidth limits which can be
 # configured on multiple levels: The global defaults in datacenter.cfg, and
 # per-storage overrides. When we want to do a restore from storage A to storage

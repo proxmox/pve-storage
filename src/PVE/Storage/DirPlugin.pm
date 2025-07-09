@@ -314,4 +314,14 @@ sub get_import_metadata {
     };
 }
 
+sub volume_support_qemu_snapshot {
+    my ($class, $storeid, $scfg, $volname) = @_;
+
+    my $format = ($class->parse_volname($volname))[6];
+    return if $format ne 'qcow2';
+
+    my $type = $scfg->{'external-snapshots'} ? 'external' : 'internal';
+    return $type;
+}
+
 1;

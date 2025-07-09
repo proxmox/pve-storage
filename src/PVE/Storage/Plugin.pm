@@ -2262,6 +2262,26 @@ sub new_backup_provider {
     die "implement me if enabling the feature 'backup-provider' in plugindata()->{features}\n";
 }
 
+=pod
+
+=head3 volume_support_qemu_snapshot
+
+    $blockdev = $plugin->volume_support_qemu_snapshot($storeid, $scfg, $volname)
+
+Returns a string with the type of snapshot that qemu can do for a specific volume
+
+'internal' : support snapshot with qemu internal snapshot
+'external' : support snapshot with qemu external snapshot
+undef      : don't support qemu snapshot
+=cut
+
+sub volume_support_qemu_snapshot {
+    my ($class, $storeid, $scfg, $volname) = @_;
+
+    my $format = ($class->parse_volname($volname))[6];
+    return 'internal' if $format eq 'qcow2';
+}
+
 sub config_aware_base_mkdir {
     my ($class, $scfg, $path) = @_;
 

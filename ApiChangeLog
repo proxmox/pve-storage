@@ -29,6 +29,14 @@ Future changes should be documented in here.
 * Introduce rename_snapshot() plugin method
     This method allow to rename a vm disk snapshot name to a different snapshot name.
 
+* Introduce volume_support_qemu_snapshot() plugin method
+    This method is used to known if the a snapshot need to be done by qemu
+    or by the storage api.
+    returned values are :
+    'internal' : support snapshot with qemu internal snapshot
+    'external' : support snapshot with qemu external snapshot
+    undef      : don't support qemu snapshot
+
 ##  Version 11:
 
 * Allow declaring storage features via plugin data

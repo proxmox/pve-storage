@@ -872,4 +872,11 @@ sub rename_snapshot {
     die "rename_snapshot is not implemented for $class";
 }
 
+sub volume_support_qemu_snapshot {
+    my ($class, $storeid, $scfg, $volname) = @_;
+
+    my $format = ($class->parse_volname($volname))[6];
+    return 'external' if $format eq 'qcow2';
+}
+
 1;
