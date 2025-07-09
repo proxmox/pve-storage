@@ -83,6 +83,18 @@ sub filesystem_path {
     return wantarray ? ($path, $vmid, $vtype) : $path;
 }
 
+# lvcreate on trixie does not accept --setautoactivation for thin LVs yet, so set it via lvchange
+# TODO PVE 10: evaluate if lvcreate accepts --setautoactivation
+my $set_lv_autoactivation = sub {
+    my ($vg, $lv, $autoactivation) = @_;
+
+    my $cmd = [
+        '/sbin/lvchange', '--setautoactivation', $autoactivation ? 'y' : 'n', "$vg/$lv",
+    ];
+    eval { run_command($cmd); };
+    warn "could not set autoactivation: $@" if $@;
+};
+
 sub alloc_image {
     my ($class, $storeid, $scfg, $vmid, $fmt, $name, $size) = @_;
 
@@ -112,6 +124,7 @@ sub alloc_image {
     ];
 
     run_command($cmd, errmsg => "lvcreate '$vg/$name' error");
+    $set_lv_autoactivation->($vg, $name, 0);
 
     return $name;
 }
@@ -298,6 +311,7 @@ sub clone_image {
 
     my $cmd = ['/sbin/lvcreate', '-n', $name, '-prw', '-kn', '-s', $lv];
     run_command($cmd, errmsg => "clone image '$lv' error");
+    $set_lv_autoactivation->($vg, $name, 0);
 
     return $name;
 }
@@ -346,7 +360,7 @@ sub volume_snapshot {
 
     my $cmd = ['/sbin/lvcreate', '-n', $snapvol, '-pr', '-s', "$vg/$volname"];
     run_command($cmd, errmsg => "lvcreate snapshot '$vg/$snapvol' error");
-
+    # disabling autoactivation not needed, as -s defaults to --setautoactivationskip y
 }
 
 sub volume_snapshot_rollback {
@@ -360,6 +374,7 @@ sub volume_snapshot_rollback {
 
     $cmd = ['/sbin/lvcreate', '-kn', '-n', $volname, '-s', "$vg/$snapvol"];
     run_command($cmd, errmsg => "lvm rollback '$vg/$snapvol' error");
+    $set_lv_autoactivation->($vg, $volname, 0);
 }
 
 sub volume_snapshot_delete {
