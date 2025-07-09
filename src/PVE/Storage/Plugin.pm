@@ -51,6 +51,10 @@ our $RAW_PREALLOCATION = {
     full => 1,
 };
 
+my $QCOW2_CLUSTERS = {
+    backed => ['extended_l2=on', 'cluster_size=128k'],
+};
+
 our $MAX_VOLUMES_PER_GUEST = 1024;
 
 cfs_register_file(
@@ -654,6 +658,39 @@ sub qemu_img_create {
     run_command($cmd, errmsg => "unable to create image");
 }
 
+=pod
+
+=head3 qemu_img_create_qcow2_backed
+
+    qemu_img_create_qcow2_backed($scfg, $path, $backing_path, $backing_format)
+
+Create a new qemu qcow2 image C<$path> using an existing backing image C<$backing_path> with backing_format C<$backing_format>.
+
+=cut
+
+sub qemu_img_create_qcow2_backed {
+    my ($scfg, $path, $backing_path, $backing_format) = @_;
+
+    my $cmd = [
+        '/usr/bin/qemu-img',
+        'create',
+        '-F',
+        $backing_format,
+        '-b',
+        $backing_path,
+        '-f',
+        'qcow2',
+        $path,
+    ];
+
+    my $options = $QCOW2_CLUSTERS->{backed};
+
+    push @$options, preallocation_cmd_option($scfg, 'qcow2');
+    push @$cmd, '-o', join(',', @$options) if @$options > 0;
+
+    run_command($cmd, errmsg => "unable to create image");
+}
+
 # Storage implementation
 
 # called during addition of storage (before the new storage config got written)
@@ -941,20 +978,7 @@ sub clone_image {
     # Note: we use relative paths, so we need to call chdir before qemu-img
     eval {
         local $CWD = $imagedir;
-
-        my $cmd = [
-            '/usr/bin/qemu-img',
-            'create',
-            '-b',
-            "../$basevmid/$basename",
-            '-F',
-            $format,
-            '-f',
-            'qcow2',
-            $path,
-        ];
-
-        run_command($cmd);
+        qemu_img_create_qcow2_backed($scfg, $path, "../$basevmid/$basename", $format);
     };
     my $err = $@;
 
