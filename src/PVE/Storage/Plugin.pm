@@ -811,8 +811,11 @@ sub cluster_lock_storage {
 sub parse_name_dir {
     my $name = shift;
 
-    if ($name =~ m!^((base-)?[^/\s]+\.(raw|qcow2|vmdk|subvol))$!) {
-        return ($1, $3, $2); # (name, format, isBase)
+    if ($name =~ m!^((vm-|base-|subvol-)(\d+)-[^/\s]+\.(raw|qcow2|vmdk|subvol))$!) {
+        my $isbase = $2 eq 'base-' ? $2 : undef;
+        return ($1, $4, $isbase); # (name, format, isBase)
+    } elsif ($name =~ m!^((base-)?[^/\s]+\.(raw|qcow2|vmdk|subvol))$!) {
+        warn "this volume filename is not supported anymore\n";
     }
 
     die "unable to parse volume filename '$name'\n";
