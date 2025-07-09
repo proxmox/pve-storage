@@ -710,6 +710,29 @@ sub qemu_img_info {
     return PVE::Storage::Common::run_qemu_img_json($cmd, $timeout);
 }
 
+=pod
+
+=head3 qemu_img_measure
+
+    qemu_img_measure($size, $fmt, $timeout, $is_backed)
+
+Returns a json with the maximum size including all metadatas overhead for an image with format C<$fmt> and original size C<$size>Kb.
+If the image is backed C<$is_backed>, we use different cluster size informations.
+=cut
+
+sub qemu_img_measure {
+    my ($size, $fmt, $timeout, $is_backed) = @_;
+
+    die "format is missing" if !$fmt;
+
+    my $cmd = ['/usr/bin/qemu-img', 'measure', '--output=json', '--size', "${size}K", '-O', $fmt];
+    if ($is_backed) {
+        my $options = $QCOW2_CLUSTERS->{backed};
+        push $cmd->@*, '-o', join(',', @$options) if @$options > 0;
+    }
+    return PVE::Storage::Common::run_qemu_img_json($cmd, $timeout);
+}
+
 # Storage implementation
 
 # called during addition of storage (before the new storage config got written)
