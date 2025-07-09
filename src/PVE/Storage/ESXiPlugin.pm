@@ -555,7 +555,7 @@ sub volume_size_info {
 }
 
 sub volume_snapshot {
-    my ($class, $scfg, $storeid, $volname, $snap) = @_;
+    my ($class, $scfg, $storeid, $volname, $snap, $running) = @_;
 
     die "creating snapshots is not supported for $class\n";
 }

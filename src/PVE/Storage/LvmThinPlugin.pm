@@ -353,7 +353,7 @@ sub create_base {
 # sub volume_resize {} reuse code from parent class
 
 sub volume_snapshot {
-    my ($class, $scfg, $storeid, $volname, $snap) = @_;
+    my ($class, $scfg, $storeid, $volname, $snap, $running) = @_;
 
     my $vg = $scfg->{vgname};
     my $snapvol = "snap_${volname}_$snap";

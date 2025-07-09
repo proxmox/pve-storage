@@ -480,7 +480,7 @@ sub volume_size_info {
 }
 
 sub volume_snapshot {
-    my ($class, $scfg, $storeid, $volname, $snap) = @_;
+    my ($class, $scfg, $storeid, $volname, $snap, $running) = @_;
 
     my $vname = ($class->parse_volname($volname))[1];
 

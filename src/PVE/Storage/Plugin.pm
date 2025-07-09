@@ -1314,7 +1314,7 @@ sub volume_resize {
 }
 
 sub volume_snapshot {
-    my ($class, $scfg, $storeid, $volname, $snap) = @_;
+    my ($class, $scfg, $storeid, $volname, $snap, $running) = @_;
 
     die "can't snapshot this image format\n" if $volname !~ m/\.(qcow2|qed)$/;
 

@@ -232,7 +232,7 @@ sub volume_resize {
 }
 
 sub volume_snapshot {
-    my ($class, $scfg, $storeid, $volname, $snap) = @_;
+    my ($class, $scfg, $storeid, $volname, $snap, $running) = @_;
     die "volume snapshot is not possible on iscsi device\n";
 }
 
