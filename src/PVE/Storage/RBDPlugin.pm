@@ -617,7 +617,9 @@ sub create_base {
     my $newvolname = $basename ? "$basename/$newname" : "$newname";
 
     my $cmd = $rbd_cmd->(
-        $scfg, $storeid, 'rename',
+        $scfg,
+        $storeid,
+        'rename',
         get_rbd_path($scfg, $name),
         get_rbd_path($scfg, $newname),
     );
