@@ -1054,6 +1054,8 @@ sub volume_snapshot_delete {
     my $cmd = "";
     my $path = $class->filesystem_path($scfg, $volname);
 
+    $class->activate_volume($storeid, $scfg, $volname);
+
     my $snapshots = $class->volume_snapshot_info($scfg, $storeid, $volname);
     my $snappath = $snapshots->{$snap}->{file};
     my $snapvolname = $snapshots->{$snap}->{volname};
