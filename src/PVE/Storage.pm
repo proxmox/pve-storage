@@ -2348,7 +2348,8 @@ sub rename_snapshot {
     my ($cfg, $volid, $source_snap, $target_snap) = @_;
 
     die "no volid provided\n" if !$volid;
-    die "no source or target snap provided\n" if !$source_snap && !$target_snap;
+    die "no source snapshot provided\n" if !$source_snap;
+    die "no target snapshot provided\n" if !$target_snap;
 
     my ($storeid, $volname) = parse_volume_id($volid);
 
