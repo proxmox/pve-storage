@@ -694,7 +694,7 @@ sub parse_name_dir {
         my $isbase = $2 eq 'base-' ? $2 : undef;
         return ($1, $4, $isbase); # (name, format, isBase)
     } elsif ($name =~ m!^((base-)?[^/\s]+\.(raw|qcow2|vmdk|subvol))$!) {
-        warn "this volume filename is not supported anymore\n";
+        warn "this volume name `$name` is not supported anymore\n" if !parse_snap_name($name);
     }
 
     die "unable to parse volume filename '$name'\n";
