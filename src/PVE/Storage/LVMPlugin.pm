@@ -443,20 +443,6 @@ sub parse_volname {
     die "unable to parse lvm volume name '$volname'\n";
 }
 
-#return snapshot name from a file path
-sub get_snapname_from_path {
-    my ($class, $volname, $path) = @_;
-
-    my $basepath = basename($path);
-    my $name = ($volname =~ s/\.[^.]+$//r);
-    if ($basepath =~ m/^snap_${name}_(.*)\.qcow2$/) {
-        return $1;
-    } elsif ($basepath eq $volname) {
-        return 'current';
-    }
-    return undef;
-}
-
 my sub get_snap_name {
     my ($class, $volname, $snapname) = @_;
 
@@ -470,12 +456,6 @@ my sub get_snap_name {
         $name =~ s/\.[^.]+$//;
         return "snap_${name}_${snapname}.qcow2";
     }
-}
-
-sub get_snap_volname {
-    my ($class, $volname, $snapname) = @_;
-
-    return get_snap_name($class, $volname, $snapname);
 }
 
 sub filesystem_path {
@@ -785,6 +765,62 @@ sub status {
     }
 
     return undef;
+}
+
+sub volume_snapshot_info {
+    my ($class, $scfg, $storeid, $volname) = @_;
+
+    my $get_snapname_from_path = sub {
+        my ($volname, $path) = @_;
+
+        my $basepath = basename($path);
+        my $name = ($volname =~ s/\.[^.]+$//r);
+        if ($basepath =~ m/^snap_${name}_(.*)\.qcow2$/) {
+            return $1;
+        } elsif ($basepath eq $volname) {
+            return 'current';
+        }
+        return undef;
+    };
+
+    my $path = $class->filesystem_path($scfg, $volname);
+    my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $format) =
+        $class->parse_volname($volname);
+
+    my $json = PVE::Storage::Common::qemu_img_info($path, undef, 10, 1);
+    die "failed to query file information with qemu-img\n" if !$json;
+    my $json_decode = eval { decode_json($json) };
+    if ($@) {
+        die "Can't decode qemu snapshot list. Invalid JSON: $@\n";
+    }
+    my $info = {};
+    my $order = 0;
+    return $info if ref($json_decode) ne 'ARRAY';
+
+    #no snapshot or external  snapshots is an arrayref
+    my $snapshots = $json_decode;
+    for my $snap (@$snapshots) {
+        my $snapfile = $snap->{filename};
+        my $snapname = $get_snapname_from_path->($volname, $snapfile);
+        #not a proxmox snapshot
+        next if !$snapname;
+
+        my $snapvolname = get_snap_name($class, $volname, $snapname);
+
+        $info->{$snapname}->{order} = $order;
+        $info->{$snapname}->{file} = $snapfile;
+        $info->{$snapname}->{volname} = "$snapvolname";
+        $info->{$snapname}->{volid} = "$storeid:$snapvolname";
+
+        my $parentfile = $snap->{'backing-filename'};
+        if ($parentfile) {
+            my $parentname = $get_snapname_from_path->($volname, $parentfile);
+            $info->{$snapname}->{parent} = $parentname;
+            $info->{$parentname}->{child} = $snapname;
+        }
+        $order++;
+    }
+    return $info;
 }
 
 sub activate_storage {

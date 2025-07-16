@@ -1718,33 +1718,24 @@ sub status {
     return ($res->{total}, $res->{avail}, $res->{used}, 1);
 }
 
-sub get_snap_volname {
-    my ($class, $volname, $snapname) = @_;
-
-    my $vmid = ($class->parse_volname($volname))[2];
-    my $name = get_snap_name($class, $volname, $snapname);
-    return "$vmid/$name";
-}
-
-#return snapshot name from a file path
-sub get_snapname_from_path {
-    my ($class, $volname, $path) = @_;
-
-    my $basepath = basename($path);
-    if ($basepath =~ m/^snap-(.*)-vm(.*)$/) {
-        return $1;
-    } elsif ($basepath eq basename($volname)) {
-        return 'current';
-    }
-    return undef;
-}
-
 # Returns a hash with the snapshot names as keys and the following data:
 # id        - Unique id to distinguish different snapshots even if the have the same name.
 # timestamp - Creation time of the snapshot (seconds since epoch).
 # Returns an empty hash if the volume does not exist.
 sub volume_snapshot_info {
     my ($class, $scfg, $storeid, $volname) = @_;
+
+    my $get_snapname_from_path = sub {
+        my ($volname, $path) = @_;
+
+        my $basepath = basename($path);
+        if ($basepath =~ m/^snap-(.*)-vm(.*)$/) {
+            return $1;
+        } elsif ($basepath eq basename($volname)) {
+            return 'current';
+        }
+        return undef;
+    };
 
     my $path = $class->filesystem_path($scfg, $volname);
     my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $format) =
@@ -1772,11 +1763,13 @@ sub volume_snapshot_info {
         my $snapshots = $json_decode;
         for my $snap (@$snapshots) {
             my $snapfile = $snap->{filename};
-            my $snapname = $class->get_snapname_from_path($volname, $snapfile);
+            my $snapname = $get_snapname_from_path->($volname, $snapfile);
             #not a proxmox snapshot
             next if !$snapname;
 
-            my $snapvolname = $class->get_snap_volname($volname, $snapname);
+            my $snapvolname = get_snap_name($class, $volname, $snapname);
+            $snapvolname = "$vmid/$snapvolname";
+
             $info->{$snapname}->{order} = $order;
             $info->{$snapname}->{file} = $snapfile;
             $info->{$snapname}->{volname} = "$snapvolname";
@@ -1785,7 +1778,7 @@ sub volume_snapshot_info {
 
             my $parentfile = $snap->{'backing-filename'};
             if ($parentfile) {
-                my $parentname = $class->get_snapname_from_path($volname, $parentfile);
+                my $parentname = $get_snapname_from_path->($volname, $parentfile);
                 $info->{$snapname}->{parent} = $parentname;
                 $info->{$parentname}->{child} = $snapname;
             }
