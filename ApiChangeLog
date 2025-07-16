@@ -25,13 +25,27 @@ Future changes should be documented in here.
 * Introduce rename_snapshot() plugin method
     This method allow to rename a vm disk snapshot name to a different snapshot name.
 
-* Introduce volume_support_qemu_snapshot() plugin method
-    This method is used to known if the a snapshot need to be done by qemu
-    or by the storage api.
-    returned values are :
-    'internal' : support snapshot with qemu internal snapshot
-    'external' : support snapshot with qemu external snapshot
-    undef      : don't support qemu snapshot
+* Introduce volume_qemu_snapshot_method() plugin method
+    This method declares how snapshots should be handled for *running* VMs.
+    This should return one of the following:
+    'qemu':
+      Qemu must perform the snapshot. The storage plugin does nothing.
+    'storage':
+      The storage plugin *transparently* performs the snapshot and the running VM does not need to
+      do anything.
+    'mixed': 
+      For taking a snapshot: The storage performs an offline snapshot and qemu then has to reopen
+      the volume.
+      For removing a snapshot: One of 2 things will happen (both must be supported):
+      a) Qemu will "unhook" the snapshot by moving its data into the child snapshot, and then call
+         `volume_snapshot_delete` with `running` set, in which case the storage should delete only
+         the snapshot without touching the surrounding snapshots.
+      b) Qemu will "commit" the child snapshot to the one which is being removed, then call
+         `volume_snapshot_delete()` on the child snapshot, then call `rename_snapshot()` to move the
+         merged snapshot into place.
+      NOTE: Storages must support using "current" as a special name in `rename_snapshot()` to
+      cheaply convert a snapshot into the current disk state and back.
+
 
 ##  Version 11:
 

@@ -1301,11 +1301,12 @@ sub rename_snapshot {
     lvrename($scfg, $source_snap_volname, $target_snap_volname);
 }
 
-sub volume_support_qemu_snapshot {
+sub volume_qemu_snapshot_method {
     my ($class, $storeid, $scfg, $volname) = @_;
 
     my $format = ($class->parse_volname($volname))[6];
-    return 'external' if $format eq 'qcow2';
+    return 'mixed' if $format eq 'qcow2';
+    return 'storage';
 }
 
 1;

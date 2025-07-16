@@ -2370,7 +2370,7 @@ sub rename_snapshot {
     );
 }
 
-sub volume_support_qemu_snapshot {
+sub volume_qemu_snapshot_method {
     my ($cfg, $volid) = @_;
 
     my ($storeid, $volname) = parse_volume_id($volid, 1);
@@ -2380,7 +2380,7 @@ sub volume_support_qemu_snapshot {
 
         my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
 
-        return $plugin->volume_support_qemu_snapshot($storeid, $scfg, $volname);
+        return $plugin->volume_qemu_snapshot_method($storeid, $scfg, $volname);
     }
     return undef;
 }

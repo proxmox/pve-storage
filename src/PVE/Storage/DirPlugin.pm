@@ -315,14 +315,13 @@ sub get_import_metadata {
     };
 }
 
-sub volume_support_qemu_snapshot {
+sub volume_qemu_snapshot_method {
     my ($class, $storeid, $scfg, $volname) = @_;
 
     my $format = ($class->parse_volname($volname))[6];
-    return if $format ne 'qcow2';
+    return 'storage' if $format ne 'qcow2';
 
-    my $type = $scfg->{'external-snapshots'} ? 'external' : 'internal';
-    return $type;
+    return $scfg->{'external-snapshots'} ? 'mixed' : 'qemu';
 }
 
 1;

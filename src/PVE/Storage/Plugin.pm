@@ -2428,9 +2428,9 @@ sub new_backup_provider {
 
 =pod
 
-=head3 volume_support_qemu_snapshot
+=head3 volume_qemu_snapshot_method
 
-    $blockdev = $plugin->volume_support_qemu_snapshot($storeid, $scfg, $volname)
+    $blockdev = $plugin->volume_qemu_snapshot_method($storeid, $scfg, $volname)
 
 Returns a string with the type of snapshot that qemu can do for a specific volume
 
@@ -2439,11 +2439,12 @@ Returns a string with the type of snapshot that qemu can do for a specific volum
 undef      : don't support qemu snapshot
 =cut
 
-sub volume_support_qemu_snapshot {
+sub volume_qemu_snapshot_method {
     my ($class, $storeid, $scfg, $volname) = @_;
 
     my $format = ($class->parse_volname($volname))[6];
-    return 'internal' if $format eq 'qcow2';
+    return 'qemu' if $format eq 'qcow2';
+    return 'storage';
 }
 
 sub config_aware_base_mkdir {

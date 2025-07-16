@@ -1063,10 +1063,11 @@ sub rename_snapshot {
     die "rename_snapshot is not implemented for $class";
 }
 
-sub volume_support_qemu_snapshot {
+sub volume_qemu_snapshot_method {
     my ($class, $storeid, $scfg, $volname) = @_;
 
-    return 'internal' if !$scfg->{krbd};
+    return 'qemu' if !$scfg->{krbd};
+    return 'storage';
 }
 
 1;
