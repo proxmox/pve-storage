@@ -668,6 +668,8 @@ my sub alloc_snap_image {
 
     #we need to use same size than the backing image qcow2 virtual-size
     my $size = PVE::Storage::Plugin::file_size_info($path, 5, $format);
+    die "file_size_info on '$volname' failed\n" if !defined($size);
+
     $size = $size / 1024; #we use kb in lvcreate
 
     alloc_lvm_image($class, $storeid, $scfg, $vmid, $format, $volname, $size, $backing_snap);
