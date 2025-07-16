@@ -583,8 +583,8 @@ my sub lvm_qcow2_format {
         preallocation => PVE::Storage::Plugin::preallocation_cmd_opt($scfg, $fmt),
     };
     if ($backing_snap) {
-        my $backing_path = $class->path($scfg, $name, $storeid, $backing_snap);
-        PVE::Storage::Common::qemu_img_create_qcow2_backed($path, $backing_path, $fmt, $options);
+        my $backing_volname = get_snap_name($class, $name, $backing_snap);
+        PVE::Storage::Common::qemu_img_create_qcow2_backed($path, $backing_volname, $fmt, $options);
     } else {
         PVE::Storage::Common::qemu_img_create($fmt, $size, $path, $options);
     }
