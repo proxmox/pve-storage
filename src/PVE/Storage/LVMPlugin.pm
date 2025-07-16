@@ -924,6 +924,8 @@ sub volume_snapshot {
         return;
     }
 
+    $class->activate_volume($storeid, $scfg, $volname);
+
     #rename current volume to snap volume
     eval { $class->rename_snapshot($scfg, $storeid, $volname, 'current', $snap) };
     die "error rename $volname to $snap\n" if $@;
