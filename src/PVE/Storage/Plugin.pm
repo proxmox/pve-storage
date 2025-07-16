@@ -2175,6 +2175,11 @@ sub rename_volume {
     die "not implemented in storage plugin '$class'\n" if $class->can('api') && $class->api() < 10;
     die "no path found\n" if !$scfg->{path};
 
+    if ($scfg->{'external-snapshots'}) {
+        my $snapshots = $class->volume_snapshot_info($scfg, $storeid, $source_volname);
+        die "we can't rename volume if external snapshot exists" if $snapshots->{current}->{parent};
+    }
+
     my (
         undef, $source_image, $source_vmid, $base_name, $base_vmid, undef, $format,
     ) = $class->parse_volname($source_volname);
