@@ -779,6 +779,14 @@ my sub get_snap_name {
     return $name;
 }
 
+my sub parse_snap_name {
+    my ($name) = @_;
+
+    if ($name =~ m/^snap-(.*)-vm(.*)$/) {
+        return $1;
+    }
+}
+
 sub filesystem_path {
     my ($class, $scfg, $volname, $snapname) = @_;
 
@@ -1728,10 +1736,11 @@ sub volume_snapshot_info {
     my $get_snapname_from_path = sub {
         my ($volname, $path) = @_;
 
-        my $basepath = basename($path);
-        if ($basepath =~ m/^snap-(.*)-vm(.*)$/) {
-            return $1;
-        } elsif ($basepath eq basename($volname)) {
+        my $name = basename($path);
+
+        if (my $snapname = parse_snap_name($name)) {
+            return $snapname;
+        } elsif ($name eq basename($volname)) {
             return 'current';
         }
         return undef;
