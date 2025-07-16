@@ -245,7 +245,7 @@ sub qemu_img_measure {
 
 =head3 qemu_img_resize
 
-    qemu_img_resize($scfg, $path, $format, $size, $preallocation, $timeout)
+    qemu_img_resize($path, $format, $size, $preallocation, $timeout)
 
 Resize a qemu image C<$path> with format C<$format> to a target Kb size C<$size>.
 Default timeout C<$timeout> is 10s if not specified.
@@ -254,7 +254,7 @@ C<$preallocation> allows to specify the preallocation option for the resize oper
 =cut
 
 sub qemu_img_resize {
-    my ($scfg, $path, $format, $size, $preallocation, $timeout) = @_;
+    my ($path, $format, $size, $preallocation, $timeout) = @_;
 
     die "format is missing" if !$format;
 
