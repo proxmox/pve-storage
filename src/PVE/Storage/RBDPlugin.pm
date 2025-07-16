@@ -868,7 +868,7 @@ sub volume_resize {
 }
 
 sub volume_snapshot {
-    my ($class, $scfg, $storeid, $volname, $snap, $running) = @_;
+    my ($class, $scfg, $storeid, $volname, $snap) = @_;
 
     my ($vtype, $name, $vmid) = $class->parse_volname($volname);
 

@@ -959,20 +959,11 @@ sub volume_size_info {
 }
 
 sub volume_snapshot {
-    my ($class, $scfg, $storeid, $volname, $snap, $running) = @_;
+    my ($class, $scfg, $storeid, $volname, $snap) = @_;
 
     my ($vmid, $format) = ($class->parse_volname($volname))[2, 6];
 
     die "can't snapshot '$format' volume\n" if $format ne 'qcow2';
-
-    if ($running) {
-        #rename with blockdev-reopen is done at qemu level when running
-        eval { alloc_snap_image($class, $storeid, $scfg, $volname, $snap) };
-        if ($@) {
-            die "can't allocate new volume $volname: $@\n";
-        }
-        return;
-    }
 
     $class->activate_volume($storeid, $scfg, $volname);
 

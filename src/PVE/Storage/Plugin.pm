@@ -1272,7 +1272,7 @@ sub volume_resize {
 }
 
 sub volume_snapshot {
-    my ($class, $scfg, $storeid, $volname, $snap, $running) = @_;
+    my ($class, $scfg, $storeid, $volname, $snap) = @_;
 
     if ($scfg->{'external-snapshots'}) {
 
@@ -1280,18 +1280,14 @@ sub volume_snapshot {
 
         my $vmid = ($class->parse_volname($volname))[2];
 
-        if (!$running) {
-            #rename volume unless qemu has already done it for us
-            $class->rename_snapshot($scfg, $storeid, $volname, 'current', $snap);
-        }
+        #rename volume unless qemu has already done it for us
+        $class->rename_snapshot($scfg, $storeid, $volname, 'current', $snap);
+
         eval { alloc_backed_image($class, $storeid, $scfg, $volname, $snap) };
         if ($@) {
             warn "$@ \n";
-            #if running, the revert is done by qemu with blockdev-reopen
-            if (!$running) {
-                eval { $class->rename_snapshot($scfg, $storeid, $volname, $snap, 'current'); };
-                warn $@ if $@;
-            }
+            eval { $class->rename_snapshot($scfg, $storeid, $volname, $snap, 'current'); };
+            warn $@ if $@;
             die "can't allocate new volume $volname with $snap backing image\n";
         }
 
