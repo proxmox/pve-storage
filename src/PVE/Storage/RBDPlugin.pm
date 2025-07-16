@@ -457,8 +457,10 @@ sub options {
 sub on_add_hook {
     my ($class, $storeid, $scfg, %param) = @_;
 
+    my $pveceph_managed = !defined($scfg->{monhost});
+
     PVE::CephConfig::ceph_create_keyfile($scfg->{type}, $storeid, $param{keyring});
-    PVE::CephConfig::ceph_create_configuration($scfg->{type}, $storeid);
+    PVE::CephConfig::ceph_create_configuration($scfg->{type}, $storeid) if !$pveceph_managed;
 
     return;
 }
