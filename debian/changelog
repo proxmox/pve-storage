@@ -1,3 +1,18 @@
+libpve-storage-perl (9.0.4) trixie; urgency=medium
+
+  * fix #5071: zfs over iscsi: add 'zfs-base-path' configuration option.
+
+  * zfs over iscsi: on-add hook: dynamically determine base path.
+
+  * rbd storage: add missing check for external ceph cluster.
+
+  * LVM: add initial support for storage-managed snapshots through qcow2.
+
+  * directory file system based storages: add initial support for external
+    qcow2 snapshots.
+
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 17 Jul 2025 01:17:05 +0200
+
 libpve-storage-perl (9.0.3) trixie; urgency=medium
 
   * fix #4997: lvm: volume create: disable auto-activation for new logical
