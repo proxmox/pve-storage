@@ -615,7 +615,7 @@ sub parse_config {
     return $cfg;
 }
 
-sub preallocation_cmd_option {
+sub preallocation_cmd_opt {
     my ($scfg, $fmt) = @_;
 
     my $prealloc = $scfg->{preallocation};
@@ -626,7 +626,7 @@ sub preallocation_cmd_option {
         die "preallocation mode '$prealloc' not supported by format '$fmt'\n"
             if !$QCOW2_PREALLOCATION->{$prealloc};
 
-        return "preallocation=$prealloc";
+        return $prealloc;
     } elsif ($fmt eq 'raw') {
         $prealloc = $prealloc // 'off';
         $prealloc = 'off' if $prealloc eq 'metadata';
@@ -634,7 +634,7 @@ sub preallocation_cmd_option {
         die "preallocation mode '$prealloc' not supported by format '$fmt'\n"
             if !$RAW_PREALLOCATION->{$prealloc};
 
-        return "preallocation=$prealloc";
+        return $prealloc;
     }
 
     return;
@@ -644,19 +644,21 @@ sub preallocation_cmd_option {
 
 =head3 qemu_img_create
 
-    qemu_img_create($scfg, $fmt, $size, $path)
+    qemu_img_create($fmt, $size, $path, $options)
 
 Create a new qemu image with a specific format C<$format> and size C<$size> for a target C<$path>.
+
+C<$options> currently allows setting the C<preallocation> value
 
 =cut
 
 sub qemu_img_create {
-    my ($scfg, $fmt, $size, $path) = @_;
+    my ($fmt, $size, $path, $options) = @_;
 
     my $cmd = ['/usr/bin/qemu-img', 'create'];
 
-    my $prealloc_opt = preallocation_cmd_option($scfg, $fmt);
-    push @$cmd, '-o', $prealloc_opt if defined($prealloc_opt);
+    push @$cmd, '-o', "preallocation=$options->{preallocation}"
+        if defined($options->{preallocation});
 
     push @$cmd, '-f', $fmt, $path, "${size}K";
 
@@ -667,14 +669,16 @@ sub qemu_img_create {
 
 =head3 qemu_img_create_qcow2_backed
 
-    qemu_img_create_qcow2_backed($scfg, $path, $backing_path, $backing_format)
+    qemu_img_create_qcow2_backed($path, $backing_path, $backing_format, $options)
 
 Create a new qemu qcow2 image C<$path> using an existing backing image C<$backing_path> with backing_format C<$backing_format>.
+
+C<$options> currently allows setting the C<preallocation> value.
 
 =cut
 
 sub qemu_img_create_qcow2_backed {
-    my ($scfg, $path, $backing_path, $backing_format) = @_;
+    my ($path, $backing_path, $backing_format, $options) = @_;
 
     my $cmd = [
         '/usr/bin/qemu-img',
@@ -688,10 +692,10 @@ sub qemu_img_create_qcow2_backed {
         $path,
     ];
 
-    my $options = $QCOW2_CLUSTERS->{backed};
+    my $opts = $QCOW2_CLUSTERS->{backed};
 
-    push @$options, preallocation_cmd_option($scfg, 'qcow2');
-    push @$cmd, '-o', join(',', @$options) if @$options > 0;
+    push @$opts, $options->{preallocation} if defined($options->{preallocation});
+    push @$cmd, '-o', join(',', @$opts) if @$opts > 0;
 
     run_command($cmd, errmsg => "unable to create image");
 }
@@ -722,20 +726,21 @@ sub qemu_img_info {
 
 =head3 qemu_img_measure
 
-    qemu_img_measure($size, $fmt, $timeout, $is_backed)
+    qemu_img_measure($size, $fmt, $timeout, $options)
 
 Returns a json with the maximum size including all metadatas overhead for an image with format C<$fmt> and original size C<$size>Kb.
-If the image is backed C<$is_backed>, we use different cluster size informations.
+
+C<$options> allows specifying qemu-img options that might affect the sizing calculation, such as cluster size.
+
 =cut
 
 sub qemu_img_measure {
-    my ($size, $fmt, $timeout, $is_backed) = @_;
+    my ($size, $fmt, $timeout, $options) = @_;
 
     die "format is missing" if !$fmt;
 
     my $cmd = ['/usr/bin/qemu-img', 'measure', '--output=json', '--size', "${size}K", '-O', $fmt];
-    if ($is_backed) {
-        my $options = $QCOW2_CLUSTERS->{backed};
+    if ($options) {
         push $cmd->@*, '-o', join(',', @$options) if @$options > 0;
     }
     return PVE::Storage::Common::run_qemu_img_json($cmd, $timeout);
@@ -745,20 +750,21 @@ sub qemu_img_measure {
 
 =head3 qemu_img_resize
 
-    qemu_img_resize($scfg, $path, $format, $size, $timeout)
+    qemu_img_resize($scfg, $path, $format, $size, $preallocation, $timeout)
 
 Resize a qemu image C<$path> with format C<$format> to a target Kb size C<$size>.
 Default timeout C<$timeout> is 10s if not specified.
+C<$preallocation> allows to specify the preallocation option for the resize operation.
+
 =cut
 
 sub qemu_img_resize {
-    my ($scfg, $path, $format, $size, $timeout) = @_;
+    my ($scfg, $path, $format, $size, $preallocation, $timeout) = @_;
 
     die "format is missing" if !$format;
 
-    my $prealloc_opt = preallocation_cmd_option($scfg, $format);
     my $cmd = ['/usr/bin/qemu-img', 'resize'];
-    push $cmd->@*, "--$prealloc_opt" if $prealloc_opt;
+    push $cmd->@*, "--preallocation=$preallocation" if $preallocation;
     push $cmd->@*, '-f', $format, $path, $size;
 
     $timeout = 10 if !$timeout;
@@ -1067,7 +1073,10 @@ sub clone_image {
     # Note: we use relative paths, so we need to call chdir before qemu-img
     eval {
         local $CWD = $imagedir;
-        qemu_img_create_qcow2_backed($scfg, $path, "../$basevmid/$basename", $format);
+        my $options = {
+            preallocation => preallocation_cmd_opt($scfg, $format),
+        };
+        qemu_img_create_qcow2_backed($path, "../$basevmid/$basename", $format, $options);
     };
     my $err = $@;
 
@@ -1105,7 +1114,10 @@ sub alloc_image {
         umask $old_umask;
         die $err if $err;
     } else {
-        eval { qemu_img_create($scfg, $fmt, $size, $path) };
+        my $preallocation = preallocation_cmd_opt($scfg, $fmt);
+        my $options = {};
+        $options->{preallocation} = $preallocation if $preallocation;
+        eval { qemu_img_create($fmt, $size, $path, $options) };
         if ($@) {
             unlink $path;
             rmdir $imagedir;
@@ -1122,9 +1134,12 @@ my sub alloc_backed_image {
     my $path = $class->path($scfg, $volname, $storeid);
     my ($vmid, $backing_format) = ($class->parse_volname($volname))[2, 6];
 
+    my $preallocation = preallocation_cmd_opt($scfg, $backing_format);
+    my $options = {};
+    $options->{preallocation} = $preallocation if $preallocation;
     my $backing_volname = get_snap_name($class, $volname, $backing_snap);
     #qemu_img use relative path from base image for the backing_volname by default
-    eval { qemu_img_create_qcow2_backed($scfg, $path, $backing_volname, $backing_format) };
+    eval { qemu_img_create_qcow2_backed($path, $backing_volname, $backing_format, $options) };
     if ($@) {
         unlink $path;
         die "$@";
@@ -1371,7 +1386,8 @@ sub volume_resize {
 
     my $format = ($class->parse_volname($volname))[6];
 
-    qemu_img_resize($scfg, $path, $format, $size, 10);
+    my $preallocation = preallocation_cmd_opt($scfg, $format);
+    qemu_img_resize($path, $format, $size, $preallocation, 10);
 
     return undef;
 }

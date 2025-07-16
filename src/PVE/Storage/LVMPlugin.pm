@@ -579,11 +579,14 @@ my sub lvm_qcow2_format {
     $class->activate_volume($storeid, $scfg, $name);
     my $path = $class->path($scfg, $name, $storeid);
 
+    my $options = {
+        preallocation => PVE::Storage::Plugin::preallocation_cmd_opt($scfg, $fmt),
+    };
     if ($backing_snap) {
         my $backing_path = $class->path($scfg, $name, $storeid, $backing_snap);
-        PVE::Storage::Plugin::qemu_img_create_qcow2_backed($scfg, $path, $backing_path, $fmt);
+        PVE::Storage::Plugin::qemu_img_create_qcow2_backed($path, $backing_path, $fmt, $options);
     } else {
-        PVE::Storage::Plugin::qemu_img_create($scfg, $fmt, $size, $path);
+        PVE::Storage::Plugin::qemu_img_create($fmt, $size, $path, $options);
     }
 }
 
@@ -868,7 +871,8 @@ sub volume_resize {
     );
 
     if (!$running && $format eq 'qcow2') {
-        PVE::Storage::Plugin::qemu_img_resize($scfg, $path, $format, $size, 10);
+        my $preallocation = PVE::Storage::Plugin::preallocation_cmd_opt($scfg, $fmt);
+        PVE::Storage::Plugin::qemu_img_resize($path, $format, $size, $preallocation, 10);
     }
 
     return 1;
