@@ -51,10 +51,6 @@ our $RAW_PREALLOCATION = {
     full => 1,
 };
 
-my $QCOW2_CLUSTERS = {
-    backed => ['extended_l2=on', 'cluster_size=128k'],
-};
-
 our $MAX_VOLUMES_PER_GUEST = 1024;
 
 cfs_register_file(
@@ -640,137 +636,6 @@ sub preallocation_cmd_opt {
     return;
 }
 
-=pod
-
-=head3 qemu_img_create
-
-    qemu_img_create($fmt, $size, $path, $options)
-
-Create a new qemu image with a specific format C<$format> and size C<$size> for a target C<$path>.
-
-C<$options> currently allows setting the C<preallocation> value
-
-=cut
-
-sub qemu_img_create {
-    my ($fmt, $size, $path, $options) = @_;
-
-    my $cmd = ['/usr/bin/qemu-img', 'create'];
-
-    push @$cmd, '-o', "preallocation=$options->{preallocation}"
-        if defined($options->{preallocation});
-
-    push @$cmd, '-f', $fmt, $path, "${size}K";
-
-    run_command($cmd, errmsg => "unable to create image");
-}
-
-=pod
-
-=head3 qemu_img_create_qcow2_backed
-
-    qemu_img_create_qcow2_backed($path, $backing_path, $backing_format, $options)
-
-Create a new qemu qcow2 image C<$path> using an existing backing image C<$backing_path> with backing_format C<$backing_format>.
-
-C<$options> currently allows setting the C<preallocation> value.
-
-=cut
-
-sub qemu_img_create_qcow2_backed {
-    my ($path, $backing_path, $backing_format, $options) = @_;
-
-    my $cmd = [
-        '/usr/bin/qemu-img',
-        'create',
-        '-F',
-        $backing_format,
-        '-b',
-        $backing_path,
-        '-f',
-        'qcow2',
-        $path,
-    ];
-
-    my $opts = $QCOW2_CLUSTERS->{backed};
-
-    push @$opts, $options->{preallocation} if defined($options->{preallocation});
-    push @$cmd, '-o', join(',', @$opts) if @$opts > 0;
-
-    run_command($cmd, errmsg => "unable to create image");
-}
-
-=pod
-
-=head3 qemu_img_info
-
-    qemu_img_info($filename, $file_format, $timeout, $follow_backing_files)
-
-Returns a json with qemu image C<$filename> informations with format <$file_format>.
-If C<$follow_backing_files> option is defined, return a json with the whole chain
-of backing files images.
-
-=cut
-
-sub qemu_img_info {
-    my ($filename, $file_format, $timeout, $follow_backing_files) = @_;
-
-    my $cmd = ['/usr/bin/qemu-img', 'info', '--output=json', $filename];
-    push $cmd->@*, '-f', $file_format if $file_format;
-    push $cmd->@*, '--backing-chain' if $follow_backing_files;
-
-    return PVE::Storage::Common::run_qemu_img_json($cmd, $timeout);
-}
-
-=pod
-
-=head3 qemu_img_measure
-
-    qemu_img_measure($size, $fmt, $timeout, $options)
-
-Returns a json with the maximum size including all metadatas overhead for an image with format C<$fmt> and original size C<$size>Kb.
-
-C<$options> allows specifying qemu-img options that might affect the sizing calculation, such as cluster size.
-
-=cut
-
-sub qemu_img_measure {
-    my ($size, $fmt, $timeout, $options) = @_;
-
-    die "format is missing" if !$fmt;
-
-    my $cmd = ['/usr/bin/qemu-img', 'measure', '--output=json', '--size', "${size}K", '-O', $fmt];
-    if ($options) {
-        push $cmd->@*, '-o', join(',', @$options) if @$options > 0;
-    }
-    return PVE::Storage::Common::run_qemu_img_json($cmd, $timeout);
-}
-
-=pod
-
-=head3 qemu_img_resize
-
-    qemu_img_resize($scfg, $path, $format, $size, $preallocation, $timeout)
-
-Resize a qemu image C<$path> with format C<$format> to a target Kb size C<$size>.
-Default timeout C<$timeout> is 10s if not specified.
-C<$preallocation> allows to specify the preallocation option for the resize operation.
-
-=cut
-
-sub qemu_img_resize {
-    my ($scfg, $path, $format, $size, $preallocation, $timeout) = @_;
-
-    die "format is missing" if !$format;
-
-    my $cmd = ['/usr/bin/qemu-img', 'resize'];
-    push $cmd->@*, "--preallocation=$preallocation" if $preallocation;
-    push $cmd->@*, '-f', $format, $path, $size;
-
-    $timeout = 10 if !$timeout;
-    run_command($cmd, timeout => $timeout);
-}
-
 # Storage implementation
 
 # called during addition of storage (before the new storage config got written)
@@ -1076,7 +941,9 @@ sub clone_image {
         my $options = {
             preallocation => preallocation_cmd_opt($scfg, $format),
         };
-        qemu_img_create_qcow2_backed($path, "../$basevmid/$basename", $format, $options);
+        PVE::Storage::Common::qemu_img_create_qcow2_backed(
+            $path, "../$basevmid/$basename", $format, $options,
+        );
     };
     my $err = $@;
 
@@ -1117,7 +984,7 @@ sub alloc_image {
         my $preallocation = preallocation_cmd_opt($scfg, $fmt);
         my $options = {};
         $options->{preallocation} = $preallocation if $preallocation;
-        eval { qemu_img_create($fmt, $size, $path, $options) };
+        eval { PVE::Storage::Common::qemu_img_create($fmt, $size, $path, $options) };
         if ($@) {
             unlink $path;
             rmdir $imagedir;
@@ -1139,7 +1006,11 @@ my sub alloc_backed_image {
     $options->{preallocation} = $preallocation if $preallocation;
     my $backing_volname = get_snap_name($class, $volname, $backing_snap);
     #qemu_img use relative path from base image for the backing_volname by default
-    eval { qemu_img_create_qcow2_backed($path, $backing_volname, $backing_format, $options) };
+    eval {
+        PVE::Storage::Common::qemu_img_create_qcow2_backed(
+            $path, $backing_volname, $backing_format, $options,
+        );
+    };
     if ($@) {
         unlink $path;
         die "$@";
@@ -1271,7 +1142,7 @@ sub file_size_info {
             "file_size_info: '$filename': falling back to 'raw' from unknown format '$file_format'\n";
         $file_format = 'raw';
     }
-    my $json = qemu_img_info($filename, $file_format, $timeout);
+    my $json = PVE::Storage::Common::qemu_img_info($filename, $file_format, $timeout);
     if (!$json) {
         die "failed to query file information with qemu-img\n" if $untrusted;
         # skip decoding if there was no output, e.g. if there was a timeout.
@@ -1387,7 +1258,7 @@ sub volume_resize {
     my $format = ($class->parse_volname($volname))[6];
 
     my $preallocation = preallocation_cmd_opt($scfg, $format);
-    qemu_img_resize($path, $format, $size, $preallocation, 10);
+    PVE::Storage::Common::qemu_img_resize($path, $format, $size, $preallocation, 10);
 
     return undef;
 }
@@ -1879,7 +1750,7 @@ sub volume_snapshot_info {
     my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $format) =
         $class->parse_volname($volname);
 
-    my $json = qemu_img_info($path, undef, 10, 1);
+    my $json = PVE::Storage::Common::qemu_img_info($path, undef, 10, 1);
     die "failed to query file information with qemu-img\n" if !$json;
     my $json_decode = eval { decode_json($json) };
     if ($@) {

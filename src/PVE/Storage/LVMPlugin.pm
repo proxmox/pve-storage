@@ -584,9 +584,9 @@ my sub lvm_qcow2_format {
     };
     if ($backing_snap) {
         my $backing_path = $class->path($scfg, $name, $storeid, $backing_snap);
-        PVE::Storage::Plugin::qemu_img_create_qcow2_backed($path, $backing_path, $fmt, $options);
+        PVE::Storage::Common::qemu_img_create_qcow2_backed($path, $backing_path, $fmt, $options);
     } else {
-        PVE::Storage::Plugin::qemu_img_create($fmt, $size, $path, $options);
+        PVE::Storage::Common::qemu_img_create($fmt, $size, $path, $options);
     }
 }
 
@@ -598,7 +598,7 @@ my sub calculate_lvm_size {
 
     my $options = $backing_snap ? ['extended_l2=on', 'cluster_size=128k'] : [];
 
-    my $json = PVE::Storage::Plugin::qemu_img_measure($size, $fmt, 5, $options);
+    my $json = PVE::Storage::Common::qemu_img_measure($size, $fmt, 5, $options);
     die "failed to query file information with qemu-img measure\n" if !$json;
     my $info = eval { decode_json($json) };
     if ($@) {
@@ -871,8 +871,8 @@ sub volume_resize {
     );
 
     if (!$running && $format eq 'qcow2') {
-        my $preallocation = PVE::Storage::Plugin::preallocation_cmd_opt($scfg, $fmt);
-        PVE::Storage::Plugin::qemu_img_resize($path, $format, $size, $preallocation, 10);
+        my $preallocation = PVE::Storage::Plugin::preallocation_cmd_opt($scfg, $format);
+        PVE::Storage::Common::qemu_img_resize($path, $format, $size, $preallocation, 10);
     }
 
     return 1;
