@@ -220,6 +220,12 @@ __PACKAGE__->register_method({
                 $data->{used_fraction} = ($data->{used} // 0) / $data->{total};
             }
 
+            # TODO: add support to the storage plugin system to allow returing different supported
+            # formats depending on the storage config instead, this is just a stop gap!
+            if (lc($data->{type}) eq 'lvm') {
+                $data->{format}[0]->{qcow2} = 0 if !$scfg->{'external-snapshots'};
+            }
+
             $res->{$storeid} = $data;
         }
 
