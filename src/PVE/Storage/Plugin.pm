@@ -2010,6 +2010,9 @@ sub volume_export {
     my ($class, $scfg, $storeid, $fh, $volname, $format, $snapshot, $base_snapshot, $with_snapshots)
         = @_;
 
+    die "cannot export volumes together with their snapshots in $class\n"
+        if $with_snapshots && $scfg->{'external-snapshots'};
+
     my $err_msg = "volume export format $format not available for $class\n";
     if ($scfg->{path} && !defined($snapshot) && !defined($base_snapshot)) {
         my ($file) = $class->path($scfg, $volname, $storeid) or die $err_msg;
