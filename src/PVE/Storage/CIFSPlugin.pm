@@ -168,7 +168,7 @@ sub options {
         bwlimit => { optional => 1 },
         preallocation => { optional => 1 },
         options => { optional => 1 },
-        'external-snapshots' => { optional => 1, fixed => 1 },
+        'snapshot-as-volume-chain' => { optional => 1, fixed => 1 },
     };
 }
 

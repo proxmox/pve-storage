@@ -223,7 +223,7 @@ __PACKAGE__->register_method({
             # TODO: add support to the storage plugin system to allow returing different supported
             # formats depending on the storage config instead, this is just a stop gap!
             if (lc($data->{type}) eq 'lvm') {
-                $data->{format}[0]->{qcow2} = 0 if !$scfg->{'external-snapshots'};
+                $data->{format}->[0]->{qcow2} = 0 if !$scfg->{'snapshot-as-volume-chain'};
             }
 
             $res->{$storeid} = $data;

@@ -399,7 +399,7 @@ sub options {
         base => { fixed => 1, optional => 1 },
         tagged_only => { optional => 1 },
         bwlimit => { optional => 1 },
-        'external-snapshots' => { optional => 1 },
+        'snapshot-as-volume-chain' => { optional => 1 },
     };
 }
 
@@ -604,9 +604,9 @@ my sub alloc_lvm_image {
 
     die "unsupported format '$fmt'" if $fmt ne 'raw' && $fmt ne 'qcow2';
 
-    die "external-snapshots option need to be enabled to use qcow2 format"
+    die "snapshot-as-volume-chain option need to be enabled to use qcow2 format"
         if $fmt eq 'qcow2'
-        && !$scfg->{'external-snapshots'};
+        && !$scfg->{'snapshot-as-volume-chain'};
 
     $class->parse_volname($name);
 

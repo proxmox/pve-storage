@@ -31,6 +31,17 @@ case "$1" in
                 fi
             done
         fi
+
+        # TODO: Can be dropped with some 9.x stable release, this was never in a publicly available
+        # package, so only for convenience for internal testing setups.
+        if dpkg --compare-versions "$2" 'lt' '9.0.5'; then
+            if grep -Pq '^\texternal-snapshots ' /etc/pve/storage.cfg; then
+                echo "Replacing old 'external-snapshots' with 'snapshot-as-volume-chain' in /etc/pve/storage.cfg"
+                sed -i 's/^\texternal-snapshots /\tsnapshot-as-volume-chain /' /etc/pve/storage.cfg || \
+                    echo "Failed to replace old 'external-snapshots' with 'snapshot-as-volume-chain' in /etc/pve/storage.cfg"
+            fi
+        fi
+
     fi
     ;;
 

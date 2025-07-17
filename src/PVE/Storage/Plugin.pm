@@ -228,9 +228,11 @@ my $defaultData = {
             maximum => 65535,
             optional => 1,
         },
-        'external-snapshots' => {
+        'snapshot-as-volume-chain' => {
             type => 'boolean',
-            description => 'Enable external snapshot.',
+            description => 'Enable support for creating storage-vendor agnostic snapshot'
+                . ' through volume backing-chains.',
+            default => 0,
             optional => 1,
         },
     },
@@ -792,7 +794,7 @@ sub filesystem_path {
 
     my ($vtype, $name, $vmid, undef, undef, $isBase, $format) = $class->parse_volname($volname);
     $name = get_snap_name($class, $volname, $snapname)
-        if $scfg->{'external-snapshots'} && $snapname;
+        if $scfg->{'snapshot-as-volume-chain'} && $snapname;
 
     # Note: qcow2/qed has internal snapshot, so path is always
     # the same (with or without snapshot => same file).
@@ -1055,13 +1057,13 @@ sub free_image {
         }
 
         my $snapshots = undef;
-        if ($scfg->{'external-snapshots'}) {
+        if ($scfg->{'snapshot-as-volume-chain'}) {
             $snapshots = $class->volume_snapshot_info($scfg, $storeid, $volname);
         }
         unlink($path) || die "unlink '$path' failed - $!\n";
 
-        #delete external snapshots
-        if ($scfg->{'external-snapshots'}) {
+        # delete snapshots using a volume backing chaing layered by qcow2
+        if ($scfg->{'snapshot-as-volume-chain'}) {
             for my $snapid (
                 sort { $snapshots->{$b}->{order} <=> $snapshots->{$a}->{order} }
                 keys %$snapshots
@@ -1274,7 +1276,7 @@ sub volume_resize {
 sub volume_snapshot {
     my ($class, $scfg, $storeid, $volname, $snap) = @_;
 
-    if ($scfg->{'external-snapshots'}) {
+    if ($scfg->{'snapshot-as-volume-chain'}) {
 
         die "can't snapshot this image format\n" if $volname !~ m/\.(qcow2)$/;
 
@@ -1311,7 +1313,7 @@ sub volume_snapshot {
 sub volume_rollback_is_possible {
     my ($class, $scfg, $storeid, $volname, $snap, $blockers) = @_;
 
-    return 1 if !$scfg->{'external-snapshots'};
+    return 1 if !$scfg->{'snapshot-as-volume-chain'};
 
     #technically, we could manage multibranch, we it need lot more work for snapshot delete
     #we need to implemente block-stream from deleted snapshot to all others child branchs
@@ -1348,7 +1350,7 @@ sub volume_snapshot_rollback {
 
     die "can't rollback snapshot this image format\n" if $volname !~ m/\.(qcow2|qed)$/;
 
-    if ($scfg->{'external-snapshots'}) {
+    if ($scfg->{'snapshot-as-volume-chain'}) {
         #simply delete the current snapshot and recreate it
         eval { free_snap_image($class, $storeid, $scfg, $volname, 'current') };
         if ($@) {
@@ -1375,7 +1377,7 @@ sub volume_snapshot_delete {
 
     my $cmd = "";
 
-    if ($scfg->{'external-snapshots'}) {
+    if ($scfg->{'snapshot-as-volume-chain'}) {
 
         #qemu has already live commit|stream the snapshot, therefore we only have to drop the image itself
         if ($running) {
@@ -2009,7 +2011,7 @@ sub volume_export {
         = @_;
 
     die "cannot export volumes together with their snapshots in $class\n"
-        if $with_snapshots && $scfg->{'external-snapshots'};
+        if $with_snapshots && $scfg->{'snapshot-as-volume-chain'};
 
     my $err_msg = "volume export format $format not available for $class\n";
     if ($scfg->{path} && !defined($snapshot) && !defined($base_snapshot)) {
@@ -2173,9 +2175,10 @@ sub rename_volume {
     die "not implemented in storage plugin '$class'\n" if $class->can('api') && $class->api() < 10;
     die "no path found\n" if !$scfg->{path};
 
-    if ($scfg->{'external-snapshots'}) {
+    if ($scfg->{'snapshot-as-volume-chain'}) {
         my $snapshots = $class->volume_snapshot_info($scfg, $storeid, $source_volname);
-        die "we can't rename volume if external snapshot exists" if $snapshots->{current}->{parent};
+        die "we can't rename volume if a snapshot backed by a volume-chain exists\n"
+            if $snapshots->{current}->{parent};
     }
 
     my (
@@ -2331,7 +2334,7 @@ sub qemu_blockdev_options {
         my $format = ($class->parse_volname($volname))[6];
         die "cannot attach only the snapshot of a '$format' image\n"
             if $options->{'snapshot-name'}
-            && ($format eq 'qcow2' && !$scfg->{'external-snapshots'} || $format eq 'qed');
+            && ($format eq 'qcow2' && !$scfg->{'snapshot-as-volume-chain'} || $format eq 'qed');
 
         # The 'file' driver only works for regular files. The check below is taken from
         # block/file-posix.c:hdev_probe_device() in QEMU. Do not bother with detecting 'host_cdrom'
