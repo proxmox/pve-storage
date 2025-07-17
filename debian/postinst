@@ -6,31 +6,8 @@ set -e
 
 case "$1" in
   configure)
-    if test -n "$2"; then
 
-        # TODO: remove once PVE 8.0 is released
-        if dpkg --compare-versions "$2" 'lt' '7.0-3'; then
-            warning="Warning: failed to move old CIFS credential file, cluster not quorate?"
-            for file in /etc/pve/priv/*.cred; do
-                if [ -f "$file" ]; then
-                    echo "Info: found CIFS credentials using old path: $file" >&2
-                    mkdir -p "/etc/pve/priv/storage" || { echo "$warning" && continue; }
-                    base=$(basename --suffix=".cred" "$file")
-                    target="/etc/pve/priv/storage/$base.pw"
-                    if [ -f "$target" ]; then
-                        if diff "$file" "$target" >&2 > /dev/null; then
-                            echo "Info: removing $file, because it is identical to $target" >&2
-                            rm "$file" || { echo "$warning" && continue; }
-                        else
-                            echo "Warning: not renaming $file, because $target already exists and differs!" >&2
-                        fi
-                    else
-                        echo "Info: renaming $file to $target" >&2
-                        mv "$file" "$target" || { echo "$warning" && continue; }
-                    fi
-                fi
-            done
-        fi
+    if test -n "$2"; then # got old version so this is an update
 
         # TODO: Can be dropped with some 9.x stable release, this was never in a publicly available
         # package, so only for convenience for internal testing setups.
