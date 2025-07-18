@@ -752,11 +752,17 @@ sub list_images {
                 next if defined($vmid) && ($owner ne $vmid);
             }
 
+            my $format = ($class->parse_volname($volname))[6];
+            my $size =
+                $format eq 'qcow2'
+                ? $class->volume_size_info($scfg, $storeid, $volname)
+                : $info->{lv_size};
+
             push @$res,
                 {
                     volid => $volid,
-                    format => 'raw',
-                    size => $info->{lv_size},
+                    format => $format,
+                    size => $size,
                     vmid => $owner,
                     ctime => $info->{ctime},
                 };
