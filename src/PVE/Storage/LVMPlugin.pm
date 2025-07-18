@@ -930,7 +930,11 @@ sub volume_resize {
 
 sub volume_size_info {
     my ($class, $scfg, $storeid, $volname, $timeout) = @_;
+
+    my ($format) = ($class->parse_volname($volname))[6];
     my $path = $class->filesystem_path($scfg, $volname);
+
+    return PVE::Storage::Plugin::file_size_info($path, $timeout, $format) if $format eq 'qcow2';
 
     my $cmd = [
         '/sbin/lvs',
