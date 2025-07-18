@@ -1,3 +1,11 @@
+libpve-storage-perl (9.0.6) trixie; urgency=medium
+
+  * lvm plugin: properly handle qcow2 format when querying volume size info.
+
+  * lvm plugin: list images: properly handle qcow2 format.
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 18 Jul 2025 14:28:53 +0200
+
 libpve-storage-perl (9.0.5) trixie; urgency=medium
 
   * config: rename external-snapshots option to snapshot-as-volume-chain.
