@@ -2438,9 +2438,9 @@ sub new_backup_provider {
 Returns a string with the type of snapshot that qemu can do for a specific volume
 
 'qemu'    : Qemu must perform the snapshot. The storage plugin does nothing.
-'mixed'   : The storage plugin *transparently* performs the snapshot and the running VM does not
+'storage' : The storage plugin *transparently* performs the snapshot and the running VM does not
             need to do anything.
-'storage' : The storage performs an offline snapshot and qemu then has to reopen the volume.
+'mixed'   : The storage performs an offline snapshot and qemu then has to reopen the volume.
             Qemu will either "unhook" the snapshot by moving its data into the child snapshot
             or Qemu will "commit" the child snapshot to the one which is being removed. Both must
             be supported.
