@@ -249,27 +249,6 @@ sub lock_storage_config {
     }
 }
 
-# FIXME remove maxfiles for PVE 8.0 or PVE 9.0
-my $convert_maxfiles_to_prune_backups = sub {
-    my ($scfg) = @_;
-
-    return if !$scfg;
-
-    my $maxfiles = delete $scfg->{maxfiles};
-
-    if (!defined($scfg->{'prune-backups'}) && defined($maxfiles)) {
-        my $prune_backups;
-        if ($maxfiles) {
-            $prune_backups = { 'keep-last' => $maxfiles };
-        } else { # maxfiles 0 means no limit
-            $prune_backups = { 'keep-all' => 1 };
-        }
-        $scfg->{'prune-backups'} = PVE::JSONSchema::print_property_string(
-            $prune_backups, 'prune-backups',
-        );
-    }
-};
-
 sub storage_config {
     my ($cfg, $storeid, $noerr) = @_;
 
@@ -278,8 +257,6 @@ sub storage_config {
     my $scfg = $cfg->{ids}->{$storeid};
 
     die "storage '$storeid' does not exist\n" if (!$noerr && !$scfg);
-
-    $convert_maxfiles_to_prune_backups->($scfg);
 
     return $scfg;
 }

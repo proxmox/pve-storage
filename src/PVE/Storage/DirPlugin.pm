@@ -84,7 +84,6 @@ sub options {
         nodes => { optional => 1 },
         shared => { optional => 1 },
         disable => { optional => 1 },
-        maxfiles => { optional => 1 },
         'prune-backups' => { optional => 1 },
         'max-protected-backups' => { optional => 1 },
         content => { optional => 1 },

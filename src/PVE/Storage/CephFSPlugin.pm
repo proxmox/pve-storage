@@ -153,7 +153,6 @@ sub options {
         'create-subdirs' => { optional => 1 },
         fuse => { optional => 1 },
         bwlimit => { optional => 1 },
-        maxfiles => { optional => 1 },
         keyring => { optional => 1 },
         'prune-backups' => { optional => 1 },
         'max-protected-backups' => { optional => 1 },

@@ -159,13 +159,6 @@ my $defaultData = {
             type => 'boolean',
             optional => 1,
         },
-        maxfiles => {
-            description => "Deprecated: use 'prune-backups' instead. "
-                . "Maximal number of backup files per VM. Use '0' for unlimited.",
-            type => 'integer',
-            minimum => 0,
-            optional => 1,
-        },
         'prune-backups' => get_standard_option('prune-backups'),
         'max-protected-backups' => {
             description =>

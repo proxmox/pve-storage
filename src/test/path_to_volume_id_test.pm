@@ -22,7 +22,6 @@ my $scfg = {
             'shared' => 0,
             'path' => "$storage_dir",
             'type' => 'dir',
-            'maxfiles' => 0,
             'content' => {
                 'snippets' => 1,
                 'rootdir' => 1,

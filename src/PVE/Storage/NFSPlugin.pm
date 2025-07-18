@@ -93,7 +93,6 @@ sub options {
         export => { fixed => 1 },
         nodes => { optional => 1 },
         disable => { optional => 1 },
-        maxfiles => { optional => 1 },
         'prune-backups' => { optional => 1 },
         'max-protected-backups' => { optional => 1 },
         options => { optional => 1 },

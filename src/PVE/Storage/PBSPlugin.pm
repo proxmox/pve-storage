@@ -73,7 +73,6 @@ sub options {
         password => { optional => 1 },
         'encryption-key' => { optional => 1 },
         'master-pubkey' => { optional => 1 },
-        maxfiles => { optional => 1 },
         'prune-backups' => { optional => 1 },
         'max-protected-backups' => { optional => 1 },
         fingerprint => { optional => 1 },

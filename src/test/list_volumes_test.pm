@@ -63,7 +63,6 @@ my $mocked_vmlist = {
 my $storage_dir = File::Temp->newdir();
 my $scfg = {
     'type' => 'dir',
-    'maxfiles' => 0,
     'path' => $storage_dir,
     'shared' => 0,
     'content' => {
