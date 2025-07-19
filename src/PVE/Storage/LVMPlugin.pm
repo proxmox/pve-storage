@@ -514,7 +514,7 @@ sub find_free_diskname {
 
     my $disk_list = [keys %{ $lvs->{$vg} }];
 
-    $add_fmt_suffix = $fmt eq 'qcow2' ? 1 : undef;
+    $add_fmt_suffix = $fmt && $fmt eq 'qcow2' ? 1 : undef;
 
     return PVE::Storage::Plugin::get_next_vm_diskname(
         $disk_list, $storeid, $vmid, $fmt, $scfg, $add_fmt_suffix,
