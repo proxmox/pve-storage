@@ -1675,10 +1675,7 @@ sub storage_default_format {
     my $scfg = storage_config($cfg, $storeid);
     my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
 
-    my $formats = $plugin->get_formats($scfg, $storeid);
-
-    return
-        wantarray ? ($formats->{default}, [sort keys $formats->{valid}->%*]) : $formats->{default};
+    return $plugin->get_formats($scfg, $storeid)->{default};
 }
 
 sub resolve_format_hint {
