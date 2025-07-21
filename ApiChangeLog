@@ -49,6 +49,14 @@ Future changes should be documented in here.
       NOTE: Storages must support using "current" as a special name in `rename_snapshot()` to
       cheaply convert a snapshot into the current disk state and back.
 
+* Introduce `get_formats()` plugin method
+
+  Get information about the supported formats and default format according to the current storage
+  configuration. The default implemenation is backwards-compatible with previous behavior and looks
+  at the definition given in the plugin data, as well as the `format` storage configuration option,
+  which can override the default format. Must be implemented when the supported formats or default
+  format depend on the storage configuration.
+
 ##  Version 11:
 
 * Allow declaring storage features via plugin data

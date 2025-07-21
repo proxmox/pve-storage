@@ -287,23 +287,6 @@ sub storage_has_feature {
     return;
 }
 
-sub default_format {
-    my ($scfg) = @_;
-
-    my $type = $scfg->{type};
-    my $def = $defaultData->{plugindata}->{$type};
-
-    my $def_format = 'raw';
-    my $valid_formats = [$def_format];
-
-    if (defined($def->{format})) {
-        $def_format = $scfg->{format} || $def->{format}->[1];
-        $valid_formats = [sort keys %{ $def->{format}->[0] }];
-    }
-
-    return wantarray ? ($def_format, $valid_formats) : $def_format;
-}
-
 PVE::JSONSchema::register_format('pve-storage-path', \&verify_path);
 
 sub verify_path {
@@ -639,6 +622,42 @@ sub preallocation_cmd_opt {
 }
 
 # Storage implementation
+
+=head3 get_formats
+
+    my $formats = $plugin->get_formats($scfg, $storeid);
+    my $default_format = $formats->{default};
+    my $is_valid = !!$formats->{valid}->{$format};
+
+Get information about the supported formats and default format according to the current storage
+configuration C<$scfg>. The return value is a hash reference with C<default> mapping to the default
+format and C<valid> mapping to a hash reference, where each supported format is present as a key
+mapping to C<1>. For example:
+
+    {
+        default => 'raw',
+        valid => {
+            'qcow2 => 1,
+            'raw' => 1,
+        },
+    }
+
+=cut
+
+sub get_formats {
+    my ($class, $scfg, $storeid) = @_;
+
+    my $type = $scfg->{type};
+    my $plugin_data = $defaultData->{plugindata}->{$type};
+
+    return { default => 'raw', valid => { raw => 1 } } if !defined($plugin_data->{format});
+
+    return {
+        default => $scfg->{format} || $plugin_data->{format}->[1],
+        # copy rather than passing direct reference
+        valid => { $plugin_data->{format}->[0]->%* },
+    };
+}
 
 # called during addition of storage (before the new storage config got written)
 # die to abort addition if there are (grave) problems
@@ -1526,8 +1545,8 @@ sub list_images {
 
     my $imagedir = $class->get_subdir($scfg, 'images');
 
-    my ($defFmt, $vaidFmts) = default_format($scfg);
-    my $fmts = join('|', @$vaidFmts);
+    my $format_info = $class->get_formats($scfg, $storeid);
+    my $fmts = join('|', sort keys $format_info->{valid}->%*);
 
     my $res = [];
 

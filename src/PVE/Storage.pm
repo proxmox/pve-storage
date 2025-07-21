@@ -857,10 +857,11 @@ my $volname_for_storage = sub {
 
     my $scfg = storage_config($cfg, $storeid);
 
-    my (undef, $valid_formats) = PVE::Storage::Plugin::default_format($scfg);
-    my $format_is_valid = grep { $_ eq $format } @$valid_formats;
+    my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
+
+    my $formats = $plugin->get_formats($scfg, $storeid);
     die "unsupported format '$format' for storage type $scfg->{type}\n"
-        if !$format_is_valid;
+        if !$formats->{valid}->{$format};
 
     (my $name_without_extension = $name) =~ s/\.$format$//;
 
@@ -1184,13 +1185,11 @@ sub vdisk_alloc {
 
     $vmid = parse_vmid($vmid);
 
-    my $defformat = PVE::Storage::Plugin::default_format($scfg);
+    my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
 
-    $fmt = $defformat if !$fmt;
+    $fmt = $plugin->get_formats($scfg, $storeid)->{default} if !$fmt;
 
     activate_storage($cfg, $storeid);
-
-    my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
 
     # lock shared storage
     return $plugin->cluster_lock_storage(
@@ -1673,8 +1672,12 @@ sub storage_default_format {
     my ($cfg, $storeid) = @_;
 
     my $scfg = storage_config($cfg, $storeid);
+    my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
 
-    return PVE::Storage::Plugin::default_format($scfg);
+    my $formats = $plugin->get_formats($scfg, $storeid);
+
+    return
+        wantarray ? ($formats->{default}, [sort keys $formats->{valid}->%*]) : $formats->{default};
 }
 
 sub vgroup_is_used {
