@@ -1511,9 +1511,10 @@ sub storage_info {
 
         my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
         if ($includeformat) {
+            my $formats = $plugin->get_formats($scfg, $storeid);
+            $info->{$storeid}->{format} = [$formats->{valid}, $formats->{default}];
+
             my $pd = $plugin->plugindata();
-            $info->{$storeid}->{format} = $pd->{format}
-                if $pd->{format};
             $info->{$storeid}->{select_existing} = $pd->{select_existing}
                 if $pd->{select_existing};
         }
