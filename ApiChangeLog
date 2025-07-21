@@ -22,12 +22,15 @@ Future changes should be documented in here.
   Feel free to request allowing more drivers or options on the pve-devel mailing list based on your
   needs.
 
-* Introduce rename_snapshot() plugin method
-    This method allow to rename a vm disk snapshot name to a different snapshot name.
+* Introduce `rename_snapshot()` plugin method
 
-* Introduce volume_qemu_snapshot_method() plugin method
-    This method declares how snapshots should be handled for *running* VMs.
-    This should return one of the following:
+  This method allow to rename a vm disk snapshot name to a different snapshot name.
+
+* Introduce `volume_qemu_snapshot_method()` plugin method
+
+  This method declares how snapshots should be handled for *running* VMs.
+
+  This should return one of the following:
     'qemu':
       Qemu must perform the snapshot. The storage plugin does nothing.
     'storage':
@@ -46,7 +49,6 @@ Future changes should be documented in here.
       NOTE: Storages must support using "current" as a special name in `rename_snapshot()` to
       cheaply convert a snapshot into the current disk state and back.
 
-
 ##  Version 11:
 
 * Allow declaring storage features via plugin data
@@ -56,7 +58,7 @@ Future changes should be documented in here.
   `backup-provider`, see below for more details. To declare support for this feature, return
   `features => { 'backup-provider' => 1 }` as part of the plugin data.
 
-* Introduce new_backup_provider() plugin method
+* Introduce `new_backup_provider()` plugin method
 
   Proxmox VE now supports a `Backup Provider API` that can be used to implement custom backup
   solutions tightly integrated in the Proxmox VE stack. See the `PVE::BackupProvider::Plugin::Base`
