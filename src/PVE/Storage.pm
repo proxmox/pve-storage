@@ -1681,6 +1681,17 @@ sub storage_default_format {
         wantarray ? ($formats->{default}, [sort keys $formats->{valid}->%*]) : $formats->{default};
 }
 
+sub resolve_format_hint {
+    my ($cfg, $storeid, $format_hint) = @_;
+
+    my $scfg = storage_config($cfg, $storeid);
+    my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
+
+    my $formats = $plugin->get_formats($scfg, $storeid);
+    return $format_hint if $format_hint && $formats->{valid}->{$format_hint};
+    return $formats->{default};
+}
+
 sub vgroup_is_used {
     my ($cfg, $vgname) = @_;
 
