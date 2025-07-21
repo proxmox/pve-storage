@@ -405,6 +405,16 @@ sub options {
 
 # Storage implementation
 
+sub get_formats {
+    my ($class, $scfg, $storeid) = @_;
+
+    if ($scfg->{'snapshot-as-volume-chain'}) {
+        return { default => 'qcow2', valid => { 'qcow2' => 1, 'raw' => 1, } };
+    }
+
+    return { default => 'raw', valid => { 'raw' => 1 } };
+}
+
 sub on_add_hook {
     my ($class, $storeid, $scfg, %param) = @_;
 
