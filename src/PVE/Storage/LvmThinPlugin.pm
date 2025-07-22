@@ -363,6 +363,12 @@ sub volume_snapshot {
     # disabling autoactivation not needed, as -s defaults to --setautoactivationskip y
 }
 
+sub volume_rollback_is_possible {
+    my ($class, $scfg, $storeid, $volname, $snap, $blockers) = @_;
+
+    return 1;
+}
+
 sub volume_snapshot_rollback {
     my ($class, $scfg, $storeid, $volname, $snap) = @_;
 
