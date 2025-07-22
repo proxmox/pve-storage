@@ -409,7 +409,7 @@ sub get_formats {
     my ($class, $scfg, $storeid) = @_;
 
     if ($scfg->{'snapshot-as-volume-chain'}) {
-        return { default => 'qcow2', valid => { 'qcow2' => 1, 'raw' => 1, } };
+        return { default => 'qcow2', valid => { 'qcow2' => 1, 'raw' => 1 } };
     }
 
     return { default => 'raw', valid => { 'raw' => 1 } };
