@@ -1,3 +1,21 @@
+libpve-storage-perl (9.0.7) trixie; urgency=medium
+
+  * fix #6553: lvmthin: implement volume_rollback_is_possible sub
+
+  * plugin: add get_formats() method and use it instead of default_format()
+
+  * lvm plugin: implement get_formats() method
+
+  * lvm plugin: check if 'fmt' parameter is defined before comparisons
+
+  * api: status: rely on get_formats() method for determining format-related info
+
+  * introduce resolve_format_hint() helper
+
+  * improve api change log style
+
+ -- Proxmox Support Team <support@proxmox.com>  Tue, 22 Jul 2025 15:01:49 +0200
+
 libpve-storage-perl (9.0.6) trixie; urgency=medium
 
   * lvm plugin: properly handle qcow2 format when querying volume size info.
