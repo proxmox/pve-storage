@@ -708,6 +708,14 @@ sub cluster_lock_storage {
     return $res;
 }
 
+my sub parse_snap_name {
+    my ($name) = @_;
+
+    if ($name =~ m/^snap-(.*)-vm(.*)$/) {
+        return $1;
+    }
+}
+
 sub parse_name_dir {
     my $name = shift;
 
@@ -798,14 +806,6 @@ my sub get_snap_name {
         $class->parse_volname($volname);
     $name = $snapname eq 'current' ? $name : "snap-$snapname-$name";
     return $name;
-}
-
-my sub parse_snap_name {
-    my ($name) = @_;
-
-    if ($name =~ m/^snap-(.*)-vm(.*)$/) {
-        return $1;
-    }
 }
 
 sub filesystem_path {
