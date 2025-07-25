@@ -1789,6 +1789,7 @@ sub volume_snapshot_info {
         my $snapshots = $json_decode;
         for my $snap (@$snapshots) {
             my $snapfile = $snap->{filename};
+            ($snapfile) = $snapfile =~ m|^(/.*)|; # untaint
             my $snapname = $get_snapname_from_path->($volname, $snapfile);
             #not a proxmox snapshot
             next if !$snapname;
