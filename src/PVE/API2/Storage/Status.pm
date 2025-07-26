@@ -415,11 +415,10 @@ __PACKAGE__->register_method({
     code => sub {
         my ($param) = @_;
 
-        return PVE::RRD::create_rrd_data(
-            "pve2-storage/$param->{node}/$param->{storage}",
-            $param->{timeframe},
-            $param->{cf},
-        );
+        my $path = "pve-storage-9.0/$param->{node}/$param->{storage}";
+        $path = "pve2-storage/$param->{node}/$param->{storage}"
+            if !-e "/var/lib/rrdcached/db/${path}";
+        return PVE::RRD::create_rrd_data($path, $param->{timeframe}, $param->{cf});
     },
 });
 
