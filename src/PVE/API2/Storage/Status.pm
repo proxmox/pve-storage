@@ -365,8 +365,10 @@ __PACKAGE__->register_method({
     code => sub {
         my ($param) = @_;
 
-        return PVE::RRD::create_rrd_graph("pve2-storage/$param->{node}/$param->{storage}",
-            $param->{timeframe}, $param->{ds}, $param->{cf});
+        return PVE::RRD::create_rrd_graph(
+            "pve2-storage/$param->{node}/$param->{storage}",
+            $param->{timeframe}, $param->{ds}, $param->{cf},
+        );
     },
 });
 
