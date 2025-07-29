@@ -746,8 +746,6 @@ sub parse_volname {
         return ('iso', $1, undef, undef, undef, undef, 'raw');
     } elsif ($volname =~ m!^vztmpl/([^/]+$PVE::Storage::VZTMPL_EXT_RE_1)$!) {
         return ('vztmpl', $1, undef, undef, undef, undef, 'raw');
-    } elsif ($volname =~ m!^rootdir/(\d+)$!) {
-        return ('rootdir', $1, $1);
     } elsif ($volname =~ m!^backup/([^/]+$PVE::Storage::BACKUP_EXT_RE_2)$!) {
         my $fn = $1;
         if ($fn =~ m/^vzdump-(openvz|lxc|qemu)-(\d+)-.+/) {
