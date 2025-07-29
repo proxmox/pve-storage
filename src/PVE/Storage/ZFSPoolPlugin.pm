@@ -482,9 +482,25 @@ sub volume_size_info {
 sub volume_snapshot {
     my ($class, $scfg, $storeid, $volname, $snap) = @_;
 
-    my $vname = ($class->parse_volname($volname))[1];
+    my (undef, $vname, undef, undef, undef, undef, $format) = $class->parse_volname($volname);
+    my $snapshot_name = "$scfg->{pool}/$vname\@$snap";
 
-    $class->zfs_request($scfg, undef, 'snapshot', "$scfg->{pool}/$vname\@$snap");
+    $class->zfs_request($scfg, undef, 'snapshot', $snapshot_name);
+
+    # if this is a subvol, track refquota information via user properties. zfs
+    # does not track this property for snapshosts and consequently does not roll
+    # it back. so track this information manually.
+    if ($format eq 'subvol') {
+        my $refquota = $class->zfs_get_properties($scfg, 'refquota', "$scfg->{pool}/$vname");
+
+        $class->zfs_request(
+            $scfg,
+            undef,
+            'set',
+            "pve-storage:refquota=${refquota}",
+            $snapshot_name,
+        );
+    }
 }
 
 sub volume_snapshot_delete {
@@ -500,8 +516,24 @@ sub volume_snapshot_rollback {
     my ($class, $scfg, $storeid, $volname, $snap) = @_;
 
     my (undef, $vname, undef, undef, undef, undef, $format) = $class->parse_volname($volname);
+    my $snapshot_name = "$scfg->{pool}/$vname\@$snap";
 
-    my $msg = $class->zfs_request($scfg, undef, 'rollback', "$scfg->{pool}/$vname\@$snap");
+    my $msg = $class->zfs_request($scfg, undef, 'rollback', $snapshot_name);
+
+    # if this is a subvol, check if we tracked the refquota manually via user
+    # properties and if so, set it appropriatelly again.
+    if ($format eq 'subvol') {
+        my $refquota = $class->zfs_get_properties($scfg, 'pve-storage:refquota', $snapshot_name);
+
+        if ($refquota =~ m/^\d+$/) {
+            $class->zfs_request(
+                $scfg, undef, 'set', "refquota=${refquota}", "$scfg->{pool}/$vname",
+            );
+        } elsif ($refquota ne "-") {
+            # refquota user property was set, but not a number -> warn
+            warn "property for refquota tracking contained unknown value '$refquota'\n";
+        }
+    }
 
     # we have to unmount rollbacked subvols, to invalidate wrong kernel
     # caches, they get mounted in activate volume again
