@@ -1117,14 +1117,14 @@ sub volume_snapshot_delete {
 
     } else {
         #we rebase the child image on the parent as new backing image
-        my $parentpath = $snapshots->{$parentsnap}->{file};
         print
             "$volname: deleting snapshot '$snap' by rebasing '$childsnap' on top of '$parentsnap'\n";
+        my $rel_parent_path = get_snap_name($class, $volname, $parentsnap);
         $cmd = [
             '/usr/bin/qemu-img',
             'rebase',
             '-b',
-            $parentpath,
+            $rel_parent_path,
             '-F',
             'qcow2',
             '-f',
