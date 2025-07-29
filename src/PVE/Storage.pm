@@ -743,7 +743,7 @@ sub path_to_volume_id {
         my $snippetsdir = $plugin->get_subdir($scfg, 'snippets');
         my $importdir = $plugin->get_subdir($scfg, 'import');
 
-        if ($path =~ m!^$imagedir/(\d+)/([^/\s]+)$!) {
+        if ($path =~ m!^\Q$imagedir\E/(\d+)/([^/\s]+)$!) {
             my $vmid = $1;
             my $name = $2;
 
@@ -755,19 +755,19 @@ sub path_to_volume_id {
                     return ('images', $info->{volid});
                 }
             }
-        } elsif ($path =~ m!^$isodir/([^/]+$ISO_EXT_RE_0)$!) {
+        } elsif ($path =~ m!^\Q$isodir\E/([^/]+$ISO_EXT_RE_0)$!) {
             my $name = $1;
             return ('iso', "$sid:iso/$name");
-        } elsif ($path =~ m!^$tmpldir/([^/]+$VZTMPL_EXT_RE_1)$!) {
+        } elsif ($path =~ m!^\Q$tmpldir\E/([^/]+$VZTMPL_EXT_RE_1)$!) {
             my $name = $1;
             return ('vztmpl', "$sid:vztmpl/$name");
-        } elsif ($path =~ m!^$backupdir/([^/]+$BACKUP_EXT_RE_2)$!) {
+        } elsif ($path =~ m!^\Q$backupdir\E/([^/]+$BACKUP_EXT_RE_2)$!) {
             my $name = $1;
             return ('backup', "$sid:backup/$name");
-        } elsif ($path =~ m!^$snippetsdir/([^/]+)$!) {
+        } elsif ($path =~ m!^\Q$snippetsdir\E/([^/]+)$!) {
             my $name = $1;
             return ('snippets', "$sid:snippets/$name");
-        } elsif ($path =~ m!^$importdir/(${SAFE_CHAR_CLASS_RE}+${IMPORT_EXT_RE_1})$!) {
+        } elsif ($path =~ m!^\Q$importdir\E/(${SAFE_CHAR_CLASS_RE}+${IMPORT_EXT_RE_1})$!) {
             my $name = $1;
             return ('import', "$sid:import/$name");
         }
