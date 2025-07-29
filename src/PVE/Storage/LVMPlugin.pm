@@ -1120,7 +1120,6 @@ sub volume_snapshot_delete {
         my $parentpath = $snapshots->{$parentsnap}->{file};
         print
             "$volname: deleting snapshot '$snap' by rebasing '$childsnap' on top of '$parentsnap'\n";
-        print "running 'qemu-img rebase -b $parentpath -F qcow -f qcow2 $childpath'\n";
         $cmd = [
             '/usr/bin/qemu-img',
             'rebase',
@@ -1132,6 +1131,7 @@ sub volume_snapshot_delete {
             'qcow2',
             $childpath,
         ];
+        print "running '" . join(' ', $cmd->@*) . "'\n";
         eval { run_command($cmd) };
         if ($@) {
             #in case of abort, the state of the snap is still clean, just a little bit bigger
