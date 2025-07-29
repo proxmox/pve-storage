@@ -1,7 +1,6 @@
 package PVE::Storage::Common;
 
-use strict;
-use warnings;
+use v5.36;
 
 use PVE::JSONSchema;
 use PVE::Syscall;
