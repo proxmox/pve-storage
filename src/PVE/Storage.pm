@@ -740,7 +740,6 @@ sub path_to_volume_id {
         my $isodir = $plugin->get_subdir($scfg, 'iso');
         my $tmpldir = $plugin->get_subdir($scfg, 'vztmpl');
         my $backupdir = $plugin->get_subdir($scfg, 'backup');
-        my $privatedir = $plugin->get_subdir($scfg, 'rootdir');
         my $snippetsdir = $plugin->get_subdir($scfg, 'snippets');
         my $importdir = $plugin->get_subdir($scfg, 'import');
 
@@ -762,9 +761,6 @@ sub path_to_volume_id {
         } elsif ($path =~ m!^$tmpldir/([^/]+$VZTMPL_EXT_RE_1)$!) {
             my $name = $1;
             return ('vztmpl', "$sid:vztmpl/$name");
-        } elsif ($path =~ m!^$privatedir/(\d+)$!) {
-            my $vmid = $1;
-            return ('rootdir', "$sid:rootdir/$vmid");
         } elsif ($path =~ m!^$backupdir/([^/]+$BACKUP_EXT_RE_2)$!) {
             my $name = $1;
             return ('backup', "$sid:backup/$name");
