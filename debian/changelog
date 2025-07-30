@@ -1,3 +1,14 @@
+libpve-storage-perl (9.0.9) trixie; urgency=medium
+
+  * fix #5181: pbs: store and read passwords as unicode.
+
+  * fix #6587: lvm plugin: snapshot info: fix parsing snapshot name.
+
+  * config: drop 'maxfiles' parameter, it was replaced with the more flexible
+    prune options in Proxmox VE 7.0 already.
+
+ -- Proxmox Support Team <support@proxmox.com>  Wed, 30 Jul 2025 19:51:07 +0200
+
 libpve-storage-perl (9.0.8) trixie; urgency=medium
 
   * snapshot-as-volume-chain: fix offline removal of snapshot on directory
