@@ -800,7 +800,7 @@ sub volume_snapshot_info {
     my ($class, $scfg, $storeid, $volname) = @_;
 
     my $get_snapname_from_path = sub {
-        my ($volname, $path) = @_;
+        my ($path) = @_;
 
         my $name = basename($path);
         if (my $snapname = parse_snap_name($name)) {
@@ -829,7 +829,7 @@ sub volume_snapshot_info {
     my $snapshots = $json_decode;
     for my $snap (@$snapshots) {
         my $snapfile = $snap->{filename};
-        my $snapname = $get_snapname_from_path->($volname, $snapfile);
+        my $snapname = $get_snapname_from_path->($snapfile);
         #not a proxmox snapshot
         next if !$snapname;
 
@@ -842,7 +842,7 @@ sub volume_snapshot_info {
 
         my $parentfile = $snap->{'backing-filename'};
         if ($parentfile) {
-            my $parentname = $get_snapname_from_path->($volname, $parentfile);
+            my $parentname = $get_snapname_from_path->($parentfile);
             $info->{$snapname}->{parent} = $parentname;
             $info->{$parentname}->{child} = $snapname;
         }
