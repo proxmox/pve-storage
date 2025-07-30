@@ -470,9 +470,11 @@ my sub get_snap_name {
 }
 
 my sub parse_snap_name {
-    my ($name) = @_;
+    my ($name, $short_volname) = @_;
 
-    if ($name =~ m/^snap_\S+_(.*)\.qcow2$/) {
+    $short_volname =~ s/\.(qcow2)$//;
+
+    if ($name =~ m/^snap_\Q$short_volname\E_(.*)\.qcow2$/) {
         return $1;
     }
 }
@@ -799,11 +801,13 @@ sub status {
 sub volume_snapshot_info {
     my ($class, $scfg, $storeid, $volname) = @_;
 
+    my $short_volname = ($class->parse_volname($volname))[1];
+
     my $get_snapname_from_path = sub {
         my ($path) = @_;
 
         my $name = basename($path);
-        if (my $snapname = parse_snap_name($name)) {
+        if (my $snapname = parse_snap_name($name, $short_volname)) {
             return $snapname;
         } elsif ($name eq $volname) {
             return 'current';
@@ -812,8 +816,6 @@ sub volume_snapshot_info {
     };
 
     my $path = $class->filesystem_path($scfg, $volname);
-    my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $format) =
-        $class->parse_volname($volname);
 
     my $json = PVE::Storage::Common::qemu_img_info($path, undef, 10, 1);
     die "failed to query file information with qemu-img\n" if !$json;
