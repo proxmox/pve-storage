@@ -991,7 +991,7 @@ sub volume_snapshot {
 
     #rename current volume to snap volume
     eval { $class->rename_snapshot($scfg, $storeid, $volname, 'current', $snap) };
-    die "error rename $volname to $snap\n" if $@;
+    die "error rename $volname to $snap - $@\n" if $@;
 
     eval { alloc_snap_image($class, $storeid, $scfg, $volname, $snap) };
     if ($@) {
