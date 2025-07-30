@@ -5,6 +5,7 @@ package PVE::Storage::PBSPlugin;
 use strict;
 use warnings;
 
+use Encode qw(decode);
 use Fcntl qw(F_GETFD F_SETFD FD_CLOEXEC);
 use IO::File;
 use JSON;
@@ -93,7 +94,7 @@ sub pbs_set_password {
     my $pwfile = pbs_password_file_name($scfg, $storeid);
     mkdir "/etc/pve/priv/storage";
 
-    PVE::Tools::file_set_contents($pwfile, "$password\n");
+    PVE::Tools::file_set_contents($pwfile, "$password\n", 0600, 1);
 }
 
 sub pbs_delete_password {
@@ -109,7 +110,9 @@ sub pbs_get_password {
 
     my $pwfile = pbs_password_file_name($scfg, $storeid);
 
-    return PVE::Tools::file_read_firstline($pwfile);
+    my $contents = PVE::Tools::file_read_firstline($pwfile);
+
+    return eval { decode('UTF-8', $contents, 1) } // $contents;
 }
 
 sub pbs_encryption_key_file_name {
