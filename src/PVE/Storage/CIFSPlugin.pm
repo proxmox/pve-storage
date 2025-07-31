@@ -331,4 +331,8 @@ sub get_import_metadata {
     return PVE::Storage::DirPlugin::get_import_metadata(@_);
 }
 
+sub volume_qemu_snapshot_method {
+    return PVE::Storage::DirPlugin::volume_qemu_snapshot_method(@_);
+}
+
 1;
