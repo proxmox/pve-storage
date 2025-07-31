@@ -1555,6 +1555,10 @@ sub list_images {
 
         next if !$vollist && defined($vmid) && ($owner ne $vmid);
 
+        # skip files that are snapshots or have invalid names
+        my ($parsed_name) = eval { parse_name_dir(basename($fn)) };
+        next if !defined($parsed_name);
+
         my ($size, undef, $used, $parent, $ctime) = eval { file_size_info($fn, undef, $format); };
         if (my $err = $@) {
             die $err if $err !~ m/Image is not in \S+ format$/;
