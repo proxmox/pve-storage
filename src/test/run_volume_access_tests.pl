@@ -43,8 +43,8 @@ acl:1:/vms/111:vmuser@pve:vmuser:
 acl:1:/storage/dir:vmuser@pve:vmuser:
 EOF
 
-my @users = qw(root@pam noperm@pve otherstorage@pve dsallocate@pve dsaudit@pve backup@pve vmuser@pve);
-
+my @users =
+    qw(root@pam noperm@pve otherstorage@pve dsallocate@pve dsaudit@pve backup@pve vmuser@pve);
 
 my $pve_cluster_module;
 $pve_cluster_module = Test::MockModule->new('PVE::Cluster');
@@ -91,16 +91,14 @@ my @tests = (
     },
     {
         volid => 'dir:vztmpl/alpine-3.22-default_20250617_amd64.tar.xz',
-        denied_users => {
-        },
+        denied_users => {},
         allowed_types => {
             'vztmpl' => 1,
         },
     },
     {
         volid => 'dir:iso/virtio-win-0.1.271.iso',
-        denied_users => {
-        },
+        denied_users => {},
         allowed_types => {
             'iso' => 1,
         },
@@ -227,9 +225,7 @@ for my $t (@tests) {
 
         my $actual_denied;
 
-        eval {
-            PVE::Storage::check_volume_access($rpcenv, $user, $cfg, $vmid, $volid, undef);
-        };
+        eval { PVE::Storage::check_volume_access($rpcenv, $user, $cfg, $vmid, $volid, undef); };
         if (my $err = $@) {
             $actual_denied = 1;
             note($@) if !$expected_denied_users->{$user} # log the error for easy analysis
@@ -246,9 +242,7 @@ for my $t (@tests) {
 
         my $actual_allowed = 1;
 
-        eval {
-            PVE::Storage::check_volume_access($rpcenv, $user, $cfg, $vmid, $volid, $type);
-        };
+        eval { PVE::Storage::check_volume_access($rpcenv, $user, $cfg, $vmid, $volid, $type); };
         if (my $err = $@) {
             $actual_allowed = undef;
             note($@) if $expected_allowed_types->{$type} # log the error for easy analysis
