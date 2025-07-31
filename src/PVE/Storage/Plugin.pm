@@ -702,9 +702,9 @@ sub cluster_lock_storage {
 }
 
 my sub parse_snap_name {
-    my ($name) = @_;
+    my ($filename, $volname) = @_;
 
-    if ($name =~ m/^snap-(.*)-vm(.*)$/) {
+    if ($filename =~ m/^snap-(.*)-\Q$volname\E$/) {
         return $1;
     }
 }
@@ -715,7 +715,7 @@ sub parse_name_dir {
     if ($name =~ m!^((vm-|base-|subvol-)(\d+)-[^/\s]+\.(raw|qcow2|vmdk|subvol))$!) {
         my $isbase = $2 eq 'base-' ? $2 : undef;
         return ($1, $4, $isbase); # (name, format, isBase)
-    } elsif (parse_snap_name($name)) {
+    } elsif ($name =~ m!^snap-.*\.qcow2$!) {
         die "'$name' is a snapshot filename, not a volume!\n";
     } elsif ($name =~ m!^((base-)?[^/\s]+\.(raw|qcow2|vmdk|subvol))$!) {
         warn "this volume name `$name` is deprecated, please use (base-/vm-/subvol-)-NNN- as prefix\n";
@@ -1753,7 +1753,7 @@ sub volume_snapshot_info {
 
         my $name = basename($path);
 
-        if (my $snapname = parse_snap_name($name)) {
+        if (my $snapname = parse_snap_name($name, basename($volname))) {
             return $snapname;
         } elsif ($name eq basename($volname)) {
             return 'current';
