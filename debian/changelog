@@ -1,3 +1,10 @@
+libpve-storage-perl (9.0.10) trixie; urgency=medium
+
+  * RRD metrics: use new pve-storage-9.0 format RRD file location, if it
+    exists.
+
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 31 Jul 2025 04:14:19 +0200
+
 libpve-storage-perl (9.0.9) trixie; urgency=medium
 
   * fix #5181: pbs: store and read passwords as unicode.
