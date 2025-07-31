@@ -718,7 +718,6 @@ sub parse_name_dir {
     } elsif ($name =~ m!^snap-.*\.qcow2$!) {
         die "'$name' is a snapshot filename, not a volume!\n";
     } elsif ($name =~ m!^((base-)?[^/\s]+\.(raw|qcow2|vmdk|subvol))$!) {
-        warn "this volume name `$name` is deprecated, please use (base-/vm-/subvol-)-NNN- as prefix\n";
         return ($1, $3, $2); # (name ,format, isBase)
     }
 
