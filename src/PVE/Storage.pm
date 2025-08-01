@@ -1429,7 +1429,7 @@ sub deactivate_volumes {
         }
     }
 
-    die "volume deactivation failed: " . join(' ', @errlist)
+    die "volume deactivation failed: " . join(' ', @errlist) . "\n"
         if scalar(@errlist);
 }
 
