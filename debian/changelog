@@ -1,3 +1,9 @@
+libpve-storage-perl (9.0.13) trixie; urgency=medium
+
+  * deactivate volumes: terminate error message with newline.
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 01 Aug 2025 18:36:51 +0200
+
 libpve-storage-perl (9.0.12) trixie; urgency=medium
 
   * plugin: fix parse_name_dir regression for custom volume names.
