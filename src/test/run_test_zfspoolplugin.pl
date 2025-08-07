@@ -2,13 +2,14 @@
 
 use lib '..';
 
-use strict;
-use warnings;
+use v5.36;
+
+use Test::More;
 
 use Data::Dumper qw(Dumper);
 use PVE::Storage;
 use PVE::Cluster;
-use PVE::Tools qw(run_command);
+use PVE::Tools qw(file_get_contents file_set_contents run_command);
 use Cwd;
 $Data::Dumper::Sortkeys = 1;
 
@@ -17,15 +18,10 @@ my $verbose = undef;
 my $storagename = "zfstank99";
 my $subvol = 'regressiontest';
 my $mountpoint = "${subvol}_mnt";
+my $devbase = "/dev/zvol/$subvol";
 
 #volsize in GB
 my $volsize = 1;
-my $vmdisk = "vm-102-disk-1";
-my $vmbase = "base-100-disk-1";
-my $vmlinked = "vm-101-disk-1";
-my $ctdisk = "subvol-202-disk-1";
-my $ctbase = "basevol-200-disk-1";
-my $ctlinked = "subvol-201-disk-1";
 
 my $basesnap = '@__base__';
 my $tests = {};
@@ -48,189 +44,142 @@ if (@ARGV == 2) {
     $end_test = $ARGV[0];
 }
 
+my $test_vols = {
+    vmdisk => {
+        kind => 'zvol',
+        volname => 'vm-102-disk-1',
+        filename => 'vm-102-disk-1',
+        type => 'images',
+        vmid => 102,
+    },
+    vmbase => {
+        isbase => 1,
+        kind => 'zvol',
+        volname => 'base-100-disk-0',
+        filename => 'base-100-disk-0',
+        type => 'images',
+        vmid => 100,
+    },
+    vmlinked => {
+        kind => 'zvol',
+        base => 'vmbase',
+        volname => 'base-100-disk-0/vm-101-disk-0',
+        filename => 'vm-101-disk-0',
+        type => 'images',
+        vmid => 101,
+    },
+    ctdisk => {
+        kind => 'subvol',
+        volname => 'subvol-202-disk-1',
+        filename => 'subvol-202-disk-1',
+        type => 'images',
+        vmid => 202,
+    },
+    ctbase => {
+        isbase => 1,
+        kind => 'subvol',
+        volname => 'basevol-200-disk-0',
+        filename => 'basevol-200-disk-0',
+        type => 'images',
+        vmid => 200,
+    },
+    ctlinked => {
+        kind => 'subvol',
+        base => 'ctbase',
+        volname => 'basevol-200-disk-0/subvol-201-disk-0',
+        filename => 'subvol-201-disk-0',
+        type => 'images',
+        vmid => 201,
+    },
+};
+
+my @base_list = grep { $test_vols->{$_}->{isbase} } sort keys %$test_vols;
+
+sub foreach_testvol($code) {
+    for my $name (sort keys %$test_vols) {
+        my $vol = $test_vols->{$name};
+        my $base = $vol->{base};
+        my $base_vol;
+        if (defined($base)) {
+            $base_vol = $test_vols->{$base} or die "missing base vol for '$name'\n";
+        }
+
+        eval { $code->($name, $vol, $base, $base_vol); };
+
+        if (my $err = $@) {
+            $count++;
+            warn "test died: $err";
+        }
+    }
+}
+
+sub foreach_basevol($code) {
+    for my $name (@base_list) {
+        my $vol = $test_vols->{$name};
+
+        eval { $code->($name, $vol); };
+
+        if (my $err = $@) {
+            $count++;
+            warn "test died: $err";
+        }
+    }
+}
+
+foreach_testvol sub($name, $vol, $base, $basevol) {
+    if ($vol->{kind} eq 'zvol') {
+        $vol->{format} = 'raw';
+    } elsif ($vol->{kind} eq 'subvol') {
+        $vol->{format} = 'subvol';
+    } else {
+        die "invalid 'kind' in testvol '$name'\n";
+    }
+};
+
+sub path_test {
+    my ($testname, $volid, $exp_path, $exp_vmid, $exp_vtype) = @_;
+
+    my $fail = 0;
+    eval {
+        my @res = PVE::Storage::path($cfg, $volid);
+        if ($res[0] ne $exp_path) {
+            $count++;
+            $fail = 1;
+            warn "$testname: path is not correct: expected '$exp_path', got '$res[0]'";
+        }
+        if ($res[1] ne $exp_vmid) {
+            if (!$fail++) {
+                $count++;
+            }
+            warn "$testname: owner is not correct: expected '$exp_vmid', got '$res[1]'";
+        }
+        if ($res[2] ne $exp_vtype) {
+            if (!$fail++) {
+                $count++;
+            }
+            warn "$testname: type is not correct: expected '$exp_vtype', got '$res[2]'";
+        }
+    };
+    if ($@) {
+        $count++;
+        warn "$testname: $@";
+    }
+}
+
 my $test19 = sub {
 
     print "\nrun test19 \"path\"\n";
 
-    my @res;
-    my $fail = 0;
-    eval {
-        @res = PVE::Storage::path($cfg, "$storagename:$vmdisk");
-        if ($res[0] ne "\/dev\/zvol\/regressiontest\/$vmdisk") {
-            $count++;
-            $fail = 1;
-            warn
-                "Test 19 a: path is not correct: expected \'\/dev\/zvol\/regressiontest\/$vmdisk'\  get \'$res[0]\'";
-        }
-        if ($res[1] ne "102") {
-            if (!$fail) {
-                $count++;
-                $fail = 1;
-            }
-            warn "Test 19 a: owner is not correct: expected \'102\'  get \'$res[1]\'";
-        }
-        if ($res[2] ne "images") {
-            if (!$fail) {
-                $count++;
-                $fail = 1;
-            }
-            warn "Test 19 a: owner is not correct: expected \'images\'  get \'$res[2]\'";
-        }
+    foreach_testvol sub($name, $vol, $basename, $base) {
+        my ($volname, $kind, $filename) = $vol->@{qw(volname kind filename)};
+        path_test(
+            "Test 19 $name",
+            "$storagename:$volname",
+            $kind eq 'zvol' ? "$devbase/$filename" : "/$mountpoint/$filename",
+            $vol->{vmid},
+            $vol->{type},
+        );
     };
-    if ($@) {
-        $count++;
-        warn "Test 19 a: $@";
-    }
-
-    @res = undef;
-    $fail = 0;
-    eval {
-        @res = PVE::Storage::path($cfg, "$storagename:$vmbase");
-        if ($res[0] ne "\/dev\/zvol\/regressiontest\/$vmbase") {
-            $count++;
-            $fail = 1;
-            warn
-                "Test 19 b: path is not correct: expected \'\/dev\/zvol\/regressiontest\/$vmbase'\  get \'$res[0]\'";
-        }
-        if ($res[1] ne "100") {
-            if (!$fail) {
-                $count++;
-                $fail = 1;
-            }
-            warn "Test 19 b: owner is not correct: expected \'100\'  get \'$res[1]\'";
-        }
-        if ($res[2] ne "images") {
-            if (!$fail) {
-                $count++;
-                $fail = 1;
-            }
-            warn "Test 19 b: owner is not correct: expected \'images\'  get \'$res[2]\'";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test 19 b: $@";
-    }
-
-    @res = undef;
-    $fail = 0;
-    eval {
-        @res = PVE::Storage::path($cfg, "$storagename:$vmbase\/$vmlinked");
-        if ($res[0] ne "\/dev\/zvol\/regressiontest\/$vmlinked") {
-            $count++;
-            $fail = 1;
-            warn
-                "Test 19 c: path is not correct: expected \'\/dev\/zvol\/regressiontest\/$vmlinked'\  get \'$res[0]\'";
-        }
-        if ($res[1] ne "101") {
-            if (!$fail) {
-                $count++;
-                $fail = 1;
-            }
-            warn "Test 19 c: owner is not correct: expected \'101\'  get \'$res[1]\'";
-        }
-        if ($res[2] ne "images") {
-            if (!$fail) {
-                $count++;
-                $fail = 1;
-            }
-            warn "Test 19 c: owner is not correct: expected \'images\'  get \'$res[2]\'";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test 19 c: $@";
-    }
-
-    @res = undef;
-    $fail = 0;
-    eval {
-        @res = PVE::Storage::path($cfg, "$storagename:$ctdisk");
-        if ($res[0] ne "\/$mountpoint\/$ctdisk") {
-            $count++;
-            $fail = 1;
-            warn
-                "Test 19 d: path is not correct: expected \'\/$mountpoint\/$ctdisk'\  get \'$res[0]\'";
-        }
-        if ($res[1] ne "202") {
-            if (!$fail) {
-                $count++;
-                $fail = 1;
-            }
-            warn "Test 19 d: owner is not correct: expected \'202\'  get \'$res[1]\'";
-        }
-        if ($res[2] ne "images") {
-            if (!$fail) {
-                $count++;
-                $fail = 1;
-            }
-            warn "Test 19 d: owner is not correct: expected \'images\'  get \'$res[2]\'";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test 19 d: $@";
-    }
-
-    @res = undef;
-    $fail = 0;
-    eval {
-        @res = PVE::Storage::path($cfg, "$storagename:$ctbase");
-        if ($res[0] ne "\/$mountpoint\/$ctbase") {
-            $count++;
-            $fail = 1;
-            warn
-                "Test 19 e: path is not correct: expected \'\/$mountpoint\/$ctbase'\  get \'$res[0]\'";
-        }
-        if ($res[1] ne "200") {
-            if (!$fail) {
-                $count++;
-                $fail = 1;
-            }
-            warn "Test 19 e: owner is not correct: expected \'200\'  get \'$res[1]\'";
-        }
-        if ($res[2] ne "images") {
-            if (!$fail) {
-                $count++;
-                $fail = 1;
-            }
-            warn "Test 19 e: owner is not correct: expected \'images\'  get \'$res[2]\'";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test 19 e: $@";
-    }
-
-    @res = undef;
-    $fail = 0;
-    eval {
-        @res = PVE::Storage::path($cfg, "$storagename:$ctbase\/$ctlinked");
-        if ($res[0] ne "\/$mountpoint\/$ctlinked") {
-            $count++;
-            $fail = 1;
-            warn
-                "Test 19 f: path is not correct: expected \'\/$mountpoint\/$ctlinked'\  get \'$res[0]\'";
-        }
-        if ($res[1] ne "201") {
-            if (!$fail) {
-                $count++;
-                $fail = 1;
-            }
-            warn "Test 19 f: owner is not correct: expected \'201\'  get \'$res[1]\'";
-        }
-        if ($res[2] ne "images") {
-            if (!$fail) {
-                $count++;
-                $fail = 1;
-            }
-            warn "Test 19 f: owner is not correct: expected \'images\'  get \'$res[2]\'";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test 19 f: $@";
-    }
 };
 $tests->{19} = $test19;
 
@@ -337,126 +286,28 @@ my $test15 = sub {
     }
     $res = undef;
 
-    $hash = Dumper {
-        'zfstank99' => [
-            {
-                'parent' => undef,
-                'volid' => 'zfstank99:base-100-disk-1',
-                'name' => 'base-100-disk-1',
-                'vmid' => '100',
-                'size' => 1073741824,
-                'format' => 'raw',
-            },
-        ],
+    foreach_testvol sub($name, $vol, $basename, $base) {
+        my $res = PVE::Storage::vdisk_list(
+            $cfg,
+            $storagename,
+            $vol->{vmid},
+            ["$storagename:$vol->{volname}"],
+        );
+        my $expected = {
+            'parent' => $base ? "$base->{filename}\@__base__" : undef,
+            'volid' => "$storagename:$vol->{volname}",
+            'name' => $vol->{filename},
+            'vmid' => $vol->{vmid},
+            'size' => 1073741824,
+            'format' => $vol->{format},
+        };
+        my $vtype = $vol->{type};
+        $expected->{vtype} = $vtype if $vtype ne 'images' && $vtype ne 'rootdir';
+        if (!is_deeply($res, { $storagename => [$expected] })) {
+            ++$count;
+            warn "Test 15 $name failed\n";
+        }
     };
-
-    $res = Dumper PVE::Storage::vdisk_list($cfg, $storagename, 100, ["$storagename:$vmbase"]);
-
-    if ($hash ne $res) {
-        $count++;
-        warn "Test 15 d failed\n";
-    }
-    $res = undef;
-
-    $hash = Dumper {
-        'zfstank99' => [
-            {
-                'parent' => undef,
-                'volid' => 'zfstank99:vm-102-disk-1',
-                'name' => 'vm-102-disk-1',
-                'vmid' => '102',
-                'size' => 1073741824,
-                'format' => 'raw',
-            },
-        ],
-    };
-
-    $res = Dumper PVE::Storage::vdisk_list($cfg, $storagename, 102, ["$storagename:$vmdisk"]);
-    if ($hash ne $res) {
-        $count++;
-        warn "Test 15 e failed\n";
-    }
-    $res = undef;
-
-    $hash = Dumper {
-        'zfstank99' => [
-            {
-                'parent' => 'base-100-disk-1@__base__',
-                'volid' => "$storagename:$vmbase\/$vmlinked",
-                'name' => 'vm-101-disk-1',
-                'vmid' => '101',
-                'size' => 1073741824,
-                'format' => 'raw',
-            },
-        ],
-    };
-
-    $res = Dumper PVE::Storage::vdisk_list($cfg, $storagename, 101,
-        ["$storagename:$vmbase\/$vmlinked"]);
-    if ($hash ne $res) {
-        $count++;
-        warn "Test 15 f failed\n";
-    }
-    $res = undef;
-
-    $hash = Dumper {
-        'zfstank99' => [
-            {
-                'parent' => undef,
-                'volid' => 'zfstank99:basevol-200-disk-1',
-                'name' => 'basevol-200-disk-1',
-                'vmid' => '200',
-                'size' => 1073741824,
-                'format' => 'subvol',
-            },
-        ],
-    };
-
-    $res = Dumper PVE::Storage::vdisk_list($cfg, $storagename, 200, ["$storagename:$ctbase"]);
-    if ($hash ne $res) {
-        $count++;
-        warn "Test 15 g failed\n";
-    }
-    $res = undef;
-
-    $hash = Dumper {
-        'zfstank99' => [
-            {
-                'parent' => undef,
-                'volid' => 'zfstank99:subvol-202-disk-1',
-                'name' => 'subvol-202-disk-1',
-                'vmid' => '202',
-                'size' => 1073741824,
-                'format' => 'subvol',
-            },
-        ],
-    };
-
-    $res = Dumper PVE::Storage::vdisk_list($cfg, $storagename, 202, ["$storagename:$ctdisk"]);
-    if ($hash ne $res) {
-        $count++;
-        warn "Test 15 h failed\n";
-    }
-    $res = undef;
-
-    $hash = Dumper {
-        'zfstank99' => [
-            {
-                'parent' => 'basevol-200-disk-1@__base__',
-                'volid' => "$storagename:$ctbase\/$ctlinked",
-                'name' => 'subvol-201-disk-1',
-                'vmid' => '201',
-                'size' => 1073741824,
-                'format' => 'subvol',
-            },
-        ],
-    };
-    $res = Dumper PVE::Storage::vdisk_list($cfg, $storagename, 201,
-        ["$storagename:$ctbase\/$ctlinked"]);
-    if ($hash ne $res) {
-        $count++;
-        warn "Test 15 i failed\n";
-    }
 };
 $tests->{15} = $test15;
 
@@ -464,113 +315,58 @@ my $test14 = sub {
 
     print "\nrun test14 \"vdisk_free\"\n";
 
-    eval {
-        PVE::Storage::vdisk_free($cfg, "$storagename:$vmdisk");
-
-        eval {
-            run_command("zfs list $zpath\/$vmdisk", outfunc => sub { }, errfunc => sub { });
-        };
+    foreach_basevol sub($name, $vol) {
+        eval { PVE::Storage::vdisk_free($cfg, "$storagename:$vol->{volname}"); };
         if (!$@) {
             $count++;
-            warn "Test14 a: vdisk still exists\n";
+            warn "Test14 $name: free vdisk should not work\n";
         }
     };
-    if ($@) {
-        $count++;
-        warn "Test14 a: $@";
-    }
 
-    eval { PVE::Storage::vdisk_free($cfg, "$storagename:$vmbase"); };
-    if (!$@) {
-        $count++;
-        warn "Test14 b: free vdisk should not work\n";
-    }
-
-    eval {
-        PVE::Storage::vdisk_free($cfg, "$storagename:$vmbase\/$vmlinked");
-
+    foreach_testvol sub($name, $vol, $base, $basevol) {
+        return if $vol->{isbase};
         eval {
-            run_command("zfs list $zpath\/$vmlinked", outfunc => sub { }, errfunc => sub { });
+            PVE::Storage::vdisk_free($cfg, "$storagename:$vol->{volname}");
+
+            eval {
+                run_command(
+                    "zfs list $zpath\/$vol->{filename}",
+                    outfunc => sub { },
+                    errfunc => sub { },
+                );
+            };
+            if (!$@) {
+                $count++;
+                warn "Test14 $name: vdisk still exists\n";
+            }
         };
-        if (!$@) {
+        if ($@) {
             $count++;
-            warn "Test14 c: vdisk still exists\n";
+            warn "Test14 a: $@";
         }
     };
-    if ($@) {
-        $count++;
-        warn "Test14 c: $@";
-    }
 
-    eval {
-        PVE::Storage::vdisk_free($cfg, "$storagename:$ctdisk");
-
+    foreach_basevol sub($name, $vol) {
         eval {
-            run_command("zfs list $zpath\/$ctdisk", outfunc => sub { }, errfunc => sub { });
+            PVE::Storage::vdisk_free($cfg, "$storagename:$vol->{volname}");
+
+            eval {
+                run_command(
+                    "zfs list $zpath\/$vol->{filename}",
+                    outfunc => sub { },
+                    errfunc => sub { },
+                );
+            };
+            if (!$@) {
+                $count++;
+                warn "Test14 $name: vdisk still exists\n";
+            }
         };
-        if (!$@) {
+        if ($@) {
             $count++;
-            warn "Test14 d: vdisk still exists\n";
+            warn "Test14 a: $@";
         }
     };
-    if ($@) {
-        $count++;
-        warn "Test14 d: $@";
-    }
-
-    eval { PVE::Storage::vdisk_free($cfg, "$storagename:$ctbase"); };
-    if (!$@) {
-        $count++;
-        warn "Test14 e: free vdisk should not work\n";
-    }
-
-    eval {
-        PVE::Storage::vdisk_free($cfg, "$storagename:$ctbase\/$ctlinked");
-
-        eval {
-            run_command("zfs list $zpath\/$ctlinked", outfunc => sub { }, errfunc => sub { });
-        };
-        if (!$@) {
-            $count++;
-            warn "Test14 f: vdisk still exists\n";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test14 f: $@";
-    }
-
-    eval {
-        PVE::Storage::vdisk_free($cfg, "$storagename:$vmbase");
-
-        eval {
-            run_command("zfs list $zpath\/$vmbase", outfunc => sub { }, errfunc => sub { });
-        };
-        if (!$@) {
-            $count++;
-            warn "Test14 g: vdisk still exists\n";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test14 g: $@";
-    }
-
-    eval {
-        PVE::Storage::vdisk_free($cfg, "$storagename:$ctbase");
-
-        eval {
-            run_command("zfs list $zpath\/$ctbase", outfunc => sub { }, errfunc => sub { });
-        };
-        if (!$@) {
-            $count++;
-            warn "Test14 h: vdisk still exists\n";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test14 h: $@";
-    }
 };
 $tests->{14} = $test14;
 
@@ -579,27 +375,23 @@ my $test13 = sub {
     print "\nrun test13 \"vdisk_alloc\"\n";
 
     eval {
-        my $tmp_volid =
-            PVE::Storage::vdisk_alloc($cfg, $storagename, "112", "raw", undef, 1024 * 1024);
+        my $tmp_volid = PVE::Storage::vdisk_alloc(
+            $cfg, $storagename, "112", "raw", undef, 1024 * 1024,
+        );
 
         if ($tmp_volid ne "$storagename:vm-112-disk-0") {
             die "volname:$tmp_volid don't match\n";
         }
-        eval {
-            run_command(
-                "zfs get -H volsize $zpath\/vm-112-disk-0",
-                outfunc => sub {
-                    my $tmp = shift;
-                    if ($tmp !~ m/^$zpath\/vm-112-disk-0.*volsize.*1G.*$/) {
-                        die "size don't match\n";
-                    }
-                },
-            );
-        };
-        if ($@) {
-            $count++;
-            warn "Test13 a: $@";
-        }
+
+        run_command(
+            "zfs get -H volsize $zpath\/vm-112-disk-0",
+            outfunc => sub {
+                my $tmp = shift;
+                if ($tmp !~ m/^$zpath\/vm-112-disk-0.*volsize.*1G.*$/) {
+                    die "size don't match\n";
+                }
+            },
+        );
     };
     if ($@) {
         $count++;
@@ -607,27 +399,23 @@ my $test13 = sub {
     }
 
     eval {
-        my $tmp_volid =
-            PVE::Storage::vdisk_alloc($cfg, $storagename, "112", "raw", undef, 2048 * 1024);
+        my $tmp_volid = PVE::Storage::vdisk_alloc(
+            $cfg, $storagename, "112", "raw", undef, 512 * 1024,
+        );
 
         if ($tmp_volid ne "$storagename:vm-112-disk-1") {
             die "volname:$tmp_volid don't match\n";
         }
-        eval {
-            run_command(
-                "zfs get -H volsize $zpath\/vm-112-disk-1",
-                outfunc => sub {
-                    my $tmp = shift;
-                    if ($tmp !~ m/^$zpath\/vm-112-disk-1.*volsize.*2G.*$/) {
-                        die "size don't match\n";
-                    }
-                },
-            );
-        };
-        if ($@) {
-            $count++;
-            warn "Test13 b: $@";
-        }
+
+        run_command(
+            "zfs get -H volsize $zpath\/vm-112-disk-1",
+            outfunc => sub {
+                my $tmp = shift;
+                if ($tmp !~ m/^$zpath\/vm-112-disk-1.*volsize.*512M.*$/) {
+                    die "size don't match\n";
+                }
+            },
+        );
     };
     if ($@) {
         $count++;
@@ -635,27 +423,23 @@ my $test13 = sub {
     }
 
     eval {
-        my $tmp_volid =
-            PVE::Storage::vdisk_alloc($cfg, $storagename, "113", "subvol", undef, 1024 * 1024);
+        my $tmp_volid = PVE::Storage::vdisk_alloc(
+            $cfg, $storagename, "113", "subvol", undef, 1024 * 1024,
+        );
 
         if ($tmp_volid ne "$storagename:subvol-113-disk-0") {
             die "volname:$tmp_volid  don't match\n";
         }
-        eval {
-            run_command(
-                "zfs get -H refquota $zpath\/subvol-113-disk-0",
-                outfunc => sub {
-                    my $tmp = shift;
-                    if ($tmp !~ m/^$zpath\/subvol-113-disk-0.*refquota.*1G.*$/) {
-                        die "size don't match\n";
-                    }
-                },
-            );
-        };
-        if ($@) {
-            $count++;
-            warn "Test13 c: $@";
-        }
+
+        run_command(
+            "zfs get -H refquota $zpath\/subvol-113-disk-0",
+            outfunc => sub {
+                my $tmp = shift;
+                if ($tmp !~ m/^$zpath\/subvol-113-disk-0.*refquota.*1G.*$/) {
+                    die "size don't match\n";
+                }
+            },
+        );
     };
     if ($@) {
         $count++;
@@ -663,27 +447,23 @@ my $test13 = sub {
     }
 
     eval {
-        my $tmp_volid =
-            PVE::Storage::vdisk_alloc($cfg, $storagename, "113", "subvol", undef, 2048 * 1024);
+        my $tmp_volid = PVE::Storage::vdisk_alloc(
+            $cfg, $storagename, "113", "subvol", undef, 2048 * 1024,
+        );
 
         if ($tmp_volid ne "$storagename:subvol-113-disk-1") {
             die "volname:$tmp_volid  don't match\n";
         }
-        eval {
-            run_command(
-                "zfs get -H refquota $zpath\/subvol-113-disk-1",
-                outfunc => sub {
-                    my $tmp = shift;
-                    if ($tmp !~ m/^$zpath\/subvol-113-disk-1.*refquota.*G.*$/) {
-                        die "size don't match\n";
-                    }
-                },
-            );
-        };
-        if ($@) {
-            $count++;
-            warn "Test13 d: $@";
-        }
+
+        run_command(
+            "zfs get -H refquota $zpath\/subvol-113-disk-1",
+            outfunc => sub {
+                my $tmp = shift;
+                if ($tmp !~ m/^$zpath\/subvol-113-disk-1.*refquota.*G.*$/) {
+                    die "size don't match\n";
+                }
+            },
+        );
     };
     if ($@) {
         $count++;
@@ -696,81 +476,33 @@ my $test12 = sub {
 
     print "\nrun test12 \"vdisk_create_base\"\n";
 
-    eval {
-        my $tmp_volid = PVE::Storage::vdisk_create_base($cfg, "$storagename:$vmdisk");
+    foreach_testvol sub($name, $vol, $base, $basevol) {
+        return if $vol->{isbase} || $base;
 
-        if ($tmp_volid ne "$storagename:base-102-disk-1") {
-            die;
+        my ($vmid, $volname, $filename) = $vol->@{qw(vmid volname filename)};
+
+        my $basename = $filename;
+        if ($basename =~ /(sub)?vol-(vm|ct)-/) {
+            $basename = "base-$basename";
+        } elsif ($basename =~ /^subvol-/) {
+            $basename =~ s/^subvol-/basevol-/;
+        } else {
+            $basename =~ s/^vm-/base-/;
         }
+
         eval {
-            run_command("zfs list $zpath\/base-102-disk-1", outfunc => sub { });
+            my $tmp_volid = PVE::Storage::vdisk_create_base($cfg, "$storagename:$volname");
+
+            die "returned volid '$tmp_volid' is not the expected '$storagename:$basename'"
+                if $tmp_volid ne "$storagename:$basename";
+
+            run_command("zfs list $zpath\/$basename", outfunc => sub { });
         };
         if ($@) {
             $count++;
-            warn "Test12 a: $@";
+            warn "Test12 $name: $@";
         }
     };
-    if ($@) {
-        $count++;
-        warn "Test12 a: $@";
-    }
-
-    eval {
-        my $tmp_volid = PVE::Storage::vdisk_create_base($cfg, "$storagename:$vmlinked");
-
-        if ($tmp_volid ne "$storagename:base-101-disk-1") {
-            die;
-        }
-        eval {
-            run_command("zfs list $zpath\/base-101-disk-1", outfunc => sub { });
-        };
-        if ($@) {
-            $count++;
-            warn "Test12 b: $@";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test12 b: $@";
-    }
-
-    eval {
-        my $tmp_volid = PVE::Storage::vdisk_create_base($cfg, "$storagename:$ctdisk");
-
-        if ($tmp_volid ne "$storagename:basevol-202-disk-1") {
-            die;
-        }
-        eval {
-            run_command("zfs list $zpath\/basevol-202-disk-1", outfunc => sub { });
-        };
-        if ($@) {
-            $count++;
-            warn "Test12 c: $@";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test12 c: $@";
-    }
-
-    eval {
-        my $tmp_volid = PVE::Storage::vdisk_create_base($cfg, "$storagename:$ctlinked");
-
-        if ($tmp_volid ne "$storagename:basevol-201-disk-1") {
-            die;
-        }
-        eval {
-            run_command("zfs list $zpath\/basevol-201-disk-1", outfunc => sub { });
-        };
-        if ($@) {
-            $count++;
-            warn "Test12 d: $@";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test12 d: $@";
-    }
 };
 $tests->{12} = $test12;
 
@@ -778,73 +510,69 @@ my $test11 = sub {
 
     print "\nrun test11 \"volume_is_base\"\n";
 
-    eval { PVE::Storage::vdisk_clone($cfg, "$storagename:$vmdisk", 110); };
-    if (!$@) {
-        $count++;
-        warn "Test11 a: clone_image only works on base images";
-    }
+    foreach_testvol sub($name, $vol, $basename, $basevol) {
+        return if $vol->{base};
 
-    eval {
-        if ("$storagename:$vmbase\/vm-110-disk-0" ne
-            PVE::Storage::vdisk_clone($cfg, "$storagename:$vmbase", 110, '__base__')
-        ) {
-            $count++;
-            warn "Test11 b";
+        my ($vmid, $volname, $format) = $vol->@{qw(vmid volname format)};
+
+        my $clone_vmid = $vmid + 50;
+
+        if (!$vol->{isbase}) {
+            eval {
+                PVE::Storage::vdisk_clone(
+                    $cfg, "$storagename:$volname", $clone_vmid, undef, undef,
+                );
+            };
+            if (!$@) {
+                $count++;
+                warn "Test11 $name: clone_image only works on base images";
+            }
+            return;
         }
-        run_command(
-            "zfs list -H -o volsize $zpath\/vm-110-disk-0",
-            outfunc => sub {
-                my $line = shift;
 
-                chomp($line);
-                warn "Test11 b not correct volsize" if $line !~ m/$volsize/;
-            },
-        );
-    };
-    if ($@) {
-        $count++;
-        warn "Test11 b: $@";
-    }
+        print STDERR "Creating $clone_vmid for $name\n";
+        eval {
+            my $exp_filename =
+                $format eq 'raw'
+                ? "vm-$clone_vmid-disk-0"
+                : "subvol-$clone_vmid-disk-0";
+            my $exp_volid = "$storagename:$volname/$exp_filename";
 
-    eval { PVE::Storage::vdisk_clone($cfg, "$storagename:$vmbase\/$vmlinked", 111); };
-    if (!$@) {
-        $count++;
-        warn "Test11 c: clone_image only works on base images";
-    }
+            my $got_volid = PVE::Storage::vdisk_clone(
+                $cfg, "$storagename:$volname", $clone_vmid, '__base__',
+            );
+            if ($exp_volid ne $got_volid) {
+                $count++;
+                warn "Test11 $name - expected '$exp_volid', got '$got_volid'";
+            }
 
-    eval { PVE::Storage::vdisk_clone($cfg, "$storagename:$ctdisk", 110); };
-    if (!$@) {
-        $count++;
-        warn "Test11 d: clone_image only works on base images";
-    }
+            if ($format eq 'raw') {
+                run_command(
+                    "zfs list -H -o volsize $zpath\/$exp_filename",
+                    outfunc => sub {
+                        my $line = shift;
 
-    eval {
-        if ("$storagename:$ctbase\/subvol-210-disk-0" ne
-            PVE::Storage::vdisk_clone($cfg, "$storagename:$ctbase", 210, '__base__')
-        ) {
+                        chomp($line);
+                        warn "Test11 $name: incorrect volsize" if $line ne "${volsize}G";
+                    },
+                );
+            } else {
+                run_command(
+                    "zfs list -H -o refquota $zpath\/$exp_filename",
+                    outfunc => sub {
+                        my $line = shift;
+
+                        chomp($line);
+                        warn "Test11 $name: incorrect volsize" if $line ne "${volsize}G";
+                    },
+                );
+            }
+        };
+        if ($@) {
             $count++;
-            warn "Test11 e";
+            warn "Test11 $name: $@";
         }
-        run_command(
-            "zfs list -H -o refquota $zpath\/subvol-210-disk-0",
-            outfunc => sub {
-                my $line = shift;
-
-                chomp($line);
-                warn "Test11 e not correct volsize" if $line !~ m/$volsize/;
-            },
-        );
     };
-    if ($@) {
-        $count++;
-        warn "Test11 e: $@";
-    }
-
-    eval { PVE::Storage::vdisk_clone($cfg, "$storagename:$ctbase\/$ctlinked", 211); };
-    if (!$@) {
-        $count++;
-        warn "Test11 f: clone_image only works on base images";
-    }
 };
 $tests->{11} = $test11;
 
@@ -852,77 +580,20 @@ my $test10 = sub {
 
     print "\nrun test10 \"volume_is_base\"\n";
 
-    eval {
-        if (1 == volume_is_base($cfg, "$storagename:$vmdisk")) {
+    foreach_testvol sub($name, $vol, $basename, $basevol) {
+        my $isbase = !!$vol->{isbase};
+        eval {
+            if (!!$isbase != !!volume_is_base($cfg, "$storagename:$vol->{volname}")) {
+                $count++;
+                warn "Test10 $name: isbase=$isbase, but volume_is_base did not match";
+            }
+
+        };
+        if ($@) {
             $count++;
-            warn "Test10 a: is no base";
+            warn "Test10 $name: $@";
         }
-
     };
-    if ($@) {
-        $count++;
-        warn "Test10 a: $@";
-    }
-
-    eval {
-        if (0 == volume_is_base($cfg, "$storagename:$vmbase")) {
-            $count++;
-            warn "Test10 b: is base";
-        }
-
-    };
-    if ($@) {
-        $count++;
-        warn "Test10 b: $@";
-    }
-
-    eval {
-        if (1 == volume_is_base($cfg, "$storagename:$vmbase\/$vmlinked")) {
-            $count++;
-            warn "Test10 c: is no base";
-        }
-
-    };
-    if ($@) {
-        $count++;
-        warn "Test10 c: $@";
-    }
-
-    eval {
-        if (1 == volume_is_base($cfg, "$storagename:$ctdisk")) {
-            $count++;
-            warn "Test10 d: is no base";
-        }
-
-    };
-    if ($@) {
-        $count++;
-        warn "Test10 d: $@";
-    }
-
-    eval {
-        if (0 == volume_is_base($cfg, "$storagename:$ctbase")) {
-            $count++;
-            warn "Test10 e: is base";
-        }
-
-    };
-    if ($@) {
-        $count++;
-        warn "Test10 e: $@";
-    }
-
-    eval {
-        if (1 == volume_is_base($cfg, "$storagename:$ctbase\/$ctlinked")) {
-            $count++;
-            warn "Test10 f: is no base";
-        }
-
-    };
-    if ($@) {
-        $count++;
-        warn "Test10 f: $@";
-    }
 };
 $tests->{10} = $test10;
 
@@ -930,89 +601,21 @@ my $test9 = sub {
 
     print "\nrun test9 \"parse_volume_id\"\n";
 
-    eval {
-        my ($store, $disk) = PVE::Storage::parse_volume_id("$storagename:$vmdisk");
+    foreach_testvol sub($name, $vol, $basename, $basevol) {
+        eval {
+            my ($store, $disk) = PVE::Storage::parse_volume_id("$storagename:$vol->{volname}");
 
-        if ($store ne $storagename || $disk ne $vmdisk) {
+            if ($store ne $storagename || $disk ne $vol->{volname}) {
+                $count++;
+                warn "Test9 $name: parsing wrong";
+            }
+
+        };
+        if ($@) {
             $count++;
-            warn "Test9 a: parsing wrong";
+            warn "Test9 $name: $@";
         }
-
     };
-    if ($@) {
-        $count++;
-        warn "Test9 a: $@";
-    }
-
-    eval {
-        my ($store, $disk) = PVE::Storage::parse_volume_id("$storagename:$vmbase");
-
-        if ($store ne $storagename || $disk ne $vmbase) {
-            $count++;
-            warn "Test9 b: parsing wrong";
-        }
-
-    };
-    if ($@) {
-        $count++;
-        warn "Test9 b: $@";
-    }
-
-    eval {
-        my ($store, $disk) = PVE::Storage::parse_volume_id("$storagename:$vmbase\/$vmlinked");
-
-        if ($store ne $storagename || $disk ne "$vmbase\/$vmlinked") {
-            $count++;
-            warn "Test9 c: parsing wrong";
-        }
-
-    };
-    if ($@) {
-        $count++;
-        warn "Test9 c: $@";
-    }
-
-    eval {
-        my ($store, $disk) = PVE::Storage::parse_volume_id("$storagename:$ctdisk");
-
-        if ($store ne $storagename || $disk ne $ctdisk) {
-            $count++;
-            warn "Test9 d: parsing wrong";
-        }
-
-    };
-    if ($@) {
-        $count++;
-        warn "Test9 d: $@";
-    }
-
-    eval {
-        my ($store, $disk) = PVE::Storage::parse_volume_id("$storagename:$ctbase");
-
-        if ($store ne $storagename || $disk ne $ctbase) {
-            $count++;
-            warn "Test9 e: parsing wrong";
-        }
-
-    };
-    if ($@) {
-        $count++;
-        warn "Test9 e: $@";
-    }
-
-    eval {
-        my ($store, $disk) = PVE::Storage::parse_volume_id("$storagename:$ctbase\/$ctlinked");
-
-        if ($store ne $storagename || $disk ne "$ctbase\/$ctlinked") {
-            $count++;
-            warn "Test9 f: parsing wrong";
-        }
-
-    };
-    if ($@) {
-        $count++;
-        warn "Test9 f: $@";
-    }
 };
 $tests->{9} = $test9;
 
@@ -1020,138 +623,48 @@ my $test8 = sub {
 
     print "\nrun test8 \"parse_volname\"\n";
 
-    eval {
-        my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $format) =
-            PVE::Storage::parse_volname($cfg, "$storagename:$vmdisk");
+    foreach_testvol sub($name, $vol, $test_basename, $test_basevol) {
+        eval {
+            my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $format) =
+                PVE::Storage::parse_volname($cfg, "$storagename:$vol->{volname}");
+            my @foo = PVE::Storage::parse_volname($cfg, "$storagename:$vol->{volname}");
 
-        if (
-            $vtype ne 'images'
-            || $vmid ne '102'
-            || $name ne $vmdisk
-            || defined($basename)
-            || defined($basevmid)
-            || $isBase
-            || $format ne 'raw'
-        ) {
+            my $got = {
+                vtype => $vtype,
+                name => $name,
+                vmid => $vmid,
+                basename => $basename,
+                basevmid => $basevmid,
+                isBase => !!$isBase,
+                format => $format,
+            };
+            my $expected = {
+                vtype => $vol->{type},
+                name => $vol->{filename},
+                vmid => $vol->{vmid},
+                basename => $test_basevol->{volname},
+                basevmid => $test_basevol->{vmid},
+                isBase => !!$vol->{isbase},
+                format => $vol->{format},
+            };
+            if (!is_deeply($got, $expected)) {
+                $count++;
+                warn "Test8 $name: parsing wrong for $storagename:$vol->{volname}";
+            }
+
+            if (defined($test_basename)) {
+                if ($basename ne $test_basevol->{volname}) {
+                    $count++;
+                    warn "Test8 $name: parsed wrong basename,"
+                        . " expected '$test_basevol->{volname}', got '$basename'";
+                }
+            }
+        };
+        if ($@) {
             $count++;
-            warn "Test8 a: parsing wrong";
-        }
-
-    };
-    if ($@) {
-        $count++;
-        warn "Test8 a: $@";
-    }
-
-    eval {
-        my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $format) =
-            PVE::Storage::parse_volname($cfg, "$storagename:$vmbase");
-
-        if (
-            $vtype ne 'images'
-            || $vmid ne '100'
-            || $name ne $vmbase
-            || defined($basename)
-            || defined($basevmid)
-            || !$isBase
-            || $format ne 'raw'
-        ) {
-            $count++;
-            warn "Test8 b: parsing wrong";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test8 b: $@";
-    }
-
-    eval {
-        my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $format) =
-            PVE::Storage::parse_volname($cfg, "$storagename:$vmbase\/$vmlinked");
-
-        if (
-            $vtype ne 'images'
-            || $name ne $vmlinked
-            || $vmid ne '101'
-            || $basename ne $vmbase
-            || $basevmid ne '100'
-            || $isBase
-            || $format ne 'raw'
-        ) {
-            $count++;
-            warn "Test8 c: parsing wrong";
+            warn "Test8 a: $@";
         }
     };
-    if ($@) {
-        $count++;
-        warn "Test8 c: $@";
-    }
-
-    eval {
-        my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $format) =
-            PVE::Storage::parse_volname($cfg, "$storagename:$ctdisk");
-
-        if (
-            $vtype ne 'images'
-            || $vmid ne '202'
-            || $name ne $ctdisk
-            || defined($basename)
-            || defined($basevmid)
-            || $isBase
-            || $format ne 'subvol'
-        ) {
-            $count++;
-            warn "Test8 d: parsing wrong";
-        }
-
-    };
-    if ($@) {
-        $count++;
-        warn "Test8 d: $@";
-    }
-
-    eval {
-        my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $format) =
-            PVE::Storage::parse_volname($cfg, "$storagename:$ctbase");
-        if (
-            $vtype ne 'images'
-            || $vmid ne '200'
-            || $name ne $ctbase
-            || defined($basename)
-            || defined($basevmid)
-            || !$isBase
-            || $format ne 'subvol'
-        ) {
-            $count++;
-            warn "Test8 e: parsing wrong";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test8 e: $@";
-    }
-
-    eval {
-        my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $format) =
-            PVE::Storage::parse_volname($cfg, "$storagename:$ctbase\/$ctlinked");
-
-        if (
-            $vtype ne 'images'
-            || $name ne $ctlinked
-            || $vmid ne '201'
-            || $basename ne $ctbase
-            || $basevmid ne '200'
-            || $isBase
-            || $format ne 'subvol'
-        ) {
-            $count++;
-            warn "Test8 f: parsing wrong";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test8 f: $@";
-    }
 };
 $tests->{8} = $test8;
 
@@ -1168,281 +681,84 @@ my $test7 = sub {
         }
     };
 
-    eval {
-        PVE::Storage::activate_volumes($cfg, ["$storagename:$vmdisk"]);
-        run_command(
-            "sgdisk --randomize-guids \/dev\/zvol\/$zpath\/$vmdisk",
-            outfunc => $parse_guid,
-        );
-        run_command("sgdisk -p \/dev\/zvol\/$zpath\/$vmdisk", outfunc => $parse_guid);
+    my sub test_zvol($name, $vol) {
+        $tmp_guid = undef;
 
-        my $old_guid = $tmp_guid;
-        PVE::Storage::volume_snapshot($cfg, "$storagename:$vmdisk", 'snap1');
+        print "Testing snapshot/rollback on $name\n";
 
-        run_command(
-            "sgdisk --randomize-guids \/dev\/zvol\/$zpath\/$vmdisk",
-            outfunc => $parse_guid,
-        );
+        my ($volname, $filename) = $vol->@{qw(volname filename)};
+
         eval {
-            PVE::Storage::volume_snapshot_rollback($cfg, "$storagename:$vmdisk", 'snap1');
-            PVE::Storage::activate_volumes($cfg, ["$storagename:$vmdisk"]);
+            PVE::Storage::activate_volumes($cfg, ["$storagename:$volname"]);
+            run_command(
+                "sgdisk --randomize-guids \/dev\/zvol\/$zpath\/$filename",
+                outfunc => $parse_guid,
+            );
+            run_command("sgdisk -p \/dev\/zvol\/$zpath\/$filename", outfunc => $parse_guid);
+
+            my $old_guid = $tmp_guid;
+            PVE::Storage::volume_snapshot($cfg, "$storagename:$volname", 'snap1');
+
+            run_command(
+                "sgdisk --randomize-guids \/dev\/zvol\/$zpath\/$filename",
+                outfunc => $parse_guid,
+            );
+
+            PVE::Storage::volume_snapshot_rollback($cfg, "$storagename:$volname", 'snap1');
+            PVE::Storage::activate_volumes($cfg, ["$storagename:$volname"]);
             $tmp_guid = undef;
-            run_command("sgdisk -p \/dev\/zvol\/$zpath\/$vmdisk", outfunc => $parse_guid);
-            if ($old_guid ne $tmp_guid) {
-                $count++;
-                warn "Test7 a: Zvol makes no rollback";
-            }
+            run_command("sgdisk -p \/dev\/zvol\/$zpath\/$filename", outfunc => $parse_guid);
+            die "zvol wasn't rolled back\n" if $old_guid ne $tmp_guid;
         };
         if ($@) {
             $count++;
-            warn "Test7 a: $@";
+            warn "Test7 $name: $@";
         }
-    };
-    if ($@) {
-        $count++;
-        warn "Test7 a: $@";
     }
-    $tmp_guid = undef;
 
-    eval {
-        PVE::Storage::activate_volumes($cfg, ["$storagename:$vmbase"]);
-        run_command(
-            "sgdisk --randomize-guids \/dev\/zvol\/$zpath\/$vmbase",
-            outfunc => $parse_guid,
-        );
-        run_command("sgdisk -p \/dev\/zvol\/$zpath\/$vmbase", outfunc => $parse_guid);
+    my sub test_subvol($name, $vol) {
+        $tmp_guid = undef;
 
-        my $old_guid = $tmp_guid;
-        PVE::Storage::volume_snapshot($cfg, "$storagename:$vmbase", 'snap1');
+        print "Testing snapshot/rollback on $name\n";
 
-        run_command(
-            "sgdisk --randomize-guids \/dev\/zvol\/$zpath\/$vmbase",
-            outfunc => $parse_guid,
-        );
+        my ($volname, $filename) = $vol->@{qw(volname filename)};
+
         eval {
-            PVE::Storage::volume_snapshot_rollback($cfg, "$storagename:$vmbase", 'snap1');
-            PVE::Storage::activate_volumes($cfg, ["$storagename:$vmbase"]);
-            $tmp_guid = undef;
-            run_command("sgdisk -p \/dev\/zvol\/$zpath\/$vmbase", outfunc => $parse_guid);
-            if ($old_guid ne $tmp_guid) {
-                $count++;
-                warn "Test7 b: Zvol makes no rollback";
-            }
+            PVE::Storage::volume_snapshot($cfg, "$storagename:$volname", 'snap1');
+
+            file_set_contents("/$mountpoint/$filename/test.txt", "hello\n");
+            PVE::Storage::volume_snapshot_rollback($cfg, "$storagename:$volname", 'snap1');
+            die "rollback was not performed\n" if -e "/$mountpoint/$filename/test.txt";
         };
         if ($@) {
             $count++;
-            warn "Test7 b: $@";
+            warn "Test7 $name: $@";
         }
-    };
-    if ($@) {
-        $count++;
-        warn "Test7 b: $@";
     }
-    $tmp_guid = undef;
 
-    eval {
-        PVE::Storage::activate_volumes($cfg, ["$storagename:$vmbase/$vmlinked"]);
-        run_command(
-            "sgdisk --randomize-guids \/dev\/zvol\/$zpath\/$vmlinked",
-            outfunc => $parse_guid,
-        );
-        run_command("sgdisk -p \/dev\/zvol\/$zpath\/$vmlinked", outfunc => $parse_guid);
-
-        my $old_guid = $tmp_guid;
-        PVE::Storage::volume_snapshot($cfg, "$storagename:$vmbase\/$vmlinked", 'snap1');
-
-        run_command(
-            "sgdisk --randomize-guids \/dev\/zvol\/$zpath\/$vmlinked",
-            outfunc => $parse_guid,
-        );
-        eval {
-            PVE::Storage::volume_snapshot_rollback(
-                $cfg, "$storagename:$vmbase\/$vmlinked", 'snap1',
-            );
-            PVE::Storage::activate_volumes($cfg, ["$storagename:$vmbase/$vmlinked"]);
-            $tmp_guid = undef;
-            run_command("sgdisk -p \/dev\/zvol\/$zpath\/$vmlinked", outfunc => $parse_guid);
-            if ($old_guid ne $tmp_guid) {
-                $count++;
-                warn "Test7 c: Zvol makes no rollback";
-            }
-        };
-        if ($@) {
-            $count++;
-            warn "Test7 c: $@";
+    foreach_testvol sub($name, $vol, $basename, $basevol) {
+        if ($vol->{kind} eq 'zvol') {
+            test_zvol($name, $vol);
+        } elsif ($vol->{kind} eq 'subvol') {
+            test_subvol($name, $vol);
+        } else {
+            die "no tests for volume kind '$vol->{kind}'\n";
         }
-    };
-    if ($@) {
-        $count++;
-        warn "Test7 c: $@";
-    }
-    $tmp_guid = undef;
 
-    eval {
-        PVE::Storage::volume_snapshot($cfg, "$storagename:$ctdisk", 'snap1');
-
-        run_command("touch \/$mountpoint\/$ctdisk\/test.txt", outfunc => $parse_guid);
         eval {
-            PVE::Storage::volume_snapshot_rollback($cfg, "$storagename:$ctdisk", 'snap1');
+            PVE::Storage::volume_snapshot($cfg, "$storagename:$vol->{volname}", 'snap2');
             eval {
-                run_command("ls \/$mountpoint\/$ctdisk\/test.txt", errofunc => sub { });
+                PVE::Storage::volume_snapshot_rollback(
+                    $cfg, "$storagename:$vol->{volname}", 'snap1',
+                );
             };
-            if (!$@) {
-                $count++;
-                warn "Test7 d: $@";
-            }
+            die "not allowed to rollback, but did anyway" if !$@;
         };
         if ($@) {
             $count++;
-            warn "Test7 d: $@";
+            warn "Test7 $name: $@";
         }
     };
-    if ($@) {
-        $count++;
-        warn "Test7 d: $@";
-    }
-
-    eval {
-        PVE::Storage::volume_snapshot($cfg, "$storagename:$ctbase", 'snap1');
-
-        run_command("touch \/$mountpoint\/$ctbase\/test.txt", outfunc => $parse_guid);
-        eval {
-            PVE::Storage::volume_snapshot_rollback($cfg, "$storagename:$ctbase", 'snap1');
-            eval {
-                run_command("ls \/$mountpoint\/$ctbase\/test.txt", errofunc => sub { });
-            };
-            if (!$@) {
-                $count++;
-                warn "Test7 e: $@";
-            }
-        };
-        if ($@) {
-            $count++;
-            warn "Test7 e: $@";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test7 f: $@";
-    }
-
-    eval {
-        PVE::Storage::volume_snapshot($cfg, "$storagename:$ctbase/$ctlinked", 'snap1');
-
-        run_command("touch \/$mountpoint\/$ctlinked\/test.txt", outfunc => $parse_guid);
-        eval {
-            PVE::Storage::volume_snapshot_rollback(
-                $cfg, "$storagename:$ctbase/$ctlinked", 'snap1',
-            );
-            eval {
-                run_command("ls \/$zpath\/$ctlinked\/test.txt", errofunc => sub { });
-            };
-            if (!$@) {
-                $count++;
-                warn "Test7 g: $@";
-            }
-        };
-        if ($@) {
-            $count++;
-            warn "Test7 g: $@";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test7 g: $@";
-    }
-
-    eval {
-        PVE::Storage::volume_snapshot($cfg, "$storagename:$vmdisk", 'snap2');
-
-        eval { PVE::Storage::volume_snapshot_rollback($cfg, "$storagename:$vmdisk", 'snap1'); };
-        if (!$@) {
-            $count++;
-            warn "Test7 h: Not allowed to rollback";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test7 h: $@";
-    }
-
-    eval {
-        PVE::Storage::volume_snapshot($cfg, "$storagename:$vmbase", 'snap2');
-
-        eval { PVE::Storage::volume_snapshot_rollback($cfg, "$storagename:$vmbase", 'snap1'); };
-        if (!$@) {
-            $count++;
-            warn "Test7 i: Not allowed to rollback";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test7 i: $@";
-    }
-
-    eval {
-        PVE::Storage::volume_snapshot($cfg, "$storagename:$vmbase\/$vmlinked", 'snap2');
-
-        eval {
-            PVE::Storage::volume_snapshot_rollback(
-                $cfg, "$storagename:$vmbase\/$vmlinked", 'snap1',
-            );
-        };
-        if (!$@) {
-            $count++;
-            warn "Test7 j: Not allowed to rollback";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test7 j: $@";
-    }
-
-    eval {
-        PVE::Storage::volume_snapshot($cfg, "$storagename:$ctdisk", 'snap2');
-
-        eval { PVE::Storage::volume_snapshot_rollback($cfg, "$storagename:$ctdisk", 'snap1'); };
-        if (!$@) {
-            $count++;
-            warn "Test7 k: Not allowed to rollback";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test7 k: $@";
-    }
-
-    eval {
-        PVE::Storage::volume_snapshot($cfg, "$storagename:$ctbase", 'snap2');
-
-        eval { PVE::Storage::volume_snapshot_rollback($cfg, "$storagename:$ctbase", 'snap1'); };
-        if (!$@) {
-            $count++;
-            warn "Test7 l: Not allowed to rollback";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test7 l: $@";
-    }
-
-    eval {
-        PVE::Storage::volume_snapshot($cfg, "$storagename:$ctbase/$ctlinked", 'snap2');
-
-        eval {
-            PVE::Storage::volume_snapshot_rollback(
-                $cfg, "$storagename:$ctbase/$ctlinked", 'snap1',
-            );
-        };
-        if (!$@) {
-            $count++;
-            warn "Test7 m: Not allowed to rollback";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test7 m: $@";
-    }
 };
 $tests->{7} = $test7;
 
@@ -1450,349 +766,112 @@ my $test6 = sub {
 
     print "\nrun test6 \"volume_rollback_is_possible\"\n";
 
-    eval {
-        PVE::Storage::volume_snapshot($cfg, "$storagename:$vmdisk", 'snap1');
+    foreach_testvol sub($name, $vol, $basename, $basevol) {
+        my ($volname, $filename) = $vol->@{qw(volname filename)};
+
+        eval {
+            PVE::Storage::volume_snapshot($cfg, "$storagename:$volname", 'snap1');
+
+            my $blockers = [];
+            my $res = PVE::Storage::volume_rollback_is_possible(
+                $cfg, "$storagename:$volname", 'snap1', $blockers,
+            );
+            if (!$res) {
+                $count++;
+                warn "Test6 $name: Rollback should be possible";
+            }
+            if (scalar($blockers->@*) != 0) {
+                $count++;
+                warn "Test6 $name: 'blockers' should be empty";
+            }
+        };
+        if ($@) {
+            $count++;
+            warn "Test6 $name: $@";
+        }
 
         my $blockers = [];
-        my $res = PVE::Storage::volume_rollback_is_possible(
-            $cfg, "$storagename:$vmdisk", 'snap1', $blockers,
-        );
-        if ($res != 1) {
+        eval {
+            PVE::Storage::volume_snapshot($cfg, "$storagename:$volname", 'snap2');
+            PVE::Storage::volume_rollback_is_possible(
+                $cfg, "$storagename:$volname", 'snap1', $blockers,
+            );
+        };
+        if (!$@) {
             $count++;
-            warn "Test6 a: Rollback should be possible";
-        }
-        if (scalar($blockers->@*) != 0) {
+            warn "Test6 $name: Rollback should not be possible";
+        } elsif (scalar($blockers->@*) != 1 || $blockers->[0] ne 'snap2') {
             $count++;
-            warn "Test6 a: 'blockers' should be empty";
+            warn "Test6 $name: 'blockers' should be ['snap2']";
         }
-    };
-    if ($@) {
-        $count++;
-        warn "Test6 a: $@";
-    }
 
-    eval {
-        PVE::Storage::volume_snapshot($cfg, "$storagename:$vmbase", 'snap1');
-        if (1 !=
-            PVE::Storage::volume_rollback_is_possible($cfg, "$storagename:$vmbase", 'snap1')
-        ) {
+        $blockers = [];
+        eval {
+            PVE::Storage::volume_snapshot($cfg, "$storagename:$volname", 'snap3');
+            PVE::Storage::volume_rollback_is_possible(
+                $cfg, "$storagename:$volname", 'snap1', $blockers,
+            );
+        };
+        if (!$@) {
             $count++;
-            warn "Test6 b: Rollback should be possible";
+            warn "Test6 $name: Rollback should not be possible";
         }
-    };
-    if ($@) {
-        $count++;
-        warn "Test6 b: $@";
-    }
 
-    eval {
-        PVE::Storage::volume_snapshot($cfg, "$storagename:$vmlinked", 'snap1');
-        if (
-            1 != PVE::Storage::volume_rollback_is_possible(
-                $cfg, "$storagename:$vmbase\/$vmlinked", 'snap1',
-            )
-        ) {
+        $blockers = [sort @$blockers];
+        if (!is_deeply([sort @$blockers], [qw(snap2 snap3)])) {
             $count++;
-            warn "Test6 c: Rollback should be possible";
+            warn "Test6 $name: 'blockers' should contain 'snap2' and 'snap3'";
         }
     };
-    if ($@) {
-        $count++;
-        warn "Test6 c: $@";
-    }
-
-    eval {
-        PVE::Storage::volume_snapshot($cfg, "$storagename:$ctdisk", 'snap1');
-        if (1 !=
-            PVE::Storage::volume_rollback_is_possible($cfg, "$storagename:$ctdisk", 'snap1')
-        ) {
-            $count++;
-            warn "Test6 d: Rollback should be possible";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test6 d: $@";
-    }
-
-    eval {
-        PVE::Storage::volume_snapshot($cfg, "$storagename:$ctbase", 'snap1');
-        if (1 !=
-            PVE::Storage::volume_rollback_is_possible($cfg, "$storagename:$ctbase", 'snap1')
-        ) {
-            $count++;
-            warn "Test6 e: Rollback should be possible";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test6 e: $@";
-    }
-
-    eval {
-        PVE::Storage::volume_snapshot($cfg, "$storagename:$ctlinked", 'snap1');
-        if (
-            1 != PVE::Storage::volume_rollback_is_possible(
-                $cfg, "$storagename:$ctbase\/$ctlinked", 'snap1',
-            )
-        ) {
-            $count++;
-            warn "Test6 f: Rollback should be possible";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test6 f: $@";
-    }
-
-    my $blockers = [];
-    eval {
-        PVE::Storage::volume_snapshot($cfg, "$storagename:$vmdisk", 'snap2');
-        PVE::Storage::volume_rollback_is_possible(
-            $cfg, "$storagename:$vmdisk", 'snap1', $blockers,
-        );
-    };
-    if (!$@) {
-        $count++;
-        warn "Test6 g: Rollback should not be possible";
-    } elsif (scalar($blockers->@*) != 1 || $blockers->[0] ne 'snap2') {
-        $count++;
-        warn "Test6 g: 'blockers' should be ['snap2']";
-    }
-    undef $blockers;
-
-    $blockers = [];
-    eval {
-        PVE::Storage::volume_snapshot($cfg, "$storagename:$vmbase", 'snap2');
-        PVE::Storage::volume_snapshot($cfg, "$storagename:$vmbase", 'snap3');
-        PVE::Storage::volume_rollback_is_possible(
-            $cfg, "$storagename:$vmbase", 'snap1', $blockers,
-        );
-    };
-    if (!$@) {
-        $count++;
-        warn "Test6 h: Rollback should not be possible";
-    } else {
-        if (scalar($blockers->@*) != 2) {
-            $count++;
-            warn "Test6 g: 'blockers' should contain two elements";
-        }
-        my $blockers_hash = { map { $_ => 1 } $blockers->@* };
-        if (!$blockers_hash->{'snap2'}) {
-            $count++;
-            warn "Test6 g: 'blockers' should contain 'snap2'";
-        }
-        if (!$blockers_hash->{'snap3'}) {
-            $count++;
-            warn "Test6 g: 'blockers' should contain 'snap3'";
-        }
-    }
-    undef $blockers;
-
-    eval {
-        PVE::Storage::volume_snapshot($cfg, "$storagename:$vmlinked", 'snap2');
-        PVE::Storage::volume_rollback_is_possible(
-            $cfg, "$storagename:$vmbase\/$vmlinked", 'snap1',
-        );
-    };
-    if (!$@) {
-        $count++;
-        warn "Test6 j: Rollback should not be possible";
-    }
-
-    eval {
-        PVE::Storage::volume_snapshot($cfg, "$storagename:$ctdisk", 'snap2');
-        PVE::Storage::volume_rollback_is_possible($cfg, "$storagename:$ctdisk", 'snap1');
-    };
-    if (!$@) {
-        $count++;
-        warn "Test6 k: Rollback should not be possible";
-    }
-
-    eval {
-        PVE::Storage::volume_snapshot($cfg, "$storagename:$ctbase", 'snap2');
-        PVE::Storage::volume_rollback_is_possible($cfg, "$storagename:$ctbase", 'snap1');
-    };
-    if (!$@) {
-        $count++;
-        warn "Test6 l: Rollback should not be possible";
-    }
-
-    eval {
-        PVE::Storage::volume_snapshot($cfg, "$storagename:$ctlinked", 'snap2');
-        PVE::Storage::volume_rollback_is_possible(
-            $cfg, "$storagename:$ctbase\/$ctlinked", 'snap1',
-        );
-    };
-    if (!$@) {
-        $count++;
-        warn "Test6 m: Rollback should not be possible";
-    }
 };
 $tests->{6} = $test6;
 
 my $test5 = sub {
 
     print "\nrun test5 \"volume_snapshot_delete\"\n";
-    my $out = sub { my $tmp = shift; };
+    my $out = sub { return; };
 
-    eval {
-        run_command("zfs snapshot $zpath\/$vmdisk\@snap");
-        eval {
-            PVE::Storage::volume_snapshot_delete($cfg, "$storagename:$vmdisk", 'snap');
-            eval {
-                run_command("zfs list $zpath\/$vmdisk\@snap", errfunc => $out, outfunc => $out);
-            };
-            if (!$@) {
-                $count++;
-                warn "Test5 a: snapshot still exists";
-            }
-        };
-        if ($@) {
-            $count++;
-            warn "Test5 PVE a: $@";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test5 a: $@";
-    }
+    foreach_testvol sub($name, $vol, $basename, $basevol) {
+        my ($volname, $filename) = $vol->@{qw(volname filename)};
 
-    eval {
-        run_command("zfs snapshot $zpath\/$vmbase\@snap");
         eval {
-            PVE::Storage::volume_snapshot_delete($cfg, "$storagename:$vmbase", 'snap');
-            eval {
-                run_command("zfs list $zpath\/$vmbase\@snap", errmsg => $out, outfunc => $out);
-            };
-            if (!$@) {
-                $count++;
-                warn "Test5 b: snapshot still exists";
-            }
-        };
-        if ($@) {
-            $count++;
-            warn "Test5 PVE b: $@";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test5 b: $@";
-    }
+            run_command("zfs snapshot $zpath\/$filename\@snap");
 
-    eval {
-        run_command("zfs snapshot $zpath\/$vmlinked\@snap");
-        eval {
-            PVE::Storage::volume_snapshot_delete(
-                $cfg, "$storagename:$vmbase\/$vmlinked", 'snap',
-            );
+            PVE::Storage::volume_snapshot_delete($cfg, "$storagename:$volname", 'snap');
             eval {
                 run_command(
-                    "zfs list $zpath\/$vmlinked\@snap",
-                    errmsg => $out,
+                    "zfs list $zpath\/$filename\@snap",
+                    errfunc => $out,
                     outfunc => $out,
                 );
             };
             if (!$@) {
                 $count++;
-                warn "Test5 c: snapshot still exists";
+                warn "Test5 $name: snapshot still exists";
             }
         };
         if ($@) {
             $count++;
-            warn "Test5 PVE c: $@";
+            warn "Test5 a: $@";
         }
-    };
-    if ($@) {
-        $count++;
-        warn "Test5 c: $@";
-    }
 
-    eval {
-        run_command("zfs snapshot $zpath\/$ctdisk\@snap");
-        eval {
-            PVE::Storage::volume_snapshot_delete($cfg, "$storagename:$ctdisk", 'snap');
-            eval {
-                run_command("zfs list $zpath\/$ctdisk\@snap", errmsg => $out, outfunc => $out);
-            };
-            if (!$@) {
-                $count++;
-                warn "Test5 d: snapshot still exists";
-            }
-        };
-        if ($@) {
-            $count++;
-            warn "Test5 PVE d: $@";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test5 d: $@";
-    }
+        return if !$vol->{isbase};
 
-    eval {
-        run_command("zfs snapshot $zpath\/$ctbase\@snap");
+        print "###### Ignore Output if no 'Test5 $name:' is included ######\n";
         eval {
-            PVE::Storage::volume_snapshot_delete($cfg, "$storagename:$ctbase", 'snap');
-            eval {
-                run_command("zfs list $zpath\/$ctbase\@snap", errmsg => $out, outfunc => $out);
-            };
-            if (!$@) {
+            PVE::Storage::volume_snapshot_delete($cfg, "$storagename:$volname", '__base__');
+            eval { run_command("zfs list $zpath\/$filename\@__base__", outfunc => $out); };
+            if ($@) {
                 $count++;
-                warn "Test5 e: snapshot still exists";
+                warn "Test5 $name: $@";
             }
         };
-        if ($@) {
+        if (!$@) {
             $count++;
-            warn "Test5 PVE e: $@";
+            warn "Test5 $name: snapshot __base__ can be erased";
         }
+        print "###### End Ignore #######\n";
     };
-    if ($@) {
-        $count++;
-        warn "Test5 e: $@";
-    }
-
-    eval {
-        run_command("zfs snapshot $zpath\/$ctlinked\@snap");
-        eval {
-            PVE::Storage::volume_snapshot_delete(
-                $cfg, "$storagename:$ctbase\/$ctlinked", 'snap',
-            );
-            eval {
-                run_command(
-                    "zfs list $zpath\/$ctlinked\@snap",
-                    errmsg => $out,
-                    outfunc => $out,
-                );
-            };
-            if (!$@) {
-                $count++;
-                warn "Test5 f: snapshot still exists";
-            }
-        };
-        if ($@) {
-            $count++;
-            warn "Test5 PVE f: $@";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test5 f: $@";
-    }
-    print "######Ignore Output if no Test5 g: is included######\n";
-    eval {
-        PVE::Storage::volume_snapshot_delete($cfg, "$storagename:$vmbase", '__base__');
-        eval { run_command("zfs list $zpath\/$vmbase\@__base__", outfunc => $out); };
-        if ($@) {
-            $count++;
-            warn "Test5 g: $@";
-        }
-    };
-    if (!$@) {
-        $count++;
-        warn "Test5 PVE g: snapshot __base__ can be erased";
-    }
-    print "######End Ignore#######\n";
 };
 $tests->{5} = $test5;
 
@@ -1801,83 +880,18 @@ my $test4 = sub {
     print "\nrun test4 \"volume_snapshot\"\n";
     my $out = sub { };
 
-    eval {
-        PVE::Storage::volume_snapshot($cfg, "$storagename:$vmdisk", 'snap');
-        eval { run_command("zfs list $zpath\/$vmdisk\@snap", errmsg => $out, outfunc => $out); };
-        if ($@) {
-            $count++;
-            warn "Test4 a: $@";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test4 a: $@";
-    }
+    foreach_testvol sub($name, $vol, $basename, $basevol) {
+        my ($volname, $filename) = $vol->@{qw(volname filename)};
 
-    eval {
-        PVE::Storage::volume_snapshot($cfg, "$storagename:$vmbase", 'snap');
-        eval { run_command("zfs list $zpath\/$vmbase\@snap", errmsg => $out, outfunc => $out); };
+        eval {
+            PVE::Storage::volume_snapshot($cfg, "$storagename:$volname", 'snap');
+            run_command("zfs list $zpath\/$filename\@snap", errmsg => $out, outfunc => $out);
+        };
         if ($@) {
             $count++;
-            warn "Test4 b: $@";
+            warn "Test4 $name: $@";
         }
     };
-    if ($@) {
-        $count++;
-        warn "Test4 c: $@";
-    }
-
-    eval {
-        PVE::Storage::volume_snapshot($cfg, "$storagename:$vmbase\/$vmlinked", 'snap');
-        eval { run_command("zfs list $zpath\/$vmdisk\@snap", errmsg => $out, outfunc => $out); };
-        if ($@) {
-            $count++;
-            warn "Test4 c: $@";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test4 c: $@";
-    }
-
-    eval {
-        PVE::Storage::volume_snapshot($cfg, "$storagename:$ctdisk", 'snap');
-        eval { run_command("zfs list $zpath\/$ctdisk\@snap", errmsg => $out, outfunc => $out); };
-        if ($@) {
-            $count++;
-            warn "Test4 d: $@";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test4 d: $@";
-    }
-
-    eval {
-        PVE::Storage::volume_snapshot($cfg, "$storagename:$ctbase", 'snap');
-        eval { run_command("zfs list $zpath\/$ctbase\@snap", errmsg => $out, outfunc => $out); };
-        if ($@) {
-            $count++;
-            warn "Test4 e: $@";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test4 e: $@";
-    }
-
-    eval {
-        PVE::Storage::volume_snapshot($cfg, "$storagename:$ctbase\/$ctlinked", 'snap');
-        eval { run_command("zfs list $zpath\/$ctdisk\@snap", errmsg => $out, outfunc => $out); };
-        if ($@) {
-            $count++;
-            warn "Test4 f: $@";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test4 f: $@";
-    }
 };
 $tests->{4} = $test4;
 
@@ -1885,833 +899,41 @@ my $test3 = sub {
 
     print "\nrun test3 \"volume_has_feature\"\n";
 
-    eval {
-        if (!PVE::Storage::volume_has_feature(
-            $cfg, 'snapshot', "$storagename:$vmdisk", undef, 0,
-        )) {
+    # snapshot: NOT for base
+
+    my sub check_feature($name, $volname, $feature, $snapshot, $expected) {
+        eval {
+            if (
+                !PVE::Storage::volume_has_feature(
+                    $cfg, $feature, "$storagename:$volname", $snapshot, 0,
+                ) != !$expected
+            ) {
+                my $res_msg = $expected ? 'available' : 'unavailable';
+                my $snap_msg = $snapshot ? ' on snapshots' : '';
+                die "'$feature' feature should be $res_msg$snap_msg";
+            }
+        };
+        if ($@) {
             $count++;
-            warn "Test3 a failed";
+            warn "Test3 $name [$feature]: $@";
         }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 a: $@";
     }
 
-    eval {
-        if (PVE::Storage::volume_has_feature(
-            $cfg, 'snapshot', "$storagename:$vmbase", undef, 0,
-        )) {
-            $count++;
-            warn "Test3 b failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 b: $@";
-    }
+    foreach_testvol sub($name, $vol, $basename, $basevol) {
+        my $volname = $vol->{volname};
 
-    eval {
-        if (!PVE::Storage::volume_has_feature(
-            $cfg,
-            'snapshot',
-            "$storagename:$vmbase\/$vmlinked",
-            undef,
-            0,
-        )) {
-            $count++;
-            warn "Test3 c failed";
-        }
+        my $snap_expect = !$vol->{isbase};
+        check_feature($name, $volname, 'snapshot', undef, !$vol->{isbase});
+        check_feature($name, $volname, 'snapshot', 'test', !!1);
+        check_feature($name, $volname, 'clone', undef, $vol->{isbase});
+        check_feature($name, $volname, 'clone', 'test', !!0);
+        check_feature($name, $volname, 'template', undef, !$vol->{isbase});
+        check_feature($name, $volname, 'template', 'test', !!0);
+        check_feature($name, $volname, 'copy', undef, !!1);
+        check_feature($name, $volname, 'copy', 'test', !!0);
+        check_feature($name, $volname, 'sparseinit', undef, !!1);
+        check_feature($name, $volname, 'sparseinit', 'test', !!0);
     };
-    if ($@) {
-        $count++;
-        warn "Test3 c: $@";
-    }
-
-    eval {
-        if (!PVE::Storage::volume_has_feature(
-            $cfg, 'snapshot', "$storagename:$ctdisk", undef, 0,
-        )) {
-            $count++;
-            warn "Test3 d failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 d: $@";
-    }
-
-    eval {
-        if (PVE::Storage::volume_has_feature(
-            $cfg, 'snapshot', "$storagename:$ctbase", undef, 0,
-        )) {
-            $count++;
-            warn "Test3 e failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 e: $@";
-    }
-
-    eval {
-        if (!PVE::Storage::volume_has_feature(
-            $cfg,
-            'snapshot',
-            "$storagename:$ctbase\/$ctlinked",
-            undef,
-            0,
-        )) {
-            $count++;
-            warn "Test3 f failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 f: $@";
-    }
-
-    eval {
-        if (PVE::Storage::volume_has_feature($cfg, 'clone', "$storagename:$vmdisk", undef, 0)) {
-            $count++;
-            warn "Test3 g failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 g: $@";
-    }
-
-    eval {
-        if (!PVE::Storage::volume_has_feature($cfg, 'clone', "$storagename:$vmbase", undef, 0)) {
-            $count++;
-            warn "Test3 h failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 h: $@";
-    }
-
-    eval {
-        if (PVE::Storage::volume_has_feature(
-            $cfg,
-            'clone',
-            "$storagename:$vmbase\/$vmlinked",
-            undef,
-            0,
-        )) {
-            $count++;
-            warn "Test3 h failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 h: $@";
-    }
-
-    eval {
-        if (PVE::Storage::volume_has_feature($cfg, 'clone', "$storagename:$ctdisk", undef, 0)) {
-            $count++;
-            warn "Test3 i failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 i: $@";
-    }
-
-    eval {
-        if (!PVE::Storage::volume_has_feature($cfg, 'clone', "$storagename:$ctbase", undef, 0)) {
-            $count++;
-            warn "Test3 j failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 j: $@";
-    }
-
-    eval {
-        if (PVE::Storage::volume_has_feature(
-            $cfg,
-            'clone',
-            "$storagename:$ctbase\/$ctlinked",
-            undef,
-            0,
-        )) {
-            $count++;
-            warn "Test3 k failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 k: $@";
-    }
-
-    eval {
-        if (!PVE::Storage::volume_has_feature(
-            $cfg, 'template', "$storagename:$vmdisk", undef, 0,
-        )) {
-            $count++;
-            warn "Test3 l failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 l: $@";
-    }
-
-    eval {
-        if (PVE::Storage::volume_has_feature(
-            $cfg, 'template', "$storagename:$vmbase", undef, 0,
-        )) {
-            $count++;
-            warn "Test3 m failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 m: $@";
-    }
-
-    eval {
-        if (!PVE::Storage::volume_has_feature(
-            $cfg,
-            'template',
-            "$storagename:$vmbase\/$vmlinked",
-            undef,
-            0,
-        )) {
-            $count++;
-            warn "Test3 n failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 n: $@";
-    }
-
-    eval {
-        if (!PVE::Storage::volume_has_feature(
-            $cfg, 'template', "$storagename:$ctdisk", undef, 0,
-        )) {
-            $count++;
-            warn "Test3 o failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 o: $@";
-    }
-
-    eval {
-        if (PVE::Storage::volume_has_feature(
-            $cfg, 'template', "$storagename:$ctbase", undef, 0,
-        )) {
-            $count++;
-            warn "Test3 p failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 p: $@";
-    }
-
-    eval {
-        if (!PVE::Storage::volume_has_feature(
-            $cfg,
-            'template',
-            "$storagename:$ctbase\/$ctlinked",
-            undef,
-            0,
-        )) {
-            $count++;
-            warn "Test3 q failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 q: $@";
-    }
-
-    eval {
-        if (!PVE::Storage::volume_has_feature($cfg, 'copy', "$storagename:$vmdisk", undef, 0)) {
-            $count++;
-            warn "Test3 r failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 r: $@";
-    }
-
-    eval {
-        if (!PVE::Storage::volume_has_feature($cfg, 'copy', "$storagename:$vmbase", undef, 0)) {
-            $count++;
-            warn "Test3 s failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 s: $@";
-    }
-
-    eval {
-        if (!PVE::Storage::volume_has_feature(
-            $cfg,
-            'copy',
-            "$storagename:$vmbase\/$vmlinked",
-            undef,
-            0,
-        )) {
-            $count++;
-            warn "Test3 t failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 t: $@";
-    }
-
-    eval {
-        if (!PVE::Storage::volume_has_feature($cfg, 'copy', "$storagename:$ctdisk", undef, 0)) {
-            $count++;
-            warn "Test3 u failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 u: $@";
-    }
-
-    eval {
-        if (!PVE::Storage::volume_has_feature($cfg, 'copy', "$storagename:$ctbase", undef, 0)) {
-            $count++;
-            warn "Test3 v failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 v: $@";
-    }
-
-    eval {
-        if (!PVE::Storage::volume_has_feature(
-            $cfg,
-            'copy',
-            "$storagename:$ctbase\/$ctlinked",
-            undef,
-            0,
-        )) {
-            $count++;
-            warn "Test3 w failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 w: $@";
-    }
-
-    eval {
-        if (!PVE::Storage::volume_has_feature(
-            $cfg, 'sparseinit', "$storagename:$vmdisk", undef, 0,
-        )) {
-            $count++;
-            warn "Test3 x failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 x: $@";
-    }
-
-    eval {
-        if (!PVE::Storage::volume_has_feature(
-            $cfg, 'sparseinit', "$storagename:$vmbase", undef, 0,
-        )) {
-            $count++;
-            warn "Test3 y failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 y: $@";
-    }
-
-    eval {
-        if (!PVE::Storage::volume_has_feature(
-            $cfg,
-            'sparseinit',
-            "$storagename:$vmbase\/$vmlinked",
-            undef,
-            0,
-        )) {
-            $count++;
-            warn "Test3 z failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 z: $@";
-    }
-
-    eval {
-        if (!PVE::Storage::volume_has_feature(
-            $cfg, 'sparseinit', "$storagename:$ctdisk", undef, 0,
-        )) {
-            $count++;
-            warn "Test3 A failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 A: $@";
-    }
-
-    eval {
-        if (!PVE::Storage::volume_has_feature(
-            $cfg, 'sparseinit', "$storagename:$ctbase", undef, 0,
-        )) {
-            $count++;
-            warn "Test3 B failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 B: $@";
-    }
-
-    eval {
-        if (!PVE::Storage::volume_has_feature(
-            $cfg,
-            'sparseinit',
-            "$storagename:$ctbase\/$ctlinked",
-            undef,
-            0,
-        )) {
-            $count++;
-            warn "Test3 C failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 C: $@";
-    }
-
-    eval {
-        if (!PVE::Storage::volume_has_feature(
-            $cfg, 'snapshot', "$storagename:$vmdisk", 'test', 0,
-        )) {
-            $count++;
-            warn "Test3 a1 failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 a1: $@";
-    }
-
-    eval {
-        if (!PVE::Storage::volume_has_feature(
-            $cfg, 'snapshot', "$storagename:$vmbase", 'test', 0,
-        )) {
-            $count++;
-            warn "Test3 b1 failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 b1: $@";
-    }
-
-    eval {
-        if (!PVE::Storage::volume_has_feature(
-            $cfg,
-            'snapshot',
-            "$storagename:$vmbase\/$vmlinked",
-            'test',
-            0,
-        )) {
-            $count++;
-            warn "Test3 c1 failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 c1: $@";
-    }
-
-    eval {
-        if (!PVE::Storage::volume_has_feature(
-            $cfg, 'snapshot', "$storagename:$ctdisk", 'test', 0,
-        )) {
-            $count++;
-            warn "Test3 d1 failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 d1: $@";
-    }
-
-    eval {
-        if (!PVE::Storage::volume_has_feature(
-            $cfg, 'snapshot', "$storagename:$ctbase", 'test', 0,
-        )) {
-            $count++;
-            warn "Test3 e1 failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 e1: $@";
-    }
-
-    eval {
-        if (!PVE::Storage::volume_has_feature(
-            $cfg,
-            'snapshot',
-            "$storagename:$ctbase\/$ctlinked",
-            'test',
-            0,
-        )) {
-            $count++;
-            warn "Test3 f1 failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 f1: $@";
-    }
-
-    eval {
-        if (PVE::Storage::volume_has_feature($cfg, 'clone', "$storagename:$vmdisk", 'test', 0)) {
-            $count++;
-            warn "Test3 g1 failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 g1: $@";
-    }
-
-    eval {
-        if (PVE::Storage::volume_has_feature($cfg, 'clone', "$storagename:$vmbase", 'test', 0)) {
-            $count++;
-            warn "Test3 h1 failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 h1: $@";
-    }
-
-    eval {
-        if (PVE::Storage::volume_has_feature(
-            $cfg,
-            'clone',
-            "$storagename:$vmbase\/$vmlinked",
-            'test',
-            0,
-        )) {
-            $count++;
-            warn "Test3 h1 failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 h1: $@";
-    }
-
-    eval {
-        if (PVE::Storage::volume_has_feature($cfg, 'clone', "$storagename:$ctdisk", 'test', 0)) {
-            $count++;
-            warn "Test3 i1 failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 i1: $@";
-    }
-
-    eval {
-        if (PVE::Storage::volume_has_feature($cfg, 'clone', "$storagename:$ctbase", 'test', 0)) {
-            $count++;
-            warn "Test3 j1 failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 j1: $@";
-    }
-
-    eval {
-        if (PVE::Storage::volume_has_feature(
-            $cfg,
-            'clone',
-            "$storagename:$ctbase\/$ctlinked",
-            'test',
-            0,
-        )) {
-            $count++;
-            warn "Test3 k1 failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 k1: $@";
-    }
-
-    eval {
-        if (PVE::Storage::volume_has_feature(
-            $cfg, 'template', "$storagename:$vmdisk", 'test', 0,
-        )) {
-            $count++;
-            warn "Test3 l1 failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 l1: $@";
-    }
-
-    eval {
-        if (PVE::Storage::volume_has_feature(
-            $cfg, 'template', "$storagename:$vmbase", 'test', 0,
-        )) {
-            $count++;
-            warn "Test3 m1 failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 m1: $@";
-    }
-
-    eval {
-        if (PVE::Storage::volume_has_feature(
-            $cfg,
-            'template',
-            "$storagename:$vmbase\/$vmlinked",
-            'test',
-            0,
-        )) {
-            $count++;
-            warn "Test3 n1 failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 n1: $@";
-    }
-
-    eval {
-        if (PVE::Storage::volume_has_feature(
-            $cfg, 'template', "$storagename:$ctdisk", 'test', 0,
-        )) {
-            $count++;
-            warn "Test3 o1 failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 o1: $@";
-    }
-
-    eval {
-        if (PVE::Storage::volume_has_feature(
-            $cfg, 'template', "$storagename:$ctbase", 'test', 0,
-        )) {
-            $count++;
-            warn "Test3 p1 failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 p1: $@";
-    }
-
-    eval {
-        if (PVE::Storage::volume_has_feature(
-            $cfg,
-            'template',
-            "$storagename:$ctbase\/$ctlinked",
-            'test',
-            0,
-        )) {
-            $count++;
-            warn "Test3 q1 failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 q1: $@";
-    }
-
-    eval {
-        if (PVE::Storage::volume_has_feature($cfg, 'copy', "$storagename:$vmdisk", 'test', 0)) {
-            $count++;
-            warn "Test3 r1 failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 r1: $@";
-    }
-
-    eval {
-        if (PVE::Storage::volume_has_feature($cfg, 'copy', "$storagename:$vmbase", 'test', 0)) {
-            $count++;
-            warn "Test3 s1 failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 s1: $@";
-    }
-
-    eval {
-        if (PVE::Storage::volume_has_feature(
-            $cfg,
-            'copy',
-            "$storagename:$vmbase\/$vmlinked",
-            'test',
-            0,
-        )) {
-            $count++;
-            warn "Test3 t1 failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 t1: $@";
-    }
-
-    eval {
-        if (PVE::Storage::volume_has_feature($cfg, 'copy', "$storagename:$ctdisk", 'test', 0)) {
-            $count++;
-            warn "Test3 u1 failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 u1: $@";
-    }
-
-    eval {
-        if (PVE::Storage::volume_has_feature($cfg, 'copy', "$storagename:$ctbase", 'test', 0)) {
-            $count++;
-            warn "Test3 v1 failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 v1: $@";
-    }
-
-    eval {
-        if (PVE::Storage::volume_has_feature(
-            $cfg,
-            'copy',
-            "$storagename:$ctbase\/$ctlinked",
-            'test',
-            0,
-        )) {
-            $count++;
-            warn "Test3 w1 failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 w1: $@";
-    }
-
-    eval {
-        if (PVE::Storage::volume_has_feature(
-            $cfg, 'sparseinit', "$storagename:$vmdisk", 'test', 0,
-        )) {
-            $count++;
-            warn "Test3 x1 failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 x1: $@";
-    }
-
-    eval {
-        if (PVE::Storage::volume_has_feature(
-            $cfg, 'sparseinit', "$storagename:$vmbase", 'test', 0,
-        )) {
-            $count++;
-            warn "Test3 y1 failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 y1: $@";
-    }
-
-    eval {
-        if (PVE::Storage::volume_has_feature(
-            $cfg,
-            'sparseinit',
-            "$storagename:$vmbase\/$vmlinked",
-            'test',
-            0,
-        )) {
-            $count++;
-            warn "Test3 z1 failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 z1: $@";
-    }
-
-    eval {
-        if (PVE::Storage::volume_has_feature(
-            $cfg, 'sparseinit', "$storagename:$ctdisk", 'test', 0,
-        )) {
-            $count++;
-            warn "Test3 A1 failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 A1: $@";
-    }
-
-    eval {
-        if (PVE::Storage::volume_has_feature(
-            $cfg, 'sparseinit', "$storagename:$ctbase", 'test', 0,
-        )) {
-            $count++;
-            warn "Test3 B1 failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 B1: $@";
-    }
-
-    eval {
-        if (PVE::Storage::volume_has_feature(
-            $cfg,
-            'sparseinit',
-            "$storagename:$ctbase\/$ctlinked",
-            'test',
-            0,
-        )) {
-            $count++;
-            warn "Test3 C1 failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test3 C1: $@";
-    }
 };
 $tests->{3} = $test3;
 
@@ -2720,106 +942,26 @@ my $test2 = sub {
     print "\nrun test2 \"volume_resize\"\n";
     my $newsize = ($volsize + 1) * 1024 * 1024 * 1024;
 
-    eval {
-        if (($newsize / 1024) !=
-            PVE::Storage::volume_resize($cfg, "$storagename:$vmdisk", $newsize, 0)
-        ) {
-            $count++;
-            warn "Test2 a failed";
-        }
-        if ($newsize != PVE::Storage::volume_size_info($cfg, "$storagename:$vmdisk")) {
-            $count++;
-            warn "Test2 a failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test2 a: $@";
-    }
+    foreach_testvol sub($name, $vol, $base, $basevol) {
+        my $volname = $vol->{volname};
 
-    eval {
-        warn "Test2 b failed"
-            if ($newsize / 1024) !=
-            PVE::Storage::volume_resize($cfg, "$storagename:$vmbase", $newsize, 0);
-        warn "Test2 b failed"
-            if $newsize != PVE::Storage::volume_size_info($cfg, "$storagename:$vmbase");
-    };
-    if ($@) {
-        $count++;
-        warn "Test2 b: $@";
-    }
-
-    eval {
-        if (($newsize / 1024) !=
-            PVE::Storage::volume_resize($cfg, "$storagename:$vmbase\/$vmlinked", $newsize, 0)
-        ) {
+        eval {
+            if (($newsize / 1024) !=
+                PVE::Storage::volume_resize($cfg, "$storagename:$volname", $newsize, 0)
+            ) {
+                $count++;
+                warn "Test2 $name failed: volume_resize returned wrong size";
+            }
+            if ($newsize != PVE::Storage::volume_size_info($cfg, "$storagename:$volname")) {
+                $count++;
+                warn "Test2 $name failed: volume_size_info did not return the new size";
+            }
+        };
+        if ($@) {
             $count++;
-            warn "Test2 c failed";
-        }
-        if (
-            $newsize != PVE::Storage::volume_size_info($cfg, "$storagename:$vmbase\/$vmlinked")
-        ) {
-            $count++;
-            warn "Test2 c failed";
+            warn "Test2 $name failed with an error: $@";
         }
     };
-    if ($@) {
-        $count++;
-        warn "Test2 c: $@";
-    }
-
-    eval {
-        if (($newsize / 1024) !=
-            PVE::Storage::volume_resize($cfg, "$storagename:$ctdisk", $newsize, 0)
-        ) {
-            $count++;
-            warn "Test2 d failed";
-        }
-        if ($newsize != PVE::Storage::volume_size_info($cfg, "$storagename:$ctdisk")) {
-            $count++;
-            warn "Test2 d failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test2 d: $@";
-    }
-
-    eval {
-        if (($newsize / 1024) !=
-            PVE::Storage::volume_resize($cfg, "$storagename:$ctbase", $newsize, 0)
-        ) {
-            $count++;
-            warn "Test2 e failed";
-        }
-        if ($newsize != PVE::Storage::volume_size_info($cfg, "$storagename:$ctbase")) {
-            $count++;
-            warn "Test2 e failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test2 e: $@";
-    }
-
-    eval {
-        if (($newsize / 1024) !=
-            PVE::Storage::volume_resize($cfg, "$storagename:$ctbase\/$ctlinked", $newsize, 0)
-        ) {
-            $count++;
-            warn "Test2 f failed";
-        }
-        if (
-            $newsize != PVE::Storage::volume_size_info($cfg, "$storagename:$ctbase\/$ctlinked")
-        ) {
-            $count++;
-            warn "Test2 f failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test2 f: $@";
-    }
 };
 $tests->{2} = $test2;
 
@@ -2828,109 +970,78 @@ my $test1 = sub {
     print "\nrun test1 \"volume_size_info\"\n";
     my $size = ($volsize * 1024 * 1024 * 1024);
 
-    eval {
-        if ($size != PVE::Storage::volume_size_info($cfg, "$storagename:$vmdisk")) {
+    foreach_testvol sub($name, $vol, $base, $basevol) {
+        my $volname = $vol->{volname};
+
+        eval {
+            my $got = PVE::Storage::volume_size_info($cfg, "$storagename:$volname");
+            if ($size != $got) {
+                die "volume_size_info() returned unexpected size (got $got, expected $size)";
+            }
+        };
+        if ($@) {
             $count++;
-            warn "Test1 a failed";
+            warn "Test1 $name: $@";
         }
     };
-    if ($@) {
-        $count++;
-        warn "Test1 a : $@";
-    }
-
-    eval {
-        if ($size != PVE::Storage::volume_size_info($cfg, "$storagename:$vmbase")) {
-            $count++;
-            warn "Test1 b failed";
-        }
-
-    };
-    if ($@) {
-        $count++;
-        warn "Test1 b : $@";
-    }
-
-    eval {
-        if ($size != PVE::Storage::volume_size_info($cfg, "$storagename:$vmbase\/$vmlinked")) {
-            $count++;
-            warn "Test1 c failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test1 c : $@";
-    }
-
-    eval {
-        if ($size != PVE::Storage::volume_size_info($cfg, "$storagename:$ctdisk")) {
-            $count++;
-            warn "Test1 d failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test1 d : $@";
-    }
-
-    eval {
-        if ($size != PVE::Storage::volume_size_info($cfg, "$storagename:$ctbase")) {
-            $count++;
-            warn "Test1 e failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test1 e : $@";
-    }
-
-    eval {
-        if ($size != PVE::Storage::volume_size_info($cfg, "$storagename:$vmbase\/$vmlinked")) {
-            $count++;
-            warn "Test1 f failed";
-        }
-    };
-    if ($@) {
-        $count++;
-        warn "Test1 f : $@";
-    }
-
 };
 $tests->{1} = $test1;
 
 sub setup_zfs {
-    #create VM zvol
-    print "create zvol $vmdisk\n" if $verbose;
-    run_command("zfs create -V${volsize}G $zpath\/$vmdisk");
+    my $volume_list;
 
-    print "create zvol $vmbase\n" if $verbose;
-    run_command("zfs create -V${volsize}G $zpath\/$vmbase");
-    run_command("zfs snapshot $zpath\/$vmbase$basesnap");
+    my sub create_vol($name) {
+        my $vol = $test_vols->{$name};
 
-    print "create linked clone $vmlinked\n" if $verbose;
-    run_command("zfs clone $zpath\/$vmbase$basesnap $zpath\/$vmlinked");
+        my ($volname, $filename, $kind, $base, $isbase) =
+            $vol->@{qw(volname filename kind base isbase)};
 
-    #create CT subvol
-    print "create subvol $ctdisk\n" if $verbose;
-    run_command("zfs create -o refquota=${volsize}G $zpath\/$ctdisk");
+        my $base_filename;
+        if (defined($base)) {
+            $base_filename = $test_vols->{$base}->{filename}
+                or die "missing base ('$base') for '$name'\n";
+        }
 
-    print "create subvol $ctbase\n" if $verbose;
-    run_command("zfs create -o refquota=${volsize}G $zpath\/$ctbase");
-    run_command("zfs snapshot $zpath\/$ctbase$basesnap");
+        if ($kind eq 'zvol') {
+            if (defined($base)) {
+                print "[$name] create linked $kind $filename\n" if $verbose;
+                run_command("zfs clone $zpath\/$base_filename$basesnap $zpath\/$filename");
+            } else {
+                print "[$name] create $kind $filename\n" if $verbose;
+                run_command("zfs create -V${volsize}G $zpath\/$filename");
 
-    print "create linked clone $ctlinked\n" if $verbose;
-    run_command("zfs clone $zpath\/$ctbase$basesnap $zpath\/$ctlinked -o refquota=${volsize}G");
+                if ($isbase) {
+                    run_command("zfs snapshot $zpath\/$filename$basesnap");
+                }
+            }
+        } elsif ($kind eq 'subvol') {
+            if (defined($base)) {
+                print "[$name] create linked $kind $filename\n" if $verbose;
+                run_command(
+                    "zfs clone $zpath\/$base_filename$basesnap $zpath\/$filename -o refquota=${volsize}G"
+                );
+            } else {
+                print "[$name] create $kind $filename\n" if $verbose;
+                run_command("zfs create -o refquota=${volsize}G $zpath\/$filename");
 
-    my $vollist = [
-        "$storagename:$vmdisk",
-        "$storagename:$vmbase",
-        "$storagename:$vmbase/$vmlinked",
-        "$storagename:$ctdisk",
-        "$storagename:$ctbase",
-        "$storagename:$ctbase/$ctlinked",
-    ];
+                if ($isbase) {
+                    run_command("zfs snapshot $zpath\/$filename$basesnap");
+                }
+            }
+        } else {
+            die "unrecognized kind in test volume set: $kind\n";
+        }
 
-    PVE::Storage::activate_volumes($cfg, $vollist);
+        push @$volume_list, "$storagename:$volname";
+    }
+    foreach_basevol sub($name, $vol) {
+        create_vol($name);
+    };
+    foreach_testvol sub($name, $vol, $basename, $basevol) {
+        return if $vol->{isbase};
+        create_vol($name);
+    };
+    PVE::Storage::activate_volumes($cfg, $volume_list);
 }
 
 sub cleanup_zfs {
@@ -2950,7 +1061,7 @@ sub cleanup_zfs {
 sub setup_zpool {
 
     unlink 'zpool.img';
-    eval { run_command("truncate -s 8G zpool.img"); };
+    eval { run_command("truncate -s 12G zpool.img"); };
     if ($@) {
         clean_up_zpool();
     }
@@ -3027,6 +1138,7 @@ clean_up_zpool();
 
 $time = time - $time;
 
+done_testing();
 print "Stop tests for ZFSPoolPlugin\n";
 print "$count tests failed\n";
 print "Time: ${time}s\n";
