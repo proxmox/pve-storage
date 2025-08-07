@@ -48,9 +48,7 @@ sub iscsi_session_list {
             outfunc => sub {
                 my $line = shift;
                 # example: tcp: [1] 192.168.122.252:3260,1 iqn.2003-01.org.linux-iscsi.proxmox-nfs.x8664:sn.00567885ba8f (non-flash)
-                if ($line =~
-                    m/^tcp:\s+\[(\S+)\]\s+(\S+:\d+)\,\S+\s+(\S+)\s+\S+?\s*$/
-                ) {
+                if ($line =~ m/^tcp:\s+\[(\S+)\]\s+(\S+:\d+)\,\S+\s+(\S+)\s+\S+?\s*$/) {
                     my ($session_id, $portal, $target) = ($1, $2, $3);
                     # there can be several sessions per target (multipath)
                     push @{ $res->{$target} }, { session_id => $session_id, portal => $portal };
