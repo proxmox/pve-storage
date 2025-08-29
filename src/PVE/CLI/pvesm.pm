@@ -232,7 +232,7 @@ my $print_status = sub {
     $maxlen += 1;
 
     printf "%-${maxlen}s %10s %10s %15s %15s %15s %8s\n", 'Name', 'Type',
-        'Status', 'Total', 'Used', 'Available', '%';
+        'Status', 'Total (KiB)', 'Used (KiB)', 'Available (KiB)', '%';
 
     foreach my $res (sort { $a->{storage} cmp $b->{storage} } @$res) {
         my $storeid = $res->{storage};
