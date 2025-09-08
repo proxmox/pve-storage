@@ -300,7 +300,50 @@ __PACKAGE__->register_method({
     },
     returns => {
         type => "object",
-        properties => {},
+        properties => {
+            type => {
+                description => "Storage type.",
+                type => 'string',
+            },
+            content => {
+                description => "Allowed storage content types.",
+                type => 'string',
+                format => 'pve-storage-content-list',
+            },
+            enabled => {
+                description => "Set when storage is enabled (not disabled).",
+                type => 'boolean',
+                optional => 1,
+            },
+            active => {
+                description => "Set when storage is accessible.",
+                type => 'boolean',
+                optional => 1,
+            },
+            shared => {
+                description => "Shared flag from storage configuration.",
+                type => 'boolean',
+                optional => 1,
+            },
+            total => {
+                description => "Total storage space in bytes.",
+                type => 'integer',
+                renderer => 'bytes',
+                optional => 1,
+            },
+            used => {
+                description => "Used storage space in bytes.",
+                type => 'integer',
+                renderer => 'bytes',
+                optional => 1,
+            },
+            avail => {
+                description => "Available storage space in bytes.",
+                type => 'integer',
+                renderer => 'bytes',
+                optional => 1,
+            },
+        },
     },
     code => sub {
         my ($param) = @_;
