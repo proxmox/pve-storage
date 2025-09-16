@@ -2039,7 +2039,7 @@ sub volume_export {
         if ($format eq 'raw+size') {
             die $err_msg if $with_snapshots || $file_format eq 'subvol';
             write_common_header($fh, $size);
-            if ($file_format eq 'raw') {
+            if ($file_format =~ /^(raw|ova|ovf)$/) {
                 run_command(
                     ['dd', "if=$file", "bs=4k", "status=progress"],
                     output => '>&' . fileno($fh),
@@ -2085,14 +2085,14 @@ sub volume_export {
 sub volume_export_formats {
     my ($class, $scfg, $storeid, $volname, $snapshot, $base_snapshot, $with_snapshots) = @_;
     if ($scfg->{path} && !defined($snapshot) && !defined($base_snapshot)) {
-        my $format = ($class->parse_volname($volname))[6];
+        my ($vtype, $format) = ($class->parse_volname($volname))[0, 6];
 
         if ($with_snapshots) {
             return ($format . '+size') if ($format eq 'qcow2' || $format eq 'vmdk');
             return ();
         }
         return ('tar+size') if $format eq 'subvol';
-        return ('raw+size');
+        return ('raw+size') if $vtype =~ /^(iso|snippets|vztmpl|import)$/;
     }
     return ();
 }
@@ -2126,14 +2126,20 @@ sub volume_import {
 
     # XXX: Should we bother with conversion routines at this level? This won't
     # happen without manual CLI usage, so for now we just error out...
-    die "cannot import format $format into a file of format $file_format\n"
-        if $data_format ne $file_format && !($data_format eq 'tar' && $file_format eq 'subvol');
+    if (
+        ($vtype eq 'images' || $vtype eq 'rootdir')
+        && $data_format ne $file_format
+        && !($data_format eq 'tar' && $file_format eq 'subvol')
+    ) {
+        die "cannot import format $format into a file of format $file_format\n";
+    }
 
     # Check for an existing file first since interrupting alloc_image doesn't
     # free it.
     my ($file) = $class->path($scfg, $volname, $storeid);
     if (-e $file) {
-        die "file '$file' already exists\n" if !$allow_rename;
+        die "file '$file' already exists\n"
+            if !$allow_rename || ($vtype ne 'images' && $vtype ne 'rootdir');
         warn "file '$file' already exists - importing with a different name\n";
         $name = undef;
     }
@@ -2141,33 +2147,49 @@ sub volume_import {
     my ($size) = read_common_header($fh);
     $size = PVE::Storage::Common::align_size_up($size, 1024) / 1024;
 
-    eval {
-        my $allocname = $class->alloc_image($storeid, $scfg, $vmid, $file_format, $name, $size);
-        my $oldname = $volname;
-        $volname = $allocname;
-        if (defined($name) && $allocname ne $oldname) {
-            die "internal error: unexpected allocated name: '$allocname' != '$oldname'\n";
+    if ($vtype eq 'images' || $vtype eq 'rootdir') {
+        eval {
+            my $allocname =
+                $class->alloc_image($storeid, $scfg, $vmid, $file_format, $name, $size);
+            my $oldname = $volname;
+            $volname = $allocname;
+            if (defined($name) && $allocname ne $oldname) {
+                die "internal error: unexpected allocated name: '$allocname' != '$oldname'\n";
+            }
+            my ($file) = $class->path($scfg, $volname, $storeid)
+                or die "internal error: failed to get path to newly allocated volume $volname\n";
+            if ($data_format eq 'raw' || $data_format eq 'qcow2' || $data_format eq 'vmdk') {
+                run_command(
+                    ['dd', "of=$file", 'conv=sparse', 'bs=64k'],
+                    input => '<&' . fileno($fh),
+                );
+            } elsif ($data_format eq 'tar') {
+                run_command(
+                    ['tar', @COMMON_TAR_FLAGS, '-C', $file, '-xf', '-'],
+                    input => '<&' . fileno($fh),
+                );
+            } else {
+                die "volume import format '$format' not available for $class";
+            }
+        };
+        if (my $err = $@) {
+            eval { $class->free_image($storeid, $scfg, $volname, 0, $file_format) };
+            warn $@ if $@;
+            die $err;
         }
-        my ($file) = $class->path($scfg, $volname, $storeid)
-            or die "internal error: failed to get path to newly allocated volume $volname\n";
-        if ($data_format eq 'raw' || $data_format eq 'qcow2' || $data_format eq 'vmdk') {
-            run_command(
-                ['dd', "of=$file", 'conv=sparse', 'bs=64k'],
-                input => '<&' . fileno($fh),
-            );
-        } elsif ($data_format eq 'tar') {
-            run_command(
-                ['tar', @COMMON_TAR_FLAGS, '-C', $file, '-xf', '-'],
-                input => '<&' . fileno($fh),
-            );
-        } else {
-            die "volume import format '$format' not available for $class";
+    } elsif (grep { $vtype eq $_ } qw(import iso snippets vztmpl)) {
+        eval {
+            run_command(['dd', "of=$file", 'conv=excl', 'bs=64k'], input => '<&' . fileno($fh));
+        };
+        if (my $err = $@) {
+            if (-e $file) {
+                eval { unlink($file) };
+                warn $@ if $@;
+            }
+            die $err;
         }
-    };
-    if (my $err = $@) {
-        eval { $class->free_image($storeid, $scfg, $volname, 0, $file_format) };
-        warn $@ if $@;
-        die $err;
+    } else {
+        die "importing volume of type '$vtype' not implemented\n";
     }
 
     return "$storeid:$volname";
@@ -2176,13 +2198,14 @@ sub volume_import {
 sub volume_import_formats {
     my ($class, $scfg, $storeid, $volname, $snapshot, $base_snapshot, $with_snapshots) = @_;
     if ($scfg->{path} && !defined($base_snapshot)) {
-        my $format = ($class->parse_volname($volname))[6];
+        my ($vtype, $format) = ($class->parse_volname($volname))[0, 6];
+
         if ($with_snapshots) {
             return ($format . '+size') if ($format eq 'qcow2' || $format eq 'vmdk');
             return ();
         }
         return ('tar+size') if $format eq 'subvol';
-        return ('raw+size');
+        return ('raw+size') if $vtype =~ /^(iso|snippets|vztmpl|import)$/;
     }
     return ();
 }
