@@ -943,8 +943,6 @@ sub storage_migrate {
     my $target_ip = $target_sshinfo->{ip};
 
     my $ssh = PVE::SSHInfo::ssh_info_to_command($target_sshinfo);
-    my $ssh_base = PVE::SSHInfo::ssh_info_to_command_base($target_sshinfo);
-    local $ENV{RSYNC_RSH} = PVE::Tools::cmd2string($ssh_base);
 
     if (!defined($opts->{snapshot})) {
         $opts->{migration_snapshot} =
