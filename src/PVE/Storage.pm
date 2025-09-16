@@ -940,10 +940,6 @@ sub storage_migrate {
 
     my $target_volid = "${target_storeid}:${target_volname}";
 
-    my $target_ip = $target_sshinfo->{ip};
-
-    my $ssh = PVE::SSHInfo::ssh_info_to_command($target_sshinfo);
-
     if (!defined($opts->{snapshot})) {
         $opts->{migration_snapshot} =
             storage_migrate_snapshot($cfg, $storeid, $opts->{with_snapshots});
@@ -962,13 +958,19 @@ sub storage_migrate {
     my $format = $formats[0];
 
     my $import_fn = '-'; # let pvesm import read from stdin per default
-    if ($insecure) {
-        my $net = $target_sshinfo->{network} // $target_sshinfo->{ip};
-        $import_fn = "tcp://$net";
+    my $recv = [];
+
+    if (defined($target_sshinfo)) {
+        if ($insecure) {
+            my $net = $target_sshinfo->{network} // $target_sshinfo->{ip};
+            $import_fn = "tcp://$net";
+        }
+
+        my $ssh = PVE::SSHInfo::ssh_info_to_command($target_sshinfo);
+        push @$recv, (@$ssh, '--');
     }
 
-    my $recv =
-        [@$ssh, '--', $volume_import_prepare->($target_volid, $format, $import_fn, $opts)->@*];
+    push @$recv, ($volume_import_prepare->($target_volid, $format, $import_fn, $opts)->@*);
 
     my $new_volid;
     my $pattern = volume_imported_message(undef, 1);
