@@ -171,6 +171,23 @@ __PACKAGE__->register_method({
                     renderer => 'fraction_as_percentage',
                     optional => 1,
                 },
+                select_existing => {
+                    description => "Instead of creating new volumes, one must select one that"
+                        . " is already existing. Only included if 'format' parameter is set.",
+                    type => 'boolean',
+                    optional => 1,
+                },
+
+                # we can't include this return schema, since we cannot properly
+                # describe what it actually is with the json schema:
+                #
+                # a tuple in form of an array where the first element is an
+                # object, and the second is a string.
+                #format => {
+                #    description => "Lists the supported and default format."
+                #        . " Only included if 'format' parameter is set.",
+                #    optional => 1,
+                #},
             },
         },
         links => [{ rel => 'child', href => "{storage}" }],
