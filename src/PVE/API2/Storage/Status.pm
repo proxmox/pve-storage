@@ -178,6 +178,7 @@ __PACKAGE__->register_method({
                     optional => 1,
                 },
 
+                # FIXME: remove with 10.0
                 # we can't include this return schema, since we cannot properly
                 # describe what it actually is with the json schema:
                 #
@@ -185,9 +186,31 @@ __PACKAGE__->register_method({
                 # object, and the second is a string.
                 #format => {
                 #    description => "Lists the supported and default format."
-                #        . " Only included if 'format' parameter is set.",
+                #        . "Deprecated (use 'formats' instead). Only included "
+                #        . "if 'format' parameter is set.",
                 #    optional => 1,
                 #},
+                formats => {
+                    description => "Lists the supported and default format. Use"
+                        . " 'formats' instead. Only included if 'format' parameter is set.",
+                    optional => 1,
+                    type => 'object',
+                    properties => {
+                        supported => {
+                            type => 'array',
+                            description => 'The list of supported formats',
+                            items => {
+                                type => 'string',
+                                enum => [qw(qcow2 raw subvol vmdk)],
+                            },
+                        },
+                        default => {
+                            description => "The default format of the storage.",
+                            type => 'string',
+                            enum => [qw(qcow2 raw subvol vmdk)],
+                        },
+                    },
+                },
             },
         },
         links => [{ rel => 'child', href => "{storage}" }],

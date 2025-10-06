@@ -1485,6 +1485,18 @@ sub storage_info {
         my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
         if ($includeformat) {
             my $formats = $plugin->get_formats($scfg, $storeid);
+
+            my $supported = [];
+            for my $format (sort keys $formats->{valid}->%*) {
+                push $supported->@*, $format if $formats->{valid}->{$format};
+            }
+
+            $info->{$storeid}->{'formats'} = {
+                supported => $supported,
+                default => $formats->{default},
+            };
+
+            # FIXME: deprecated, remove with 10.0
             $info->{$storeid}->{format} = [$formats->{valid}, $formats->{default}];
 
             my $pd = $plugin->plugindata();
