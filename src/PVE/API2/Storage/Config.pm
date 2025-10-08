@@ -218,13 +218,13 @@ __PACKAGE__->register_method({
                 enum => $storage_type_enum,
             },
             config => {
-                description => "Partial, possible server generated, configuration properties.",
+                description => "Partial, possibly server generated, configuration properties.",
                 type => 'object',
                 optional => 1,
                 additionalProperties => 1,
                 properties => {
                     'encryption-key' => {
-                        description => "The, possible auto-generated, encryption-key.",
+                        description => "The, possibly auto-generated, encryption-key.",
                         optional => 1,
                         type => 'string',
                     },
@@ -318,13 +318,13 @@ __PACKAGE__->register_method({
                 enum => $storage_type_enum,
             },
             config => {
-                description => "Partial, possible server generated, configuration properties.",
+                description => "Partial, possibly server generated, configuration properties.",
                 type => 'object',
                 optional => 1,
                 additionalProperties => 1,
                 properties => {
                     'encryption-key' => {
-                        description => "The, possible auto-generated, encryption-key.",
+                        description => "The, possibly auto-generated, encryption-key.",
                         optional => 1,
                         type => 'string',
                     },
