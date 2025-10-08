@@ -2450,7 +2450,7 @@ sub new_backup_provider {
 
 =head3 volume_qemu_snapshot_method
 
-    $blockdev = $plugin->volume_qemu_snapshot_method($storeid, $scfg, $volname)
+    $method = $plugin->volume_qemu_snapshot_method($storeid, $scfg, $volname);
 
 Returns a string with the type of snapshot that qemu can do for a specific volume
 
