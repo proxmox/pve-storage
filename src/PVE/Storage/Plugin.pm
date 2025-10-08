@@ -711,6 +711,39 @@ sub on_update_hook {
     return undef;
 }
 
+=head3 on_update_hook_full
+
+    $returned_config = $plugin->on_update_hook_full($storeid, $scfg, $update, $delete, $sensitive);
+
+Most plugins use an empty C<return>, so that C<$returned_config> will be C<undef>. While a plugin
+can return auto-generated properties via C<$returned_config>, this is currently only used for the
+C<'encryption-key'> for the PBS plugin.
+
+Arguments:
+
+=over
+
+=item C<$storeid>: The storage ID.
+
+=item C<$scfg>: The current storage configuration.
+
+=item C<$update>: Hash reference with properties to be updated and their new values.
+
+=item C<$delete>: Array reference with properties to be deleted.
+
+=item C<$sensitive>: Hash reference with sensitive properties and their new values. Sensitive
+properties are declared via the plugin data method C<plugindata()>.
+
+=back
+
+=cut
+
+sub on_update_hook_full {
+    my ($class, $storeid, $scfg, $update, $delete, $sensitive) = @_;
+
+    return $class->on_update_hook($storeid, $update, $sensitive->%*);
+}
+
 # called during deletion of storage (before the new storage config got written)
 # and if the activate check on addition fails, to cleanup all storage traces
 # which on_add_hook may have created.

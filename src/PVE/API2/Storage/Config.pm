@@ -360,6 +360,9 @@ __PACKAGE__->register_method({
                 my $plugin = PVE::Storage::Plugin->lookup($type);
                 my $opts = $plugin->check_config($storeid, $param, 0, 1);
 
+                # Do checks for deletion up-front, but defer actual deletion until after the
+                # on_update_hook(_full) call. This makes it possible to pass the unmodified current
+                # storage configuration to the method.
                 if ($delete) {
                     my $options = $plugin->private()->{options}->{$type};
                     foreach my $k (@$delete) {
@@ -368,12 +371,21 @@ __PACKAGE__->register_method({
                         die "unable to delete fixed option '$k'\n" if $d->{fixed};
                         die "cannot set and delete property '$k' at the same time!\n"
                             if defined($opts->{$k});
-
-                        delete $scfg->{$k};
                     }
                 }
 
-                $returned_config = $plugin->on_update_hook($storeid, $opts, %$sensitive);
+                if ($plugin->can('api') && $plugin->api() < 13) {
+                    $returned_config = $plugin->on_update_hook($storeid, $opts, %$sensitive);
+                } else {
+                    $returned_config =
+                        $plugin->on_update_hook_full($storeid, $scfg, $opts, $delete, $sensitive);
+                }
+
+                if ($delete) {
+                    for my $k ($delete->@*) {
+                        delete $scfg->{$k};
+                    }
+                }
 
                 for my $k (keys %$opts) {
                     $scfg->{$k} = $opts->{$k};

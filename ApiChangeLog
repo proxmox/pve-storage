@@ -48,6 +48,17 @@ Future changes should be documented in here.
 
   Plugins that do not require hints can safely ignore the additional parameter.
 
+* Introduce `on_update_hook_full()` plugin method
+
+  The original `on_update_hook()` plugin method was limited, because only the updated properties and
+  values would be passed in. The new `on_update_hook_full()` plugin method also receives the current
+  storage configuration and the list of which properties are to be deleted. This allows detecting
+  and reacting to all changes and knowing how values changed. See also bug #6669 [0] for the initial
+  motiviation. If a plugin implements `on_update_hook_full()`, that method will be called rather
+  than the `on_update_hook()` method.
+
+  [0]: https://bugzilla.proxmox.com/show_bug.cgi?id=6669
+
 ## Version 12:
 
 * Introduce `qemu_blockdev_options()` plugin method
