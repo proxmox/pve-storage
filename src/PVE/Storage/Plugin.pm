@@ -1618,7 +1618,7 @@ my $get_subdir_files = sub {
         } elsif ($tt eq 'vztmpl') {
             next if $fn !~ m!/([^/]+$PVE::Storage::VZTMPL_EXT_RE_1)$!;
 
-            $info = { volid => "$sid:vztmpl/$1", format => "t$2" };
+            $info = { volid => "$sid:vztmpl/$1", format => $2 eq 'tar' ? $2 : "t$2" };
 
         } elsif ($tt eq 'backup') {
             next if $fn !~ m!/([^/]+$PVE::Storage::BACKUP_EXT_RE_2)$!;
