@@ -500,6 +500,25 @@ sub on_add_hook {
     return;
 }
 
+sub on_update_hook_full {
+    my ($class, $storeid, $scfg, $update, $delete, $sensitive) = @_;
+
+    if (
+        $scfg->{'snapshot-as-volume-chain'} # currently set
+        && ( # and won't be set after update, because:
+            (
+                defined($update->{'snapshot-as-volume-chain'})
+                && !$update->{'snapshot-as-volume-chain'}
+            ) # explicitly set to disabled
+            || grep { $_ eq 'snapshot-as-volume-chain' } $delete->@* # or deleted
+        )
+    ) {
+        my $images = $class->list_images($storeid, $scfg, undef, undef, undef);
+        die "$storeid - cannot disable 'snapshot-as-volume-chain' while a qcow2 image exists\n"
+            if grep { $_->{format} eq 'qcow2' } $images->@*;
+    }
+}
+
 sub parse_volname {
     my ($class, $volname) = @_;
 
