@@ -305,6 +305,7 @@ __PACKAGE__->register_method({
             { subdir => 'download-url' },
             { subdir => 'file-restore' },
             { subdir => 'import-metadata' },
+            { subdir => 'oci-registry-pull' },
             { subdir => 'prunebackups' },
             { subdir => 'rrd' },
             { subdir => 'rrddata' },
@@ -902,6 +903,75 @@ __PACKAGE__->register_method({
         my $worker_id = PVE::Tools::encode_text($filename); # must not pass : or the like as w-ID
 
         return $rpcenv->fork_worker('download', $worker_id, $user, $worker);
+    },
+});
+
+__PACKAGE__->register_method({
+    name => 'oci_registry_pull',
+    path => '{storage}/oci-registry-pull',
+    method => 'POST',
+    description => "Pull an OCI image from a registry.",
+    proxyto => 'node',
+    permissions => {
+        check => [
+            'and',
+            ['perm', '/storage/{storage}', ['Datastore.AllocateTemplate']],
+            ['perm', '/nodes/{node}', ['Sys.AccessNetwork']],
+        ],
+    },
+    protected => 1,
+    parameters => {
+        additionalProperties => 0,
+        properties => {
+            node => get_standard_option('pve-node'),
+            storage => get_standard_option('pve-storage-id'),
+            reference => {
+                description => "The reference to the OCI image to download.",
+                type => 'string',
+                pattern =>
+                    '^(?:(?:[a-zA-Z\d]|[a-zA-Z\d][a-zA-Z\d-]*[a-zA-Z\d])'
+                    . '(?:\.(?:[a-zA-Z\d]|[a-zA-Z\d][a-zA-Z\d-]*[a-zA-Z\d]))*(?::\d+)?/)?[a-z\d]+'
+                    . '(?:/[a-z\d]+(?:(?:(?:[._]|__|[-]*)[a-z\d]+)+)?)*:\w[\w.-]{0,127}$',
+            },
+        },
+    },
+    returns => {
+        type => "string",
+    },
+    code => sub {
+        my ($param) = @_;
+
+        die "Install 'skopeo' to pull OCI images from registries.\n" if (!-f '/usr/bin/skopeo');
+
+        my $rpcenv = PVE::RPCEnvironment::get();
+        my $user = $rpcenv->get_user();
+
+        my $cfg = PVE::Storage::config();
+
+        my ($node, $storage) = $param->@{qw(node storage)};
+        my $scfg = PVE::Storage::storage_check_enabled($cfg, $storage, $node);
+
+        die "can't upload to storage type '$scfg->{type}', not a file based storage!\n"
+            if !defined($scfg->{path});
+
+        my $reference = $param->{reference};
+
+        die "storage '$storage' is not configured for content-type 'vztmpl'\n"
+            if !$scfg->{content}->{vztmpl};
+
+        my $filename = PVE::Storage::normalize_content_filename($reference);
+        my $path = PVE::Storage::get_vztmpl_dir($cfg, $storage);
+        PVE::Storage::activate_storage($cfg, $storage);
+
+        my $worker = sub {
+            PVE::Tools::run_command(
+                ["skopeo", "copy", "docker://$reference", "oci-archive:$path/$filename.tar"],
+            );
+        };
+
+        my $worker_id = PVE::Tools::encode_text($filename); # must not pass : or the like as w-ID
+
+        return $rpcenv->fork_worker('ociregistrypull', $worker_id, $user, $worker);
     },
 });
 
