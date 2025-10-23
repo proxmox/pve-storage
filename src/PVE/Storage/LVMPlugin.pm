@@ -3,10 +3,11 @@ package PVE::Storage::LVMPlugin;
 use strict;
 use warnings;
 
+use Cwd qw(abs_path);
 use File::Basename;
 use IO::File;
 
-use PVE::Tools qw(run_command trim);
+use PVE::Tools qw(run_command file_read_firstline trim);
 use PVE::Storage::Plugin;
 use PVE::JSONSchema qw(get_standard_option);
 
@@ -284,23 +285,40 @@ my sub free_lvm_volumes {
 
     my $vg = $scfg->{vgname};
 
-    # we need to zero out LVM data for security reasons
-    # and to allow thin provisioning
-    my $zero_out_worker = sub {
-        # wipe throughput up to 10MB/s by default; may be overwritten with saferemove_throughput
-        my $throughput = '-10485760';
-        if ($scfg->{saferemove_throughput}) {
-            $throughput = $scfg->{saferemove_throughput};
+    my $secure_delete_cmd = sub {
+        my ($lvmpath) = @_;
+
+        my $stepsize = $scfg->{'saferemove-stepsize'} // 32;
+        $stepsize = $stepsize * 1024 * 1024;
+
+        my $bdev = abs_path($lvmpath);
+
+        my $sysdir = undef;
+        if ($bdev && $bdev =~ m|^/dev/(dm-\d+)|) {
+            $sysdir = "/sys/block/$1";
+        } else {
+            warn "skip zero-out for volume '$lvmpath' - no device mapper link\n";
+            return;
         }
-        for my $name (@$volnames) {
-            print "zero-out data on image $name (/dev/$vg/del-$name)\n";
+
+        my $write_zeroes_max_bytes =
+            file_read_firstline("$sysdir/queue/write_zeroes_max_bytes") // 0;
+        ($write_zeroes_max_bytes) = $write_zeroes_max_bytes =~ m/^(\d+)$/; #untaint
+
+        if ($write_zeroes_max_bytes == 0) {
+            # If the storage does not support 'write zeroes', we fallback to cstream.
+            # wipe throughput up to 10MB/s by default; may be overwritten with saferemove_throughput
+            my $throughput = '-10485760';
+            if ($scfg->{saferemove_throughput}) {
+                $throughput = $scfg->{saferemove_throughput};
+            }
 
             my $cmd = [
                 '/usr/bin/cstream',
                 '-i',
                 '/dev/zero',
                 '-o',
-                "/dev/$vg/del-$name",
+                $lvmpath,
                 '-T',
                 '10',
                 '-v',
@@ -317,6 +335,30 @@ my sub free_lvm_volumes {
                 );
             };
             warn $@ if $@;
+        } else {
+            # If the storage supports write_zeroes but stepsize is too big, reduce the stepsize to
+            # the maximum supported by the storage.
+            if ($write_zeroes_max_bytes > 0 && $stepsize > $write_zeroes_max_bytes) {
+                print "reduce stepsize to the maximum supported by the storage:"
+                    . " $write_zeroes_max_bytes bytes\n";
+
+                $stepsize = $write_zeroes_max_bytes;
+            }
+
+            my $cmd = ['blkdiscard', $lvmpath, '-v', '--zeroout', '--step', "${stepsize}"];
+            eval { run_command($cmd); };
+            warn $@ if $@;
+        }
+    };
+
+    # we need to zero out LVM data for security reasons
+    # and to allow thin provisioning
+    my $zero_out_worker = sub {
+        for my $name (@$volnames) {
+            my $lvmpath = "/dev/$vg/del-$name";
+            print "zero-out data on image $name ($lvmpath)\n";
+
+            $secure_delete_cmd->($lvmpath);
 
             $class->cluster_lock_storage(
                 $storeid,
@@ -376,6 +418,13 @@ sub properties {
             description => "Zero-out data when removing LVs.",
             type => 'boolean',
         },
+        'saferemove-stepsize' => {
+            description => "Wipe step size in MiB."
+                . " It will be capped to the maximum supported by the storage.",
+            default => 32,
+            enum => [qw(1 2 4 8 16 32)],
+            type => 'integer',
+        },
         saferemove_throughput => {
             description => "Wipe throughput (cstream -t parameter value).",
             type => 'string',
@@ -394,6 +443,7 @@ sub options {
         shared => { optional => 1 },
         disable => { optional => 1 },
         saferemove => { optional => 1 },
+        'saferemove-stepsize' => { optional => 1 },
         saferemove_throughput => { optional => 1 },
         content => { optional => 1 },
         base => { fixed => 1, optional => 1 },
