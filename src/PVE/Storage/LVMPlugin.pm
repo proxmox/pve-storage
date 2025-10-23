@@ -358,6 +358,17 @@ my sub free_lvm_volumes {
             my $lvmpath = "/dev/$vg/del-$name";
             print "zero-out data on image $name ($lvmpath)\n";
 
+            my $cmd_activate = ['/sbin/lvchange', '-aly', $lvmpath];
+            run_command(
+                $cmd_activate,
+                errmsg => "can't activate LV '$lvmpath' to zero-out its data",
+            );
+            $cmd_activate = ['/sbin/lvchange', '--refresh', $lvmpath];
+            run_command(
+                $cmd_activate,
+                errmsg => "can't refresh LV '$lvmpath' to zero-out its data",
+            );
+
             $secure_delete_cmd->($lvmpath);
 
             $class->cluster_lock_storage(
@@ -733,13 +744,6 @@ my sub alloc_snap_image {
 my sub free_snap_image {
     my ($class, $storeid, $scfg, $volname, $snap) = @_;
 
-    #activate only the snapshot volume
-    my $path = $class->path($scfg, $volname, $storeid, $snap);
-    my $cmd = ['/sbin/lvchange', '-aly', $path];
-    run_command($cmd, errmsg => "can't activate LV '$path' to zero-out its data");
-    $cmd = ['/sbin/lvchange', '--refresh', $path];
-    run_command($cmd, errmsg => "can't refresh LV '$path' to zero-out its data");
-
     my $snap_volname = get_snap_name($class, $volname, $snap);
     return free_lvm_volumes($class, $scfg, $storeid, [$snap_volname]);
 }
@@ -752,14 +756,8 @@ sub free_image {
     my $volnames = [$volname];
 
     if ($format eq 'qcow2') {
-        #activate volumes && snapshot volumes
-        my $path = $class->path($scfg, $volname, $storeid);
-        $path = "\@pve-$name" if $format && $format eq 'qcow2';
-        my $cmd = ['/sbin/lvchange', '-aly', $path];
-        run_command($cmd, errmsg => "can't activate LV '$path' to zero-out its data");
-        $cmd = ['/sbin/lvchange', '--refresh', $path];
-        run_command($cmd, errmsg => "can't refresh LV '$path' to zero-out its data");
-
+        # Activate the volume to read its snapshot chain.
+        $class->activate_volume($storeid, $scfg, $volname);
         my $snapshots = $class->volume_snapshot_info($scfg, $storeid, $volname);
         for my $snapid (
             sort { $snapshots->{$a}->{order} <=> $snapshots->{$b}->{order} }
