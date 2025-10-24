@@ -316,6 +316,7 @@ sub get_ceph_volume_infos {
                 # $result autovivification is wanted, to not creating empty hashes
                 if (
                     ($type eq 'block' || $type eq 'data')
+                    && $fields->[2]
                     && $fields->[2] =~ m/ceph.osd_id=([^,]+)/
                 ) {
                     $result->{$dev}->{osdid} = $1;
