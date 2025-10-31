@@ -59,6 +59,25 @@ cfs_register_file(
     sub { __PACKAGE__->write_config(@_); },
 );
 
+our $hints_properties = {
+    'guest-is-windows' => {
+        type => 'boolean',
+        optional => 1,
+        description => "true if the volume belongs to a Windows VM guest",
+    },
+    'plugin-may-deactivate-volume' => {
+        type => 'boolean',
+        optional => 1,
+        description => "true if the plugin may deactivate the volume in order to apply a hint",
+    },
+};
+
+our $hints_format = {
+    type => 'object',
+    additionalProperties => 0,
+    properties => $hints_properties,
+};
+
 my %prune_option = (
     optional => 1,
     type => 'integer',
@@ -612,6 +631,26 @@ sub preallocation_cmd_opt {
     }
 
     return;
+}
+
+sub is_hint_supported {
+    my ($hint) = @_;
+
+    return defined($hints_properties->{$hint});
+}
+
+sub verify_hints {
+    my ($hints, $noerr) = @_;
+
+    return if !defined($hints);
+
+    eval { PVE::JSONSchema::validate($hints, $hints_format); };
+    my $err = $@;
+
+    return $hints if !$err;
+    return if $noerr;
+
+    die "internal error - hints are not valid: $@";
 }
 
 # Storage implementation
@@ -1871,7 +1910,7 @@ sub deactivate_storage {
 }
 
 sub map_volume {
-    my ($class, $storeid, $scfg, $volname, $snapname) = @_;
+    my ($class, $storeid, $scfg, $volname, $snapname, $hints) = @_;
 
     my ($path) = $class->path($scfg, $volname, $storeid, $snapname);
     return $path;
@@ -1884,7 +1923,7 @@ sub unmap_volume {
 }
 
 sub activate_volume {
-    my ($class, $storeid, $scfg, $volname, $snapname, $cache) = @_;
+    my ($class, $storeid, $scfg, $volname, $snapname, $cache, $hints) = @_;
 
     my $path = $class->filesystem_path($scfg, $volname, $snapname);
 
