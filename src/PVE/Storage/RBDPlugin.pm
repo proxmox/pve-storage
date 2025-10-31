@@ -49,6 +49,13 @@ my sub get_rbd_path {
     return $path;
 }
 
+my sub get_rbd_id {
+    my ($path) = @_;
+    my $real_dev = abs_path($path);
+    my ($rbd_id) = ($real_dev =~ m|/dev/rbd([0-9]+)$|);
+    return $rbd_id;
+}
+
 my sub get_rbd_dev_path {
     my ($scfg, $storeid, $volume) = @_;
 
@@ -76,8 +83,7 @@ my sub get_rbd_dev_path {
 
     if (!-e $pve_path && -e $path) {
         # possibly mapped before rbd-pve rule existed
-        my $real_dev = abs_path($path);
-        my ($rbd_id) = ($real_dev =~ m|/dev/rbd([0-9]+)$|);
+        my $rbd_id = get_rbd_id($path);
         my $dev_cluster_id = file_read_firstline("/sys/devices/rbd/${rbd_id}/cluster_fsid");
         return $path if $cluster_id eq $dev_cluster_id;
     }
