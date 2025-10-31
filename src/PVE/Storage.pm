@@ -1122,7 +1122,9 @@ sub vdisk_create_base {
 }
 
 sub map_volume {
-    my ($cfg, $volid, $snapname) = @_;
+    my ($cfg, $volid, $snapname, $hints) = @_;
+
+    PVE::Storage::Plugin::verify_hints($hints);
 
     my ($storeid, $volname) = parse_volume_id($volid);
 
@@ -1130,7 +1132,7 @@ sub map_volume {
 
     my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
 
-    return $plugin->map_volume($storeid, $scfg, $volname, $snapname);
+    return $plugin->map_volume($storeid, $scfg, $volname, $snapname, $hints);
 }
 
 sub unmap_volume {
@@ -1386,9 +1388,11 @@ sub deactivate_storage {
 }
 
 sub activate_volumes {
-    my ($cfg, $vollist, $snapname) = @_;
+    my ($cfg, $vollist, $snapname, $hints) = @_;
 
     return if !($vollist && scalar(@$vollist));
+
+    PVE::Storage::Plugin::verify_hints($hints);
 
     my $storagehash = {};
     foreach my $volid (@$vollist) {
@@ -1404,7 +1408,7 @@ sub activate_volumes {
         my ($storeid, $volname) = parse_volume_id($volid);
         my $scfg = storage_config($cfg, $storeid);
         my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
-        $plugin->activate_volume($storeid, $scfg, $volname, $snapname, $cache);
+        $plugin->activate_volume($storeid, $scfg, $volname, $snapname, $cache, $hints);
     }
 }
 
