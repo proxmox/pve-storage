@@ -90,6 +90,19 @@ my sub get_rbd_dev_path {
     return $pve_path;
 }
 
+my sub read_rbd_map_options {
+    my ($rbd_id) = @_;
+
+    my $sysfs_config_info = file_read_firstline("/sys/devices/rbd/${rbd_id}/config_info");
+    return if !defined($sysfs_config_info);
+
+    my $config_info = [split(/\s+/, $sysfs_config_info)];
+    my $options = @$config_info[1];
+    return if !defined($options);
+
+    return [split(/,/, $options)];
+}
+
 my $rbd_cmd = sub {
     my ($scfg, $storeid, $op, @options) = @_;
 
@@ -799,7 +812,7 @@ sub deactivate_storage {
 }
 
 sub map_volume {
-    my ($class, $storeid, $scfg, $volname, $snapname) = @_;
+    my ($class, $storeid, $scfg, $volname, $snapname, $hints) = @_;
 
     my ($vtype, $img_name, $vmid) = $class->parse_volname($volname);
 
@@ -808,12 +821,33 @@ sub map_volume {
 
     my $kerneldev = get_rbd_dev_path($scfg, $storeid, $name);
 
+    my @extra_options = ();
+
+    if (defined($hints) && $hints->{'guest-is-windows'}) {
+        # make sure to pass rxbounce for Windows guest volumes to avoid degraded performance
+        @extra_options = ('--options', 'rxbounce');
+
+        # if already mapped without rxbounce and deactivation is safe, try to unmap
+        if (-b $kerneldev) {
+            my $mapped_options = read_rbd_map_options(get_rbd_id($kerneldev));
+
+            if ($mapped_options && scalar(grep { /rxbounce/ } @$mapped_options) == 0) {
+                if ($hints->{'plugin-may-deactivate-volume'}) {
+                    eval { $class->unmap_volume($storeid, $scfg, $volname, $snapname); };
+                    warn "could not unmap to apply rxbounce - $@\n" if $@;
+                } else {
+                    warn "not unmapping volume $volname to apply rxbounce since it is not safe\n";
+                }
+            }
+        }
+    }
+
     return $kerneldev if -b $kerneldev; # already mapped
 
     # features can only be enabled/disabled for image, not for snapshot!
     $krbd_feature_update->($scfg, $storeid, $img_name);
 
-    my $cmd = $rbd_cmd->($scfg, $storeid, 'map', $name);
+    my $cmd = $rbd_cmd->($scfg, $storeid, 'map', $name, @extra_options);
     run_rbd_command($cmd, errmsg => "can't map rbd volume $name");
 
     return $kerneldev;
@@ -836,9 +870,9 @@ sub unmap_volume {
 }
 
 sub activate_volume {
-    my ($class, $storeid, $scfg, $volname, $snapname, $cache) = @_;
+    my ($class, $storeid, $scfg, $volname, $snapname, $cache, $hints) = @_;
 
-    $class->map_volume($storeid, $scfg, $volname, $snapname) if $scfg->{krbd};
+    $class->map_volume($storeid, $scfg, $volname, $snapname, $hints) if $scfg->{krbd};
 
     return 1;
 }
