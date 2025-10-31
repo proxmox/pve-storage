@@ -6,6 +6,48 @@ without breaking anything unaware of it.)
 
 Future changes should be documented in here.
 
+## Version 13:
+
+* Add new parameter $hints to the `activate_volume()` and `map_volume()` plugin methods
+
+  Old signature of `activate_volume()`:
+
+    sub($plugin, $storeid, $scfg, $volname, $snapname, $cache)
+
+  New signature of `activate_volume()`:
+
+    sub($plugin, $storeid, $scfg, $volname, $snapname, $cache, $hints)
+
+  Old signature of `map_volume()`:
+
+    sub($plugin, $storeid, $scfg, $volname, $snapname)
+
+  New signature of `map_volume()`:
+
+    sub($plugin, $storeid, $scfg, $volname, $snapname, $hints)
+
+  Hints are a mechanism that allows the upper layers to optionally pass down well-defined
+  information to the storage plugins on volume activation/mapping. The storage plugin can make
+  adjustments to its volume activation/mapping based on the hints (we call this "applying" the
+  hint).
+
+  If the new parameter $hints is defined, it is a hash reference that adheres to the schema
+  `PVE::Storage::Plugin::$hints_format` (verified by caller). The supported hints are specified in
+  `PVE::Storage::Plugin::$hints_properties` and may be extended in the future. It is not guaranteed
+  that the volume is inactive when `activate_volume()` or `map_volume()` are called, and it is not
+  guaranteed that hints are passed on every storage activation. Hints may be passed at additional
+  storage activation call sites in the future without an API version bump.
+
+  It can happen a volume is already active but applying the hint would require unmapping the volume
+  and mapping it again with the hint applied. To cover such cases, the Boolean hint
+  'plugin-may-deactivate-volume' denotes whether unmapping the volume is currently safe. Only if
+  this hint is true, the plugin may deactivate the volume and map it again with the hint applied.
+
+  Hints may be added in the future without an API version bump. Plugins may call
+  `PVE::Storage::Plugin::is_hint_supported()` to check whether a specific hint is supported.
+
+  Plugins that do not require hints can safely ignore the additional parameter.
+
 ## Version 12:
 
 * Introduce `qemu_blockdev_options()` plugin method
