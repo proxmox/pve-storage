@@ -1097,11 +1097,12 @@ sub volume_snapshot_rollback {
     die "error deleting snapshot $snap $@\n" if $@;
 
     eval { alloc_snap_image($class, $storeid, $scfg, $volname, $snap) };
+    my $alloc_err = $@;
 
     fork_cleanup_worker($cleanup_worker);
 
-    if ($@) {
-        die "can't allocate new volume $volname: $@\n";
+    if ($alloc_err) {
+        die "can't allocate new volume $volname: $alloc_err\n";
     }
 
     return undef;
