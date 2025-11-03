@@ -1029,7 +1029,7 @@ sub volume_size_info {
     return wantarray ? ($size, 'raw', 0, undef) : $size;
 }
 
-sub volume_snapshot {
+my sub volume_snapshot_locked {
     my ($class, $scfg, $storeid, $volname, $snap) = @_;
 
     my ($vmid, $format) = ($class->parse_volname($volname))[2, 6];
@@ -1048,6 +1048,17 @@ sub volume_snapshot {
         eval { $class->rename_snapshot($scfg, $storeid, $volname, $snap, 'current') };
         die $err;
     }
+}
+
+sub volume_snapshot {
+    my ($class, $scfg, $storeid, $volname, $snap) = @_;
+
+    return $class->cluster_lock_storage(
+        $storeid,
+        $scfg->{shared},
+        undef,
+        sub { return volume_snapshot_locked($class, $scfg, $storeid, $volname, $snap); },
+    );
 }
 
 # Asserts that a rollback to $snap on $volname is possible.
@@ -1086,7 +1097,7 @@ sub volume_rollback_is_possible {
     return 1;
 }
 
-sub volume_snapshot_rollback {
+my sub volume_snapshot_rollback_locked {
     my ($class, $scfg, $storeid, $volname, $snap) = @_;
 
     my $format = ($class->parse_volname($volname))[6];
@@ -1108,6 +1119,19 @@ sub volume_snapshot_rollback {
     return undef;
 }
 
+sub volume_snapshot_rollback {
+    my ($class, $scfg, $storeid, $volname, $snap) = @_;
+
+    return $class->cluster_lock_storage(
+        $storeid,
+        $scfg->{shared},
+        undef,
+        sub {
+            return volume_snapshot_rollback_locked($class, $scfg, $storeid, $volname, $snap);
+        },
+    );
+}
+
 sub volume_snapshot_delete {
     my ($class, $scfg, $storeid, $volname, $snap, $running) = @_;
 
@@ -1117,7 +1141,14 @@ sub volume_snapshot_delete {
     die "can't delete snapshot for '$format' volume\n" if $format ne 'qcow2';
 
     if ($running) {
-        my $cleanup_worker = eval { free_snap_image($class, $storeid, $scfg, $volname, $snap); };
+        my $cleanup_worker = eval {
+            return $class->cluster_lock_storage(
+                $storeid,
+                $scfg->{shared},
+                undef,
+                sub { return free_snap_image($class, $storeid, $scfg, $volname, $snap); },
+            );
+        };
         die "error deleting snapshot $snap $@\n" if $@;
         fork_cleanup_worker($cleanup_worker);
         return;
@@ -1152,19 +1183,31 @@ sub volume_snapshot_delete {
                 "The state of $snap is now invalid. Don't try to clone or rollback it. You can only try to delete it again later\n";
             die "error commiting $childsnap to $snap; $@\n";
         }
-        print "delete $childvolname\n";
-        my $cleanup_worker =
-            eval { free_snap_image($class, $storeid, $scfg, $volname, $childsnap) };
-        if ($@) {
-            die "error delete old snapshot volume $childvolname: $@\n";
-        }
 
-        print "rename $snapvolname to $childvolname\n";
-        eval { lvrename($scfg, $snapvolname, $childvolname) };
-        if ($@) {
-            warn $@;
-            $err = "error renaming snapshot: $@\n";
-        }
+        print "delete $childvolname\n";
+        my $cleanup_worker = eval {
+            return $class->cluster_lock_storage(
+                $storeid,
+                $scfg->{shared},
+                undef,
+                sub {
+                    my $cleanup_worker_sub =
+                        eval { free_snap_image($class, $storeid, $scfg, $volname, $childsnap) };
+                    if ($@) {
+                        die "error delete old snapshot volume $childvolname: $@\n";
+                    }
+
+                    print "rename $snapvolname to $childvolname\n";
+                    eval { lvrename($scfg, $snapvolname, $childvolname) };
+                    if ($@) {
+                        warn $@;
+                        $err = "error renaming snapshot: $@\n";
+                    }
+
+                    return $cleanup_worker_sub;
+                },
+            );
+        };
         fork_cleanup_worker($cleanup_worker);
 
     } else {
@@ -1190,7 +1233,14 @@ sub volume_snapshot_delete {
             die "error rebase $childsnap from $parentsnap; $@\n";
         }
         #delete the snapshot
-        my $cleanup_worker = eval { free_snap_image($class, $storeid, $scfg, $volname, $snap); };
+        my $cleanup_worker = eval {
+            return $class->cluster_lock_storage(
+                $storeid,
+                $scfg->{shared},
+                undef,
+                sub { return free_snap_image($class, $storeid, $scfg, $volname, $snap); },
+            );
+        };
         die "error deleting old snapshot volume $snapvolname: $@\n" if $@;
         fork_cleanup_worker($cleanup_worker);
     }
