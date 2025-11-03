@@ -1190,9 +1190,7 @@ sub volume_snapshot_delete {
         }
         #delete the snapshot
         my $cleanup_worker = eval { free_snap_image($class, $storeid, $scfg, $volname, $snap); };
-        if ($@) {
-            die "error deleting old snapshot volume $snapvolname\n";
-        }
+        die "error deleting old snapshot volume $snapvolname: $@\n" if $@;
         fork_cleanup_worker($cleanup_worker);
     }
 
