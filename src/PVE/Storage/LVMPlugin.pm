@@ -1300,19 +1300,27 @@ sub volume_import {
     die "cannot import format $format into a file of format $file_format\n"
         if $file_format ne 'raw';
 
-    my $vg = $scfg->{vgname};
-    my $lvs = lvm_list_volumes($vg);
-    if ($lvs->{$vg}->{$volname}) {
-        die "volume $vg/$volname already exists\n" if !$allow_rename;
-        warn "volume $vg/$volname already exists - importing with a different name\n";
-        $name = undef;
-    }
+    my $allocname = $class->cluster_lock_storage(
+        $storeid,
+        $scfg->{shared},
+        undef,
+        sub {
+            my $vg = $scfg->{vgname};
+            my $lvs = lvm_list_volumes($vg);
+            if ($lvs->{$vg}->{$volname}) {
+                die "volume $vg/$volname already exists\n" if !$allow_rename;
+                warn "volume $vg/$volname already exists - importing with a different name\n";
+                $name = undef;
+            }
 
-    my ($size) = PVE::Storage::Plugin::read_common_header($fh);
-    $size = PVE::Storage::Common::align_size_up($size, 1024) / 1024;
+            my ($size) = PVE::Storage::Plugin::read_common_header($fh);
+            $size = PVE::Storage::Common::align_size_up($size, 1024) / 1024;
+
+            return $class->alloc_image($storeid, $scfg, $vmid, 'raw', $name, $size);
+        },
+    );
 
     eval {
-        my $allocname = $class->alloc_image($storeid, $scfg, $vmid, 'raw', $name, $size);
         my $oldname = $volname;
         $volname = $allocname;
         if (defined($name) && $allocname ne $oldname) {
@@ -1324,7 +1332,14 @@ sub volume_import {
         $class->volume_import_write($fh, $file);
     };
     if (my $err = $@) {
-        my $cleanup_worker = eval { $class->free_image($storeid, $scfg, $volname, 0) };
+        my $cleanup_worker = eval {
+            return $class->cluster_lock_storage(
+                $storeid,
+                $scfg->{shared},
+                undef,
+                sub { return $class->free_image($storeid, $scfg, $volname, 0); },
+            );
+        };
         warn $@ if $@;
         fork_cleanup_worker($cleanup_worker);
         die $err;
