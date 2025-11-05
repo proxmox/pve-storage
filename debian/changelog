@@ -1,3 +1,27 @@
+libpve-storage-perl (9.0.14) trixie; urgency=medium
+
+  * fix #6073: esxi: fix zombie process after storage removal
+
+  * iscsi: add hostname support in portal addresses
+
+  * api: status: document return types
+
+  * fix #6845: make regexes in zvol deletion retry logic less restrictive
+
+  * pvesm: print units in 'status' subcommand table headings
+
+  * lvmplugin: use blkdiscard when supported instead cstream to saferemove drive
+
+  * fix #6941: lvmplugin: fix volume activation of raw disk before secure delete
+
+  * lvm plugin: improve error handling
+
+  * lvm plugin: volume chains: add missing locking for import and snapshot actions
+
+  * api: list: return 'formats' info in JSONSchema compatible fashion
+
+ -- Proxmox Support Team <support@proxmox.com>  Wed, 05 Nov 2025 09:11:18 +0100
+
 libpve-storage-perl (9.0.13) trixie; urgency=medium
 
   * deactivate volumes: terminate error message with newline.
