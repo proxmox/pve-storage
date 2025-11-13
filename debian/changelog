@@ -1,3 +1,37 @@
+libpve-storage-perl (9.0.16) trixie; urgency=medium
+
+  * add pve-vm-image-format standard option for VM image formats.
+
+  * disks: add a guard possible nonexistent field to avoid useless warning.
+
+  * storage migrate: remove remnant from rsync-based migration
+
+  * storage migrate: avoid ssh overhead when moving a volume locally.
+
+  * allow volume import of iso, snippets, vztmpl and import.
+
+  * lvm thin plugin: do not combine activation change and property change to
+    avoid a warning and hedge against potential unknown issues/edge cases.
+
+  * api: smart: return unknown health instead of error message, like the web
+    UI already expects us too.
+
+  * fix #6224: disks: get: set timeout for retrieval of SMART stat data
+
+  * plugin: introduce hints for activating and mapping volumes.
+
+  * rbd: pass rxbounce when mapping Windows VM guest volumes.
+
+  * close #6669: plugin api: introduce on_update_hook_full() method.
+
+  * lvm plugin: disallow disabling 'snapshot-as-volume-chain' while a qcow2
+    image exists.
+
+  * plugin api: backward compatible plugin api version bump for new volume
+    activation hints and new on_update_hook_full method.
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 14 Nov 2025 00:39:39 +0100
+
 libpve-storage-perl (9.0.15) trixie; urgency=medium
 
   * allow uncompressed .tar files to be used as container templates.
