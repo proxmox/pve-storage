@@ -1,3 +1,13 @@
+libpve-storage-perl (9.0.15) trixie; urgency=medium
+
+  * allow uncompressed .tar files to be used as container templates.
+
+  * rrd metrics: always use modern pve-storage-9.0 metric path, now that we
+    transparently read from old or new files depending on the requested time
+    frame.
+
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 13 Nov 2025 07:39:05 +0100
+
 libpve-storage-perl (9.0.14) trixie; urgency=medium
 
   * fix #6073: esxi: fix zombie process after storage removal
