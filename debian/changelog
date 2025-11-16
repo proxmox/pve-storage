@@ -1,3 +1,10 @@
+libpve-storage-perl (9.0.17) trixie; urgency=medium
+
+  * api: add endpoint to pull OCI images from a OCI registry directly to a
+    storage.
+
+ -- Proxmox Support Team <support@proxmox.com>  Sun, 16 Nov 2025 23:59:48 +0100
+
 libpve-storage-perl (9.0.16) trixie; urgency=medium
 
   * add pve-vm-image-format standard option for VM image formats.
