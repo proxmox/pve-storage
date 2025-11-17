@@ -933,6 +933,14 @@ __PACKAGE__->register_method({
                     . '(?:\.(?:[a-zA-Z\d]|[a-zA-Z\d][a-zA-Z\d-]*[a-zA-Z\d]))*(?::\d+)?/)?[a-z\d]+'
                     . '(?:/[a-z\d]+(?:(?:(?:[._]|__|[-]*)[a-z\d]+)+)?)*:\w[\w.-]{0,127}$',
             },
+            filename => {
+                description =>
+                    "Custom destination file name of the OCI image. Caution: This will be normalized!",
+                optional => 1,
+                minLength => 1,
+                maxLength => 255,
+                type => 'string',
+            },
         },
     },
     returns => {
@@ -959,7 +967,8 @@ __PACKAGE__->register_method({
         die "storage '$storage' is not configured for content-type 'vztmpl'\n"
             if !$scfg->{content}->{vztmpl};
 
-        my $filename = PVE::Storage::normalize_content_filename($reference) . ".tar";
+        my $filename =
+            PVE::Storage::normalize_content_filename($param->{filename} // $reference) . ".tar";
         my $tmp_filename = "$filename.tmp.$$";
         my $path = PVE::Storage::get_vztmpl_dir($cfg, $storage);
         PVE::Storage::activate_storage($cfg, $storage);
