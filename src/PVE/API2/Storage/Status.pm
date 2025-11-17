@@ -964,6 +964,8 @@ __PACKAGE__->register_method({
         my $path = PVE::Storage::get_vztmpl_dir($cfg, $storage);
         PVE::Storage::activate_storage($cfg, $storage);
 
+        die "refusing to override existing file '$filename'\n" if (-f "$path/$filename");
+
         local $SIG{INT} = sub {
             unlink "$path/$tmp_filename"
                 or warn "could not cleanup temporary file: $!"
