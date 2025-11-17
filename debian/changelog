@@ -1,3 +1,15 @@
+libpve-storage-perl (9.0.18) trixie; urgency=medium
+
+  * api: OCI image download improvements:
+    - use temporary file and only rename to real one if pulling the image
+      finished successfully.
+    - forbid to override existing files.
+    - improve reference regex to allow more safe characters, like e.g. '-',
+      in the image name.
+    - allow one to override the target filename for the image.
+
+ -- Proxmox Support Team <support@proxmox.com>  Mon, 17 Nov 2025 21:53:43 +0100
+
 libpve-storage-perl (9.0.17) trixie; urgency=medium
 
   * api: add endpoint to pull OCI images from a OCI registry directly to a
