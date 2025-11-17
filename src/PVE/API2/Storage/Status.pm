@@ -928,8 +928,7 @@ __PACKAGE__->register_method({
             reference => {
                 description => "The reference to the OCI image to download.",
                 type => 'string',
-                pattern =>
-                    '^(?:(?:[a-zA-Z\d]|[a-zA-Z\d][a-zA-Z\d-]*[a-zA-Z\d])'
+                pattern => '^(?:(?:[a-zA-Z\d]|[a-zA-Z\d][a-zA-Z\d-]*[a-zA-Z\d])'
                     . '(?:\.(?:[a-zA-Z\d]|[a-zA-Z\d][a-zA-Z\d-]*[a-zA-Z\d]))*(?::\d+)?/)?[a-z\d]+'
                     . '(?:(?:[._]|__|[-]*)[a-z\d]+)*(?:/[a-z\d]+(?:(?:[._]|__|[-]*)[a-z\d]+)*)*'
                     . ':\w[\w.-]{0,127}$',
@@ -974,7 +973,7 @@ __PACKAGE__->register_method({
         my $path = PVE::Storage::get_vztmpl_dir($cfg, $storage);
         PVE::Storage::activate_storage($cfg, $storage);
 
-        die "refusing to override existing file '$filename'\n" if (-f "$path/$filename");
+        die "refusing to override existing file '$filename'\n" if -f "$path/$filename";
 
         local $SIG{INT} = sub {
             unlink "$path/$tmp_filename"
