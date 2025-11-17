@@ -959,14 +959,26 @@ __PACKAGE__->register_method({
         die "storage '$storage' is not configured for content-type 'vztmpl'\n"
             if !$scfg->{content}->{vztmpl};
 
-        my $filename = PVE::Storage::normalize_content_filename($reference);
+        my $filename = PVE::Storage::normalize_content_filename($reference) . ".tar";
+        my $tmp_filename = "$filename.tmp.$$";
         my $path = PVE::Storage::get_vztmpl_dir($cfg, $storage);
         PVE::Storage::activate_storage($cfg, $storage);
 
+        local $SIG{INT} = sub {
+            unlink "$path/$tmp_filename"
+                or warn "could not cleanup temporary file: $!"
+                if -e "$path/$tmp_filename";
+            die "got interrupted by signal\n";
+        };
+
         my $worker = sub {
             PVE::Tools::run_command(
-                ["skopeo", "copy", "docker://$reference", "oci-archive:$path/$filename.tar"],
+                [
+                    "skopeo", "copy", "docker://$reference", "oci-archive:$path/$tmp_filename",
+                ],
             );
+            rename("$path/$tmp_filename", "$path/$filename")
+                or die "unable to rename temporary file: $!\n";
         };
 
         my $worker_id = PVE::Tools::encode_text($filename); # must not pass : or the like as w-ID
