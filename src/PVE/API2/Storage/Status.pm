@@ -977,8 +977,8 @@ __PACKAGE__->register_method({
 
         local $SIG{INT} = sub {
             unlink "$path/$tmp_filename"
-                or warn "could not cleanup temporary file: $!"
-                if -e "$path/$tmp_filename";
+                or $!{ENOENT}
+                or warn "could not cleanup temporary file: $!";
             die "got interrupted by signal\n";
         };
 
