@@ -49,6 +49,14 @@ my $tests = [
     # container templates
     #
     {
+        description => 'Container template tar',
+        volname => 'vztmpl/debian-10.0-standard_10.0-1_amd64.tar',
+        expected => [
+            'vztmpl', 'debian-10.0-standard_10.0-1_amd64.tar', undef, undef, undef, undef,
+            'raw',
+        ],
+    },
+    {
         description => 'Container template tar.gz',
         volname => 'vztmpl/debian-10.0-standard_10.0-1_amd64.tar.gz',
         expected => [
