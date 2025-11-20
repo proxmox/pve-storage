@@ -701,19 +701,13 @@ my sub snapshot_files_encrypted {
     return $any && $all;
 }
 
-# We cannot use the PVE API token regexes as we're stricter in PVE,
-# so some tokens that would be valid for PBS would get rejected.
-# Adapt over the PBS ones from proxmox-auth-api/src/types.rs:
-
-my $safe_id_regex = qr/(?:[A-Za-z0-9_][A-Za-z0-9\._\-]*)/;
-
-my $token_name_regex = $safe_id_regex;
-
-my $user_name_regex = qr/(?:[^\s:\/\p{PosixCntrl}]+)/;
-
-my $user_id_regex = qr/${user_name_regex}\@${safe_id_regex}/;
-
-my $apitoken_id_regex = qr/${user_id_regex}\!${token_name_regex}/;
+# NOTE: We cannot use the PVE token regexes as we're stricter in PVE, so some tokens that would be
+# valid for PBS would get rejected.  Adapt over the PBS ones from proxmox-auth-api/src/types.rs:
+my $pbs_safe_id_regex = qr/(?:[A-Za-z0-9_][A-Za-z0-9\._\-]*)/;
+my $pbs_token_name_regex = $pbs_safe_id_regex;
+my $pbs_user_name_regex = qr/(?:[^\s:\/\p{PosixCntrl}]+)/;
+my $pbs_user_id_regex = qr/${pbs_user_name_regex}\@${pbs_safe_id_regex}/;
+my $pbs_apitoken_id_regex = qr/${pbs_user_id_regex}\!${pbs_token_name_regex}/;
 
 # TODO: use a client with native rust/proxmox-backup bindings to profit from
 # API schema checks and types
@@ -722,13 +716,13 @@ my sub pbs_api_connect {
 
     my $params = {};
 
-    my $user = $scfg->{username} // 'root@pam';
+    my $auth_id = $scfg->{username} // 'root@pam';
 
-    if ($user =~ qr/^${apitoken_id_regex}$/) {
-        $params->{apitoken} = "PBSAPIToken=${user}:${password}";
+    if ($auth_id =~ qr/^${pbs_apitoken_id_regex}$/) {
+        $params->{apitoken} = "PBSAPIToken=${auth_id}:${password}";
     } else {
         $params->{password} = $password;
-        $params->{username} = $user;
+        $params->{username} = $auth_id;
     }
 
     if (my $fp = $scfg->{fingerprint}) {
