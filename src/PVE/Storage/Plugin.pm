@@ -2164,7 +2164,7 @@ sub volume_export_formats {
             return ();
         }
         return ('tar+size') if $format eq 'subvol';
-        return ('raw+size') if $vtype =~ /^(iso|snippets|vztmpl|import)$/;
+        return ('raw+size') if $vtype =~ /^(images|iso|snippets|vztmpl|import)$/;
     }
     return ();
 }
@@ -2277,7 +2277,7 @@ sub volume_import_formats {
             return ();
         }
         return ('tar+size') if $format eq 'subvol';
-        return ('raw+size') if $vtype =~ /^(iso|snippets|vztmpl|import)$/;
+        return ('raw+size') if $vtype =~ /^(images|iso|snippets|vztmpl|import)$/;
     }
     return ();
 }
