@@ -1117,23 +1117,17 @@ sub volume_rollback_is_possible {
 }
 
 my sub volume_snapshot_rollback_locked {
-    my ($class, $scfg, $storeid, $volname, $snap) = @_;
+    my ($class, $scfg, $storeid, $volname, $snap, $cleanup_worker) = @_;
 
     my $format = ($class->parse_volname($volname))[6];
 
     die "can't rollback snapshot for '$format' volume\n" if $format ne 'qcow2';
 
-    my $cleanup_worker = eval { free_snap_image($class, $storeid, $scfg, $volname, 'current'); };
+    $cleanup_worker->$* = eval { free_snap_image($class, $storeid, $scfg, $volname, 'current'); };
     die "error deleting snapshot $snap $@\n" if $@;
 
     eval { alloc_snap_image($class, $storeid, $scfg, $volname, $snap) };
-    my $alloc_err = $@;
-
-    fork_cleanup_worker($cleanup_worker);
-
-    if ($alloc_err) {
-        die "can't allocate new volume $volname: $alloc_err\n";
-    }
+    die "can't allocate new volume $volname: $@\n" if $@;
 
     return undef;
 }
@@ -1141,14 +1135,29 @@ my sub volume_snapshot_rollback_locked {
 sub volume_snapshot_rollback {
     my ($class, $scfg, $storeid, $volname, $snap) = @_;
 
-    return $class->cluster_lock_storage(
-        $storeid,
-        $scfg->{shared},
-        undef,
-        sub {
-            return volume_snapshot_rollback_locked($class, $scfg, $storeid, $volname, $snap);
-        },
-    );
+    my $cleanup_worker;
+
+    eval {
+        $class->cluster_lock_storage(
+            $storeid,
+            $scfg->{shared},
+            undef,
+            sub {
+                volume_snapshot_rollback_locked(
+                    $class, $scfg, $storeid, $volname, $snap, \$cleanup_worker,
+                );
+            },
+        );
+    };
+    my $err = $@;
+
+    # Spawn outside of the locked section, because with 'saferemove', the cleanup worker also needs
+    # to obtain the lock, and in CLI context, it will be awaited synchronously, see fork_worker().
+    fork_cleanup_worker($cleanup_worker);
+
+    die $err if $err;
+
+    return;
 }
 
 sub volume_snapshot_delete {
