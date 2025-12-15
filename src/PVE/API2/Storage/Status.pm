@@ -257,7 +257,10 @@ __PACKAGE__->register_method({
             }
 
             if ($data->{total}) {
-                $data->{used_fraction} = ($data->{used} // 0) / $data->{total};
+                # extract variables, otherwise the division converts used and total to floating points
+                my $total = $data->{total};
+                my $used = $data->{used} // 0;
+                $data->{used_fraction} = $used / $total;
             }
 
             $res->{$storeid} = $data;
