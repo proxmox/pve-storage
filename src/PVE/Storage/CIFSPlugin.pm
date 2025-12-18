@@ -66,6 +66,17 @@ sub get_cred_file {
     return undef;
 }
 
+sub cifs_uses_kerberos : prototype($) {
+    my ($scfg) = @_;
+
+    my $options = $scfg->{options};
+    return 0 if !defined($options) || $options eq '';
+
+    $options =~ s/\s+//g;
+
+    return $options =~ m/(?:^|,)sec=krb5(?:i|p)?(?:,|$)/i;
+}
+
 sub cifs_mount : prototype($$$$$) {
     my ($scfg, $storeid, $smbver, $user, $domain) = @_;
 
@@ -75,13 +86,16 @@ sub cifs_mount : prototype($$$$$) {
     $server = "[$server]" if Net::IP::ip_is_ipv6($server);
     my $source = "//${server}/$share$subdir";
 
-    my $cmd = ['/bin/mount', '-t', 'cifs', $source, $mountpoint, '-o', 'soft', '-o'];
+    my $cmd = ['/bin/mount', '-t', 'cifs', $source, $mountpoint, '-o', 'soft'];
 
-    if (my $cred_file = get_cred_file($storeid)) {
-        push @$cmd, "username=$user", '-o', "credentials=$cred_file";
+    if (cifs_uses_kerberos($scfg)) {
+        # no options needed for kerberos, adding username= or domain= would only be informal
+        # adding the if-branch here to have it explicit, and not just by not adding guest
+    } elsif (my $cred_file = get_cred_file($storeid)) {
+        push @$cmd, '-o', "username=$user", '-o', "credentials=$cred_file";
         push @$cmd, '-o', "domain=$domain" if defined($domain);
     } else {
-        push @$cmd, 'guest,username=guest';
+        push @$cmd, '-o', 'guest,username=guest';
     }
 
     push @$cmd, '-o', defined($smbver) ? "vers=$smbver" : "vers=default";
@@ -280,7 +294,9 @@ sub check_connection {
         push @$cmd, '-m', "smb" . int($scfg->{smbversion});
     }
 
-    if (my $cred_file = get_cred_file($storeid)) {
+    if (cifs_uses_kerberos($scfg)) {
+        push @$cmd, '--use-kerberos=required';
+    } elsif (my $cred_file = get_cred_file($storeid)) {
         push @$cmd, '-U', $scfg->{username}, '-A', $cred_file;
         push @$cmd, '-W', $scfg->{domain} if $scfg->{domain};
     } else {
