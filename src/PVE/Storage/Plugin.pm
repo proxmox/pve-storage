@@ -2420,7 +2420,7 @@ the future.
 =over
 
 =item C<< $options->{hints}->{'efi-disk'} >>: (optional) If set, the volume will be used as the EFI
-disk of a VM, containing its OMVF variables.
+disk of a VM, containing its OVMF variables.
 
 =back
 
