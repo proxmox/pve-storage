@@ -10,7 +10,6 @@ use PVE::RESTHandler;
 use PVE::SafeSyslog;
 use PVE::Storage::LVMPlugin;
 use PVE::Storage;
-use PVE::SysFSTools;
 
 use base qw(PVE::RESTHandler);
 
