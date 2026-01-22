@@ -8,7 +8,10 @@ use warnings;
 use PVE::JSONSchema qw(get_standard_option);
 use PVE::RESTHandler;
 use PVE::SafeSyslog;
+
 use PVE::Storage::LVMPlugin;
+use PVE::Storage::LvmThinPlugin;
+use PVE::Storage::PBSPlugin;
 use PVE::Storage;
 
 use base qw(PVE::RESTHandler);
