@@ -5,10 +5,11 @@ use warnings;
 
 use IO::File;
 
+use PVE::JSONSchema qw(get_standard_option);
 use PVE::Tools qw(run_command trim);
+
 use PVE::Storage::Plugin;
 use PVE::Storage::LVMPlugin;
-use PVE::JSONSchema qw(get_standard_option);
 
 # see: man lvmthin
 # lvcreate -n ThinDataLV -L LargeSize VG
