@@ -6,14 +6,13 @@ use warnings;
 use Cwd qw(abs_path);
 use File::Basename;
 use IO::File;
+use JSON;
 
-use PVE::Tools qw(run_command file_read_firstline trim);
-use PVE::Storage::Plugin;
 use PVE::JSONSchema qw(get_standard_option);
+use PVE::Tools qw(run_command file_read_firstline trim);
 
 use PVE::Storage::Common;
-
-use JSON;
+use PVE::Storage::Plugin;
 
 use base qw(PVE::Storage::Plugin);
 
