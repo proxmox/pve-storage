@@ -480,7 +480,7 @@ sub on_add_hook {
     my ($class, $storeid, $scfg, %param) = @_;
 
     if (my $base = $scfg->{base}) {
-        my ($baseid, $volname) = PVE::Storage::parse_volume_id($base);
+        my ($baseid, $volname) = PVE::Storage::Plugin::parse_volume_id($base);
 
         my $cfg = PVE::Storage::config();
         my $basecfg = PVE::Storage::storage_config($cfg, $baseid, 1);
@@ -785,7 +785,8 @@ sub free_image {
             my $snap = $snapshots->{$snapid};
             next if $snapid eq 'current';
             next if !$snap->{volid};
-            my ($snap_storeid, $snap_volname) = PVE::Storage::parse_volume_id($snap->{volid});
+            my ($snap_storeid, $snap_volname) =
+                PVE::Storage::Plugin::parse_volume_id($snap->{volid});
             push @$volnames, $snap_volname;
         }
     }

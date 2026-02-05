@@ -477,7 +477,7 @@ sub volume_import {
             $with_snapshots,
             $allow_rename,
         );
-        ($storeid, my $newname) = PVE::Storage::parse_volume_id($newvolid);
+        ($storeid, my $newname) = PVE::Storage::Plugin::parse_volume_id($newvolid);
 
         $volname = $class->create_base($storeid, $scfg, $newname);
     }
