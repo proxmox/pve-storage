@@ -333,6 +333,11 @@ PVE::JSONSchema::register_format('pve-storage-vgname', \&parse_lvm_name);
 sub parse_lvm_name {
     my ($name, $noerr) = @_;
 
+    if (length($name) < 2) {
+        return undef if $noerr;
+        die "lvm name '$name' can't be shorter than 2 characters\n";
+    }
+
     if ($name !~ m/^[a-z0-9][a-z0-9\-\_\.]*[a-z0-9]$/i) {
         return undef if $noerr;
         die "lvm name '$name' contains illegal characters\n";
