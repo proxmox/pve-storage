@@ -1191,46 +1191,49 @@ sub volume_rollback_is_possible {
 }
 
 my sub volume_snapshot_rollback_locked {
-    my ($class, $scfg, $storeid, $volname, $snap, $cleanup_worker) = @_;
+    my ($class, $scfg, $storeid, $volname, $snap) = @_;
 
     my $format = ($class->parse_volname($volname))[6];
 
     die "can't rollback snapshot for '$format' volume\n" if $format ne 'qcow2';
 
-    $cleanup_worker->$* =
+    my $cleanup_worker =
         eval { free_snap_image_locked($class, $storeid, $scfg, $volname, 'current'); };
     die "error deleting snapshot $snap $@\n" if $@;
 
     eval { alloc_snap_image($class, $storeid, $scfg, $volname, $snap) };
-    die "can't allocate new volume $volname: $@\n" if $@;
+    if (my $err = $@) {
+        my $original_state = '';
+        if ($cleanup_worker) { # rename original image back
+            eval { lvrename($scfg, "del-${volname}", $volname) };
+            if ($@) {
+                warn $@;
+                # no cleanup worker is started, so the original stays available under that name
+                $original_state = " (original volume kept as 'del-${volname}')";
+            } else {
+                $original_state = ' (original volume restored)';
+            }
+        }
+        chomp($err);
+        die "can't allocate new volume ${volname}${original_state}: $err\n";
+    }
 
-    return undef;
+    return $cleanup_worker;
 }
 
 sub volume_snapshot_rollback {
     my ($class, $scfg, $storeid, $volname, $snap) = @_;
 
-    my $cleanup_worker;
-
-    eval {
-        $class->cluster_lock_storage(
-            $storeid,
-            $scfg->{shared},
-            undef,
-            sub {
-                volume_snapshot_rollback_locked(
-                    $class, $scfg, $storeid, $volname, $snap, \$cleanup_worker,
-                );
-            },
-        );
-    };
-    my $err = $@;
+    my $cleanup_worker = $class->cluster_lock_storage(
+        $storeid,
+        $scfg->{shared},
+        undef,
+        sub { volume_snapshot_rollback_locked($class, $scfg, $storeid, $volname, $snap); },
+    );
 
     # Spawn outside of the locked section, because with 'saferemove', the cleanup worker also needs
     # to obtain the lock, and in CLI context, it will be awaited synchronously, see fork_worker().
     fork_cleanup_worker($cleanup_worker);
-
-    die $err if $err;
 
     return;
 }
