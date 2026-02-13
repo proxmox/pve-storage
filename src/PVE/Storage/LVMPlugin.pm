@@ -279,7 +279,7 @@ sub lvm_list_volumes {
     return $lvs;
 }
 
-my sub free_lvm_volumes {
+my sub free_lvm_volumes_locked {
     my ($class, $scfg, $storeid, $volnames) = @_;
 
     my $vg = $scfg->{vgname};
@@ -759,13 +759,14 @@ my sub alloc_snap_image {
     alloc_lvm_image($class, $storeid, $scfg, $vmid, $format, $volname, $size, $backing_snap);
 }
 
-my sub free_snap_image {
+my sub free_snap_image_locked {
     my ($class, $storeid, $scfg, $volname, $snap) = @_;
 
     my $snap_volname = get_snap_name($class, $volname, $snap);
-    return free_lvm_volumes($class, $scfg, $storeid, [$snap_volname]);
+    return free_lvm_volumes_locked($class, $scfg, $storeid, [$snap_volname]);
 }
 
+# Must be called with the storage lock held.
 sub free_image {
     my ($class, $storeid, $scfg, $volname, $isBase, $format) = @_;
 
@@ -790,7 +791,7 @@ sub free_image {
         }
     }
 
-    return free_lvm_volumes($class, $scfg, $storeid, $volnames);
+    return free_lvm_volumes_locked($class, $scfg, $storeid, $volnames);
 }
 
 my $check_tags = sub {
@@ -1123,7 +1124,8 @@ my sub volume_snapshot_rollback_locked {
 
     die "can't rollback snapshot for '$format' volume\n" if $format ne 'qcow2';
 
-    $cleanup_worker->$* = eval { free_snap_image($class, $storeid, $scfg, $volname, 'current'); };
+    $cleanup_worker->$* =
+        eval { free_snap_image_locked($class, $storeid, $scfg, $volname, 'current'); };
     die "error deleting snapshot $snap $@\n" if $@;
 
     eval { alloc_snap_image($class, $storeid, $scfg, $volname, $snap) };
@@ -1174,7 +1176,9 @@ sub volume_snapshot_delete {
                 $storeid,
                 $scfg->{shared},
                 undef,
-                sub { return free_snap_image($class, $storeid, $scfg, $volname, $snap); },
+                sub {
+                    return free_snap_image_locked($class, $storeid, $scfg, $volname, $snap);
+                },
             );
         };
         die "error deleting snapshot $snap $@\n" if $@;
@@ -1219,8 +1223,9 @@ sub volume_snapshot_delete {
                 $scfg->{shared},
                 undef,
                 sub {
-                    my $cleanup_worker_sub =
-                        eval { free_snap_image($class, $storeid, $scfg, $volname, $childsnap) };
+                    my $cleanup_worker_sub = eval {
+                        free_snap_image_locked($class, $storeid, $scfg, $volname, $childsnap);
+                    };
                     if ($@) {
                         die "error delete old snapshot volume $childvolname: $@\n";
                     }
@@ -1266,7 +1271,9 @@ sub volume_snapshot_delete {
                 $storeid,
                 $scfg->{shared},
                 undef,
-                sub { return free_snap_image($class, $storeid, $scfg, $volname, $snap); },
+                sub {
+                    return free_snap_image_locked($class, $storeid, $scfg, $volname, $snap);
+                },
             );
         };
         die "error deleting old snapshot volume $snapvolname: $@\n" if $@;
