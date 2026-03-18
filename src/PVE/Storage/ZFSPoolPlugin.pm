@@ -824,7 +824,17 @@ sub volume_export {
     }
     push @$cmd, '--', "$scfg->{pool}/$dataset\@$snapshot";
 
-    run_command($cmd, output => $fd);
+    run_command(
+        $cmd,
+        output => $fd,
+        errfunc => sub {
+            my $line = shift;
+            if ($line !~ /^WARNING: no-preserve-encryption flag set, sending dataset/) {
+                print STDERR $line;
+                *STDERR->flush();
+            }
+        },
+    );
 
     return;
 }
