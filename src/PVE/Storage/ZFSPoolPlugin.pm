@@ -817,7 +817,7 @@ sub volume_export {
     # For zfs we always create a replication stream (-R) which means the remote
     # side will always delete non-existing source snapshots. This should work
     # for all our use cases.
-    my $cmd = ['zfs', 'send', '-Rpv'];
+    my $cmd = ['zfs', 'send', '-RpvU'];
     if (defined($base_snapshot)) {
         my $arg = $with_snapshots ? '-I' : '-i';
         push @$cmd, $arg, $base_snapshot;
@@ -879,7 +879,10 @@ sub volume_import {
         $zfspath = "$scfg->{pool}/$dataset";
     }
 
-    eval { run_command(['zfs', 'recv', '-F', '--', $zfspath], input => "<&$fd") };
+    eval {
+        run_command(['zfs', 'recv', '-F', '-x', 'encryption', '--', $zfspath],
+            input => "<&$fd");
+    };
     if (my $err = $@) {
         if (defined($base_snapshot)) {
             eval { run_command(['zfs', 'rollback', '-r', '--', "$zfspath\@$base_snapshot"]) };
