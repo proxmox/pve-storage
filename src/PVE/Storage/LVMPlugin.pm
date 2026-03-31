@@ -1485,7 +1485,8 @@ sub rename_volume {
     if ($format eq 'qcow2') {
         $class->activate_volume($storeid, $scfg, $source_volname);
         my $snapshots = $class->volume_snapshot_info($scfg, $storeid, $source_volname);
-        die "we can't rename volume if external snapshot exists" if $snapshots->{current}->{parent};
+        die "can't rename volume '$source_volname' - external snapshot exists\n"
+            if $snapshots->{current}->{parent};
     }
 
     $target_volname = $class->find_free_diskname($storeid, $scfg, $target_vmid, $format)
