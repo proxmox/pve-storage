@@ -713,7 +713,12 @@ my sub alloc_lvm_image {
     die "not enough free space ($free < $size)\n" if $free < $size;
 
     my $tags = ["pve-vm-$vmid"];
-    #tags all snapshots volumes with the main volume tag for easier activation of the whole group
+    # TODO PVE 10 - stop setting the volume name as a tag? It was initially used for (de)activation,
+    # but there are false positives if there are multiple storages, see bug #7143. Including the
+    # storage ID as a fix would've made moving disks more involved and break manual moving or
+    # renaming. Instead (de)activation switched to using '--select'. The rename_volume() method
+    # needs to be adapted as well.
+    # tags all snapshots volumes with the main volume tag
     push @$tags, "\@pve-$name" if $fmt eq 'qcow2';
     lvcreate($vg, $name, $lvmsize, $tags);
 
@@ -953,21 +958,56 @@ sub deactivate_storage {
     run_command($cmd, errmsg => "can't deactivate VG '$scfg->{vgname}'");
 }
 
+=head3 get_activate_volume_target_opts()
+
+    my ($target_opts, $target_str) =
+        get_activate_volume_target_opts($class, $scfg, $path, $volname);
+
+Returns C<$target_opts>, which is an array reference with parameters for C<lvchange> for selecting
+the volume given by C<($path,$volname)>, or volume chain for C<qcow2>. Also returns a description of
+the target C<$target_str> that can be used for log or error messages.
+
+=cut
+
+my sub get_activate_volume_target_opts {
+    my ($class, $scfg, $path, $volname) = @_;
+
+    my ($name, $format) = ($class->parse_volname($volname))[1, 6];
+
+    my ($target_opts, $target_str);
+
+    if ($format eq 'qcow2') {
+        my $vg = $scfg->{vgname};
+        $name =~ s/\.qcow2$//;
+        # The LVM name schema allows '.', which is also a regex metacharacter, so escape it
+        # before using the name in the regex.
+        my $name_re = $name =~ s/\./\\./gr;
+
+        my $filter =
+            "vg_name = \"$vg\"" . " && lv_name =~ '^(${name_re}|snap_${name_re}_.+)\\.qcow2\$'";
+
+        $target_opts = ['--select', $filter];
+        $target_str = "volume chain for LV '$path'";
+    } else {
+        $target_opts = [$path];
+        $target_str = "LV '$path'";
+    }
+
+    return ($target_opts, $target_str);
+}
+
 sub activate_volume {
     my ($class, $storeid, $scfg, $volname, $snapname, $cache) = @_;
 
     my $path = $class->path($scfg, $volname, $storeid, $snapname);
 
-    #activate volume && all snapshots volumes by tag
-    my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $format) =
-        $class->parse_volname($volname);
+    my ($target_opts, $target_str) =
+        get_activate_volume_target_opts($class, $scfg, $path, $volname);
 
-    $path = "\@pve-$name" if $format eq 'qcow2';
-
-    my $cmd = ['/sbin/lvchange', '-aey', $path];
-    run_command($cmd, errmsg => "can't activate LV '$path'");
-    $cmd = ['/sbin/lvchange', '--refresh', $path];
-    run_command($cmd, errmsg => "can't refresh LV '$path' for activation");
+    my $cmd = ['/sbin/lvchange', '-aey', $target_opts->@*];
+    run_command($cmd, errmsg => "can't activate $target_str");
+    $cmd = ['/sbin/lvchange', '--refresh', $target_opts->@*];
+    run_command($cmd, errmsg => "can't refresh $target_str for activation");
 }
 
 sub deactivate_volume {
@@ -976,12 +1016,11 @@ sub deactivate_volume {
     my $path = $class->path($scfg, $volname, $storeid, $snapname);
     return if !-b $path;
 
-    my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $format) =
-        $class->parse_volname($volname);
-    $path = "\@pve-$name" if $format eq 'qcow2';
+    my ($target_opts, $target_str) =
+        get_activate_volume_target_opts($class, $scfg, $path, $volname);
 
-    my $cmd = ['/sbin/lvchange', '-aln', $path];
-    run_command($cmd, errmsg => "can't deactivate LV '$path'");
+    my $cmd = ['/sbin/lvchange', '-aln', $target_opts->@*];
+    run_command($cmd, errmsg => "can't deactivate $target_str");
 }
 
 sub volume_resize {
