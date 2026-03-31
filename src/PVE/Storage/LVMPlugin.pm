@@ -1483,6 +1483,7 @@ sub rename_volume {
     ) = $class->parse_volname($source_volname);
 
     if ($format eq 'qcow2') {
+        $class->activate_volume($storeid, $scfg, $source_volname);
         my $snapshots = $class->volume_snapshot_info($scfg, $storeid, $source_volname);
         die "we can't rename volume if external snapshot exists" if $snapshots->{current}->{parent};
     }
