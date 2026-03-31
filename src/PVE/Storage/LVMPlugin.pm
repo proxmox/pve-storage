@@ -440,7 +440,7 @@ sub properties {
             type => 'string',
         },
         tagged_only => {
-            description => "Only use logical volumes tagged with 'pve-vm-ID'.",
+            description => "Only list logical volumes tagged with 'pve-vm-ID'.",
             type => 'boolean',
         },
     };
