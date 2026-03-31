@@ -958,15 +958,13 @@ sub activate_volume {
 
     my $path = $class->path($scfg, $volname, $storeid, $snapname);
 
-    my $lvm_activate_mode = 'ey';
-
     #activate volume && all snapshots volumes by tag
     my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $format) =
         $class->parse_volname($volname);
 
     $path = "\@pve-$name" if $format eq 'qcow2';
 
-    my $cmd = ['/sbin/lvchange', "-a$lvm_activate_mode", $path];
+    my $cmd = ['/sbin/lvchange', '-aey', $path];
     run_command($cmd, errmsg => "can't activate LV '$path'");
     $cmd = ['/sbin/lvchange', '--refresh', $path];
     run_command($cmd, errmsg => "can't refresh LV '$path' for activation");
