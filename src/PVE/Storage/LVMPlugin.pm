@@ -955,7 +955,7 @@ sub deactivate_storage {
 
 sub activate_volume {
     my ($class, $storeid, $scfg, $volname, $snapname, $cache) = @_;
-    #fix me lvmchange is not provided on
+
     my $path = $class->path($scfg, $volname, $storeid, $snapname);
 
     my $lvm_activate_mode = 'ey';
