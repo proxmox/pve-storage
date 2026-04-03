@@ -277,8 +277,6 @@ my sub parse_ovf_do {
     # when all the nodes has been found out, we copy the relevant information to
     # a $pve_disk hash ref, which we push to @disks;
 
-    my $boot_order = [];
-
     for my $item_node (@disk_items) {
         my ($disk_node, $file_node, $controller_node, $pve_disk);
 
@@ -362,6 +360,46 @@ ovf:Item[rasd:InstanceID='%s']/rasd:ResourceType", $controller_id,
         die "referenced path '$original_filepath' is invalid\n"
             if !$filepath || $filepath eq "." || $filepath eq "..";
 
+        push @disks,
+            {
+                filepath => $filepath,
+                virtual_size => $virtual_size,
+                disk_address => $pve_disk_address,
+            };
+    }
+
+    my $nic_id = dtmf_name_to_id('Ethernet Adapter');
+    my $xpath_find_nics =
+        "/ovf:Envelope/ovf:VirtualSystem/ovf:VirtualHardwareSection/ovf:Item[rasd:ResourceType=${nic_id}]";
+    my @nic_items = $xpc->findnodes($xpath_find_nics);
+
+    my $net = {};
+
+    my $net_count = 0;
+    for my $item_node (@nic_items) {
+        my $model = $xpc->findvalue('rasd:ResourceSubType', $item_node);
+        $model = lc($model);
+        $model = 'e1000' if !grep { $_ eq $model } @$allowed_nic_models;
+        $net->{"net${net_count}"} = { model => $model };
+        $net_count++;
+    }
+
+    return { qm => $qm, disks => \@disks, net => $net };
+}
+
+my sub resolve_disks {
+    my ($ovf, $qm, $isOva) = @_;
+
+    my $boot_order = [];
+
+    my $parsed_disks = delete($qm->{disks});
+
+    my @disks;
+    for my $disk (@$parsed_disks) {
+        my $filepath = $disk->{filepath};
+        my $virtual_size = $disk->{virtual_size};
+        my $pve_disk_address = $disk->{disk_address};
+
         # resolve symlinks and relative path components
         # and die if the diskimage is not somewhere under the $ovf path
         my $ovf_dir = realpath(dirname(File::Spec->rel2abs($ovf)))
@@ -385,7 +423,8 @@ ovf:Item[rasd:InstanceID='%s']/rasd:ResourceType", $controller_id,
 
             $virtual_size = $size;
         }
-        $pve_disk = {
+
+        my $pve_disk = {
             disk_address => $pve_disk_address,
             backing_file => $backing_file_path,
             virtual_size => $virtual_size,
@@ -396,25 +435,10 @@ ovf:Item[rasd:InstanceID='%s']/rasd:ResourceType", $controller_id,
         push @$boot_order, $pve_disk_address;
     }
 
-    $qm->{boot} = "order=" . join(';', @$boot_order) if scalar(@$boot_order) > 0;
+    $qm->{qm}->{boot} = "order=" . join(';', @$boot_order) if scalar(@$boot_order) > 0;
 
-    my $nic_id = dtmf_name_to_id('Ethernet Adapter');
-    my $xpath_find_nics =
-        "/ovf:Envelope/ovf:VirtualSystem/ovf:VirtualHardwareSection/ovf:Item[rasd:ResourceType=${nic_id}]";
-    my @nic_items = $xpc->findnodes($xpath_find_nics);
-
-    my $net = {};
-
-    my $net_count = 0;
-    for my $item_node (@nic_items) {
-        my $model = $xpc->findvalue('rasd:ResourceSubType', $item_node);
-        $model = lc($model);
-        $model = 'e1000' if !grep { $_ eq $model } @$allowed_nic_models;
-        $net->{"net${net_count}"} = { model => $model };
-        $net_count++;
-    }
-
-    return { qm => $qm, disks => \@disks, net => $net };
+    $qm->{disks} = \@disks;
+    return;
 }
 
 sub parse_ovf {
@@ -422,7 +446,11 @@ sub parse_ovf {
 
     my $ovf_data = read_ovf_file($ovf, $isOva);
 
-    return parse_ovf_do($ovf, $ovf_data, $isOva, $debug);
+    my $qm = parse_ovf_do($ovf, $ovf_data, $isOva, $debug);
+
+    resolve_disks($ovf, $qm, $isOva);
+
+    return $qm;
 }
 
 1;
