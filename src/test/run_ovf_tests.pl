@@ -38,6 +38,13 @@ if (my $err = $@) {
     ok('parse win10 no default rasd NS');
 }
 
+my $xee = eval { PVE::GuestImport::OVF::parse_ovf("$test_manifests/XEE.ovf") };
+if (my $err = $@) {
+    ok("parsing XEE.ovf failed as expected");
+} else {
+    fail('parsing XEE.ovf should have failed!');
+}
+
 print "testing disks\n";
 
 is(
