@@ -12,6 +12,7 @@ use Cwd 'realpath';
 
 use PVE::Tools;
 use PVE::Storage;
+use PVE::Seccomp qw(stmt /^BPF_/);
 
 # map OVF resources types to descriptive strings
 # this will allow us to explore the xml tree without using magic numbers
@@ -441,12 +442,36 @@ my sub resolve_disks {
     return;
 }
 
+my sub bpf_prog {
+    return [
+        stmt(BPF_LD | BPF_W | BPF_ABS, 0, 0, 0),
+        stmt(BPF_JMP | BPF_JEQ | BPF_K, 4, 0, PVE::Syscall::write),
+        stmt(BPF_JMP | BPF_JEQ | BPF_K, 3, 0, PVE::Syscall::exit),
+        stmt(BPF_JMP | BPF_JEQ | BPF_K, 2, 0, PVE::Syscall::exit_group),
+        stmt(BPF_JMP | BPF_JEQ | BPF_K, 1, 0, PVE::Syscall::brk),
+        stmt(BPF_RET | BPF_K, 0, 0, BPF_RET_KILL), # default: no syscall matched, kill the process
+        stmt(BPF_RET | BPF_K, 0, 0, BPF_RET_ALLOW), # a syscall above matched, allow it
+    ];
+}
+
 sub parse_ovf {
     my ($ovf, $isOva, $debug) = @_;
 
-    my $ovf_data = read_ovf_file($ovf, $isOva);
+    my $qm = PVE::Tools::run_fork_with_timeout(
+        3,
+        sub {
+            my $ovf_data = read_ovf_file($ovf, $isOva);
 
-    my $qm = parse_ovf_do($ovf, $ovf_data, $isOva, $debug);
+            PVE::Seccomp::set_no_new_privs();
+            PVE::Seccomp::set_filter(bpf_prog());
+
+            return parse_ovf_do($ovf, $ovf_data, $isOva, $debug);
+        },
+    );
+
+    if (!$qm) {
+        die "OVF parser terminated unexpectedly trying to parse $ovf\n";
+    }
 
     resolve_disks($ovf, $qm, $isOva);
 
