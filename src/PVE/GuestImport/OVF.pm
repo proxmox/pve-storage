@@ -167,25 +167,28 @@ sub try_parse_capacity_unit {
     return undef;
 }
 
+my sub read_ovf_file {
+    my ($ovf, $isOva) = @_;
+
+    return PVE::Tools::file_get_contents($ovf) if !$isOva;
+
+    my $raw = "";
+    PVE::Tools::run_command(
+        ['tar', '-xO', '--wildcards', '--occurrence=1', '-f', $ovf, '*.ovf'],
+        outfunc => sub {
+            my $line = shift;
+            $raw .= $line;
+        },
+    );
+    return $raw;
+}
+
 # returns two references, $qm which holds qm.conf style key/values, and \@disks
-sub parse_ovf {
-    my ($ovf, $isOva, $debug) = @_;
+my sub parse_ovf_do {
+    my ($ovf, $ovf_data, $isOva, $debug) = @_;
 
     # we have to ignore missing disk images for ova
-    my $dom;
-    if ($isOva) {
-        my $raw = "";
-        PVE::Tools::run_command(
-            ['tar', '-xO', '--wildcards', '--occurrence=1', '-f', $ovf, '*.ovf'],
-            outfunc => sub {
-                my $line = shift;
-                $raw .= $line;
-            },
-        );
-        $dom = XML::LibXML->load_xml(string => $raw, no_blanks => 1);
-    } else {
-        $dom = XML::LibXML->load_xml(location => $ovf, no_blanks => 1);
-    }
+    my $dom = XML::LibXML->load_xml(string => $ovf_data, no_blanks => 1);
 
     # register the xml namespaces in a xpath context object
     # 'ovf' is the default namespace so it will prepended to each xml element
@@ -412,6 +415,14 @@ ovf:Item[rasd:InstanceID='%s']/rasd:ResourceType", $controller_id,
     }
 
     return { qm => $qm, disks => \@disks, net => $net };
+}
+
+sub parse_ovf {
+    my ($ovf, $isOva, $debug) = @_;
+
+    my $ovf_data = read_ovf_file($ovf, $isOva);
+
+    return parse_ovf_do($ovf, $ovf_data, $isOva, $debug);
 }
 
 1;
