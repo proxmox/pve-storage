@@ -1,3 +1,6 @@
 *.deb
 *.1.pod
 *.1.gz
+/*.buildinfo
+/*.changes
+/libpve-storage-perl-[0-9]*/
