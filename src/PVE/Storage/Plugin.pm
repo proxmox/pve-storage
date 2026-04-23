@@ -1903,6 +1903,33 @@ sub activate_storage {
         return;
     }
 
+    my $try_create_subdir = sub {
+        my ($vtype) = @_;
+
+        my $subdir = $class->get_subdir($scfg, $vtype);
+
+        File::Path::make_path($subdir, { error => \my $errors });
+        if (defined($errors) && scalar($errors->@*)) {
+            my $msg = "failed to create content directory '$subdir' for content '$vtype'";
+
+            for my $err_hash ($errors->@*) {
+                my ($file, $err_msg) = $err_hash->%*;
+
+                if (
+                    $err_msg =~ m/permission \s denied/ix
+                    || $err_msg =~ m/read -? only \s file \s? system/ix
+                ) {
+                    my $msg_prompt =
+                        "ensure that you have read and write access to your storage!";
+
+                    die "$msg - $err_msg - $msg_prompt\n";
+                }
+
+                die "$msg - $err_msg\n";
+            }
+        }
+    };
+
     # TODO: mkdir is basically deprecated since 8.0, but we don't warn here until 8.4 or 9.0, as we
     # only got the replacement in 8.0, so no real replacement window, and its really noisy.
 
@@ -1918,8 +1945,7 @@ sub activate_storage {
                 defined($scfg->{content}->{$vtype})
                 || ($vtype eq 'backup' && defined($scfg->{content}->{'rootdir'}))
             ) {
-                my $subdir = $class->get_subdir($scfg, $vtype);
-                mkpath $subdir;
+                $try_create_subdir->($vtype);
             }
         }
     }
