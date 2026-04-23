@@ -1899,40 +1899,42 @@ sub activate_storage {
             . "directory '$path' does not exist or is unreachable\n";
     }
 
+    if (!defined($scfg->{content})) {
+        return;
+    }
+
     # TODO: mkdir is basically deprecated since 8.0, but we don't warn here until 8.4 or 9.0, as we
     # only got the replacement in 8.0, so no real replacement window, and its really noisy.
 
-    if (defined($scfg->{content})) {
-        # (opt-out) create content dirs and check validity
-        if (
-            (!defined($scfg->{'create-subdirs'}) || $scfg->{'create-subdirs'})
-            # FIXME The mkdir option is deprecated. Remove with PVE 9?
-            && (!defined($scfg->{mkdir}) || $scfg->{mkdir})
-        ) {
-            for my $vtype (sort keys %$vtype_subdirs) {
-                # OpenVZMigrate uses backup (dump) dir
-                if (
-                    defined($scfg->{content}->{$vtype})
-                    || ($vtype eq 'backup' && defined($scfg->{content}->{'rootdir'}))
-                ) {
-                    my $subdir = $class->get_subdir($scfg, $vtype);
-                    mkpath $subdir if $subdir ne $path;
-                }
+    # (opt-out) create content dirs and check validity
+    if (
+        (!defined($scfg->{'create-subdirs'}) || $scfg->{'create-subdirs'})
+        # FIXME The mkdir option is deprecated. Remove with PVE 9?
+        && (!defined($scfg->{mkdir}) || $scfg->{mkdir})
+    ) {
+        for my $vtype (sort keys %$vtype_subdirs) {
+            # OpenVZMigrate uses backup (dump) dir
+            if (
+                defined($scfg->{content}->{$vtype})
+                || ($vtype eq 'backup' && defined($scfg->{content}->{'rootdir'}))
+            ) {
+                my $subdir = $class->get_subdir($scfg, $vtype);
+                mkpath $subdir if $subdir ne $path;
             }
         }
+    }
 
-        # check that content dirs are pairwise inequal
-        my $resolved_subdirs = {};
-        for my $vtype (sort keys $scfg->{content}->%*) {
-            my $subdir = $class->get_subdir($scfg, $vtype);
-            my $abs_subdir = abs_path($subdir);
-            next if !defined($abs_subdir);
+    # check that content dirs are pairwise inequal
+    my $resolved_subdirs = {};
+    for my $vtype (sort keys $scfg->{content}->%*) {
+        my $subdir = $class->get_subdir($scfg, $vtype);
+        my $abs_subdir = abs_path($subdir);
+        next if !defined($abs_subdir);
 
-            die "storage '$storeid' uses directory $abs_subdir for multiple content types\n"
-                if defined($abs_subdir) && defined($resolved_subdirs->{$abs_subdir});
+        die "storage '$storeid' uses directory $abs_subdir for multiple content types\n"
+            if defined($abs_subdir) && defined($resolved_subdirs->{$abs_subdir});
 
-            $resolved_subdirs->{$abs_subdir} = 1;
-        }
+        $resolved_subdirs->{$abs_subdir} = 1;
     }
 }
 
