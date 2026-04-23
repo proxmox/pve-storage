@@ -1919,7 +1919,7 @@ sub activate_storage {
                 || ($vtype eq 'backup' && defined($scfg->{content}->{'rootdir'}))
             ) {
                 my $subdir = $class->get_subdir($scfg, $vtype);
-                mkpath $subdir if $subdir ne $path;
+                mkpath $subdir;
             }
         }
     }
