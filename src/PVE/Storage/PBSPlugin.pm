@@ -1002,4 +1002,13 @@ sub volume_has_feature {
     return undef;
 }
 
+sub get_identity {
+    my ($class, $scfg, $storeid) = @_;
+
+    my $client = PVE::PBSClient->new($scfg, $storeid);
+    my $ret = $client->get_server_identity();
+
+    return $ret->{'pbs-instance-id'};
+}
+
 1;

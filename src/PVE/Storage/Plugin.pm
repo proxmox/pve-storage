@@ -2569,4 +2569,21 @@ sub config_aware_base_mkdir {
     }
 }
 
+=pod
+
+=head3 get_identity
+
+    $plugin->get_identity($scfg, $storeid)
+
+Return a unique identifier for this storage instance. The exact format and semantics
+may vary based on the concrete plugin implementation.
+
+=cut
+
+sub get_identity {
+    my ($class, $scfg, $storeid) = @_;
+
+    die("get_identity not implemented for this plugin");
+}
+
 1;
