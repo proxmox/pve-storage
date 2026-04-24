@@ -6,6 +6,19 @@ without breaking anything unaware of it.)
 
 Future changes should be documented in here.
 
+## Version 14:
+
+* Introduce `get_identity()` plugin method
+
+  Plugins can implement this method to return a unique identifier for the underlying storage
+  instance. The format and semantics of the returned identifier are up to the concrete plugin,
+  for example a UUID or a server-provided instance ID that identifies the backend independently
+  of how the storage is configured in `/etc/pve/storage.cfg`.
+
+  The base implementation dies, so plugins for which the concept of a stable backend identity
+  does not apply may leave the method unimplemented. Implement this method when the storage
+  backend exposes an identity that consumers may want to correlate across storage definitions.
+
 ## Version 13:
 
 * Add new parameter $hints to the `activate_volume()` and `map_volume()` plugin methods
