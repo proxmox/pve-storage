@@ -14,7 +14,7 @@ use PVE::JSONSchema qw(get_standard_option);
 use PVE::RESTHandler;
 use PVE::RPCEnvironment;
 use PVE::RRD;
-use PVE::Tools qw(run_command);
+use PVE::Tools qw(run_command extract_param);
 
 use PVE::API2::Storage::Content;
 use PVE::API2::Storage::FileRestore;
@@ -22,6 +22,8 @@ use PVE::API2::Storage::PruneBackups;
 use PVE::Storage;
 
 use base qw(PVE::RESTHandler);
+
+my $storage_type_enum = PVE::Storage::Plugin->lookup_types();
 
 __PACKAGE__->register_method({
     subclass => "PVE::API2::Storage::PruneBackups",
@@ -308,6 +310,7 @@ __PACKAGE__->register_method({
             { subdir => 'download-url' },
             { subdir => 'file-restore' },
             { subdir => 'import-metadata' },
+            { subdir => 'identity' },
             { subdir => 'oci-registry-pull' },
             { subdir => 'prunebackups' },
             { subdir => 'rrd' },
@@ -1115,6 +1118,58 @@ __PACKAGE__->register_method({
                 return PVE::Storage::get_import_metadata($cfg, $volid);
             },
         );
+    },
+});
+
+__PACKAGE__->register_method({
+    name => 'identity',
+    path => '{storage}/identity',
+    method => 'GET',
+    description => "Return identity information for this storage instance.",
+    permissions => {
+        check => ['perm', '/storage/{storage}', ['Datastore.Audit']],
+    },
+    protected => 1,
+    proxyto => 'node',
+    parameters => {
+        additionalProperties => 0,
+        properties => {
+            node => get_standard_option('pve-node'),
+            storage => get_standard_option('pve-storage-id'),
+        },
+    },
+    returns => {
+        type => "object",
+        properties => {
+            'type' => {
+                type => 'string',
+                description => 'The type of the storage.',
+                enum => $storage_type_enum,
+            },
+            'id' => {
+                type => 'string',
+                description => 'Unique identifier for this storage instance.'
+                    . ' The exact format and semantics depend on the storage plugin type.',
+            },
+        },
+    },
+    code => sub {
+        my ($param) = @_;
+
+        my $storeid = extract_param($param, 'storage');
+
+        my $cfg = PVE::Storage::config();
+        my $scfg = PVE::Storage::storage_config($cfg, $storeid);
+
+        my $type = $scfg->{type};
+        my $plugin = PVE::Storage::Plugin->lookup($type);
+
+        my $id = $plugin->get_identity($scfg, $storeid);
+
+        return {
+            type => $type,
+            id => $id,
+        };
     },
 });
 
