@@ -31,6 +31,7 @@ sub properties {
         blocksize => {
             description => "block size",
             type => 'string',
+            format => 'pve-storage-zfs-blocksize',
         },
         sparse => {
             description => "use sparse volumes",
