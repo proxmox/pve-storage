@@ -449,40 +449,6 @@ sub verify_dir_override {
     die "invalid override '$value'\n";
 }
 
-PVE::JSONSchema::register_format('pve-storage-zfs-blocksize', \&verify_zfs_blocksize);
-
-sub verify_zfs_blocksize {
-    my ($value, $noerr) = @_;
-
-    return $value if !defined($value) || $value eq '';
-
-    if ($value =~ m/^([1-9][0-9]*)([km])?$/i) {
-        my ($num, $unit) = ($1, lc($2 // ''));
-
-        if ($unit eq 'k') {
-            $num *= 1024;
-        } elsif ($unit eq 'm') {
-            $num *= 1024 * 1024;
-        }
-
-        if (
-            $num >= 512
-            && $num <= 16 * 1024 * 1024
-            && ($num & ($num - 1)) == 0 # check if it's a power of 2
-        ) {
-            return $value;
-        }
-
-        return undef if $noerr;
-        die "value '$value' is not a valid ZFS blocksize. Must be a power of 2 "
-            . "between 512B and 16MiB (e.g., 4k, 8k, 16k, 64k, 1m).\n";
-    }
-
-    return undef if $noerr;
-    die "invalid ZFS blocksize format '$value'. Use a positive number "
-        . "(no leading zeros) with an optional 'k' or 'm' suffix.\n";
-}
-
 sub private {
     return $defaultData;
 }
