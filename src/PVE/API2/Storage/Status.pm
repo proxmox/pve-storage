@@ -1127,7 +1127,12 @@ __PACKAGE__->register_method({
     method => 'GET',
     description => "Return identity information for this storage instance.",
     permissions => {
-        check => ['perm', '/storage/{storage}', ['Datastore.Audit']],
+        check => [
+            'perm',
+            '/storage/{storage}',
+            ['Datastore.Audit', 'Datastore.AllocateSpace'],
+            any => 1,
+        ],
     },
     protected => 1,
     proxyto => 'node',
