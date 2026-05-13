@@ -3,30 +3,34 @@ package PVE::CLI::pvesm;
 use strict;
 use warnings;
 
-use POSIX qw(O_RDONLY O_WRONLY O_CREAT O_TRUNC);
 use Fcntl ':flock';
 use File::Path;
-use MIME::Base64 qw(encode_base64);
-
 use IO::Socket::IP;
 use IO::Socket::UNIX;
+use MIME::Base64 qw(encode_base64);
+use POSIX qw(O_RDONLY O_WRONLY O_CREAT O_TRUNC);
 use Socket qw(SOCK_STREAM);
 
-use PVE::SafeSyslog;
+use PVE::CLIFormatter;
+use PVE::CLIHandler;
 use PVE::Cluster;
 use PVE::INotify;
+use PVE::JSONSchema qw(get_standard_option);
+use PVE::Network;
+use PVE::PTY;
+use PVE::RESTHandler;
 use PVE::RPCEnvironment;
-use PVE::Storage;
+use PVE::SafeSyslog;
 use PVE::Tools qw(extract_param);
+
+use PVE::Storage;
+use PVE::Storage::Plugin;
+
 use PVE::API2::Storage::Config;
 use PVE::API2::Storage::Content;
 use PVE::API2::Storage::PruneBackups;
 use PVE::API2::Storage::Scan;
 use PVE::API2::Storage::Status;
-use PVE::JSONSchema qw(get_standard_option);
-use PVE::PTY;
-
-use PVE::CLIHandler;
 
 use base qw(PVE::CLIHandler);
 
