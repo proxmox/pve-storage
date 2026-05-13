@@ -838,19 +838,28 @@ sub list_images {
             }
 
             my $format = ($class->parse_volname($volname))[6];
-            my $size =
-                $format eq 'qcow2'
-                ? $class->volume_size_info($scfg, $storeid, $volname)
-                : $info->{lv_size};
+            my $entry = {
+                volid => $volid,
+                format => $format,
+                vmid => $owner,
+                ctime => $info->{ctime},
+            };
 
-            push @$res,
-                {
-                    volid => $volid,
-                    format => $format,
-                    size => $size,
-                    vmid => $owner,
-                    ctime => $info->{ctime},
-                };
+            if ($format eq 'qcow2') {
+                my $size;
+                if ($info->{lv_state} eq 'a') {
+                    $size = $class->volume_size_info($scfg, $storeid, $volname);
+                }
+                if (defined($size)) {
+                    $entry->{size} = $size;
+                } else {
+                    $entry->{'approximate-size'} = $info->{lv_size};
+                }
+            } else {
+                $entry->{size} = $info->{lv_size};
+            }
+
+            push @$res, $entry;
         }
     }
 
