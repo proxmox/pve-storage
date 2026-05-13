@@ -14,7 +14,7 @@ use PVE::JSONSchema qw(get_standard_option);
 use PVE::RESTHandler;
 use PVE::RPCEnvironment;
 use PVE::RRD;
-use PVE::Tools qw(run_command extract_param);
+use PVE::Tools qw(run_command);
 
 use PVE::API2::Storage::Content;
 use PVE::API2::Storage::FileRestore;
@@ -1161,10 +1161,10 @@ __PACKAGE__->register_method({
     code => sub {
         my ($param) = @_;
 
-        my $storeid = extract_param($param, 'storage');
-
         my $cfg = PVE::Storage::config();
-        my $scfg = PVE::Storage::storage_config($cfg, $storeid);
+
+        my ($node, $storeid) = $param->@{qw(node storage)};
+        my $scfg = PVE::Storage::storage_check_enabled($cfg, $storeid, $node);
 
         my $type = $scfg->{type};
         my $plugin = PVE::Storage::Plugin->lookup($type);
