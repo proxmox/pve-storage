@@ -29,9 +29,10 @@ sub plugindata {
 sub properties {
     return {
         blocksize => {
-            description => "block size",
+            description => "ZFS block size",
             type => 'string',
             format => 'pve-storage-zfs-blocksize',
+            format_description => 'a power of 2 with optional k or m suffix',
         },
         sparse => {
             description => "use sparse volumes",
