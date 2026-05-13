@@ -3,16 +3,19 @@ package PVE::API2::Storage::Content;
 use strict;
 use warnings;
 
-use PVE::SafeSyslog;
 use PVE::Cluster;
+use PVE::Exception qw(raise_param_exc);
+use PVE::INotify;
+use PVE::JSONSchema qw(get_standard_option);
+use PVE::ProcFSTools;
+use PVE::RESTHandler;
+use PVE::RPCEnvironment;
+use PVE::SafeSyslog;
+use PVE::SSHInfo;
+use PVE::Tools;
+
 use PVE::Storage;
 use PVE::Storage::Common; # for 'pve-storage-image-format' standard option
-use PVE::INotify;
-use PVE::Exception qw(raise_param_exc);
-use PVE::RPCEnvironment;
-use PVE::RESTHandler;
-use PVE::JSONSchema qw(get_standard_option);
-use PVE::SSHInfo;
 
 use base qw(PVE::RESTHandler);
 
