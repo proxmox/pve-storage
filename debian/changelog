@@ -1,3 +1,13 @@
+libpve-storage-perl (9.1.4) trixie; urgency=medium
+
+  * fix #3936: zfspool: validate the 'blocksize' property via a new dedicated
+    JSON schema format, requiring a power of two between 512 bytes and 16 MiB
+    with optional 'k' or 'm' suffix. Previously invalid values were silently
+    accepted at the storage configuration level and only surfaced as errors on
+    first volume allocation.
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 15 May 2026 10:13:05 +0200
+
 libpve-storage-perl (9.1.3) trixie; urgency=medium
 
   * fix #2350: zfspool: support `zfs send` without preserving encryption, to
