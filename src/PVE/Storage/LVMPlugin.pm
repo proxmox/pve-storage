@@ -1500,13 +1500,17 @@ sub rename_volume {
     lvrename($scfg, $source_volname, $target_volname);
 
     eval {
-        my $tag_opts =
-            ['--addtag', "pve-vm-${target_vmid}", '--deltag', "pve-vm-${source_vmid}"];
+        my $tag_opts = [];
+        if ($source_vmid ne $target_vmid) {
+            push $tag_opts->@*, '--addtag', "pve-vm-${target_vmid}";
+            push $tag_opts->@*, '--deltag', "pve-vm-${source_vmid}";
+        }
         if ($format eq 'qcow2') {
             push $tag_opts->@*, '--addtag', "pve-$target_volname";
             push $tag_opts->@*, '--deltag', "pve-$source_volname";
         }
-        run_command(['lvchange', $tag_opts->@*, "${vg}/${target_volname}"]);
+        run_command(['lvchange', $tag_opts->@*, "${vg}/${target_volname}"])
+            if scalar($tag_opts->@*);
     };
     warn "unable to update tags for '$target_volname' - $@" if $@;
 
