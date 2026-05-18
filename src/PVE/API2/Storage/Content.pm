@@ -94,7 +94,9 @@ __PACKAGE__->register_method({
                 'approximate-size' => {
                     description =>
                         "Approximate volume size in bytes. Present instead of 'size' for storages"
-                        . " where determining the exact size has technical limitations.",
+                        . " where determining the exact size has technical limitations. Will"
+                        . " typically be an upper bound on the actual size, but the exact"
+                        . " semantics depend on the storage plugin.",
                     type => 'integer',
                     renderer => 'bytes',
                     optional => 1,
