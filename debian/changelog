@@ -1,3 +1,37 @@
+libpve-storage-perl (9.1.5) trixie; urgency=medium
+
+  * fix #7143: lvm plugin: scope qcow2 volume (de)activation to the actual
+    target volume group via lvchange '--select' instead of the per-name tag.
+    The tag-based selection previously pulled in volumes with the same name
+    (and their snapshots) on other LVM storages.
+
+  * fix #7280: lvm plugin: rename: activate the source qcow2 volume before
+    reading its snapshot info, otherwise the rename failed for inactive qcow2
+    LVs since qemu-img cannot read the header without a /dev node.
+
+  * lvm plugin: rename: keep the per-VM tag (and, for qcow2, the per-volname
+    tag) in sync when reassigning a volume to a different VM. Skip the
+    lvchange invocation entirely when source and target VMID match (e.g.
+    same-CT mountpoint reassign on raw LVs), since the equivalent '--addtag X
+    --deltag X' could otherwise leave the volume untagged.
+
+  * fix #6819: lvm plugin: list_images: for inactive qcow2 LVs, report the LV
+    allocation size as the new 'approximate-size' field instead of activating
+    each LV per listing call. Activating is costly and, on shared LVM, often
+    impossible because the LV may already be active on another node.
+
+  * api/cli: list content: declare 'size' as optional and add a new
+    'approximate-size' field for storages where determining the exact size has
+    technical limitations. The 'pvesm list' CLI prefixes such values with '~'.
+    External API consumers should treat 'size' as potentially absent and fall
+    back to 'approximate-size'.
+
+  * plugin: activate_storage: improve error reporting when creating the
+    per-content-type subdirectories fails, including an explicit hint about
+    read-write access to the storage on EACCES/EROFS errors.
+
+ -- Proxmox Support Team <support@proxmox.com>  Mon, 18 May 2026 21:12:27 +0200
+
 libpve-storage-perl (9.1.4) trixie; urgency=medium
 
   * fix #3936: zfspool: validate the 'blocksize' property via a new dedicated
