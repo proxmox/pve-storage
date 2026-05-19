@@ -1251,7 +1251,8 @@ sub volume_snapshot_delete {
     my $childvolname = $snapshots->{$childsnap}->{volname};
 
     my $err = undef;
-    #if first snapshot,as it should be bigger,  we merge child, and rename the snapshot to child
+    # if first snapshot, as it should be bigger in terms of actual data, we merge child, and rename
+    # the snapshot to child
     if (!$parentsnap) {
         print "$volname: deleting snapshot '$snap' by commiting snapshot '$childsnap'\n";
         print "running 'qemu-img commit $childpath'\n";
