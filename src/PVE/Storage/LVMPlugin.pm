@@ -883,6 +883,8 @@ sub status {
 sub volume_snapshot_info {
     my ($class, $scfg, $storeid, $volname) = @_;
 
+    return {} if !$scfg->{'snapshot-as-volume-chain'};
+
     my $short_volname = ($class->parse_volname($volname))[1];
 
     my $get_snapname_from_path = sub {
@@ -907,9 +909,7 @@ sub volume_snapshot_info {
     }
     my $info = {};
     my $order = 0;
-    return $info if ref($json_decode) ne 'ARRAY';
 
-    #no snapshot or external  snapshots is an arrayref
     my $snapshots = $json_decode;
     for my $snap (@$snapshots) {
         my $snapfile = $snap->{filename};

@@ -1903,7 +1903,8 @@ sub volume_snapshot_info {
     my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $format) =
         $class->parse_volname($volname);
 
-    my $json = PVE::Storage::Common::qemu_img_info($path, undef, 10, 1);
+    my $json =
+        PVE::Storage::Common::qemu_img_info($path, undef, 10, $scfg->{'snapshot-as-volume-chain'});
     die "failed to query file information with qemu-img\n" if !$json;
     my $json_decode = eval { decode_json($json) };
     if ($@) {
@@ -1911,16 +1912,8 @@ sub volume_snapshot_info {
     }
     my $info = {};
     my $order = 0;
-    if (ref($json_decode) eq 'HASH') {
-        #internal snapshots is a hashref
-        my $snapshots = $json_decode->{snapshots};
-        for my $snap (@$snapshots) {
-            my $snapname = $snap->{name};
-            $info->{$snapname}->{timestamp} = $snap->{'date-sec'};
-
-        }
-    } elsif (ref($json_decode) eq 'ARRAY') {
-        #no snapshot or external  snapshots is an arrayref
+    if ($scfg->{'snapshot-as-volume-chain'}) {
+        # calling qemu_img_info() with $follow_backing_files gives an array reference
         my $snapshots = $json_decode;
         for my $snap (@$snapshots) {
             my $snapfile = $snap->{filename};
@@ -1946,6 +1939,14 @@ sub volume_snapshot_info {
                 $info->{$parentname}->{child} = $snapname;
             }
             $order++;
+        }
+    } else {
+        # calling qemu_img_info() without $follow_backing_files gives a single hash reference
+        my $snapshots = $json_decode->{snapshots};
+        for my $snap (@$snapshots) {
+            my $snapname = $snap->{name};
+            $info->{$snapname}->{timestamp} = $snap->{'date-sec'};
+
         }
     }
 
