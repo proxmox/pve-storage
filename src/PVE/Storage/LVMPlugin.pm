@@ -1255,6 +1255,14 @@ sub volume_snapshot_delete {
     # the snapshot to child
     if (!$parentsnap) {
         print "$volname: deleting snapshot '$snap' by commiting snapshot '$childsnap'\n";
+
+        my $snap_size = $snapshots->{$snap}->{'virtual-size'};
+        my $child_size = $snapshots->{$childsnap}->{'virtual-size'};
+        if (defined($child_size) && defined($snap_size) && $child_size > $snap_size) {
+            print "resize '$snap' ($snap_size bytes) to match '$childsnap' ($child_size bytes)\n";
+            $class->volume_resize($scfg, $storeid, $volname, $child_size, $running, $snap);
+        }
+
         print "running 'qemu-img commit $childpath'\n";
         #can't use -d here, as it's an lvm volume
         $cmd = ['/usr/bin/qemu-img', 'commit', $childpath];
