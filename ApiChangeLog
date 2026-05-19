@@ -6,6 +6,26 @@ without breaking anything unaware of it.)
 
 Future changes should be documented in here.
 
+## Version 15:
+
+* Add new `$snapname` parameter to the `volume_resize()` plugin method
+
+  If specified, the snapshot is the target of the resize operation. This is currently only used in
+  combination with the `snapshot-as-volume-chain` configuration option before a commit operation.
+  Plugins that do not support the `snapshot-as-volume-chain` configuration option may either die
+  when `$snapname` is set or must implement resizing snapshots.
+
+* Add `virtual-size` to the information returned by the `volume_snapshot_info()` plugin method
+
+  This is the virtual size of the volume at the time the snapshot was taken. This information is
+  required for storages with the `snapshot-as-volume-chain` configuration option, to make snapshot
+  removal work correctly in combination with resizing images.
+
+* Properly document `volume_snapshot_info()` plugin method
+
+  If you already implement this method, check that the returned information is in line with the
+  documentation.
+
 ## Version 14:
 
 * Introduce `get_identity()` plugin method
