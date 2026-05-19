@@ -977,7 +977,7 @@ sub volume_size_info {
 }
 
 sub volume_resize {
-    my ($class, $scfg, $storeid, $volname, $size, $running) = @_;
+    my ($class, $scfg, $storeid, $volname, $size, $running, $snapname) = @_;
     die "volume resize is not possible on pbs device";
 }
 

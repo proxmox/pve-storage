@@ -393,7 +393,7 @@ sub volume_size_info {
 }
 
 sub volume_resize {
-    my ($cfg, $volid, $size, $running) = @_;
+    my ($cfg, $volid, $size, $running, $snapname) = @_;
 
     my $padding = (1024 - $size % 1024) % 1024;
     $size = $size + $padding;
@@ -402,7 +402,7 @@ sub volume_resize {
     if ($storeid) {
         my $scfg = storage_config($cfg, $storeid);
         my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
-        return $plugin->volume_resize($scfg, $storeid, $volname, $size, $running);
+        return $plugin->volume_resize($scfg, $storeid, $volname, $size, $running, $snapname);
     } elsif ($volid =~ m|^(/.+)$| && -e $volid) {
         die "resize file/device '$volid' is not possible\n";
     } else {

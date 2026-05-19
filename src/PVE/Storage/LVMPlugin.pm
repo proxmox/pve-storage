@@ -1034,7 +1034,7 @@ sub deactivate_volume {
 }
 
 sub volume_resize {
-    my ($class, $scfg, $storeid, $volname, $size, $running) = @_;
+    my ($class, $scfg, $storeid, $volname, $size, $running, $snapname) = @_;
 
     my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $format) =
         $class->parse_volname($volname);
@@ -1042,7 +1042,8 @@ sub volume_resize {
     my $lvmsize = calculate_lvm_size($size / 1024, $format);
     $lvmsize = "${lvmsize}k";
 
-    my $path = $class->path($scfg, $volname);
+    my $path = $class->path($scfg, $volname, $storeid, $snapname);
+
     my $cmd = ['/sbin/lvextend', '-L', $lvmsize, $path];
 
     $class->cluster_lock_storage(

@@ -778,7 +778,9 @@ sub create_base {
 }
 
 sub volume_resize {
-    my ($class, $scfg, $storeid, $volname, $size, $running) = @_;
+    my ($class, $scfg, $storeid, $volname, $size, $running, $snapname) = @_;
+
+    die "resizing a snapshot is not supported for $class\n" if $snapname;
 
     my $new_size = int($size / 1024);
 

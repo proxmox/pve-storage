@@ -356,7 +356,13 @@ sub create_base {
     return $newvolname;
 }
 
-# sub volume_resize {} reuse code from parent class
+sub volume_resize {
+    my ($class, $scfg, $storeid, $volname, $size, $running, $snapname) = @_;
+
+    die "resizing a snapshot is not supported for $class\n" if $snapname;
+
+    return $class->SUPER::volume_resize($scfg, $storeid, $volname, $size, $running, $snapname);
+}
 
 sub volume_snapshot {
     my ($class, $scfg, $storeid, $volname, $snap) = @_;

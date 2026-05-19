@@ -627,7 +627,7 @@ sub check_connection {
 }
 
 sub volume_resize {
-    my ($class, $scfg, $storeid, $volname, $size, $running) = @_;
+    my ($class, $scfg, $storeid, $volname, $size, $running, $snapname) = @_;
     die "volume resize is not possible on iscsi device";
 }
 

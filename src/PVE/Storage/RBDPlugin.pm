@@ -895,7 +895,9 @@ sub volume_size_info {
 }
 
 sub volume_resize {
-    my ($class, $scfg, $storeid, $volname, $size, $running) = @_;
+    my ($class, $scfg, $storeid, $volname, $size, $running, $snapname) = @_;
+
+    die "resizing a snapshot is not supported for $class\n" if $snapname;
 
     return 1 if $running && !$scfg->{krbd}; # FIXME???
 

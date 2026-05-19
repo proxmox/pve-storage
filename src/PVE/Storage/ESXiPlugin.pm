@@ -556,7 +556,7 @@ sub volume_import {
 }
 
 sub volume_resize {
-    my ($class, $scfg, $storeid, $volname, $size, $running) = @_;
+    my ($class, $scfg, $storeid, $volname, $size, $running, $snapname) = @_;
 
     die "resizing volumes is not supported for $class\n";
 }

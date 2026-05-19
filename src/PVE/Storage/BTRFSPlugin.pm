@@ -496,10 +496,11 @@ sub volume_size_info {
 }
 
 sub volume_resize {
-    my ($class, $scfg, $storeid, $volname, $size, $running) = @_;
+    my ($class, $scfg, $storeid, $volname, $size, $running, $snapname) = @_;
 
     my $format = ($class->parse_volname($volname))[6];
     if ($format eq 'subvol') {
+        die "resizing a snapshot is not supported for format 'subvol' in $class\n" if $snapname;
         # NOTE: `btrfs send/recv` actually drops quota information so supporting subvolumes with
         # quotas doesn't play nice with send/recv.
         die "cannot resize subvolume - btrfs quotas are currently not supported\n";

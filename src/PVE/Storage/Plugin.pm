@@ -1342,14 +1342,15 @@ sub volume_size_info {
 
 =head3 volume_resize
 
-    $plugin->volume_resize(\%scfg, $storeid, $volname, $size, $running);
+    $plugin->volume_resize(\%scfg, $storeid, $volname, $size, $running, $snapname);
 
 Resize a volume to the new C<$size> in bytes. The size is guaranteed to be a multiple of C<1024>.
 The implementation may pad to a larger size if required. In case of virtual machines, C<$running>
 indicates that the VM is currently running and the call will be followed by a C<block_resize> QMP
 command in QEMU. If resizing is supported natively via QEMU (for example, when using librbd), then
 the plugin should simply return if the VM is running. For containers, C<$running> will always be
-C<0>.
+C<0>. If a snapshot name is specified via C<$snapname>, then the snapshot is the target of the
+resize operation.
 
 C<die>s in case of errors, or if the underlying storage implementation or the volume's format
 doesn't support resizing.
@@ -1359,13 +1360,16 @@ This function should not return any value.
 =cut
 
 sub volume_resize {
-    my ($class, $scfg, $storeid, $volname, $size, $running) = @_;
+    my ($class, $scfg, $storeid, $volname, $size, $running, $snapname) = @_;
 
     die "can't resize this image format\n" if $volname !~ m/\.(raw|qcow2)$/;
 
     return 1 if $running;
 
-    my $path = $class->filesystem_path($scfg, $volname);
+    die "resizing a snapshot is not supported for $class without 'snapshot-as-volume-chain'\n"
+        if !$scfg->{'snapshot-as-volume-chain'} && $snapname;
+
+    my $path = $class->filesystem_path($scfg, $volname, $snapname);
 
     my $format = ($class->parse_volname($volname))[6];
 
