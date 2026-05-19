@@ -1154,7 +1154,6 @@ sub free_image {
             ) {
                 my $snap = $snapshots->{$snapid};
                 next if $snapid eq 'current';
-                next if !$snap->{ext};
                 eval { free_snap_image($class, $storeid, $scfg, $volname, $snapid); };
                 warn $@ if $@;
             }
@@ -1865,9 +1864,6 @@ Required values are:
 =item C<order>: Number that determines the position in the backing chain. C<0> for the current
 image, one more for each step further back in the volume chain.
 
-=item C<ext>: May be set if the snapshot is external when internal snapshots are also supported by
-the storage.
-
 =back
 
 For replication support, returns an empty hash if the volume does not exist. Required values are:
@@ -1930,7 +1926,6 @@ sub volume_snapshot_info {
             $info->{$snapname}->{volname} = "$snapvolname";
             $info->{$snapname}->{volid} = "$storeid:$snapvolname";
             $info->{$snapname}->{'virtual-size'} = $snap->{'virtual-size'};
-            $info->{$snapname}->{ext} = 1;
 
             my $parentfile = $snap->{'backing-filename'};
             if ($parentfile) {
