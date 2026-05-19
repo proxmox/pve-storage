@@ -1812,10 +1812,53 @@ sub status {
     return ($res->{total}, $res->{avail}, $res->{used}, 1);
 }
 
-# Returns a hash with the snapshot names as keys and the following data:
-# id        - Unique id to distinguish different snapshots even if the have the same name.
-# timestamp - Creation time of the snapshot (seconds since epoch).
-# Returns an empty hash if the volume does not exist.
+=head3 volume_snapshot_info
+
+    my $snapshots = $plugin->volume_snapshot_info($scfg, $storeid, $volname);
+    my $childsnap = $snapshots->{$snap}->{child};
+    my $childpath = $snapshots->{$childsnap}->{file};
+
+Query information about snapshots for C<$volname>. The result is a hash reference with snapshot
+names as keys and additional information as values. Different information is required for supporting
+the C<snapshot-as-volume-chain> storage configuration option and for supporting replication (note
+that replication is currently limited to native ZFS plugins).
+
+For C<snapshot-as-volume-chain> support, an entry with key C<current> exists for the current state.
+Required values are:
+
+=over
+
+=item C<file>: The image filename of the external snapshot volume.
+
+=item C<volname>: The volume name of the external snapshot volume.
+
+=item C<volid>: The volume ID of the external snapshot volume.
+
+=item C<child>: The name of the child snapshot in the volume chain. Not set if there is no child.
+
+=item C<parent>: The name of the parent snapshot in the volume chain. Not set if there is no parent.
+
+=item C<order>: Number that determines the position in the backing chain. C<0> for the current
+image, one more for each step further back in the volume chain.
+
+=item C<ext>: May be set if the snapshot is external when internal snapshots are also supported by
+the storage.
+
+=back
+
+For replication support, returns an empty hash if the volume does not exist. Required values are:
+
+=over
+
+=item C<id>: Unique identifier of the snapshot. Must be the same for the replicated instance. Must
+be different for different snapshots even if they share the same name.
+
+=item C<timestamp>: Creation time of the snapshot (seconds since epoch).
+
+=back
+
+=cut
+
 sub volume_snapshot_info {
     my ($class, $scfg, $storeid, $volname) = @_;
 
