@@ -1916,7 +1916,6 @@ sub volume_snapshot_info {
         my $snapshots = $json_decode->{snapshots};
         for my $snap (@$snapshots) {
             my $snapname = $snap->{name};
-            $info->{$snapname}->{order} = $snap->{id};
             $info->{$snapname}->{timestamp} = $snap->{'date-sec'};
 
         }
