@@ -924,6 +924,7 @@ sub volume_snapshot_info {
         $info->{$snapname}->{file} = $snapfile;
         $info->{$snapname}->{volname} = "$snapvolname";
         $info->{$snapname}->{volid} = "$storeid:$snapvolname";
+        $info->{$snapname}->{'virtual-size'} = $snap->{'virtual-size'};
 
         my $parentfile = $snap->{'backing-filename'};
         if ($parentfile) {

@@ -1834,6 +1834,8 @@ Required values are:
 
 =item C<volid>: The volume ID of the external snapshot volume.
 
+=item C<virtual-size>: The virtual size of the volume recorded by the snapshot.
+
 =item C<child>: The name of the child snapshot in the volume chain. Not set if there is no child.
 
 =item C<parent>: The name of the parent snapshot in the volume chain. Not set if there is no parent.
@@ -1913,6 +1915,7 @@ sub volume_snapshot_info {
             $info->{$snapname}->{file} = $snapfile;
             $info->{$snapname}->{volname} = "$snapvolname";
             $info->{$snapname}->{volid} = "$storeid:$snapvolname";
+            $info->{$snapname}->{'virtual-size'} = $snap->{'virtual-size'};
             $info->{$snapname}->{ext} = 1;
 
             my $parentfile = $snap->{'backing-filename'};
