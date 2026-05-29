@@ -1,3 +1,20 @@
+libpve-storage-perl (9.1.6) trixie; urgency=medium
+
+  * fix #7094: lvm: snapshot delete: when using 'snapshot-as-volume-chain',
+    grow the target snapshot volume to fit its child before committing.
+    Deleting the first snapshot of a volume that was resized after the
+    snapshot was taken could otherwise fail, as the target LV was too small to
+    hold the merged data. Handles the offline case; the online (running VM)
+    case is fixed in qemu-server.
+
+  * plugin api: backward compatible plugin api version bump for the new
+    optional 'snapname' parameter of volume_resize() and the new
+    'virtual-size' field returned by volume_snapshot_info(), both needed for
+    snapshot removal with resized images on 'snapshot-as-volume-chain'
+    storages.
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 29 May 2026 21:45:40 +0200
+
 libpve-storage-perl (9.1.5) trixie; urgency=medium
 
   * fix #7143: lvm plugin: scope qcow2 volume (de)activation to the actual
