@@ -296,15 +296,43 @@ sub lvm_list_volumes {
     return $lvs;
 }
 
+# Acquire the storage lock for a cleanup step of volume or snapshot removal, retrying the
+# acquisition so transient lock contention on a busy cluster does not leave a half-removed volume
+# behind. Only the acquisition is retried; $code_started keeps a failure inside the locked section
+# from re-running the non-idempotent cleanup.
+my sub lock_storage_with_acquire_retry {
+    my ($class, $storeid, $scfg, $code) = @_;
+
+    my $max_attempts = 5;
+    my $attempt = 0;
+    while (1) {
+        $attempt++;
+        my $code_started = 0;
+        my $res = eval {
+            $class->cluster_lock_storage(
+                $storeid,
+                $scfg->{shared},
+                undef,
+                sub { $code_started = 1; return $code->(@_); },
+            );
+        };
+        return $res if !$@;
+
+        die $@ if $code_started || $attempt >= $max_attempts;
+        warn "could not acquire storage lock, retrying (attempt $attempt/$max_attempts): $@";
+        sleep($attempt < 3 ? 1 : 3);
+    }
+}
+
 my sub rename_after_failed_cleanup {
     my ($class, $scfg, $storeid, $vg, $name) = @_;
 
     eval {
         my $failed_name;
-        $class->cluster_lock_storage(
+        lock_storage_with_acquire_retry(
+            $class,
             $storeid,
-            $scfg->{shared},
-            undef,
+            $scfg,
             sub {
                 my $vgs = lvm_vgs();
                 die "volume group '$vg' not found\n"
@@ -631,10 +659,10 @@ my sub free_lvm_volumes_locked {
                 $total_cleanup_errors += 1;
                 next;
             } else {
-                $class->cluster_lock_storage(
+                lock_storage_with_acquire_retry(
+                    $class,
                     $storeid,
-                    $scfg->{shared},
-                    undef,
+                    $scfg,
                     sub {
                         my $cmd = ['/sbin/lvremove', '-f', "$vg/del-$name"];
                         run_command($cmd, errmsg => "lvremove '$vg/del-$name' error");
@@ -1664,10 +1692,10 @@ sub volume_snapshot_delete {
 
     if ($running) {
         my $cleanup_worker = eval {
-            return $class->cluster_lock_storage(
+            return lock_storage_with_acquire_retry(
+                $class,
                 $storeid,
-                $scfg->{shared},
-                undef,
+                $scfg,
                 sub {
                     return free_snap_image_locked($class, $storeid, $scfg, $volname, $snap);
                 },
@@ -1719,10 +1747,10 @@ sub volume_snapshot_delete {
 
         print "delete $childvolname\n";
         my $cleanup_worker = eval {
-            return $class->cluster_lock_storage(
+            return lock_storage_with_acquire_retry(
+                $class,
                 $storeid,
-                $scfg->{shared},
-                undef,
+                $scfg,
                 sub {
                     my $cleanup_worker_sub = eval {
                         free_snap_image_locked($class, $storeid, $scfg, $volname, $childsnap);
@@ -1770,10 +1798,10 @@ sub volume_snapshot_delete {
         }
         #delete the snapshot
         my $cleanup_worker = eval {
-            return $class->cluster_lock_storage(
+            return lock_storage_with_acquire_retry(
+                $class,
                 $storeid,
-                $scfg->{shared},
-                undef,
+                $scfg,
                 sub {
                     return free_snap_image_locked($class, $storeid, $scfg, $volname, $snap);
                 },
