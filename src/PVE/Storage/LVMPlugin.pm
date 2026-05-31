@@ -1841,6 +1841,10 @@ sub volume_export {
         if $with_snapshots;
     die "cannot export a snapshot in $class\n" if defined($snapshot);
     die "cannot export an incremental stream in $class\n" if defined($base_snapshot);
+    # Streaming a qcow2 volume as raw ships the container bytes into a raw-allocated target, an
+    # unusable image; refuse it instead of emitting a corrupt stream.
+    die "cannot export a qcow2-formatted volume as a raw stream in $class\n"
+        if ($class->parse_volname($volname))[6] eq 'qcow2';
     my $file = $class->path($scfg, $volname, $storeid);
     my $size;
     # should be faster than querying LVM, also checks for the device file's availability
@@ -1865,6 +1869,8 @@ sub volume_import_formats {
     my ($class, $scfg, $storeid, $volname, $snapshot, $base_snapshot, $with_snapshots) = @_;
     return () if $with_snapshots; # not supported
     return () if defined($base_snapshot); # not supported
+    # refuse qcow2: only 'raw+size' is offered, which would yield an unusable raw-registered image
+    return () if ($class->parse_volname($volname))[6] eq 'qcow2';
     return ('raw+size');
 }
 
