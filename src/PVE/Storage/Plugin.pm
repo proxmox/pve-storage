@@ -2206,6 +2206,8 @@ sub volume_export {
                 run_command(
                     ['dd', "if=$file", "bs=4k", "status=progress"],
                     output => '>&' . fileno($fh),
+                    # split dd's carriage-return driven progress output into individual log lines
+                    errfunc => sub { print STDERR "$_[0]\n" },
                 );
             } else {
                 run_command(
@@ -2224,6 +2226,8 @@ sub volume_export {
             run_command(
                 ['dd', "if=$file", "bs=4k", "status=progress"],
                 output => '>&' . fileno($fh),
+                # split dd's carriage-return driven progress output into individual log lines
+                errfunc => sub { print STDERR "$_[0]\n" },
             );
             return;
         } elsif ($format eq 'tar+size') {

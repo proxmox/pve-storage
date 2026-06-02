@@ -1408,7 +1408,12 @@ sub volume_export {
         },
     );
     PVE::Storage::Plugin::write_common_header($fh, $size);
-    run_command(['dd', "if=$file", "bs=64k", "status=progress"], output => '>&' . fileno($fh));
+    run_command(
+        ['dd', "if=$file", "bs=64k", "status=progress"],
+        output => '>&' . fileno($fh),
+        # split dd's carriage-return driven progress output into individual log lines
+        errfunc => sub { print STDERR "$_[0]\n" },
+    );
 }
 
 sub volume_import_formats {
