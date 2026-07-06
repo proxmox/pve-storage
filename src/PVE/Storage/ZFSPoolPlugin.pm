@@ -726,6 +726,7 @@ sub clone_image {
 
     if ($format eq 'subvol') {
         my $refquota = $class->zfs_get_properties($scfg, 'refquota', "$scfg->{pool}/$basename");
+        $refquota = 'none' if $refquota == 0; # zfs does not accept 0 for refquota property
         $class->zfs_request(
             $scfg,
             undef,
