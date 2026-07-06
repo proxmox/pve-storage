@@ -562,6 +562,7 @@ sub volume_snapshot_rollback {
         my $refquota = $class->zfs_get_properties($scfg, 'pve-storage:refquota', $snapshot_name);
 
         if ($refquota =~ m/^\d+$/) {
+            $refquota = 'none' if $refquota == 0; # zfs does not accept 0 for refquota property
             $class->zfs_request(
                 $scfg, undef, 'set', "refquota=${refquota}", "$scfg->{pool}/$vname",
             );
