@@ -738,11 +738,35 @@ my sub alloc_lvm_image {
 
 }
 
+my %LVM_FORMAT_EXTENSIONS = (
+    raw => '',
+    qcow2 => 'qcow2',
+);
+
+my sub verify_volname_format {
+    my ($class, $name, $fmt) = @_;
+
+    my $expected_ext = $LVM_FORMAT_EXTENSIONS{$fmt};
+    return if !defined($expected_ext);
+
+    my (undef, undef, undef, undef, undef, undef, $parsed_fmt) = $class->parse_volname($name);
+
+    return if $fmt eq $parsed_fmt;
+
+    my $base_name = $name =~ s/\.[^.]+$//r;
+    my $suggested_name = $expected_ext ? "$base_name.$expected_ext" : $base_name;
+
+    die "volume name '$name' does not match requested format '$fmt' "
+        . "(did you mean '$suggested_name'?)\n";
+}
+
 sub alloc_image {
     my ($class, $storeid, $scfg, $vmid, $fmt, $name, $size) = @_;
 
     $name = $class->find_free_diskname($storeid, $scfg, $vmid, $fmt)
         if !$name;
+
+    verify_volname_format($class, $name, $fmt);
 
     alloc_lvm_image($class, $storeid, $scfg, $vmid, $fmt, $name, $size);
 
