@@ -28,7 +28,7 @@ backup_cleanup().
 
 The backup_get_mechanism() method is used to decide on the backup mechanism.
 Currently, 'file-handle' or 'nbd' for VMs, and 'directory' for containers is
-possible. The method also let's the plugin indicate whether to use a bitmap for
+possible. The method also lets the plugin indicate whether to use a bitmap for
 incremental VM backup or not. It is enough to implement one mechanism for VMs
 and one mechanism for containers.
 
@@ -414,8 +414,8 @@ sub backup_handle_log_file {
 
 =item C<backup_vm_query_incremental>
 
-Queries which devices can be backed up in an incrementally.
-If incremental backup is not supported, simply return nothing (or C<undef>).
+Queries which devices can be backed up incrementally. If incremental backup is
+not supported, simply return nothing (or C<undef>).
 
 It cannot be guaranteed that the device on the QEMU-side still has the bitmap
 used for an incremental backup.
