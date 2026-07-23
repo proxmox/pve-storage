@@ -868,7 +868,8 @@ sub volume_export {
         errfunc => sub {
             my $line = shift;
             if ($line !~ /^WARNING: no-preserve-encryption flag set, sending dataset/) {
-                print STDERR $line;
+                chomp($line);
+                print STDERR "$line\n";
                 *STDERR->flush();
             }
         },
