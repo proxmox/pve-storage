@@ -1,3 +1,22 @@
+libpve-storage-perl (9.1.7) trixie; urgency=medium
+
+  * plugins: volume export: capture dd progress output line by line, instead of
+    as a single long line requiring horizontal scrolling
+
+  * zfspool: export: fix regression with printing progress output caused by
+    missing newline characters.
+
+  * fix #7811: storage: lvm: reject allocation on format and volume name
+    mismatch. LVM historically only supported the raw format, and has no
+    extension in the volume name for such volumes, which made them fall through
+    the existing checks.
+
+  * zfspool plugin: fix regression for rollback with refquota=none and a
+    similar issue when creating linked clones of containers, both caused by ZFS
+    not treating `0` as `none`.
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 24 Jul 2026 11:57:30 +0200
+
 libpve-storage-perl (9.1.6) trixie; urgency=medium
 
   * fix #7094: lvm: snapshot delete: when using 'snapshot-as-volume-chain',
