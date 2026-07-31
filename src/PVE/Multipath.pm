@@ -2,7 +2,9 @@ package PVE::Multipath;
 
 use v5.36;
 
+use Cwd qw(abs_path);
 use Encode qw(decode encode);
+use File::Basename qw(basename);
 use JSON qw(decode_json);
 
 use PVE::Tools qw(run_command file_get_contents file_read_firstline dir_glob_foreach);
@@ -35,6 +37,12 @@ sub parse_base_volume($volid) {
     # A textual SCSI WWID can itself end in what looks like a partition suffix.
     $base->{full_wwid} = $id if $kind eq 'scsi' && $id ne $wwid;
     return $base;
+}
+
+sub device_map($device) {
+    my $name = basename(abs_path($device) // $device);
+    return undef if $name !~ /^dm-\d+$/;
+    return parse_dm_uuid(file_read_firstline("/sys/block/$name/dm/uuid"));
 }
 
 sub map_info() {
@@ -175,6 +183,22 @@ sub get_maps() {
             if $map->{sysfs};
     }
     return $maps;
+}
+
+sub path_status_by_wwid() {
+    my $res = {};
+    for my $map (get_maps()->@*) {
+        my $wwid = $map->{wwid} // next;
+        my @paths;
+        for my $path ($map->{paths}->@*) {
+            my $row = { device => "/dev/$path->{dev}", state => $path->{'dm-state'} // 'undef' };
+            $row->{'checker-state'} = $path->{'check-state'} if defined($path->{'check-state'});
+            $row->{$_} = $path->{$_} for grep { defined($path->{$_}) } qw(host-wwpn target-wwpn);
+            push @paths, $row;
+        }
+        $res->{$wwid} = { active => $map->{'paths-active'}, paths => \@paths };
+    }
+    return $res;
 }
 
 sub wait_for_map($wwid, $timeout = 10) {

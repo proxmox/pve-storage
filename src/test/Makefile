@@ -1,6 +1,6 @@
 all: test
 
-test: test_iscsi test_zfspoolplugin test_lvmplugin test_lvm_create test_lvm_lock_retry test_lvm_base_volume test_lvm_hints test_disklist test_bwlimit test_plugin test_ovf test_volume_access test_remote_command test_sensitive_properties test_import_stream test_multipath test_san_libraries test_lun_identity test_lvm_base_activation test_multipath_api test_san_taint
+test: test_iscsi test_zfspoolplugin test_lvmplugin test_lvm_create test_lvm_lock_retry test_lvm_base_volume test_lvm_hints test_disklist test_bwlimit test_plugin test_ovf test_volume_access test_remote_command test_sensitive_properties test_import_stream test_multipath test_san_libraries test_lun_identity test_lvm_base_activation test_multipath_api test_san_taint test_san_lun_scan test_san_api
 
 test_zfspoolplugin: run_test_zfspoolplugin.pl
 	./run_test_zfspoolplugin.pl
@@ -71,3 +71,9 @@ test_multipath_api: run_multipath_api_tests.pl
 
 test_san_taint: run_san_taint_tests.pl
 	perl -T ./run_san_taint_tests.pl
+
+test_san_lun_scan: run_san_lun_scan_tests.pl
+	./run_san_lun_scan_tests.pl
+
+test_san_api: run_san_api_tests.pl
+	./run_san_api_tests.pl

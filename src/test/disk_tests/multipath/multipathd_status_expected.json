@@ -1,0 +1,40 @@
+{
+    "3600140500000000000000000000000001": {
+        "active": 2,
+        "paths": [
+            {
+                "device": "/dev/sda",
+                "state": "active",
+                "checker-state": "ready",
+                "host-wwpn": "0x21000024ff7d6a1c",
+                "target-wwpn": "0x2100d039ea28bf00"
+            },
+            {
+                "device": "/dev/sdb",
+                "state": "active",
+                "checker-state": "ready",
+                "host-wwpn": "0x21000024ff7d6a1d",
+                "target-wwpn": "0x2200d039ea28bf00"
+            }
+        ]
+    },
+    "3600140500000000000000000000000002": {
+        "active": 1,
+        "paths": [
+            {
+                "device": "/dev/sdc",
+                "state": "active",
+                "checker-state": "ready",
+                "host-wwpn": "0x21000024ff7d6a1c",
+                "target-wwpn": "0x2100d039ea28bf00"
+            },
+            {
+                "device": "/dev/sdd",
+                "state": "failed",
+                "checker-state": "faulty",
+                "host-wwpn": "0x21000024ff7d6a1d",
+                "target-wwpn": "0x2200d039ea28bf00"
+            }
+        ]
+    }
+}

@@ -14,7 +14,8 @@ SOURCES= \
 	PBSPlugin.pm \
 	BTRFSPlugin.pm \
 	LvmThinPlugin.pm \
-	ESXiPlugin.pm
+	ESXiPlugin.pm \
+	SAN.pm
 
 .PHONY: install
 install:

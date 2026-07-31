@@ -534,6 +534,14 @@ sub dir_is_empty {
     return 1;
 }
 
+# Some controllers pad the NQN or derive it from padded serial/model fields.
+sub read_subsysnqn {
+    my ($path) = @_;
+    my $nqn = file_read_firstline($path) // return undef;
+    $nqn =~ s/\s+$//;
+    return $nqn;
+}
+
 # Returns the NVMe transport (pcie, fc, tcp, rdma, loop) of a namespace, either directly from
 # its controller, or from any controller of its subsystem for native NVMe multipath setups.
 sub get_nvme_transport {
@@ -552,6 +560,13 @@ sub get_nvme_transport {
     );
 
     return $transport;
+}
+
+# SAS does not distinguish local from remote attachments, so it is not classified as remote.
+sub is_remote_transport {
+    my ($transport) = @_;
+
+    return ($transport // '') =~ m/^(?:fc|fcoe|iscsi|nvme-(?:fc|tcp|rdma))$/;
 }
 
 my sub is_ssdlike {

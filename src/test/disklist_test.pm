@@ -82,6 +82,8 @@ sub mocked_run_command {
                 $content = '{}';
             }
             @$outputlines = split(/\n/, $content);
+        } elsif ($cmd->[0] =~ m/multipathd/i) {
+            @$outputlines = split(/\n/, read_test_file('multipathd'));
         } else {
             die "unexpected run_command call: '@$cmd', aborting\n";
         }
@@ -282,6 +284,16 @@ sub test_disk_list {
             ok($san_disks->{sda}, 'SAN inventory opts into iSCSI');
         }
 
+        if (-f "disk_tests/$testcasedir/multipathd_status_expected.json") {
+            my $status = PVE::Multipath::path_status_by_wwid();
+            my $expected_status =
+                decode_json(read_test_file('multipathd_status_expected.json'));
+
+            print Dumper($status) if $print;
+            $testcount++;
+            is_deeply($status, $expected_status, 'multipath status should be the same');
+        }
+
         if (-f "disk_tests/$testcasedir/nvme_path_status_expected.json") {
             my $status = PVE::Diskmanage::get_nvme_path_status();
             my $expected_status = decode_json(read_test_file('nvme_path_status_expected.json'));
@@ -366,8 +378,11 @@ print("\tMocked get_sysdir_size\n");
 $diskmanage_module->mock('assert_blockdev' => sub { return 1; });
 print("\tMocked assert_blockdev\n");
 $multipath_module = Test::MockModule->new('PVE::Multipath', no_auto => 1);
+$multipath_module->mock('run_command' => \&mocked_run_command);
+$multipath_module->mock('is_supported' => sub { return 1; });
 $multipath_module->mock('dir_glob_foreach' => \&mocked_dir_glob_foreach);
 $multipath_module->mock('file_read_firstline' => \&mocked_file_read_firstline);
+print("\tMocked PVE::Multipath run_command and is_supported\n");
 $diskmanage_module->mock(
     'dir_is_empty' => sub {
         my $val = shift;
