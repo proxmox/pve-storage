@@ -92,6 +92,13 @@ sub parse_wipefs_signatures {
     return $probe->{signatures};
 }
 
+sub is_iscsi_device {
+    my ($dev) = @_;
+
+    my $link = readlink("/sys/block/$dev");
+    return defined($link) && $link =~ m{/session\d+/} ? 1 : 0;
+}
+
 sub disk_is_used {
     my ($disk) = @_;
 
@@ -263,23 +270,25 @@ sub get_zfs_devices {
 }
 
 sub get_lvm_devices {
-    my ($lsblk_info) = @_;
+    my ($lsblk_info, $no_probe) = @_;
     my $res = {};
-    eval {
-        run_command(
-            [$PVS, '--noheadings', '--readonly', '-o', 'pv_name'],
-            outfunc => sub {
-                my ($line) = @_;
-                $line = trim($line);
-                if ($line =~ m|^/dev/|) {
-                    $res->{$line} = 1;
-                }
-            },
-        );
-    };
+    if (!$no_probe) {
+        eval {
+            run_command(
+                [$PVS, '--noheadings', '--readonly', '-o', 'pv_name'],
+                outfunc => sub {
+                    my ($line) = @_;
+                    $line = trim($line);
+                    if ($line =~ m|^/dev/|) {
+                        $res->{$line} = 1;
+                    }
+                },
+            );
+        };
 
-    # if something goes wrong, we do not want to give up, but indicate an error has occurred
-    warn "$@\n" if $@;
+        # if something goes wrong, we do not want to give up, but indicate an error has occurred
+        warn "$@\n" if $@;
+    }
 
     my $uuids = {
         "e6d6d379-f507-44c2-a23c-238f2a3df928" => 1,
@@ -495,16 +504,6 @@ sub dir_is_empty {
     return 1;
 }
 
-sub is_iscsi {
-    my ($sysdir) = @_;
-
-    if (-l $sysdir && readlink($sysdir) =~ m|host[^/]*/session[^/]*|) {
-        return 1;
-    }
-
-    return 0;
-}
-
 # Returns the NVMe transport (pcie, fc, tcp, rdma, loop) of a namespace, either directly from
 # its controller, or from any controller of its subsystem for native NVMe multipath setups.
 sub get_nvme_transport {
@@ -557,7 +556,8 @@ sub mounted_paths {
 }
 
 sub get_disks {
-    my ($disks, $nosmart, $include_partitions) = @_;
+    my ($disks, $nosmart, $include_partitions, $san_inventory) = @_;
+    # SAN inventory includes iSCSI session devices and skips usage probes that read devices.
     my $disklist = {};
 
     my $mounted = mounted_blockdevs();
@@ -565,11 +565,11 @@ sub get_disks {
     my $lsblk_info = get_lsblk_info();
 
     my $journalhash = get_ceph_journals($lsblk_info);
-    my $ceph_volume_infos = get_ceph_volume_infos();
+    my $ceph_volume_infos = $san_inventory ? {} : get_ceph_volume_infos();
 
     my $zfshash = get_zfs_devices($lsblk_info);
 
-    my $lvmhash = get_lvm_devices($lsblk_info);
+    my $lvmhash = get_lvm_devices($lsblk_info, $san_inventory);
 
     my $disk_regex = ".*";
     if (defined($disks)) {
@@ -609,13 +609,12 @@ sub get_disks {
                 && $dev !~ m/^nvme\d+n\d+$/
                 && $dev !~ m/^cciss\!c\d+d\d+$/;
 
+            return if !$san_inventory && is_iscsi_device($dev);
+
             my $data = get_udev_info("/sys/block/$dev") // return;
             my $devpath = $data->{devpath};
 
             my $sysdir = "/sys/block/$dev";
-
-            # we do not want iscsi devices
-            return if is_iscsi($sysdir);
 
             my $nvme_transport;
             $nvme_transport = get_nvme_transport($sysdir) if $dev =~ m/^nvme/;

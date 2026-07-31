@@ -1,0 +1,19 @@
+{
+    "sda": {
+        "devpath": "/dev/sda",
+        "size": 10737418240,
+        "vendor": "LIO-ORG",
+        "model": "vdisk1",
+        "serial": "ISER1",
+        "wwn": "0x60014051111111111",
+        "gpt": 0,
+        "rpm": -1,
+        "type": "unknown",
+        "health": "UNKNOWN",
+        "wearout": "N/A",
+        "osdid": -1,
+        "osdid-list": null,
+        "by_id_link": "/dev/disk/by-id/scsi-360014051111111111",
+        "transport": "iscsi"
+    }
+}

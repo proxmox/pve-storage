@@ -97,10 +97,6 @@ sub mocked_get_sysdir_size {
     return &$originalsub($param);
 }
 
-sub mocked_is_iscsi {
-    return 0;
-}
-
 sub mocked_file_read_firstline {
     my ($path) = @_;
 
@@ -173,6 +169,7 @@ sub test_disk_list {
         eval { $disks = PVE::Diskmanage::get_disks(); };
         warn $@ if $@;
         $expected_disk_list = decode_json(read_test_file('disklist_expected.json'));
+        $expected_disk_list = {} if $testcasedir eq 'iscsi';
 
         print Dumper($disks) if $print;
         $testcount++;
@@ -223,6 +220,16 @@ sub test_disk_list {
         $testcount++;
         is_deeply($disks, $expected_disk_list, 'disk list should be the same');
 
+        if ($testcasedir eq 'iscsi') {
+            eval { PVE::Diskmanage::assert_disk_unused('/dev/sda'); };
+            $testcount++;
+            like($@, qr/not a valid local disk/, 'local disk operations reject an iSCSI LUN');
+
+            my $san_disks = PVE::Diskmanage::get_disks(undef, 1, 0, 1);
+            $testcount++;
+            ok($san_disks->{sda}, 'SAN inventory opts into iSCSI');
+        }
+
         done_testing($testcount);
     };
 }
@@ -243,8 +250,6 @@ $diskmanage_module->mock('get_sysdir_info' => \&mocked_get_sysdir_info);
 print("\tMocked get_sysdir_info\n");
 $diskmanage_module->mock('get_sysdir_size' => \&mocked_get_sysdir_size);
 print("\tMocked get_sysdir_size\n");
-$diskmanage_module->mock('is_iscsi' => \&mocked_is_iscsi);
-print("\tMocked is_iscsi\n");
 $diskmanage_module->mock('assert_blockdev' => sub { return 1; });
 print("\tMocked assert_blockdev\n");
 $diskmanage_module->mock(
@@ -262,6 +267,9 @@ $diskmanage_module->mock('file_read_firstline' => \&mocked_file_read_firstline);
 print("\tMocked file_read_firstline\n");
 $diskmanage_module->mock('check_bin' => sub { return 1; });
 print("\tMocked check_bin\n");
+# only the disks of the iscsi test case are session devices, the sysfs of the host must not count
+$diskmanage_module->mock('is_iscsi_device' => sub { return $testcasedir eq 'iscsi'; });
+print("\tMocked is_iscsi_device\n");
 my $tools_module = Test::MockModule->new('PVE::ProcFSTools', no_auto => 1);
 $tools_module->mock('parse_proc_mounts' => \&mocked_parse_proc_mounts);
 print("\tMocked parse_proc_mounts\n");

@@ -1,0 +1,21 @@
+P: /devices/platform/host5/session1/target5:0:0/5:0:0:0/block/sda
+N: sda
+S: disk/by-id/scsi-360014051111111111
+S: disk/by-id/wwn-0x60014051111111111
+S: disk/by-path/ip-192.168.1.10:3260-iscsi-iqn.2003-01.org.linux-iscsi.storage:target1-lun-0
+E: DEVLINKS=/dev/disk/by-id/scsi-360014051111111111 /dev/disk/by-id/wwn-0x60014051111111111 /dev/disk/by-path/ip-192.168.1.10:3260-iscsi-iqn.2003-01.org.linux-iscsi.storage:target1-lun-0
+E: DEVNAME=/dev/sda
+E: DEVPATH=/devices/platform/host5/session1/target5:0:0/5:0:0:0/block/sda
+E: DEVTYPE=disk
+E: ID_BUS=scsi
+E: ID_MODEL=vdisk1
+E: ID_PATH=ip-192.168.1.10:3260-iscsi-iqn.2003-01.org.linux-iscsi.storage:target1-lun-0
+E: ID_SCSI=1
+E: ID_SERIAL=36001405111111111
+E: ID_SERIAL_SHORT=ISER1
+E: ID_TYPE=disk
+E: ID_VENDOR=LIO-ORG
+E: ID_WWN=0x60014051111111111
+E: MAJOR=8
+E: MINOR=0
+E: SUBSYSTEM=block
