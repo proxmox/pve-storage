@@ -35,8 +35,18 @@ sub sessions($sysfs = undef) {
             my $target = file_read_firstline("$dir/targetname") // return;
             my $session = {
                 target => $target,
+                state => file_read_firstline("$dir/state") // '',
+                portal => '',
                 devices => {},
             };
+            my (undef, $conn) = dir_glob_regex("$dir/device", '(connection\d+:\d+)');
+            if (defined($conn)) {
+                my $cdir = "$dir/device/$conn/iscsi_connection/$conn";
+                my $address = file_read_firstline("$cdir/persistent_address") // '';
+                my $port = file_read_firstline("$cdir/persistent_port") // '';
+                $address = "[$address]" if $address =~ m/:/;
+                $session->{portal} = normalize_portal("$address:$port");
+            }
             foreach_session_lun(
                 "$dir/device",
                 sub($devdir, $channel, $id, $lun) {
@@ -64,6 +74,15 @@ sub device_map($sysfs = undef) {
         $res->{$_} = $session->{devices}->{$_} for keys $session->{devices}->%*;
     }
     return $res;
+}
+
+sub normalize_portal($portal) {
+    return $portal if $portal !~ m/^(.+):(\d+)$/;
+    my ($addr, $port) = ($1, $2);
+    $addr =~ s/^\[(.*)\]$/$1/;
+    $addr =~ s/^::ffff:(\d+\.\d+\.\d+\.\d+)$/$1/i;
+    $addr = "[$addr]" if $addr =~ m/:/;
+    return "$addr:$port";
 }
 
 1;

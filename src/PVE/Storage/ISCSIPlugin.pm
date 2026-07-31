@@ -84,6 +84,33 @@ sub iscsi_session_list {
     return $res;
 }
 
+sub iscsi_node_list {
+    assert_iscsi_support();
+
+    my $res = [];
+    eval {
+        run_command(
+            [$ISCSIADM, '--mode', 'node'],
+            errmsg => 'iscsi node record scan failed',
+            outfunc => sub {
+                my $line = shift;
+                if ($line =~ $ISCSI_TARGET_RE) {
+                    push @$res, { portal => $1, target => $2 };
+                }
+            },
+        );
+    };
+    if (my $err = $@) {
+        die $err if $err !~ m/: No records found/i;
+    }
+
+    return $res;
+}
+
+sub iscsi_supported {
+    return -x $ISCSIADM ? 1 : 0;
+}
+
 sub iscsi_test_session {
     my ($sid) = @_;
 
