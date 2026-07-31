@@ -200,7 +200,7 @@ sub get_smart_data {
 }
 
 sub get_lsblk_info {
-    my $cmd = [$LSBLK, '--json', '-o', 'path,parttype,fstype,tran'];
+    my $cmd = [$LSBLK, '--json', '-o', 'path,parttype,fstype,tran,pttype'];
     my $output = "";
     eval {
         run_command($cmd, outfunc => sub { $output .= "$_[0]\n"; });
@@ -218,6 +218,7 @@ sub get_lsblk_info {
                 parttype => $_->{parttype},
                 fstype => $_->{fstype},
                 tran => $_->{tran},
+                pttype => $_->{pttype},
             }
         } @{$list}
     };
@@ -814,6 +815,68 @@ sub get_disks {
             }
         },
     );
+
+    return $disklist;
+}
+
+# Keep multipath maps separate from get_disks(), whose callers manage local disks.
+sub get_multipath_disks {
+    my ($maps) = @_;
+    my $mounted = mounted_blockdevs();
+    my $lsblk_info = get_lsblk_info();
+    my $zfshash = get_zfs_devices($lsblk_info);
+    my $lvmhash = get_lvm_devices($lsblk_info, 1); # no pvs probe, it can block on a map
+
+    my $disklist = {};
+
+    for my $dev (sort keys %$maps) {
+        my $sysdir = "/sys/block/$dev";
+        my $map = $maps->{$dev};
+        my $wwid = $map->{wwid};
+        my $devpath = "/dev/mapper/$map->{name}";
+        my $resolved_devpath = abs_path($devpath);
+        my @devpaths = ($devpath);
+        push @devpaths, $resolved_devpath
+            if defined($resolved_devpath) && $resolved_devpath ne $devpath;
+
+        my $size = get_sysdir_size($sysdir) or next;
+        my $slaves = $map->{slaves};
+
+        my ($vendor, $model, $transport) = ('unknown', 'unknown', undef);
+        if (my $first = $slaves->[0]) {
+            if (my $sysdata = get_sysdir_info("/sys/block/$first")) {
+                $vendor = $sysdata->{vendor};
+                $model = $sysdata->{model};
+            }
+            $transport = $lsblk_info->{"/dev/$first"}->{tran};
+        }
+
+        my $used;
+        $used = 'LVM' if grep { $lvmhash->{$_} } @devpaths;
+        $used //= 'ZFS' if grep { $zfshash->{$_} } @devpaths;
+        my $info = {};
+        for my $path (@devpaths) {
+            $info = $lsblk_info->{$path} // next;
+            last;
+        }
+        $used //= "$info->{fstype}" if defined($info->{fstype});
+        $used //= 'mounted' if grep { $mounted->{$_} } @devpaths;
+        $used //= 'partitions'
+            if defined($info->{pttype}) && $info->{pttype} ne '';
+        $used //= 'Device Mapper' if !dir_is_empty("$sysdir/holders");
+
+        $disklist->{$dev} = {
+            devpath => $devpath,
+            size => $size,
+            vendor => $vendor,
+            model => $model,
+            wwn => $wwid,
+            paths => scalar($slaves->@*),
+            slaves => [map { "/dev/$_" } $slaves->@*],
+        };
+        $disklist->{$dev}->{transport} = $transport if defined($transport);
+        $disklist->{$dev}->{used} = $used if $used;
+    }
 
     return $disklist;
 }

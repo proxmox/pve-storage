@@ -1,6 +1,65 @@
 {
    "blockdevices": [
       {
+         "path": "/dev/sda",
+         "parttype": null,
+         "fstype": null,
+         "tran": "fc"
+      },
+      {
+         "path": "/dev/sdb",
+         "parttype": null,
+         "fstype": null,
+         "tran": "fc"
+      },
+      {
+         "path": "/dev/sdc",
+         "parttype": null,
+         "fstype": null,
+         "tran": "fc"
+      },
+      {
+         "path": "/dev/sdd",
+         "parttype": null,
+         "fstype": null,
+         "tran": "fc"
+      },
+      {
+         "path": "/dev/mapper/mpatha",
+         "parttype": null,
+         "fstype": null,
+         "tran": null,
+         "pttype": null
+      },
+      {
+         "path": "/dev/mapper/mpathb",
+         "parttype": null,
+         "fstype": "LVM2_member",
+         "tran": null,
+         "pttype": null
+      },
+      {
+         "path": "/dev/mapper/mpathc",
+         "parttype": null,
+         "fstype": null,
+         "tran": null,
+         "pttype": "gpt"
+      },
+      {
+         "path": "/dev/dm-3",
+         "parttype": null,
+         "fstype": null,
+         "tran": null,
+         "pttype": null
+      },
+      {
+         "path": "/dev/dm-4",
+         "parttype": null,
+         "fstype": null,
+         "tran": null,
+         "pttype": null
+      },
+      {
          "path": "/dev/nvme8n1",
          "parttype": null,
          "fstype": null,

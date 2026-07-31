@@ -6,6 +6,7 @@ use warnings;
 use lib qw(..);
 
 use PVE::Diskmanage;
+use PVE::Multipath;
 use PVE::Tools;
 
 use Test::MockModule;
@@ -16,7 +17,16 @@ use Data::Dumper;
 my $testcasedir; # current case directory
 my $testcount = 0; # testcount for TAP::Harness
 my $diskmanage_module; # mockmodule for PVE::Diskmanage
+my $multipath_module; # mockmodule for PVE::Multipath
 my $print = 0;
+
+my $multipath_aliases = {
+    '/dev/mapper/mpatha' => '/dev/dm-0',
+    '/dev/mapper/mpathb' => '/dev/dm-1',
+    '/dev/mapper/mpathc' => '/dev/dm-2',
+    '/dev/mapper/mpathd' => '/dev/dm-3',
+    '/dev/mapper/mpathe' => '/dev/dm-4',
+};
 
 sub mocked_run_command {
     my ($cmd, %param) = @_;
@@ -126,6 +136,8 @@ sub mocked_dir_glob_foreach {
     # read lines in from file
     if ($dir =~ m{^/sys/block$}) {
         @$lines = split(/\n/, read_test_file('disklist'));
+    } elsif ($dir =~ m{^/sys/block/([^/]+)/slaves$}) {
+        @$lines = split(/\n/, read_test_file("${1}_slaves"));
     } elsif ($dir =~ m{^/sys/block/([^/]+)}) {
         @$lines = split(/\n/, read_test_file('partlist'));
     }
@@ -231,6 +243,21 @@ sub test_disk_list {
         $testcount++;
         is_deeply($disks, $expected_disk_list, 'disk list should be the same');
 
+        if (-f "disk_tests/$testcasedir/multipath_expected.json") {
+            my $multipath = PVE::Diskmanage::get_multipath_disks(PVE::Multipath::map_info());
+            my $expected_multipath = decode_json(read_test_file('multipath_expected.json'));
+
+            print Dumper($multipath) if $print;
+            $testcount++;
+            is_deeply($multipath, $expected_multipath, 'multipath list should be the same');
+
+            eval { PVE::Diskmanage::assert_disk_unused('/dev/dm-0'); };
+            $testcount++;
+            like($@, qr/not a valid local disk/,
+                'multipath devices require an explicit opt-in');
+
+        }
+
         if ($testcasedir eq 'iscsi') {
             eval { PVE::Diskmanage::assert_disk_unused('/dev/sda'); };
             $testcount++;
@@ -272,10 +299,20 @@ $diskmanage_module->mock('get_sysdir_size' => \&mocked_get_sysdir_size);
 print("\tMocked get_sysdir_size\n");
 $diskmanage_module->mock('assert_blockdev' => sub { return 1; });
 print("\tMocked assert_blockdev\n");
+$multipath_module = Test::MockModule->new('PVE::Multipath', no_auto => 1);
+$multipath_module->mock('dir_glob_foreach' => \&mocked_dir_glob_foreach);
+$multipath_module->mock('file_read_firstline' => \&mocked_file_read_firstline);
 $diskmanage_module->mock(
     'dir_is_empty' => sub {
-        # all partitions have a holder dir
         my $val = shift;
+        # let test cases provide the dir (e.g. holders) with content
+        my $mapped = $val;
+        $mapped =~ s|^/sys/block|disk_tests/$testcasedir|;
+        if (-d $mapped) {
+            my $originalsub = $diskmanage_module->original('dir_is_empty');
+            return $originalsub->($mapped);
+        }
+        # all partitions have a holder dir
         if ($val =~ m|^/sys/block/.+/.+/|) {
             return 0;
         }
@@ -285,6 +322,15 @@ $diskmanage_module->mock(
 print("\tMocked dir_is_empty\n");
 $diskmanage_module->mock('file_read_firstline' => \&mocked_file_read_firstline);
 print("\tMocked file_read_firstline\n");
+$diskmanage_module->mock(
+    'abs_path' => sub {
+        my ($path) = @_;
+        return $multipath_aliases->{$path}
+            if defined($multipath_aliases->{$path});
+        return $diskmanage_module->original('abs_path')->($path);
+    },
+);
+print("\tMocked abs_path\n");
 $diskmanage_module->mock('check_bin' => sub { return 1; });
 print("\tMocked check_bin\n");
 # only the disks of the iscsi test case are session devices, the sysfs of the host must not count

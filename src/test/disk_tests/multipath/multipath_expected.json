@@ -1,0 +1,59 @@
+{
+    "dm-0": {
+        "devpath": "/dev/mapper/mpatha",
+        "size": 10737418240,
+        "vendor": "SANVEND",
+        "model": "SANMODEL",
+        "wwn": "3600140500000000000000000000000001",
+        "paths": 2,
+        "slaves": [
+            "/dev/sda",
+            "/dev/sdb"
+        ],
+        "transport": "fc"
+    },
+    "dm-1": {
+        "devpath": "/dev/mapper/mpathb",
+        "size": 10737418240,
+        "vendor": "SANVEND",
+        "model": "SANMODEL",
+        "wwn": "3600140500000000000000000000000002",
+        "paths": 2,
+        "slaves": [
+            "/dev/sdc",
+            "/dev/sdd"
+        ],
+        "transport": "fc",
+        "used": "LVM2_member"
+    },
+    "dm-2": {
+        "devpath": "/dev/mapper/mpathc",
+        "size": 10737418240,
+        "vendor": "unknown",
+        "model": "unknown",
+        "wwn": "3600140500000000000000000000000003",
+        "paths": 0,
+        "slaves": [],
+        "used": "partitions"
+    },
+    "dm-3": {
+        "devpath": "/dev/mapper/mpathd",
+        "size": 10737418240,
+        "vendor": "unknown",
+        "model": "unknown",
+        "wwn": "3600140500000000000000000000000004",
+        "paths": 0,
+        "slaves": [],
+        "used": "ZFS"
+    },
+    "dm-4": {
+        "devpath": "/dev/mapper/mpathe",
+        "size": 10737418240,
+        "vendor": "unknown",
+        "model": "unknown",
+        "wwn": "3600140500000000000000000000000005",
+        "paths": 0,
+        "slaves": [],
+        "used": "mounted"
+    }
+}
