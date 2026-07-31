@@ -1,0 +1,19 @@
+{
+    "nvme2n1": {
+        "active": 1,
+        "paths": [
+            {
+                "device": "/dev/nvme3",
+                "state": "live",
+                "address": "traddr=192.168.3.209,trsvcid=4420,src_addr=192.168.2.171",
+                "ana-state": "optimized"
+            },
+            {
+                "device": "/dev/nvme4",
+                "state": "live",
+                "address": "traddr=192.168.3.109,trsvcid=4420,src_addr=192.168.2.171",
+                "ana-state": "inaccessible"
+            }
+        ]
+    }
+}

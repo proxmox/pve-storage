@@ -103,6 +103,7 @@ sub mocked_file_read_firstline {
     my $originalsub = $diskmanage_module->original('file_read_firstline');
 
     $path =~ s|^/sys/block|disk_tests/$testcasedir|;
+    $path =~ s|^/sys/class/nvme-subsystem|disk_tests/$testcasedir/nvme-subsystem|;
 
     return $originalsub->($path);
 }
@@ -111,6 +112,16 @@ sub mocked_dir_glob_foreach {
     my ($dir, $regex, $sub) = @_;
 
     my $lines = [];
+
+    # nvme subsystem trees and the controllers of a namespace are provided as directories, glob
+    # them like production code
+    if (
+        $dir =~ s|^/sys/class/nvme-subsystem|disk_tests/$testcasedir/nvme-subsystem|
+        || $dir =~ s|^/sys/block/(nvme\d+n\d+/device)$|disk_tests/$testcasedir/$1|
+    ) {
+        my $originalsub = $diskmanage_module->original('dir_glob_foreach');
+        return $originalsub->($dir, $regex, $sub);
+    }
 
     # read lines in from file
     if ($dir =~ m{^/sys/block$}) {
@@ -228,6 +239,15 @@ sub test_disk_list {
             my $san_disks = PVE::Diskmanage::get_disks(undef, 1, 0, 1);
             $testcount++;
             ok($san_disks->{sda}, 'SAN inventory opts into iSCSI');
+        }
+
+        if (-f "disk_tests/$testcasedir/nvme_path_status_expected.json") {
+            my $status = PVE::Diskmanage::get_nvme_path_status();
+            my $expected_status = decode_json(read_test_file('nvme_path_status_expected.json'));
+
+            print Dumper($status) if $print;
+            $testcount++;
+            is_deeply($status, $expected_status, 'nvme path status should be the same');
         }
 
         done_testing($testcount);

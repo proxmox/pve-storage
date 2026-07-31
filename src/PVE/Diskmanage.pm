@@ -818,6 +818,66 @@ sub get_disks {
     return $disklist;
 }
 
+# Native multipath creates per-path namespace children nvmeXcYnZ below controllers. Local
+# single-controller devices lack these children and are omitted.
+sub get_nvme_path_status {
+    my $res = {};
+
+    dir_glob_foreach(
+        '/sys/class/nvme-subsystem',
+        'nvme-subsys\d+',
+        sub {
+            my ($subsys) = @_;
+            my $subsysdir = "/sys/class/nvme-subsystem/$subsys";
+
+            dir_glob_foreach(
+                $subsysdir,
+                'nvme\d+',
+                sub {
+                    my ($ctrl) = @_;
+                    my $ctrldir = "$subsysdir/$ctrl";
+                    my $state = file_read_firstline("$ctrldir/state") // return;
+                    my $address = file_read_firstline("$ctrldir/address");
+
+                    dir_glob_foreach(
+                        $ctrldir,
+                        'nvme\d+c\d+n\d+',
+                        sub {
+                            my ($pathdev) = @_;
+                            return if $pathdev !~ m/^nvme(\d+)c\d+n(\d+)$/;
+                            my $head = "nvme$1n$2";
+
+                            my $entry = { device => "/dev/$ctrl", state => $state };
+                            $entry->{address} = $address
+                                if defined($address) && $address ne '';
+                            my $ana = file_read_firstline("$ctrldir/$pathdev/ana_state");
+                            $entry->{'ana-state'} = $ana if defined($ana);
+
+                            # 'change' is transient; paths in 'inaccessible' or 'persistent-loss'
+                            # cannot serve IO even on a live controller
+                            my $usable = $state eq 'live'
+                                && (!defined($ana)
+                                    || $ana eq 'optimized'
+                                    || $ana eq 'non-optimized');
+
+                            my $status = $res->{$head} //= { active => 0, paths => [] };
+                            $status->{active}++ if $usable;
+                            push @{ $status->{paths} }, $entry;
+                        },
+                    );
+                },
+            );
+        },
+    );
+
+    for my $status (values %$res) {
+        @{ $status->{paths} } =
+            sort { $a->{device} cmp $b->{device} } @{ $status->{paths} };
+    }
+
+    return $res;
+}
+
 sub get_partnum {
     my ($part_path) = @_;
 
