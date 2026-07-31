@@ -329,6 +329,16 @@ __PACKAGE__->register_method({
         check => ['perm', '/storage', ['Datastore.Allocate']],
     },
     parameters => PVE::Storage::Plugin->updateSchema(),
+    resolve_type => sub {
+        my ($param) = @_;
+
+        # the schema only has a type once a plugin isolates its properties
+        return undef if !PVE::Storage::Plugin->has_isolated_properties();
+
+        my $cfg = PVE::Storage::config();
+        my $scfg = PVE::Storage::storage_config($cfg, $param->{storage});
+        return $scfg->{type};
+    },
     returns => {
         type => 'object',
         properties => {
@@ -362,7 +372,7 @@ __PACKAGE__->register_method({
         my $storeid = extract_param($param, 'storage');
         my $digest = extract_param($param, 'digest');
         my $delete = extract_param($param, 'delete');
-        my $type;
+        my $type = extract_param($param, 'type');
 
         if ($delete) {
             $delete = [PVE::Tools::split_list($delete)];
@@ -376,7 +386,11 @@ __PACKAGE__->register_method({
                 PVE::SectionConfig::assert_if_modified($cfg, $digest);
 
                 my $scfg = PVE::Storage::storage_config($cfg, $storeid);
-                $type = $scfg->{type};
+                if (!defined($type)) {
+                    $type = $scfg->{type};
+                } elsif ($type ne $scfg->{type}) {
+                    die "cannot change storage type (expected '$scfg->{type}', got '$type')\n";
+                }
 
                 my $sensitive_params = PVE::Storage::Plugin::sensitive_properties($type);
                 my $sensitive = extract_sensitive_params($param, $sensitive_params, $delete);

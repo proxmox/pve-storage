@@ -22,6 +22,7 @@ my $res = $harness->runtests(
     "zfs_list_zvol_test.pm",
     "content_types_test.pm",
     "plugin_metadata_test.pm",
+    "plugin_isolation_test.pm",
 );
 
 exit -1 if !$res || $res->{failed} || $res->{parse_errors};
