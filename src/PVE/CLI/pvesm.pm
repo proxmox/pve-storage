@@ -736,6 +736,21 @@ our $cmddef = {
             $print_api_result,
             $PVE::RESTHandler::standard_output_options,
         ],
+        'san-luns' => [
+            "PVE::API2::Storage::Scan",
+            'sanlunscan',
+            [],
+            { node => $nodename },
+            sub {
+                my ($data, $schema, $options) = @_;
+                my $columns = [
+                    qw(devpath name size transport state paths-active paths-total paths-expected
+                        multipath usage vgname used-by-storage wwid)
+                ];
+                PVE::CLIFormatter::print_api_result($data, $schema, $columns, $options);
+            },
+            $PVE::RESTHandler::standard_output_options,
+        ],
         zfs => [
             "PVE::API2::Storage::Scan",
             'zfsscan',
