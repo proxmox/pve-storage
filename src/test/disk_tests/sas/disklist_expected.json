@@ -13,6 +13,7 @@
 	"size" : 5120000,
 	"serial" : "SER2",
 	"wearout" : "N/A",
+	"transport" : "sas",
 	"by_id_link" : "/dev/disk/by-id/scsi-00000000000000000"
     }
 }

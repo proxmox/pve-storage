@@ -1,0 +1,5 @@
+{
+   "blockdevices": [
+      {"path":"/dev/sda", "parttype":null, "fstype":null, "tran":"sas"}
+   ]
+}

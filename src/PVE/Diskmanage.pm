@@ -193,7 +193,7 @@ sub get_smart_data {
 }
 
 sub get_lsblk_info {
-    my $cmd = [$LSBLK, '--json', '-o', 'path,parttype,fstype'];
+    my $cmd = [$LSBLK, '--json', '-o', 'path,parttype,fstype,tran'];
     my $output = "";
     eval {
         run_command($cmd, outfunc => sub { $output .= "$_[0]\n"; });
@@ -210,6 +210,7 @@ sub get_lsblk_info {
             $_->{path} => {
                 parttype => $_->{parttype},
                 fstype => $_->{fstype},
+                tran => $_->{tran},
             }
         } @{$list}
     };
@@ -646,6 +647,9 @@ sub get_disks {
                 devpath => $devpath,
                 wearout => $wearout,
             };
+
+            my $transport = $lsblk_info->{$devpath}->{tran};
+            $disklist->{$dev}->{transport} = $transport if defined($transport);
             $disklist->{$dev}->{mounted} = 1 if exists $mounted->{$devpath};
 
             my $by_id_link = $data->{by_id_link};

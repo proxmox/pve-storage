@@ -135,6 +135,12 @@ __PACKAGE__->register_method({
                 serial => { type => 'string', optional => 1 },
                 wwn => { type => 'string', optional => 1 },
                 health => { type => 'string', optional => 1 },
+                transport => {
+                    type => 'string',
+                    description =>
+                        "The device transport, for example 'sata', 'sas', 'usb', 'fc', or 'nvme'.",
+                    optional => 1,
+                },
                 parent => {
                     type => 'string',
                     description => 'For partitions only. The device path of '
