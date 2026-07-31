@@ -8,6 +8,7 @@ use Fcntl qw(LOCK_EX LOCK_NB);
 use IO::Dir;
 use IO::File;
 
+use PVE::ISCSI::Topology;
 use PVE::JSONSchema qw(get_standard_option);
 use PVE::Storage::Plugin;
 use PVE::Tools
@@ -290,89 +291,41 @@ sub load_stable_scsi_paths {
     return $stable_paths;
 }
 
-# Offload initiators can run several sessions on one SCSI host, so the LUNs of a session are the
-# ones below its own target, not all LUNs of its host.
-my sub foreach_session_lun {
-    my ($sessiondir, $code) = @_;
-
-    dir_glob_foreach(
-        $sessiondir,
-        'target\d+:\d+:\d+',
-        sub {
-            my ($targetdir) = @_;
-            dir_glob_foreach(
-                "$sessiondir/$targetdir",
-                '\d+:(\d+):(\d+):(\d+)',
-                sub {
-                    my ($hctl, $channel, $id, $lun) = @_;
-                    $code->("$sessiondir/$targetdir/$hctl", $channel, $id, $lun);
-                },
-            );
-        },
-    );
-}
-
 sub iscsi_device_list {
 
     my $res = {};
 
-    my $dirname = "$SYSFS/class/iscsi_session";
-
     my $stable_paths = load_stable_scsi_paths();
 
-    dir_glob_foreach(
-        $dirname,
-        'session(\d+)',
-        sub {
-            my ($ent, $session) = @_;
+    my $device_map = PVE::ISCSI::Topology::device_map($SYSFS);
 
-            my $target = file_read_firstline("$dirname/$ent/targetname");
-            return if !$target;
+    for my $bdev (sort keys %$device_map) {
+        my $info = $device_map->{$bdev};
+        my ($channel, $id, $lun) = $info->@{qw(channel id lun)};
 
-            foreach_session_lun(
-                "$dirname/$ent/device",
-                sub {
-                    my ($devdir, $channel, $id, $lun) = @_;
+        #check multipath
+        if (-d "$SYSFS/block/$bdev/holders") {
+            my $multipathdev = dir_glob_regex("$SYSFS/block/$bdev/holders", '[A-Za-z]\S*');
+            $bdev = $multipathdev if $multipathdev;
+        }
 
-                    my $type = file_read_firstline("$devdir/type");
-                    return if !defined($type) || $type ne '0'; # list disks only
+        my $blockdev = $stable_paths->{$bdev};
+        next if !$blockdev;
 
-                    my $bdev;
-                    if (-d "$devdir/block") { # newer kernels
-                        (undef, $bdev) = dir_glob_regex("$devdir/block/", '([A-Za-z]\S*)');
-                    } else {
-                        (undef, $bdev) = dir_glob_regex($devdir, 'block:(\S+)');
-                    }
-                    return if !$bdev;
+        my $size = file_read_firstline("$SYSFS/block/$bdev/size");
+        next if !$size;
 
-                    #check multipath
-                    if (-d "$SYSFS/block/$bdev/holders") {
-                        my $multipathdev =
-                            dir_glob_regex("$SYSFS/block/$bdev/holders", '[A-Za-z]\S*');
-                        $bdev = $multipathdev if $multipathdev;
-                    }
+        my $volid = "$channel.$id.$lun.$blockdev";
 
-                    my $blockdev = $stable_paths->{$bdev};
-                    return if !$blockdev;
-
-                    my $size = file_read_firstline("$SYSFS/block/$bdev/size");
-                    return if !$size;
-
-                    my $volid = "$channel.$id.$lun.$blockdev";
-
-                    $res->{$target}->{$volid} = {
-                        'format' => 'raw',
-                        'size' => int($size * 512),
-                        'vmid' => 0, # not assigned to any vm
-                        'channel' => int($channel),
-                        'id' => int($id),
-                        'lun' => int($lun),
-                    };
-                },
-            );
-
-        },
-    );
+        $res->{ $info->{target} }->{$volid} = {
+            'format' => 'raw',
+            'size' => int($size * 512),
+            'vmid' => 0, # not assigned to any vm
+            'channel' => $channel,
+            'id' => $id,
+            'lun' => $lun,
+        };
+    }
 
     return $res;
 }
