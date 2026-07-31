@@ -101,6 +101,16 @@ sub mocked_is_iscsi {
     return 0;
 }
 
+sub mocked_file_read_firstline {
+    my ($path) = @_;
+
+    my $originalsub = $diskmanage_module->original('file_read_firstline');
+
+    $path =~ s|^/sys/block|disk_tests/$testcasedir|;
+
+    return $originalsub->($path);
+}
+
 sub mocked_dir_glob_foreach {
     my ($dir, $regex, $sub) = @_;
 
@@ -248,6 +258,8 @@ $diskmanage_module->mock(
     },
 );
 print("\tMocked dir_is_empty\n");
+$diskmanage_module->mock('file_read_firstline' => \&mocked_file_read_firstline);
+print("\tMocked file_read_firstline\n");
 $diskmanage_module->mock('check_bin' => sub { return 1; });
 print("\tMocked check_bin\n");
 my $tools_module = Test::MockModule->new('PVE::ProcFSTools', no_auto => 1);

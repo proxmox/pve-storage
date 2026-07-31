@@ -138,7 +138,8 @@ __PACKAGE__->register_method({
                 transport => {
                     type => 'string',
                     description =>
-                        "The device transport, for example 'sata', 'sas', 'usb', 'fc', or 'nvme'.",
+                        "The device transport, for example 'sata', 'sas', 'usb', 'fc',"
+                        . " 'nvme', 'nvme-fc', or 'nvme-tcp'.",
                     optional => 1,
                 },
                 parent => {

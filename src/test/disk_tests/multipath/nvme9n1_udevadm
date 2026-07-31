@@ -1,0 +1,12 @@
+P: /devices/virtual/nvme-subsystem/nvme-subsys9/nvme9n1
+N: nvme9n1
+E: DEVNAME=/dev/nvme9n1
+E: DEVPATH=/devices/virtual/nvme-subsystem/nvme-subsys9/nvme9n1
+E: DEVTYPE=disk
+E: ID_MODEL=FABRICS CTRL
+E: ID_SERIAL=FABRICS_1
+E: ID_SERIAL_SHORT=FAB1
+E: ID_WWN=uuid.10000000-0000-0000-0000-000000000001
+E: MAJOR=259
+E: MINOR=0
+E: SUBSYSTEM=block

@@ -1,0 +1,14 @@
+P: /devices/virtual/nvme-subsystem/nvme-subsys8/nvme8n1
+N: nvme8n1
+S: disk/by-id/nvme-FCMODEL_FCNVME1
+E: DEVLINKS=/dev/disk/by-id/nvme-FCMODEL_FCNVME1
+E: DEVNAME=/dev/nvme8n1
+E: DEVPATH=/devices/virtual/nvme-subsystem/nvme-subsys8/nvme8n1
+E: DEVTYPE=disk
+E: ID_MODEL=FCMODEL
+E: ID_SERIAL=FCNVME_1
+E: ID_SERIAL_SHORT=FCNVME1
+E: ID_WWN=uuid.20000000-0000-0000-0000-000000000001
+E: MAJOR=259
+E: MINOR=1
+E: SUBSYSTEM=block

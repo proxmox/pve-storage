@@ -505,6 +505,26 @@ sub is_iscsi {
     return 0;
 }
 
+# Returns the NVMe transport (pcie, fc, tcp, rdma, loop) of a namespace, either directly from
+# its controller, or from any controller of its subsystem for native NVMe multipath setups.
+sub get_nvme_transport {
+    my ($sysdir) = @_;
+
+    my $transport = file_read_firstline("$sysdir/device/transport");
+    return $transport if defined($transport);
+
+    dir_glob_foreach(
+        "$sysdir/device",
+        'nvme\d+',
+        sub {
+            my ($controller) = @_;
+            $transport //= file_read_firstline("$sysdir/device/$controller/transport");
+        },
+    );
+
+    return $transport;
+}
+
 my sub is_ssdlike {
     my ($type) = @_;
     return $type eq 'ssd' || $type eq 'nvme';
@@ -597,6 +617,9 @@ sub get_disks {
             # we do not want iscsi devices
             return if is_iscsi($sysdir);
 
+            my $nvme_transport;
+            $nvme_transport = get_nvme_transport($sysdir) if $dev =~ m/^nvme/;
+
             my $sysdata = get_sysdir_info($sysdir);
             return if !defined($sysdata);
 
@@ -648,7 +671,11 @@ sub get_disks {
                 wearout => $wearout,
             };
 
+            # lsblk reports plain 'nvme' for fabrics attached namespaces
             my $transport = $lsblk_info->{$devpath}->{tran};
+            if (defined($nvme_transport) && $nvme_transport ne 'pcie') {
+                $transport = "nvme-$nvme_transport";
+            }
             $disklist->{$dev}->{transport} = $transport if defined($transport);
             $disklist->{$dev}->{mounted} = 1 if exists $mounted->{$devpath};
 

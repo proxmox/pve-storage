@@ -1,0 +1,18 @@
+{
+   "blockdevices": [
+      {
+         "path": "/dev/nvme8n1",
+         "parttype": null,
+         "fstype": null,
+         "tran": "nvme",
+         "pttype": null
+      },
+      {
+         "path": "/dev/nvme9n1",
+         "parttype": null,
+         "fstype": null,
+         "tran": "nvme",
+         "pttype": null
+      }
+   ]
+}
