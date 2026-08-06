@@ -153,8 +153,11 @@ __PACKAGE__->register_method({
                 $metadatasize = 1024 * 1024 if $metadatasize < 1024 * 1024;
                 # but at most 16G, which is the current lvm max
                 $metadatasize = 16 * 1024 * 1024 if $metadatasize > 16 * 1024 * 1024;
-                # shrink data by needed amount for metadata
-                $datasize -= 2 * $metadatasize;
+                # shrink data by twice the metadata size for the pool metadata LV
+                # and pmspare, and once more to leave the volume group room for
+                # `lvconvert --repair`
+                $datasize -= 3 * $metadatasize;
+                die "device too small for a thin pool\n" if $datasize <= 0;
 
                 run_command([
                     '/sbin/lvcreate',
