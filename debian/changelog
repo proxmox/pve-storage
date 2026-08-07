@@ -1,3 +1,14 @@
+libpve-storage-perl (9.1.8) trixie; urgency=medium
+
+  * lvm plugin: fix a regression from 9.1.7 that made adding a cloud-init drive
+    to a guest fail on storages with 'snapshot-as-volume-chain' enabled. The
+    guest layer passes a fixed volume name that lacks the '.qcow2' extension,
+    which the new format check then rejected. The plugin now adds the missing
+    extension itself, logging the adapted name, which also covers cloning and
+    restoring such guests.
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 07 Aug 2026 15:00:20 +0200
+
 libpve-storage-perl (9.1.7) trixie; urgency=medium
 
   * plugins: volume export: capture dd progress output line by line, instead of
