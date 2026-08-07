@@ -738,26 +738,27 @@ my sub alloc_lvm_image {
 
 }
 
-my %LVM_FORMAT_EXTENSIONS = (
-    raw => '',
-    qcow2 => 'qcow2',
-);
-
-my sub verify_volname_format {
+# Only 'qcow2' names carry an extension, like the ones find_free_diskname() generates, so add it
+# for callers passing a fixed name, like cloud-init drives. A name that already spells out another
+# format stays an error, it states an intent that the requested format contradicts.
+my sub volname_for_format {
     my ($class, $name, $fmt) = @_;
 
-    my $expected_ext = $LVM_FORMAT_EXTENSIONS{$fmt};
-    return if !defined($expected_ext);
+    return $name if $fmt ne 'raw' && $fmt ne 'qcow2'; # alloc_lvm_image() reports unsupported ones
 
-    my (undef, undef, undef, undef, undef, undef, $parsed_fmt) = $class->parse_volname($name);
+    my $name_fmt = ($class->parse_volname($name))[6];
+    return $name if $name_fmt eq $fmt;
 
-    return if $fmt eq $parsed_fmt;
+    if ($fmt eq 'raw') {
+        my $suggested_name = $name =~ s/\.\Q$name_fmt\E$//r;
+        die "volume name '$name' does not match requested format '$fmt'"
+            . " (did you mean '$suggested_name'?)\n";
+    }
 
-    my $base_name = $name =~ s/\.[^.]+$//r;
-    my $suggested_name = $expected_ext ? "$base_name.$expected_ext" : $base_name;
+    my $adapted_name = "$name.$fmt";
+    warn "volume name '$name' is missing the '.$fmt' extension - allocating '$adapted_name'\n";
 
-    die "volume name '$name' does not match requested format '$fmt' "
-        . "(did you mean '$suggested_name'?)\n";
+    return $adapted_name;
 }
 
 sub alloc_image {
@@ -766,7 +767,7 @@ sub alloc_image {
     $name = $class->find_free_diskname($storeid, $scfg, $vmid, $fmt)
         if !$name;
 
-    verify_volname_format($class, $name, $fmt);
+    $name = volname_for_format($class, $name, $fmt);
 
     alloc_lvm_image($class, $storeid, $scfg, $vmid, $fmt, $name, $size);
 
