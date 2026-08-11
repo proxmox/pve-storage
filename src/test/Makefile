@@ -5,8 +5,9 @@ test: test_zfspoolplugin test_lvmplugin test_disklist test_bwlimit test_plugin t
 test_zfspoolplugin: run_test_zfspoolplugin.pl
 	./run_test_zfspoolplugin.pl
 
-test_lvmplugin: run_test_lvmplugin.pl
+test_lvmplugin: run_test_lvmplugin.pl run_test_lvm_throughput.pl
 	./run_test_lvmplugin.pl
+	./run_test_lvm_throughput.pl
 
 test_disklist: run_disk_tests.pl
 	./run_disk_tests.pl

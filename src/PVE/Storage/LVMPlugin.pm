@@ -4,11 +4,14 @@ use strict;
 use warnings;
 
 use Cwd qw(abs_path);
+use Fcntl qw(O_RDWR O_EXCL);
 use File::Basename;
 use IO::File;
 use JSON;
 use List::Util qw(max);
+use Time::HiRes qw(clock_gettime CLOCK_MONOTONIC);
 
+use PVE::Format qw(render_bytes render_duration);
 use PVE::JSONSchema qw(get_standard_option);
 use PVE::RESTEnvironment qw(log_warn);
 use PVE::Tools qw(run_command file_read_firstline trim);
@@ -19,6 +22,10 @@ use PVE::Storage::Plugin;
 use base qw(PVE::Storage::Plugin);
 
 # lvm helper functions
+
+use constant {
+    BLKZEROOUT => 0x127f,
+};
 
 my $ignore_no_medium_warnings = sub {
     my $line = shift;
@@ -324,6 +331,25 @@ my sub rename_after_failed_cleanup {
     }
 }
 
+my sub blockdev_ioctl_range {
+    my ($fh, $ioctl, $offset, $length) = @_;
+
+    my $range = pack('QQ', $offset, $length);
+    ioctl($fh, $ioctl, $range) or die "$!\n";
+}
+
+# The limit is in bytes per second, with an optional k, m or g suffix for powers of 1024, as taken by
+# cstream's -t option, which existing configurations were written for.
+my sub parse_saferemove_throughput {
+    my ($value) = @_;
+
+    my ($number, $unit) = $value =~ m/^(-?\d+)([kmg])?$/i
+        or die "invalid saferemove throughput '$value'\n";
+    my $multiplier = { k => 1024, m => 1024**2, g => 1024**3 }->{ lc($unit // '') } // 1;
+
+    return $number * $multiplier;
+}
+
 my sub free_lvm_volumes_locked {
     my ($class, $scfg, $storeid, $volnames) = @_;
 
@@ -349,56 +375,129 @@ my sub free_lvm_volumes_locked {
             file_read_firstline("$sysdir/queue/write_zeroes_max_bytes") // 0;
         ($write_zeroes_max_bytes) = $write_zeroes_max_bytes =~ m/^(\d+)$/; #untaint
 
+        my $size = file_read_firstline("$sysdir/size")
+            or die "size from $sysdir cannot be read\n";
+        ($size) = $size =~ m/^(\d+)$/; # untaint
+        $size *= 512; # sysfs size is in 512-byte sectors
+
+        my $zeroout_variant = 'blkzeroout';
+        my $throughput = undef;
+        if (my $value = $scfg->{saferemove_throughput}) {
+            # Normalize zero spellings before selecting the default or dividing by the rate.
+            $throughput = abs(parse_saferemove_throughput($value)) || undef;
+        }
+        if (defined($throughput)) {
+            my $rendered_throughput = render_bytes($throughput);
+            print "using saferemove throughput limit: $rendered_throughput/s\n";
+        }
+
+        # If the storage does not support write_zeroes fall back to writing zeroes manually using
+        # syswrite. Otherwise if the storage supports write_zeroes but stepsize is too big,
+        # reduce the stepsize to the maximum supported by the storage.
+        my $zeroes;
         if ($write_zeroes_max_bytes == 0) {
-            # If the storage does not support 'write zeroes', we fallback to cstream.
-            # wipe throughput up to 10MB/s by default; may be overwritten with saferemove_throughput
-            my $throughput = '-10485760';
-            if ($scfg->{saferemove_throughput}) {
-                $throughput = $scfg->{saferemove_throughput};
+            print "WRITE_ZEROES operation not supported,"
+                . " falling back to syswrite to zero-out '$lvmpath'\n";
+            $zeroout_variant = 'syswrite';
+            $stepsize = 1024 * 1024; # 1 MiB
+            print "reduce stepsize to 1 MiB for syswrite\n";
+            $zeroes = "\0" x $stepsize;
+            # limit throughput to 10MiB/s for syswrite, if throughput was not set
+            if (!defined($throughput)) {
+                # FIXME: MAJOR VERSION: increase to 100 MiB/s
+                $throughput = 10485760;
+                print "using default syswrite-saferemove throughput limit: 10 MiB/s\n";
             }
+        } elsif ($stepsize > $write_zeroes_max_bytes) {
+            print "reduce stepsize to the maximum supported by the storage:"
+                . " $write_zeroes_max_bytes bytes\n";
+            $stepsize = $write_zeroes_max_bytes;
+        }
+        # Open exclusively, so that a volume that is mounted or claimed by another kernel subsystem is
+        # refused instead of wiped.
+        sysopen(my $fh, $lvmpath, O_RDWR | O_EXCL) or die "can't open '$lvmpath' - $!\n";
 
-            my $cmd = [
-                '/usr/bin/cstream',
-                '-i',
-                '/dev/zero',
-                '-o',
-                $lvmpath,
-                '-T',
-                '10',
-                '-v',
-                '1',
-                '-b',
-                '1048576',
-                '-t',
-                "$throughput",
-            ];
-            # FIXME: handle cstream's expected ENOSPC failure explicitly and let other
-            # errors propagate. For now, preserve the old behavior where cstream can
-            # fail successfully with ENOSPC after writing until the device is full.
-            eval {
-                run_command(
-                    $cmd,
-                    errmsg => "zero out finished (note: 'No space left on device' is ok here)",
-                );
-            };
-            warn $@ if $@;
-        } else {
-            # If the storage supports write_zeroes but stepsize is too big, reduce the stepsize to
-            # the maximum supported by the storage.
-            if ($write_zeroes_max_bytes > 0 && $stepsize > $write_zeroes_max_bytes) {
-                print "reduce stepsize to the maximum supported by the storage:"
-                    . " $write_zeroes_max_bytes bytes\n";
+        # eval block, so filehandle is closed even if something fails below
+        eval {
+            my $start = clock_gettime(CLOCK_MONOTONIC);
+            my $written_total = 0;
+            my $lastprint = -1;
+            my $written;
 
-                $stepsize = $write_zeroes_max_bytes;
+            for (my $offset = 0; $offset < $size; $offset += $written) {
+
+                if ($offset + $stepsize > $size) {
+                    $stepsize = $size - $offset;
+                }
+
+                if ($zeroout_variant eq 'blkzeroout') {
+                    eval { blockdev_ioctl_range($fh, BLKZEROOUT, $offset, $stepsize); };
+                    if (my $err = $@) {
+                        die "blkzeroout for $stepsize bytes at offset $offset failed: $err";
+                    }
+                    $written = $stepsize;
+                } elsif ($zeroout_variant eq 'syswrite') {
+
+                    # allow retrying once if syswrite writes zero bytes
+                    $written = syswrite($fh, $zeroes, $stepsize, 0);
+                    if (!defined($written)) {
+                        die "syswrite failed: $!\n";
+                    } elsif ($written == 0) {
+                        warn "syswrite wrote 0 bytes, retrying\n";
+                    }
+
+                    while ($written < $stepsize) {
+                        my $remaining = $stepsize - $written;
+                        my $retried_write = syswrite($fh, $zeroes, $remaining, $written);
+                        if (!defined($retried_write)) {
+                            die "syswrite failed: $!\n";
+                        } elsif ($retried_write == 0) {
+                            die "syswrite failed: wrote 0 bytes\n";
+                        }
+                        $written += $retried_write;
+                    }
+                }
+                $written_total += $written;
+
+                my $curr_time = clock_gettime(CLOCK_MONOTONIC);
+                if (($curr_time - $lastprint) >= 3) {
+                    my $percent_finished = 100 * $written_total / $size;
+                    my $curr_seconds = $curr_time - $start;
+
+                    printf(
+                        "zeroed out %s of %s (%.2f%%) using %s in %s\n",
+                        render_bytes($written_total),
+                        render_bytes($size),
+                        $percent_finished,
+                        $zeroout_variant,
+                        render_duration($curr_seconds),
+                    );
+                    $lastprint = $curr_time;
+                }
+
+                if (defined($throughput)) {
+                    my $expected_elapsed = $written_total / $throughput;
+                    my $actual_elapsed = $curr_time - $start;
+                    my $delay = $expected_elapsed - $actual_elapsed;
+                    if ($delay > 0) {
+                        Time::HiRes::sleep($delay);
+                    }
+                }
             }
-
-            my $cmd = ['blkdiscard', $lvmpath, '-v', '--zeroout', '--step', "${stepsize}"];
-            run_command($cmd);
+            # syswrite only fills the page cache, a writeback error would otherwise be lost on close
+            if ($zeroout_variant eq 'syswrite') {
+                $fh->sync() or die "fsync after zeroing out '$lvmpath' failed: $!\n";
+            }
+        };
+        # close filehandle before throwing an error
+        my $err = $@;
+        close($fh);
+        if ($err) {
+            die "$err";
         }
     };
 
-    # we need to zero out LVM data for security reasons
-    # and to allow thin provisioning
+    # we need to zero out LVM data for security reasons and to allow thin provisioning
     my $zero_out_worker = sub {
 
         my $total_cleanup_errors = 0;
@@ -507,7 +606,7 @@ sub properties {
             type => 'integer',
         },
         saferemove_throughput => {
-            description => "Wipe throughput (cstream -t parameter value).",
+            description => "Wipe throughput in bytes.",
             type => 'string',
         },
         tagged_only => {
