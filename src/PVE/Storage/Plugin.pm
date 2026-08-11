@@ -1373,7 +1373,7 @@ sub volume_resize {
     my $format = ($class->parse_volname($volname))[6];
 
     my $preallocation = preallocation_cmd_opt($scfg, $format);
-    PVE::Storage::Common::qemu_img_resize($path, $format, $size, $preallocation, 10);
+    PVE::Storage::Common::qemu_img_resize($path, $format, $size, $preallocation);
 
     return undef;
 }
