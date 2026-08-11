@@ -606,8 +606,9 @@ sub properties {
             type => 'integer',
         },
         saferemove_throughput => {
-            description => "Wipe throughput in bytes.",
+            description => "Wipe throughput in bytes per second (optional suffix: k, m, or g).",
             type => 'string',
+            pattern => '-?\d+[kmgKMG]?',
         },
         tagged_only => {
             description => "Only list logical volumes tagged with 'pve-vm-ID'.",
