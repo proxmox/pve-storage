@@ -644,6 +644,13 @@ sub check_volume_access {
         } elsif (($vtype eq 'images' || $vtype eq 'rootdir') && $ownervm) {
             $rpcenv->check($user, "/storage/$sid", ['Datastore.Audit']);
             $rpcenv->check($user, "/vms/$ownervm", ['VM.Config.Disk']);
+        } elsif ($vtype eq 'snippets') {
+            # This check for the snippets vtype was introduced later, so all relevant callers can be
+            # expected to set the $type as well. The check that the type matches is done above.
+            #
+            # This check also prevents snippets from being listed with just AllocateSpace
+            die "cannot access snippet '$volid' for non-snippet use case\n" if !defined($type);
+            $rpcenv->check($user, "/storage/$sid", ['Datastore.AllocateSpace']);
         } else {
             die "missing privileges to access $volid\n";
         }
