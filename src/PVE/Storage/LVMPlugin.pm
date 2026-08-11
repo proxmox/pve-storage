@@ -7,8 +7,10 @@ use Cwd qw(abs_path);
 use File::Basename;
 use IO::File;
 use JSON;
+use List::Util qw(max);
 
 use PVE::JSONSchema qw(get_standard_option);
+use PVE::RESTEnvironment qw(log_warn);
 use PVE::Tools qw(run_command file_read_firstline trim);
 
 use PVE::Storage::Common;
@@ -279,6 +281,49 @@ sub lvm_list_volumes {
     return $lvs;
 }
 
+my sub rename_after_failed_cleanup {
+    my ($class, $scfg, $storeid, $vg, $name) = @_;
+
+    eval {
+        my $failed_name;
+        $class->cluster_lock_storage(
+            $storeid,
+            $scfg->{shared},
+            undef,
+            sub {
+                my $vgs = lvm_vgs();
+                die "volume group '$vg' not found\n"
+                    if !defined($vgs->{$vg});
+
+                my $lvs = lvm_list_volumes($vg);
+                my $existing = $lvs->{$vg} // {};
+
+                my $prefix = 'failed-';
+                my $suffix = "-del-$name";
+
+                my $last_fail = max(
+                    -1,
+                    map {
+                        /^\Q$prefix\E(\d+)\Q$suffix\E$/ ? $1 : ()
+                    } keys %$existing,
+                );
+
+                $failed_name = $prefix . ($last_fail + 1) . $suffix;
+
+                my $cmd = ['/sbin/lvrename', $vg, "del-$name", $failed_name];
+                run_command(
+                    $cmd,
+                    errmsg => "lvrename '$vg/del-$name' to '$vg/$failed_name' error",
+                );
+                print "renamed '$vg/del-$name' to '$vg/$failed_name'\n";
+            },
+        );
+    };
+    if (my $rename_err = $@) {
+        print STDERR "ERROR: unable to rename '$vg/del-$name': $rename_err";
+    }
+}
+
 my sub free_lvm_volumes_locked {
     my ($class, $scfg, $storeid, $volnames) = @_;
 
@@ -327,6 +372,9 @@ my sub free_lvm_volumes_locked {
                 '-t',
                 "$throughput",
             ];
+            # FIXME: handle cstream's expected ENOSPC failure explicitly and let other
+            # errors propagate. For now, preserve the old behavior where cstream can
+            # fail successfully with ENOSPC after writing until the device is full.
             eval {
                 run_command(
                     $cmd,
@@ -345,41 +393,64 @@ my sub free_lvm_volumes_locked {
             }
 
             my $cmd = ['blkdiscard', $lvmpath, '-v', '--zeroout', '--step', "${stepsize}"];
-            eval { run_command($cmd); };
-            warn $@ if $@;
+            run_command($cmd);
         }
     };
 
     # we need to zero out LVM data for security reasons
     # and to allow thin provisioning
     my $zero_out_worker = sub {
+
+        my $total_cleanup_errors = 0;
         for my $name (@$volnames) {
             my $lvmpath = "/dev/$vg/del-$name";
             print "zero-out data on image $name ($lvmpath)\n";
 
-            my $cmd_activate = ['/sbin/lvchange', '-aly', $lvmpath];
-            run_command(
-                $cmd_activate,
-                errmsg => "can't activate LV '$lvmpath' to zero-out its data",
-            );
-            $cmd_activate = ['/sbin/lvchange', '--refresh', $lvmpath];
-            run_command(
-                $cmd_activate,
-                errmsg => "can't refresh LV '$lvmpath' to zero-out its data",
-            );
+            eval {
+                # pass an errfunc here so that debug information is not by lvm to stderr,
+                # but by the print STDERR below with additional information
+                my $cmd_activate = ['/sbin/lvchange', '-aly', $lvmpath];
+                run_command(
+                    $cmd_activate,
+                    errmsg => "can't activate LV '$lvmpath' to zero-out its data",
+                    errfunc => sub { },
+                );
+                $cmd_activate = ['/sbin/lvchange', '--refresh', $lvmpath];
+                run_command(
+                    $cmd_activate,
+                    errmsg => "can't refresh LV '$lvmpath' to zero-out its data",
+                    errfunc => sub { },
+                );
+            };
+            if (my $activation_err = $@) {
+                print STDERR "ERROR: $activation_err";
+                eval { rename_after_failed_cleanup($class, $scfg, $storeid, $vg, $name) };
+                $total_cleanup_errors += 1;
+                next;
+            }
 
-            $secure_delete_cmd->($lvmpath);
-
-            $class->cluster_lock_storage(
-                $storeid,
-                $scfg->{shared},
-                undef,
-                sub {
-                    my $cmd = ['/sbin/lvremove', '-f', "$vg/del-$name"];
-                    run_command($cmd, errmsg => "lvremove '$vg/del-$name' error");
-                },
-            );
-            print "successfully removed volume $name ($vg/del-$name)\n";
+            eval { $secure_delete_cmd->($lvmpath); };
+            if (my $cleanup_err = $@) {
+                print STDERR "ERROR: cleanup failed for lv $name: $cleanup_err";
+                eval { rename_after_failed_cleanup($class, $scfg, $storeid, $vg, $name) };
+                $total_cleanup_errors += 1;
+                next;
+            } else {
+                $class->cluster_lock_storage(
+                    $storeid,
+                    $scfg->{shared},
+                    undef,
+                    sub {
+                        my $cmd = ['/sbin/lvremove', '-f', "$vg/del-$name"];
+                        run_command($cmd, errmsg => "lvremove '$vg/del-$name' error");
+                    },
+                );
+                print "successfully removed volume $name ($vg/del-$name)\n";
+            }
+        }
+        if ($total_cleanup_errors != 0) {
+            my $number_of_vols = scalar @$volnames;
+            die "cleanup failed for $total_cleanup_errors out of $number_of_vols volumes\n";
         }
     };
 
