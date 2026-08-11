@@ -3,6 +3,7 @@ package PVE::Storage::Common;
 use v5.36;
 
 use PVE::JSONSchema;
+use PVE::RPCEnvironment;
 use PVE::Syscall;
 use PVE::Tools qw(run_command);
 
@@ -261,9 +262,9 @@ sub qemu_img_measure {
 
     qemu_img_resize($path, $format, $size, $preallocation, $timeout)
 
-Resize a qemu image C<$path> with format C<$format> to a target Kb size C<$size>.
-Default timeout C<$timeout> is 10s if not specified.
-C<$preallocation> allows to specify the preallocation option for the resize operation.
+Resize a qemu image C<$path> with format C<$format> to a target Kb size C<$size>. C<$preallocation>
+allows to specify the preallocation option for the resize operation. If no C<$timeout> is provided,
+it defaults to 10 seconds, or 1 hour when running in a worker context.
 
 =cut
 
@@ -276,7 +277,9 @@ sub qemu_img_resize {
     push $cmd->@*, "--preallocation=$preallocation" if $preallocation;
     push $cmd->@*, '-f', $format, $path, $size;
 
-    $timeout = 10 if !$timeout;
+    if (!$timeout) {
+        $timeout = PVE::RPCEnvironment->is_worker() ? 60 * 60 : 10;
+    }
     run_command($cmd, timeout => $timeout);
 }
 
