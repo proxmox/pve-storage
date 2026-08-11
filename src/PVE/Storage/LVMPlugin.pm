@@ -11,7 +11,9 @@ use JSON;
 use List::Util qw(max);
 use Time::HiRes qw(clock_gettime CLOCK_MONOTONIC);
 
+use PVE::Exception qw(raise_param_exc);
 use PVE::Format qw(render_bytes render_duration);
+use PVE::INotify;
 use PVE::JSONSchema qw(get_standard_option);
 use PVE::RESTEnvironment qw(log_warn);
 use PVE::Tools qw(run_command file_read_firstline trim);
@@ -24,6 +26,7 @@ use base qw(PVE::Storage::Plugin);
 # lvm helper functions
 
 use constant {
+    BLKDISCARD => 0x1277,
     BLKZEROOUT => 0x127f,
 };
 
@@ -355,6 +358,12 @@ my sub free_lvm_volumes_locked {
 
     my $vg = $scfg->{vgname};
 
+    my $on_remove_opts = {};
+    if ($scfg->{'on-volume-remove'}) {
+        $on_remove_opts =
+            PVE::JSONSchema::parse_property_string('on-volume-remove', $scfg->{'on-volume-remove'});
+    }
+
     my $secure_delete_cmd = sub {
         my ($lvmpath) = @_;
 
@@ -374,6 +383,17 @@ my sub free_lvm_volumes_locked {
         my $write_zeroes_max_bytes =
             file_read_firstline("$sysdir/queue/write_zeroes_max_bytes") // 0;
         ($write_zeroes_max_bytes) = $write_zeroes_max_bytes =~ m/^(\d+)$/; #untaint
+
+        my $discard_granularity = file_read_firstline("$sysdir/queue/discard_granularity") // 0;
+        ($discard_granularity) = $discard_granularity =~ m/^(\d+)$/; #untaint
+
+        # Discard support is checked when the option gets set, but the volume group can lose it
+        # later, so degrade to a plain removal instead of keeping the volume around.
+        my $discard_supported = $on_remove_opts->{discard} ? 1 : 0;
+        if ($discard_supported && !$discard_granularity) {
+            log_warn("device does not support discard, not discarding '$lvmpath'");
+            $discard_supported = 0;
+        }
 
         my $size = file_read_firstline("$sysdir/size")
             or die "size from $sysdir cannot be read\n";
@@ -413,6 +433,14 @@ my sub free_lvm_volumes_locked {
                 . " $write_zeroes_max_bytes bytes\n";
             $stepsize = $write_zeroes_max_bytes;
         }
+
+        # The block layer only discards allocation units that a request covers completely, and the
+        # units are offset from the start of the device by the discard alignment. End each discard
+        # batch on a unit boundary so that no unit is left partially discarded.
+        my $discard_alignment = file_read_firstline("$sysdir/discard_alignment") // 0;
+        ($discard_alignment) = $discard_alignment =~ m/^(\d+)$/; #untaint
+        my $discard_offset = 0;
+
         # Open exclusively, so that a volume that is mounted or claimed by another kernel subsystem is
         # refused instead of wiped.
         sysopen(my $fh, $lvmpath, O_RDWR | O_EXCL) or die "can't open '$lvmpath' - $!\n";
@@ -423,6 +451,9 @@ my sub free_lvm_volumes_locked {
             my $written_total = 0;
             my $lastprint = -1;
             my $written;
+
+            my $discard_attempts = 0;
+            my $discard_failures = 0;
 
             for (my $offset = 0; $offset < $size; $offset += $written) {
 
@@ -459,6 +490,45 @@ my sub free_lvm_volumes_locked {
                 }
                 $written_total += $written;
 
+                my $discard_end = 0;
+                if ($discard_supported) {
+                    $discard_end =
+                        $written_total == $size
+                        ? $size
+                        : $written_total -
+                        (($written_total - $discard_alignment) % $discard_granularity);
+                }
+                if ($discard_end > $discard_offset) {
+                    if ($zeroout_variant eq 'syswrite') {
+                        # Flush zeroes written using syswrite before discarding the
+                        # corresponding range
+                        $fh->sync()
+                            or die "fsync before discard at offset $discard_offset failed: $!\n";
+                    }
+
+                    my $discard_length = $discard_end - $discard_offset;
+                    $discard_attempts++;
+
+                    eval {
+                        blockdev_ioctl_range($fh, BLKDISCARD, $discard_offset, $discard_length);
+                    };
+                    if (my $err = $@) {
+                        # nothing in between touches errno, so this still refers to the ioctl
+                        if ($!{EOPNOTSUPP}) {
+                            log_warn("device does not support discard, not discarding the"
+                                . " remaining $discard_length bytes of '$lvmpath'");
+                            $discard_supported = 0;
+                        } else {
+                            if ($discard_failures == 0) {
+                                log_warn("blkdiscard for $discard_length bytes at offset"
+                                    . " $discard_offset failed: $err");
+                            }
+                            $discard_failures += 1;
+                        }
+                    }
+                    $discard_offset = $discard_end;
+                }
+
                 my $curr_time = clock_gettime(CLOCK_MONOTONIC);
                 if (($curr_time - $lastprint) >= 3) {
                     my $percent_finished = 100 * $written_total / $size;
@@ -488,6 +558,9 @@ my sub free_lvm_volumes_locked {
             if ($zeroout_variant eq 'syswrite') {
                 $fh->sync() or die "fsync after zeroing out '$lvmpath' failed: $!\n";
             }
+            if ($discard_failures != 0) {
+                die "$discard_failures out of $discard_attempts blkdiscards failed\n";
+            }
         };
         # close filehandle before throwing an error
         my $err = $@;
@@ -496,28 +569,39 @@ my sub free_lvm_volumes_locked {
             die "$err";
         }
     };
-
-    # we need to zero out LVM data for security reasons and to allow thin provisioning
-    my $zero_out_worker = sub {
+    # we need to zero out LVM data for security reasons
+    # and discard images to free storage space to allow
+    # thin provisioning
+    my $cleanup_worker = sub {
 
         my $total_cleanup_errors = 0;
         for my $name (@$volnames) {
             my $lvmpath = "/dev/$vg/del-$name";
-            print "zero-out data on image $name ($lvmpath)\n";
+
+            my $discard_action;
+            if ($scfg->{saferemove} && $on_remove_opts->{discard}) {
+                $discard_action = 'zero-out and discard (TRIM)';
+            } elsif ($scfg->{saferemove}) {
+                $discard_action = 'zero-out';
+            } elsif ($on_remove_opts->{discard}) {
+                $discard_action = 'discard (TRIM)';
+            }
+            print "$discard_action data on image $name ($lvmpath)\n";
 
             eval {
-                # pass an errfunc here so that debug information is not by lvm to stderr,
-                # but by the print STDERR below with additional information
+                # drop the lvm stderr output here, a failure is reported below with its last line
+                # and more context
                 my $cmd_activate = ['/sbin/lvchange', '-aly', $lvmpath];
                 run_command(
                     $cmd_activate,
-                    errmsg => "can't activate LV '$lvmpath' to zero-out its data",
+                    errmsg => "can't activate LV '$lvmpath' to $discard_action its data",
                     errfunc => sub { },
+
                 );
                 $cmd_activate = ['/sbin/lvchange', '--refresh', $lvmpath];
                 run_command(
                     $cmd_activate,
-                    errmsg => "can't refresh LV '$lvmpath' to zero-out its data",
+                    errmsg => "can't refresh LV '$lvmpath' to $discard_action its data",
                     errfunc => sub { },
                 );
             };
@@ -528,7 +612,17 @@ my sub free_lvm_volumes_locked {
                 next;
             }
 
-            eval { $secure_delete_cmd->($lvmpath); };
+            eval {
+                if ($scfg->{saferemove}) {
+                    $secure_delete_cmd->($lvmpath);
+
+                } elsif ($on_remove_opts->{discard}) {
+                    run_command(
+                        ['/sbin/blkdiscard', $lvmpath],
+                        errmsg => "blkdiscard '$lvmpath' error",
+                    );
+                }
+            };
             if (my $cleanup_err = $@) {
                 print STDERR "ERROR: cleanup failed for lv $name: $cleanup_err";
                 eval { rename_after_failed_cleanup($class, $scfg, $storeid, $vg, $name) };
@@ -553,13 +647,13 @@ my sub free_lvm_volumes_locked {
         }
     };
 
-    if ($scfg->{saferemove}) {
+    if ($scfg->{saferemove} || $on_remove_opts->{discard}) {
         for my $name (@$volnames) {
             # avoid long running task, so we only rename here
             my $cmd = ['/sbin/lvrename', $vg, $name, "del-$name"];
             run_command($cmd, errmsg => "lvrename '$vg/$name' error");
         }
-        return $zero_out_worker;
+        return $cleanup_worker;
     } else {
         for my $name (@$volnames) {
             my $cmd = ['/sbin/lvremove', '-f', "$vg/$name"];
@@ -582,6 +676,36 @@ sub plugindata {
     };
 }
 
+my $on_volume_remove_format = {
+    discard => {
+        description => "Issue discard (TRIM) requests for LVs before removing them.",
+        type => 'boolean',
+        optional => 1,
+        verbose_description => "If enabled, blkdiscard is issued for the LV before removing it."
+            . " This sends discard (TRIM) requests for the LV's block range, allowing"
+            . " thin-provisioned storage to reclaim previously allocated physical"
+            . " space, provided the storage supports discard.",
+    },
+};
+
+sub verify_on_volume_remove {
+    my ($value, $noerr) = @_;
+
+    return undef if !defined($value);
+
+    if (!keys %$value) {
+        return undef if $noerr;
+        die "at least one on-volume-remove option must be specified if the property is set\n";
+    }
+    return $value;
+}
+
+PVE::JSONSchema::register_format(
+    'on-volume-remove',
+    $on_volume_remove_format,
+    \&verify_on_volume_remove,
+);
+
 sub properties {
     return {
         vgname => {
@@ -597,6 +721,13 @@ sub properties {
         saferemove => {
             description => "Zero-out data when removing LVs.",
             type => 'boolean',
+        },
+        'on-volume-remove' => {
+            description => "Optional actions when removing LVs.",
+            type => 'string',
+            format => 'on-volume-remove',
+            verbose_description => "Configure actions performed before removing an LV."
+                . " Use 'discard=1' to issue discard (TRIM) requests before removal.",
         },
         'saferemove-stepsize' => {
             description => "Wipe step size in MiB."
@@ -624,6 +755,7 @@ sub options {
         shared => { optional => 1 },
         disable => { optional => 1 },
         saferemove => { optional => 1 },
+        'on-volume-remove' => { optional => 1 },
         'saferemove-stepsize' => { optional => 1 },
         saferemove_throughput => { optional => 1 },
         content => { optional => 1 },
@@ -646,6 +778,118 @@ sub get_formats {
     return { default => 'raw', valid => { 'raw' => 1 } };
 }
 
+my sub get_discard_max {
+    my ($dev_path) = @_;
+
+    my $output = '';
+    # use lsblk as it resolves discard support in setups with nested partitions or lv/vgs
+    my $cmd = [
+        'lsblk', '--json', '--bytes', '--discard', '--nodeps', '--output', 'DISC-MAX',
+        $dev_path,
+    ];
+
+    eval {
+        run_command($cmd, outfunc => sub { $output .= "$_[0]\n"; });
+    };
+    if (my $err = $@) {
+        chomp $err;
+        raise_param_exc({
+            'on-volume-remove' => "discard on remove is enabled, but lsblk could not "
+                . "query discard support for the backing device '$dev_path': $err",
+        });
+    }
+
+    my $parsed = eval { decode_json($output) };
+    if (my $err = $@ || ref($parsed) ne 'HASH') {
+        chomp $err if $err;
+        raise_param_exc({
+            'on-volume-remove' => "discard on remove is enabled, but lsblk could not "
+                . "parse discard support for the backing device '$dev_path'"
+                . ($err ? ": $err" : ""),
+        });
+    }
+
+    my $blockdevices = $parsed->{blockdevices};
+    if (ref($blockdevices) ne 'ARRAY' || scalar($blockdevices->@*) == 0) {
+        raise_param_exc({
+            'on-volume-remove' => "discard on remove is enabled, but lsblk could not "
+                . "parse discard support for the backing device '$dev_path'",
+        });
+
+    }
+
+    if (scalar($blockdevices->@*) > 1) {
+        raise_param_exc({
+            'on-volume-remove' => "discard on remove is enabled, but lsblk returned "
+                . "ambiguous discard support for the backing device '$dev_path'",
+        });
+    }
+
+    return $blockdevices->[0]->{'disc-max'} // 0;
+}
+
+my sub assert_device_discard_supported {
+    my ($dev_path) = @_;
+
+    $dev_path = abs_path($dev_path) // $dev_path;
+
+    if ($dev_path =~ m!^(/dev/.+)$!) {
+        $dev_path = $1; # untaint
+    } else {
+        raise_param_exc({
+            'on-volume-remove' => "discard on remove is enabled, but discard support "
+                . "cannot be resolved for the backing device '$dev_path'",
+        });
+    }
+
+    # use discard_max_bytes as indicator if discard is supported
+    if (!get_discard_max($dev_path)) {
+        raise_param_exc({
+            'on-volume-remove' => "discard on remove is enabled, but discard is not "
+                . "supported by the backing device '$dev_path'",
+        });
+    }
+}
+
+my sub discard_on_remove_requested {
+    my ($on_remove) = @_;
+
+    return 0 if !defined($on_remove);
+
+    my $on_remove_opts = PVE::JSONSchema::parse_property_string('on-volume-remove', $on_remove);
+
+    return $on_remove_opts->{discard} ? 1 : 0;
+}
+
+sub assert_discard_supported {
+    my ($vgname, $on_remove, $nodes) = @_;
+
+    return if !discard_on_remove_requested($on_remove);
+
+    # Only the node handling the request can be probed, and it need not see the volume group if the
+    # storage is restricted to other nodes. The cleanup worker skips discards on nodes without
+    # support anyway, so the probe just catches a misconfiguration early.
+    my $nodename = PVE::INotify::nodename();
+    if ($nodes && !$nodes->{$nodename}) {
+        warn "storage is not available on node '$nodename', not checking discard support of"
+            . " volume group '$vgname'\n";
+        return;
+    }
+
+    my $vgs = lvm_vgs(1);
+    my $vg = $vgs->{$vgname};
+    die "no such volume group '$vgname'\n" if !$vg;
+
+    my $pvs = $vg->{pvs};
+    die "volume group '$vgname' has no physical volumes\n"
+        if !defined($pvs) || scalar($pvs->@*) == 0;
+
+    # check if all the block devices configured to the volume group support discard
+    for my $pv ($pvs->@*) {
+        assert_device_discard_supported($pv->{name});
+    }
+}
+
 sub on_add_hook {
     my ($class, $storeid, $scfg, %param) = @_;
 
@@ -664,8 +908,14 @@ sub on_add_hook {
 
         PVE::Storage::activate_storage($cfg, $baseid);
 
+        # a failing hook does not remove a volume group it created, so check the device first
+        assert_device_discard_supported($path)
+            if discard_on_remove_requested($scfg->{'on-volume-remove'});
+
         lvm_create_volume_group($path, $scfg->{vgname}, $scfg->{shared});
     }
+
+    assert_discard_supported($scfg->{vgname}, $scfg->{'on-volume-remove'}, $scfg->{nodes});
 
     return;
 }
@@ -686,6 +936,12 @@ sub on_update_hook_full {
         my $images = $class->list_images($storeid, $scfg, undef, undef, undef);
         die "$storeid - cannot disable 'snapshot-as-volume-chain' while a qcow2 image exists\n"
             if grep { $_->{format} eq 'qcow2' } $images->@*;
+    }
+    # the check probes the node handling the request, so only run it when the setting changes
+    if (($update->{'on-volume-remove'} // '') ne ($scfg->{'on-volume-remove'} // '')) {
+        my $nodes = $update->{nodes} // $scfg->{nodes};
+        $nodes = undef if grep { $_ eq 'nodes' } ($delete // [])->@*;
+        assert_discard_supported($scfg->{vgname}, $update->{'on-volume-remove'}, $nodes);
     }
 }
 
