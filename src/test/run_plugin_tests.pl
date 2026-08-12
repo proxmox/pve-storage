@@ -12,6 +12,7 @@ my $harness = TAP::Harness->new({ verbosity => -1 });
 my $res = $harness->runtests(
     "archive_info_test.pm",
     "parse_volname_test.pm",
+    "volname_for_format_test.pm",
     "list_volumes_test.pm",
     "path_to_volume_id_test.pm",
     "get_subdir_test.pm",
