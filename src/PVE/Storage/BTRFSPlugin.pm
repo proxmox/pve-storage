@@ -333,10 +333,7 @@ sub alloc_image {
 
     $name = $class->find_free_diskname($storeid, $scfg, $vmid, $fmt, 1) if !$name;
 
-    my (undef, $tmpfmt) = PVE::Storage::Plugin::parse_name_dir($name);
-
-    die "illegal name '$name' - wrong extension for format ('$tmpfmt != '$fmt')\n"
-        if $tmpfmt ne $fmt;
+    $name = $class->volname_for_format($name, $fmt, 0);
 
     # End copy from Plugin.pm
 
@@ -974,6 +971,7 @@ sub rename_volume {
 
     $target_volname = $class->find_free_diskname($storeid, $scfg, $target_vmid, $format, 1)
         if !$target_volname;
+    $target_volname = $class->volname_for_format($target_volname, $format, 0);
     $target_volname = "$target_vmid/$target_volname";
 
     my $basedir = $class->get_subdir($scfg, 'images');

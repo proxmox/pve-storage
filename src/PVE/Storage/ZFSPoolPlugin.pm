@@ -15,6 +15,12 @@ use PVE::Tools qw(run_command);
 
 use base qw(PVE::Storage::Plugin);
 
+# both formats are encoded in the name prefix, so neither carries an extension
+use constant FORMAT_EXTENSION => {
+    raw => '',
+    subvol => '',
+};
+
 sub verify_zfs_blocksize {
     my ($value, $noerr) = @_;
 
@@ -150,6 +156,44 @@ sub parse_volname {
     die "unable to parse zfs volume name '$volname'\n";
 }
 
+sub get_parsed_format {
+    my ($class, $name) = @_;
+
+    return ($class->parse_volname($name))[6];
+}
+
+# ZFS volume names always encode their format in the name prefix (vm- for raw
+# zvols, subvol- for subvolumes). Any mismatch therefore spells out a
+# contradicting format and is an error, regardless of $strict.
+sub volname_for_format {
+    my ($class, $name, $fmt, $strict) = @_;
+
+    die "unsupported format '$fmt'\n" if !($class->is_valid_format($fmt));
+
+    my $name_fmt = $class->get_parsed_format($name);
+    return $name if $name_fmt eq $fmt;
+
+    my $suggestion = $class->volname_with_format($name, $fmt);
+
+    die "illegal name $name - volume name does not match requested format "
+        . "'$fmt' (did you mean '$suggestion'?)\n";
+}
+
+# the prefix encodes the base status as well, so keep that when switching the format
+sub volname_with_format {
+    my ($class, $name, $fmt) = @_;
+
+    if ($fmt eq 'subvol') {
+        $name =~ s/^vm-/subvol-/;
+        $name =~ s/^base-/basevol-/;
+    } else {
+        $name =~ s/^subvol-/vm-/;
+        $name =~ s/^basevol-/base-/;
+    }
+
+    return $name;
+}
+
 # virtual zfs methods (subclass can overwrite them)
 
 sub on_add_hook {
@@ -273,6 +317,8 @@ sub alloc_image {
         $volname = $class->find_free_diskname($storeid, $scfg, $vmid, $fmt)
             if !$volname;
 
+        $volname = $class->volname_for_format($volname, $fmt, 0);
+
         $class->zfs_create_zvol($scfg, $volname, $size);
         $class->zfs_wait_for_zvol_link($scfg, $volname);
 
@@ -282,6 +328,8 @@ sub alloc_image {
             if $volname && $volname !~ m/^subvol-$vmid-/;
         $volname = $class->find_free_diskname($storeid, $scfg, $vmid, $fmt)
             if !$volname;
+
+        $volname = $class->volname_for_format($volname, $fmt, 0);
 
         die "illegal name '$volname' - should be 'subvol-$vmid-*'\n"
             if $volname !~ m/^subvol-$vmid-/;
@@ -959,6 +1007,8 @@ sub rename_volume {
     ) = $class->parse_volname($source_volname);
     $target_volname = $class->find_free_diskname($storeid, $scfg, $target_vmid, $format)
         if !$target_volname;
+
+    $target_volname = $class->volname_for_format($target_volname, $format, 0);
 
     my $pool = $scfg->{pool};
     my $source_zfspath = "${pool}/${source_image}";

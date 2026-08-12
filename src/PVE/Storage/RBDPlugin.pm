@@ -22,6 +22,10 @@ use PVE::Storage::Common;
 
 use base qw(PVE::Storage::Plugin);
 
+use constant FORMAT_EXTENSION => {
+    raw => '',
+};
+
 my $get_parent_image_name = sub {
     my ($parent) = @_;
     return undef if !$parent;
@@ -516,6 +520,14 @@ sub parse_volname {
     die "unable to parse rbd volume name '$volname'\n";
 }
 
+sub get_parsed_format {
+    my ($class, $name) = @_;
+
+    $class->parse_volname($name); # dies for names that are not valid volume names
+
+    return $name =~ m/\.(raw|qcow2|vmdk|subvol)$/ ? $1 : 'raw';
+}
+
 sub path {
     my ($class, $scfg, $volname, $storeid, $snapname) = @_;
 
@@ -708,6 +720,8 @@ sub alloc_image {
         if $name && $name !~ m/^vm-$vmid-/;
 
     $name = $class->find_free_diskname($storeid, $scfg, $vmid) if !$name;
+
+    $name = $class->volname_for_format($name, $fmt, 0);
 
     my @options = (
         '--image-format', 2, '--size', int(($size + 1023) / 1024),
@@ -1080,6 +1094,8 @@ sub rename_volume {
     ) = $class->parse_volname($source_volname);
     $target_volname = $class->find_free_diskname($storeid, $scfg, $target_vmid, $format)
         if !$target_volname;
+
+    $target_volname = $class->volname_for_format($target_volname, $format, 0);
 
     die "target volume '${target_volname}' already exists\n"
         if rbd_volume_exists($scfg, $storeid, $target_volname);

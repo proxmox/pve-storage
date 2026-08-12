@@ -6,6 +6,18 @@ without breaking anything unaware of it.)
 
 Future changes should be documented in here.
 
+## Version 16:
+
+* Add `volname_for_format()`, `get_parsed_format()`, `volname_with_format()`, `is_valid_format()` and
+  `get_format_extension()` plugin methods together with the `FORMAT_EXTENSION` constant
+
+  These are called via the plugin class when allocating or renaming a volume, to check that a
+  caller-supplied name agrees with the requested format and to adapt an extension-less name. The
+  base implementations cover directory-like plugins, where every format carries an extension, and
+  the in-tree block-based plugins override `get_parsed_format()` and `FORMAT_EXTENSION` to match
+  their naming scheme. Plugins that implement `alloc_image()` and `rename_volume()` without calling
+  the base implementation are not affected.
+
 ## Version 15:
 
 * Add new `$snapname` parameter to the `volume_resize()` plugin method

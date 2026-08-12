@@ -25,6 +25,10 @@ use PVE::Storage::LVMPlugin;
 
 use base qw(PVE::Storage::LVMPlugin);
 
+use constant FORMAT_EXTENSION => {
+    raw => '',
+};
+
 sub type {
     return 'lvmthin';
 }
@@ -112,6 +116,8 @@ sub alloc_image {
 
     $name = $class->find_free_diskname($storeid, $scfg, $vmid)
         if !$name;
+
+    $name = $class->volname_for_format($name, $fmt, 0);
 
     my $cmd = [
         '/sbin/lvcreate',

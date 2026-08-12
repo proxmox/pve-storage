@@ -27,6 +27,13 @@ use constant COMPRESSOR_RE => join('|', KNOWN_COMPRESSION_FORMATS);
 use constant LOG_EXT => ".log";
 use constant NOTES_EXT => ".notes";
 
+use constant FORMAT_EXTENSION => {
+    raw => 'raw',
+    qcow2 => 'qcow2',
+    vmdk => 'vmdk',
+    subvol => 'subvol',
+};
+
 our @COMMON_TAR_FLAGS = qw(
     --one-file-system
     -p --sparse --numeric-owner --acls
@@ -841,6 +848,98 @@ sub parse_volname {
     die "unable to parse directory volume name '$volname'\n";
 }
 
+=head3 get_parsed_format
+
+Return the disk format encoded in the given volume name, or C<undef> if the name does not spell one
+out.
+
+This is an extension point for plugins whose volume names encode the format differently. ZFS
+derives it from the name prefix via C<parse_volname>, while LVM and RBD take it from a known file
+extension and treat a name without one as raw.
+
+returns: the format indicated by the name, if any.
+
+=cut
+
+sub get_parsed_format {
+    my ($class, $name) = @_;
+
+    return undef if $name !~ m/\.[^.]+$/; # no extension, so no format is spelled out
+
+    return (parse_name_dir($name))[1];
+}
+
+sub is_valid_format {
+    my ($class, $fmt) = @_;
+
+    return defined($class->FORMAT_EXTENSION->{$fmt});
+}
+
+=head3 volname_for_format
+
+Reconcile the requested format with the volume name and return the name to
+allocate.
+
+Dies immediately if C<$fmt> is not a valid format for this plugin.
+
+If the name already encodes the requested format, returns the name unchanged.
+
+If C<$strict> is true, any format mismatch dies with a suggestion for the
+corrected name.
+
+If C<$strict> is false (lax mode), a name without a file extension is adapted
+to the requested format and a warning is emitted; the adapted name is parsed
+like a given one, so it cannot bypass the volume name checks. A name that
+already carries a file extension dies with a suggestion, because the extension
+indicates an explicit format choice that contradicts the request.
+
+returns: the name to allocate
+
+=cut
+
+sub volname_for_format {
+    my ($class, $name, $fmt, $strict) = @_;
+
+    die "unsupported format '$fmt'\n" if !($class->is_valid_format($fmt));
+
+    my $parsed_volname_fmt = $class->get_parsed_format($name);
+
+    return $name if defined($parsed_volname_fmt) && $parsed_volname_fmt eq $fmt;
+
+    my $suggestion = $class->volname_with_format($name, $fmt);
+
+    if ($strict || $name =~ /\.[^.]+$/) {
+        die "illegal name $name - volume name does not match requested format "
+            . "'$fmt' (did you mean '$suggestion'?)\n";
+    }
+
+    # the adapted name was never parsed, so validate it like a given one before it is used
+    my $suggestion_fmt = $class->get_parsed_format($suggestion);
+    die "illegal name '$name' - adapted name '$suggestion' is not a valid '$fmt' volume name\n"
+        if !defined($suggestion_fmt) || $suggestion_fmt ne $fmt;
+
+    warn "volume name '$name' is missing the '.$fmt' extension - allocating '$suggestion'\n";
+
+    return $suggestion;
+}
+
+sub get_format_extension {
+    my ($class, $fmt) = @_;
+
+    return $class->FORMAT_EXTENSION->{$fmt};
+}
+
+sub volname_with_format {
+    my ($class, $name, $fmt) = @_;
+
+    my $correct_fmt_ext = $class->get_format_extension($fmt);
+
+    $name =~ s/\.[^.]+$//;
+
+    return $name if !$correct_fmt_ext;
+    return "$name.$correct_fmt_ext";
+}
+
 my $vtype_subdirs = {
     images => 'images',
     rootdir => 'private',
@@ -1061,10 +1160,7 @@ sub alloc_image {
 
     $name = $class->find_free_diskname($storeid, $scfg, $vmid, $fmt, 1) if !$name;
 
-    my (undef, $tmpfmt) = parse_name_dir($name);
-
-    die "illegal name '$name' - wrong extension for format ('$tmpfmt != '$fmt')\n"
-        if $tmpfmt ne $fmt;
+    $name = $class->volname_for_format($name, $fmt, 0);
 
     my $path = "$imagedir/$name";
 
@@ -2393,6 +2489,8 @@ sub rename_volume {
 
     $target_volname = $class->find_free_diskname($storeid, $scfg, $target_vmid, $format, 1)
         if !$target_volname;
+
+    $target_volname = $class->volname_for_format($target_volname, $format, 0);
 
     my $basedir = $class->get_subdir($scfg, 'images');
 

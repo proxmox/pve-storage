@@ -23,6 +23,11 @@ use PVE::Storage::Plugin;
 
 use base qw(PVE::Storage::Plugin);
 
+use constant FORMAT_EXTENSION => {
+    raw => '',
+    qcow2 => 'qcow2',
+};
+
 # lvm helper functions
 
 use constant {
@@ -1165,27 +1170,12 @@ my sub alloc_lvm_image {
 
 }
 
-# Only 'qcow2' names carry an extension, like the ones find_free_diskname() generates, so add it
-# for callers passing a fixed name, like cloud-init drives. A name that already spells out another
-# format stays an error, it states an intent that the requested format contradicts.
-my sub volname_for_format {
-    my ($class, $name, $fmt) = @_;
+sub get_parsed_format {
+    my ($class, $name) = @_;
 
-    return $name if $fmt ne 'raw' && $fmt ne 'qcow2'; # alloc_lvm_image() reports unsupported ones
+    $class->parse_volname($name); # dies for names that are not valid volume names
 
-    my $name_fmt = ($class->parse_volname($name))[6];
-    return $name if $name_fmt eq $fmt;
-
-    if ($fmt eq 'raw') {
-        my $suggested_name = $name =~ s/\.\Q$name_fmt\E$//r;
-        die "volume name '$name' does not match requested format '$fmt'"
-            . " (did you mean '$suggested_name'?)\n";
-    }
-
-    my $adapted_name = "$name.$fmt";
-    warn "volume name '$name' is missing the '.$fmt' extension - allocating '$adapted_name'\n";
-
-    return $adapted_name;
+    return $name =~ m/\.(raw|qcow2|vmdk|subvol)$/ ? $1 : 'raw';
 }
 
 sub alloc_image {
@@ -1194,7 +1184,7 @@ sub alloc_image {
     $name = $class->find_free_diskname($storeid, $scfg, $vmid, $fmt)
         if !$name;
 
-    $name = volname_for_format($class, $name, $fmt);
+    $name = $class->volname_for_format($name, $fmt, 0);
 
     alloc_lvm_image($class, $storeid, $scfg, $vmid, $fmt, $name, $size);
 
@@ -1972,6 +1962,8 @@ sub rename_volume {
 
     $target_volname = $class->find_free_diskname($storeid, $scfg, $target_vmid, $format)
         if !$target_volname;
+
+    $target_volname = $class->volname_for_format($target_volname, $format, 0);
 
     my $vg = $scfg->{vgname};
     my $lvs = lvm_list_volumes($vg);

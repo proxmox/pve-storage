@@ -15,6 +15,11 @@ use PVE::Storage::LunCmd::Istgt;
 use PVE::Storage::LunCmd::Iet;
 use PVE::Storage::LunCmd::LIO;
 
+# ZFS over iSCSI only exports zvols
+use constant FORMAT_EXTENSION => {
+    raw => '',
+};
+
 my @ssh_opts = ('-o', 'BatchMode=yes');
 my @ssh_cmd = ('/usr/bin/ssh', @ssh_opts);
 my $id_rsa_path = '/etc/pve/priv/zfs';
@@ -365,6 +370,8 @@ sub alloc_image {
     my $volname = $name;
 
     $volname = $class->find_free_diskname($storeid, $scfg, $vmid, $fmt) if !$volname;
+
+    $volname = $class->volname_for_format($volname, $fmt, 0);
 
     $class->zfs_create_zvol($scfg, $volname, $size);
 
