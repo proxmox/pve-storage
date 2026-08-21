@@ -391,10 +391,13 @@ my $ceph_check_keyfile = sub {
     eval {
         die if !$content;
 
+        # Do not check the base64 padding, it depends on the key length: a key with the
+        # aes256k cipher is 32 bytes and ends on a single '=', the older aes one is 16 bytes
+        # and ends on two. This only checks the shape of the file, not the key itself.
         if ($type eq 'rbd') {
-            die if $content !~ /\s*\[\S+\]\s*key\s*=\s*\S+==\s*$/m;
+            die if $content !~ /\s*\[\S+\]\s*key\s*=\s*\S+\s*$/m;
         } elsif ($type eq 'cephfs') {
-            die if $content !~ /\S+==\s*$/;
+            die if $content !~ /^\s*\S+\s*$/;
         }
     };
     die "Not a proper $type authentication file: $filename\n" if $@;
