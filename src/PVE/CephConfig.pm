@@ -432,7 +432,9 @@ sub ceph_connect_option {
     }
 
     $cmd_option->{keyring} = $keyfile if (-e $keyfile);
-    $cmd_option->{auth_supported} = (defined $cmd_option->{keyring}) ? 'cephx' : 'none';
+    # Ceph 19.2.6 dropped the long-deprecated 'auth_supported', which set the cluster, service
+    # and client side at once. Only the client side applies to the connections made from here.
+    $cmd_option->{auth_client_required} = (defined $cmd_option->{keyring}) ? 'cephx' : 'none';
     $cmd_option->{userid} = $scfg->{username} ? $scfg->{username} : 'admin';
     $cmd_option->{mon_host} = hostlist($scfg->{monhost}, ',') if (defined($scfg->{monhost}));
 

@@ -2575,8 +2575,9 @@ sub qemu_blockdev_options {
             } $rbd_options =~ /(?:\\:|\[[^\]]*\]|[^:\\])+/g
         };
 
-        $blockdev->{'auth-client-required'} = [$options->{'auth_supported'}]
-            if $options->{'auth_supported'};
+        # a hand-written path can still carry the 'auth_supported' that Ceph dropped in 19.2.6
+        my $auth_required = $options->{'auth_client_required'} // $options->{'auth_supported'};
+        $blockdev->{'auth-client-required'} = [$auth_required] if $auth_required;
         $blockdev->{'conf'} = $options->{'conf'} if $options->{'conf'};
         $blockdev->{'user'} = $options->{'id'} if $options->{'id'};
 
@@ -2601,7 +2602,7 @@ sub qemu_blockdev_options {
             }
         }
 
-        delete($options->@{qw(auth_supported conf id mon_host image)});
+        delete($options->@{qw(auth_client_required auth_supported conf id mon_host image)});
 
         # Map rest directly. With -drive, it was possible to use arbitrary key-value-pairs. Like
         # this, there will be warnings for those that are not allowed via blockdev.

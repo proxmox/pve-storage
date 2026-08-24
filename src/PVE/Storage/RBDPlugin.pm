@@ -125,8 +125,8 @@ my $rbd_cmd = sub {
     }
     push @$cmd, '-c', $cmd_option->{ceph_conf} if ($cmd_option->{ceph_conf});
     push @$cmd, '-m', $cmd_option->{mon_host} if ($cmd_option->{mon_host});
-    push @$cmd, '--auth_supported', $cmd_option->{auth_supported}
-        if ($cmd_option->{auth_supported});
+    push @$cmd, '--auth_client_required', $cmd_option->{auth_client_required}
+        if ($cmd_option->{auth_client_required});
     push @$cmd, '-n', "client.$cmd_option->{userid}" if ($cmd_option->{userid});
     push @$cmd, '--keyring', $cmd_option->{keyring} if ($cmd_option->{keyring});
 
@@ -536,7 +536,7 @@ sub path {
         my $monhost = PVE::CephConfig::hostlist($scfg->{monhost}, ';');
         $monhost =~ s/:/\\:/g;
         $path .= ":mon_host=$monhost";
-        $path .= ":auth_supported=$cmd_option->{auth_supported}";
+        $path .= ":auth_client_required=$cmd_option->{auth_client_required}";
     }
 
     $path .= ":id=$cmd_option->{userid}:keyring=$cmd_option->{keyring}" if ($cmd_option->{keyring});
@@ -575,7 +575,7 @@ sub qemu_blockdev_options {
             push @$server, { host => $host, port => $port };
         }
         $blockdev->{server} = $server;
-        $blockdev->{'auth-client-required'} = ["$cmd_option->{auth_supported}"];
+        $blockdev->{'auth-client-required'} = ["$cmd_option->{auth_client_required}"];
     }
 
     $blockdev->{user} = "$cmd_option->{userid}" if $cmd_option->{keyring};
