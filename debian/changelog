@@ -1,3 +1,11 @@
+libpve-storage-perl (8.3.9) bookworm; urgency=medium
+
+  * ceph: accept keyring files whose key uses the aes256k cipher, which Ceph
+    19.2.6 and newer create. The old check required the base64 padding that
+    only a 16 byte key produces.
+
+ -- Proxmox Support Team <support@proxmox.com>  Mon, 24 Aug 2026 10:41:23 +0200
+
 libpve-storage-perl (8.3.8) bookworm; urgency=medium
 
   * fix #6073: esxi: avoid potential left-over zombie processes after storage
