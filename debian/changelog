@@ -1,3 +1,12 @@
+libpve-storage-perl (9.1.10) trixie; urgency=medium
+
+  * ceph: use the auth_client_required option for client connections, as
+    Ceph 19.2.6 removed the long-deprecated auth_supported one. Passing
+    it to a 19.2.6 cluster made librados refuse the connection and every
+    rbd command abort, which left RBD storages inactive.
+
+ -- Proxmox Support Team <support@proxmox.com>  Mon, 24 Aug 2026 10:38:32 +0200
+
 libpve-storage-perl (9.1.9) trixie; urgency=medium
 
   * ceph: accept keyring files whose key uses the aes256k cipher.
