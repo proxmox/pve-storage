@@ -381,7 +381,7 @@ my sub free_lvm_volumes_locked {
         if ($bdev && $bdev =~ m|^/dev/(dm-\d+)|) {
             $sysdir = "/sys/block/$1";
         } else {
-            warn "skip zero-out for volume '$lvmpath' - no device mapper link\n";
+            warn "skip cleanup of volume '$lvmpath' - no device mapper link\n";
             return;
         }
 
@@ -405,9 +405,10 @@ my sub free_lvm_volumes_locked {
         ($size) = $size =~ m/^(\d+)$/; # untaint
         $size *= 512; # sysfs size is in 512-byte sectors
 
-        my $zeroout_variant = 'blkzeroout';
-        my $throughput = undef;
-        if (my $value = $scfg->{saferemove_throughput}) {
+        my $zero_out = $scfg->{saferemove};
+        my $zeroout_variant = $zero_out ? 'blkzeroout' : 'none';
+        my $throughput = undef; # discards alone are not rate limited
+        if ($zero_out && (my $value = $scfg->{saferemove_throughput})) {
             # Normalize zero spellings before selecting the default or dividing by the rate.
             $throughput = abs(parse_saferemove_throughput($value)) || undef;
         }
@@ -420,7 +421,7 @@ my sub free_lvm_volumes_locked {
         # syswrite. Otherwise if the storage supports write_zeroes but stepsize is too big,
         # reduce the stepsize to the maximum supported by the storage.
         my $zeroes;
-        if ($write_zeroes_max_bytes == 0) {
+        if ($zero_out && $write_zeroes_max_bytes == 0) {
             print "WRITE_ZEROES operation not supported,"
                 . " falling back to syswrite to zero-out '$lvmpath'\n";
             $zeroout_variant = 'syswrite';
@@ -433,7 +434,7 @@ my sub free_lvm_volumes_locked {
                 $throughput = 10485760;
                 print "using default syswrite-saferemove throughput limit: 10 MiB/s\n";
             }
-        } elsif ($stepsize > $write_zeroes_max_bytes) {
+        } elsif ($zero_out && $stepsize > $write_zeroes_max_bytes) {
             print "reduce stepsize to the maximum supported by the storage:"
                 . " $write_zeroes_max_bytes bytes\n";
             $stepsize = $write_zeroes_max_bytes;
@@ -445,6 +446,8 @@ my sub free_lvm_volumes_locked {
         my $discard_alignment = file_read_firstline("$sysdir/discard_alignment") // 0;
         ($discard_alignment) = $discard_alignment =~ m/^(\d+)$/; #untaint
         my $discard_offset = 0;
+
+        return if !$zero_out && !$discard_supported; # nothing left to do before the removal
 
         # Open exclusively, so that a volume that is mounted or claimed by another kernel subsystem is
         # refused instead of wiped.
@@ -492,6 +495,8 @@ my sub free_lvm_volumes_locked {
                         }
                         $written += $retried_write;
                     }
+                } elsif ($zeroout_variant eq 'none') {
+                    $written = $stepsize;
                 }
                 $written_total += $written;
 
@@ -533,6 +538,7 @@ my sub free_lvm_volumes_locked {
                     }
                     $discard_offset = $discard_end;
                 }
+                last if !$zero_out && !$discard_supported; # discard turned out to be unsupported
 
                 my $curr_time = clock_gettime(CLOCK_MONOTONIC);
                 if (($curr_time - $lastprint) >= 3) {
@@ -540,11 +546,12 @@ my sub free_lvm_volumes_locked {
                     my $curr_seconds = $curr_time - $start;
 
                     printf(
-                        "zeroed out %s of %s (%.2f%%) using %s in %s\n",
+                        "%s %s of %s (%.2f%%)%s in %s\n",
+                        $zero_out ? 'zeroed out' : 'discarded',
                         render_bytes($written_total),
                         render_bytes($size),
                         $percent_finished,
-                        $zeroout_variant,
+                        $zero_out ? " using $zeroout_variant" : '',
                         render_duration($curr_seconds),
                     );
                     $lastprint = $curr_time;
@@ -617,17 +624,7 @@ my sub free_lvm_volumes_locked {
                 next;
             }
 
-            eval {
-                if ($scfg->{saferemove}) {
-                    $secure_delete_cmd->($lvmpath);
-
-                } elsif ($on_remove_opts->{discard}) {
-                    run_command(
-                        ['/sbin/blkdiscard', $lvmpath],
-                        errmsg => "blkdiscard '$lvmpath' error",
-                    );
-                }
-            };
+            eval { $secure_delete_cmd->($lvmpath) };
             if (my $cleanup_err = $@) {
                 print STDERR "ERROR: cleanup failed for lv $name: $cleanup_err";
                 eval { rename_after_failed_cleanup($class, $scfg, $storeid, $vg, $name) };
@@ -688,10 +685,10 @@ my $on_volume_remove_format = {
         description => "Issue discard (TRIM) requests for LVs before removing them.",
         type => 'boolean',
         optional => 1,
-        verbose_description => "If enabled, blkdiscard is issued for the LV before removing it."
-            . " This sends discard (TRIM) requests for the LV's block range, allowing"
-            . " thin-provisioned storage to reclaim previously allocated physical"
-            . " space, provided the storage supports discard.",
+        verbose_description =>
+            "If enabled, discard (TRIM) requests are issued for the LV's block"
+            . " range before removing it, allowing thin-provisioned storage to reclaim previously"
+            . " allocated physical space, provided the storage supports discard.",
     },
 };
 
