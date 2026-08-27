@@ -665,6 +665,8 @@ my sub free_lvm_volumes_locked {
             run_command($cmd, errmsg => "lvremove '$vg/$name' error");
         }
     }
+
+    return undef;
 }
 
 # Configuration
