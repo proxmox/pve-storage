@@ -296,6 +296,50 @@ foreach my $virt (keys %$non_bkp_suffix) {
     }
 }
 
+# tests for PBS backup archives
+push $tests->@*,
+    (
+        {
+            description => "PBS backup archive, vm/117",
+            volname => "backup/vm/117/2025-08-06T14:27:07Z",
+            plugin => 'PVE::Storage::PBSPlugin',
+            expected => [
+                'backup', 'vm/117/2025-08-06T14:27:07Z', 117, undef, undef, undef, 'pbs-vm',
+            ],
+        },
+        {
+            description => "PBS backup archive, ct/123455",
+            volname => "backup/ct/123455/2025-08-06T14:27:07Z",
+            plugin => 'PVE::Storage::PBSPlugin',
+            expected => [
+                'backup', 'ct/123455/2025-08-06T14:27:07Z', 123455, undef, undef, undef, 'pbs-ct',
+            ],
+        },
+        {
+            description => "PBS backup archive, host/foobar",
+            volname => "backup/host/foobar/2025-08-06T14:27:07Z",
+            plugin => 'PVE::Storage::PBSPlugin',
+            expected => [
+                'backup', 'host/foobar/2025-08-06T14:27:07Z', undef, undef, undef, undef,
+                'pbs-host',
+            ],
+        },
+        {
+            description => "PBS backup archive, host/999",
+            volname => "backup/host/999/2025-08-06T14:27:07Z",
+            plugin => 'PVE::Storage::PBSPlugin',
+            expected => [
+                'backup', 'host/999/2025-08-06T14:27:07Z', undef, undef, undef, undef, 'pbs-host',
+            ],
+        },
+        {
+            description => "Failed match: PBS backup archive, non-backup content",
+            volname => "images/host/999/2025-08-06T14:27:07Z",
+            plugin => 'PVE::Storage::PBSPlugin',
+            expected => "unable to parse PBS volume name 'images/host/999/2025-08-06T14:27:07Z'\n",
+        },
+    );
+
 #
 # run through test case array
 #
@@ -310,7 +354,11 @@ foreach my $t (@$tests) {
     my $expected = $t->{expected};
 
     my $got;
-    eval { $got = [PVE::Storage::Plugin->parse_volname($volname)] };
+    if (my $plugin = $t->{plugin}) {
+        eval { $got = [$plugin->parse_volname($volname)] };
+    } else {
+        eval { $got = [PVE::Storage::Plugin->parse_volname($volname)] };
+    }
     $got = $@ if $@;
 
     is_deeply($got, $expected, $description);
