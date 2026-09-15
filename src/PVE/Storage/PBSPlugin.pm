@@ -617,7 +617,9 @@ sub parse_volname {
 
         my $name = "$btype/$bid/$btime";
 
-        if ($bid =~ m/^\d+$/) {
+        # The third value in the result is the owning guest's ID. Check the backup type to avoid
+        # setting the value for non-guest backups.
+        if (($btype eq 'ct' || $btype eq 'vm') && $bid =~ m/^\d+$/) {
             return ('backup', $name, $bid, undef, undef, undef, $format);
         } else {
             return ('backup', $name, undef, undef, undef, undef, $format);
