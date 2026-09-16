@@ -1591,9 +1591,9 @@ my sub volume_snapshot_locked {
     die "error rename $volname to $snap - $@\n" if $@;
 
     eval { alloc_snap_image($class, $storeid, $scfg, $volname, $snap) };
-    if ($@) {
-        my $err = $@;
+    if (my $err = $@) {
         eval { $class->rename_snapshot($scfg, $storeid, $volname, $snap, 'current') };
+        log_warn("unable to rename $snap back to $volname - $@") if $@;
         die $err;
     }
 }
