@@ -154,7 +154,8 @@ my sub run_qemu_img_json {
 
     qemu_img_create($fmt, $size, $path, $options)
 
-Create a new qemu image with a specific format C<$format> and size C<$size> for a target C<$path>.
+Create a new qemu image with a specific format C<$format> and size C<$size> KiB for a target
+C<$path>.
 
 C<$options> currently allows setting the C<preallocation> value.
 
@@ -240,7 +241,7 @@ sub qemu_img_info {
     qemu_img_measure($size, $fmt, $timeout, $options)
 
 Returns a json with the maximum size including all metadata overhead for an image with format
-C<$fmt> and original size C<$size>Kb.
+C<$fmt> and original size C<$size> KiB.
 
 C<$options> allows specifying qemu-img options that might affect the sizing calculation, such as
 cluster size.
@@ -265,9 +266,9 @@ sub qemu_img_measure {
 
     qemu_img_resize($path, $format, $size, $preallocation, $timeout)
 
-Resize a qemu image C<$path> with format C<$format> to a target Kb size C<$size>. C<$preallocation>
-allows to specify the preallocation option for the resize operation. If no C<$timeout> is provided,
-it defaults to 10 seconds, or 1 hour when running in a worker context.
+Resize a qemu image C<$path> with format C<$format> to a target size C<$size> in bytes.
+C<$preallocation> allows to specify the preallocation option for the resize operation. If no
+C<$timeout> is provided, it defaults to 10 seconds, or 1 hour when running in a worker context.
 
 =cut
 
