@@ -156,7 +156,7 @@ my sub run_qemu_img_json {
 
 Create a new qemu image with a specific format C<$format> and size C<$size> for a target C<$path>.
 
-C<$options> currently allows setting the C<preallocation> value
+C<$options> currently allows setting the C<preallocation> value.
 
 =cut
 
@@ -179,7 +179,8 @@ sub qemu_img_create {
 
     qemu_img_create_qcow2_backed($path, $backing_path, $backing_format, $options)
 
-Create a new qemu qcow2 image C<$path> using an existing backing image C<$backing_path> with backing_format C<$backing_format>.
+Create a new qemu qcow2 image C<$path> using an existing backing image C<$backing_path> with
+backing format C<$backing_format>.
 
 C<$options> currently allows setting the C<preallocation> value.
 
@@ -216,9 +217,9 @@ sub qemu_img_create_qcow2_backed {
 
     qemu_img_info($filename, $file_format, $timeout, $follow_backing_files)
 
-Returns a json with qemu image C<$filename> informations with format <$file_format>.
-If C<$follow_backing_files> option is defined, return a json with the whole chain
-of backing files images.
+Returns a json with qemu image C<$filename> information with format <$file_format>. If
+C<$follow_backing_files> option is defined, return a json with the whole chain of backing files
+images.
 
 =cut
 
@@ -238,9 +239,11 @@ sub qemu_img_info {
 
     qemu_img_measure($size, $fmt, $timeout, $options)
 
-Returns a json with the maximum size including all metadatas overhead for an image with format C<$fmt> and original size C<$size>Kb.
+Returns a json with the maximum size including all metadata overhead for an image with format
+C<$fmt> and original size C<$size>Kb.
 
-C<$options> allows specifying qemu-img options that might affect the sizing calculation, such as cluster size.
+C<$options> allows specifying qemu-img options that might affect the sizing calculation, such as
+cluster size.
 
 =cut
 
