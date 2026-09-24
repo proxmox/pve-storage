@@ -175,7 +175,7 @@ my sub read_ovf_file {
 
     my $raw = "";
     PVE::Tools::run_command(
-        ['tar', '-xO', '--wildcards', '--occurrence=1', '-f', $ovf, '*.ovf'],
+        ['tar', '-xO', '--wildcards', '--occurrence=1', '-f', $ovf, '--', '*.ovf'],
         outfunc => sub {
             my $line = shift;
             $raw .= $line;

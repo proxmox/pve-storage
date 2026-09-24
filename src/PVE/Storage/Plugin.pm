@@ -2239,7 +2239,7 @@ sub volume_export {
             die $err_msg if $file_format ne 'subvol';
             write_common_header($fh, $size);
             run_command(
-                ['tar', @COMMON_TAR_FLAGS, '-cf', '-', '-C', $file, '.'],
+                ['tar', @COMMON_TAR_FLAGS, '-cf', '-', '-C', $file, '--', '.'],
                 output => '>&' . fileno($fh),
             );
             return;

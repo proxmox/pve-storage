@@ -58,6 +58,7 @@ sub extract_disk_from_import_file {
             $tmpdir,
             '-f',
             $ova_path,
+            '--',
             $inner_file,
         ]);
 

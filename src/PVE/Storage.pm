@@ -1884,7 +1884,7 @@ sub extract_vzdump_config_tar {
         $raw .= "$output\n";
     };
 
-    run_command(['tar', '-xpOf', $archive, $file, '--occurrence'], outfunc => $out);
+    run_command(['tar', '-xpOf', $archive, '--occurrence=1', '--', $file], outfunc => $out);
 
     return wantarray ? ($raw, $file) : $raw;
 }
