@@ -1290,7 +1290,7 @@ sub volume_snapshot_delete {
 
         print "running 'qemu-img commit $childpath'\n";
         #can't use -d here, as it's an lvm volume
-        $cmd = ['/usr/bin/qemu-img', 'commit', $childpath];
+        $cmd = ['/usr/bin/qemu-img', 'commit', '--', $childpath];
         eval { run_command($cmd) };
         if ($@) {
             warn
@@ -1339,6 +1339,7 @@ sub volume_snapshot_delete {
             'qcow2',
             '-f',
             'qcow2',
+            '--',
             $childpath,
         ];
         print "running '" . join(' ', $cmd->@*) . "'\n";

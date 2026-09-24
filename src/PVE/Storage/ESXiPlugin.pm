@@ -316,7 +316,7 @@ sub query_vmdk_size : prototype($;$) {
     my $json = eval {
         my $json = '';
         run_command(
-            ['/usr/bin/qemu-img', 'info', '--output=json', $filename],
+            ['/usr/bin/qemu-img', 'info', '--output=json', '--', $filename],
             timeout => $timeout,
             outfunc => sub { $json .= $_[0]; },
             errfunc => sub { warn "$_[0]\n"; },

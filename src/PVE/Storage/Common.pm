@@ -169,7 +169,7 @@ sub qemu_img_create {
     push @$cmd, '-o', "preallocation=$options->{preallocation}"
         if defined($options->{preallocation});
 
-    push @$cmd, '-f', $fmt, $path, "${size}K";
+    push @$cmd, '-f', $fmt, '--', $path, "${size}K";
 
     run_command($cmd, errmsg => "unable to create image");
 }
@@ -191,15 +191,8 @@ sub qemu_img_create_qcow2_backed {
     my ($path, $backing_path, $backing_format, $options) = @_;
 
     my $cmd = [
-        '/usr/bin/qemu-img',
-        'create',
-        '-F',
-        $backing_format,
-        '-b',
-        $backing_path,
-        '-f',
+        '/usr/bin/qemu-img', 'create', '-F', $backing_format, '-b', $backing_path, '-f',
         'qcow2',
-        $path,
     ];
 
     # TODO make this configurable for all volumes/types and pass in via $options
@@ -208,6 +201,8 @@ sub qemu_img_create_qcow2_backed {
     push @$opts, "preallocation=$options->{preallocation}"
         if defined($options->{preallocation});
     push @$cmd, '-o', join(',', @$opts) if @$opts > 0;
+
+    push @$cmd, '--', $path;
 
     run_command($cmd, errmsg => "unable to create image");
 }
@@ -227,9 +222,10 @@ images.
 sub qemu_img_info {
     my ($filename, $file_format, $timeout, $follow_backing_files) = @_;
 
-    my $cmd = ['/usr/bin/qemu-img', 'info', '--output=json', $filename];
+    my $cmd = ['/usr/bin/qemu-img', 'info', '--output=json'];
     push $cmd->@*, '-f', $file_format if $file_format;
     push $cmd->@*, '--backing-chain' if $follow_backing_files;
+    push $cmd->@*, '--', $filename;
 
     return run_qemu_img_json($cmd, $timeout);
 }
@@ -279,7 +275,7 @@ sub qemu_img_resize {
 
     my $cmd = ['/usr/bin/qemu-img', 'resize'];
     push $cmd->@*, "--preallocation=$preallocation" if $preallocation;
-    push $cmd->@*, '-f', $format, $path, $size;
+    push $cmd->@*, '-f', $format, '--', $path, $size;
 
     if (!$timeout) {
         $timeout = PVE::RPCEnvironment->is_worker() ? 60 * 60 : 10;

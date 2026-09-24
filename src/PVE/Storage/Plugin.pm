@@ -1409,7 +1409,7 @@ sub volume_snapshot {
 
         my $path = $class->filesystem_path($scfg, $volname);
 
-        my $cmd = ['/usr/bin/qemu-img', 'snapshot', '-c', $snap, $path];
+        my $cmd = ['/usr/bin/qemu-img', 'snapshot', '-c', $snap, '--', $path];
 
         run_command($cmd);
     }
@@ -1473,7 +1473,7 @@ sub volume_snapshot_rollback {
         }
     } else {
         my $path = $class->filesystem_path($scfg, $volname);
-        my $cmd = ['/usr/bin/qemu-img', 'snapshot', '-a', $snap, $path];
+        my $cmd = ['/usr/bin/qemu-img', 'snapshot', '-a', $snap, '--', $path];
         run_command($cmd);
     }
 
@@ -1511,7 +1511,7 @@ sub volume_snapshot_delete {
         if (!$parentsnap) {
             print "$volname: deleting snapshot '$snap' by commiting snapshot '$childsnap'\n";
             print "running 'qemu-img commit $childpath'\n";
-            $cmd = ['/usr/bin/qemu-img', 'commit', $childpath];
+            $cmd = ['/usr/bin/qemu-img', 'commit', '--', $childpath];
             eval { run_command($cmd) };
             if ($@) {
                 warn
@@ -1537,6 +1537,7 @@ sub volume_snapshot_delete {
                 'qcow2',
                 '-f',
                 'qcow2',
+                '--',
                 $childpath,
             ];
             print "running '" . join(' ', $cmd->@*) . "'\n";
@@ -1559,7 +1560,7 @@ sub volume_snapshot_delete {
         my $path = $class->filesystem_path($scfg, $volname);
         $class->deactivate_volume($storeid, $scfg, $volname, $snap, {});
 
-        $cmd = ['/usr/bin/qemu-img', 'snapshot', '-d', $snap, $path];
+        $cmd = ['/usr/bin/qemu-img', 'snapshot', '-d', $snap, '--', $path];
         run_command($cmd);
     }
 
@@ -2217,7 +2218,14 @@ sub volume_export {
             } else {
                 run_command(
                     [
-                        'qemu-img', 'convert', '-f', $file_format, '-O', 'raw', $file,
+                        'qemu-img',
+                        'convert',
+                        '-f',
+                        $file_format,
+                        '-O',
+                        'raw',
+                        '--',
+                        $file,
                         '/dev/stdout',
                     ],
                     output => '>&' . fileno($fh),

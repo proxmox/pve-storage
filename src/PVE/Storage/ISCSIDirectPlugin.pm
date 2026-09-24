@@ -297,7 +297,7 @@ sub volume_export {
 
     my $json = '';
     run_command(
-        ['/usr/bin/qemu-img', 'info', '-f', 'raw', '--output=json', $file],
+        ['/usr/bin/qemu-img', 'info', '-f', 'raw', '--output=json', '--', $file],
         outfunc => sub { $json .= shift },
     );
     die "failed to query size information for '$file' with qemu-img\n" if !$json;
