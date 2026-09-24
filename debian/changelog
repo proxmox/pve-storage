@@ -1,3 +1,25 @@
+libpve-storage-perl (9.1.11) trixie; urgency=medium
+
+  * fix #7598: qemu-img: increase timeout for image resizing in worker context
+
+  * fix #7077: lvm: improve ID verification error messages to distinguish
+    "invalid ID" from "ID value too short"
+
+  * PBS plugin: parse volname: only set owner ID for guest backups, and improve
+    related error handling in `pvesm extractconfig`
+
+  * tree-wide: tar/qemu-img: cleanly separate options and arguments
+
+  * decompressor info: fix support for 'tar' and properly terminate command
+    options
+
+  * plugin: volume export: avoid broken qemu-img convert command when exporting
+    a qcow2-formatted volume as raw+size stream
+
+  * pvesm extractconfig: make missing support for tar format for VMs explicit
+
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 24 Sep 2026 15:34:36 +0200
+
 libpve-storage-perl (9.1.10) trixie; urgency=medium
 
   * ceph: use the auth_client_required option for client connections, as
