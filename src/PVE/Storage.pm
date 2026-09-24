@@ -1953,11 +1953,8 @@ sub extract_vzdump_config {
     if ($type eq 'lxc' || $type eq 'openvz') {
         return extract_vzdump_config_tar($archive, qr!^(\./etc/vzdump/(pct|vps)\.conf)$!);
     } elsif ($type eq 'qemu') {
-        if ($format eq 'tar') {
-            return extract_vzdump_config_tar($archive, qr!\(\./qemu-server\.conf\)!);
-        } else {
-            return extract_vzdump_config_vma($archive, $comp);
-        }
+        die "backups of format '$format' are not supported for VMs\n" if $format ne 'vma';
+        return extract_vzdump_config_vma($archive, $comp);
     } else {
         die "cannot determine backup guest type for backup archive '$volid'\n";
     }
