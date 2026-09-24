@@ -1756,10 +1756,10 @@ sub decompressor_info {
     }
 
     my $decompressor = {
-        gz => ['zcat'],
-        lzo => ['lzop', '-d', '-c'],
-        zst => ['zstd', '-q', '-d', '-c'],
-        bz2 => ['bzcat', '-q'],
+        gz => ['zcat', '--'],
+        lzo => ['lzop', '-d', '-c', '--'],
+        zst => ['zstd', '-q', '-d', '-c', '--'],
+        bz2 => ['bzcat', '-q', '--'],
     };
 
     die "ERROR: archive format not defined\n"
