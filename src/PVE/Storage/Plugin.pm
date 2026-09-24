@@ -2216,18 +2216,10 @@ sub volume_export {
                     errfunc => sub { print STDERR "$_[0]\n" },
                 );
             } else {
+                my $bs = 64 * 1024;
+                # Note that there is no progress indication for 'qemu-img dd' at the moment.
                 run_command(
-                    [
-                        'qemu-img',
-                        'convert',
-                        '-f',
-                        $file_format,
-                        '-O',
-                        'raw',
-                        '--',
-                        $file,
-                        '/dev/stdout',
-                    ],
+                    ['qemu-img', 'dd', "if=$file", "bs=$bs", '-f', $file_format, '-O', 'raw'],
                     output => '>&' . fileno($fh),
                 );
             }
