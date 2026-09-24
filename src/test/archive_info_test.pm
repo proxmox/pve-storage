@@ -30,7 +30,7 @@ my $tests = [
             'notesfilename' => "vzdump-lxc-$vmid-3070_01_01-00_00_00.tgz" . $NOTES_EXT,
             'type' => 'lxc',
             'format' => 'tar',
-            'decompressor' => ['tar', '-z'],
+            'decompressor' => ['zcat'],
             'compression' => 'gz',
             'vmid' => $vmid,
             'ctime' => 60 * 60 * 24 * (365 * 1100 + 267),
@@ -46,7 +46,7 @@ my $tests = [
             'notesfilename' => "vzdump-lxc-$vmid-1970_01_01-02_00_30.tgz" . $NOTES_EXT,
             'type' => 'lxc',
             'format' => 'tar',
-            'decompressor' => ['tar', '-z'],
+            'decompressor' => ['zcat'],
             'compression' => 'gz',
             'vmid' => $vmid,
             'ctime' => 60 * 60 * 2 + 30,
@@ -62,7 +62,7 @@ my $tests = [
             'notesfilename' => "vzdump-lxc-$vmid-2020_03_30-21_39_30.tgz" . $NOTES_EXT,
             'type' => 'lxc',
             'format' => 'tar',
-            'decompressor' => ['tar', '-z'],
+            'decompressor' => ['zcat'],
             'compression' => 'gz',
             'vmid' => $vmid,
             'ctime' => 1585604370,
@@ -78,7 +78,7 @@ my $tests = [
             'notesfilename' => "vzdump-openvz-$vmid-2020_03_30-21_39_30.tgz" . $NOTES_EXT,
             'type' => 'openvz',
             'format' => 'tar',
-            'decompressor' => ['tar', '-z'],
+            'decompressor' => ['zcat'],
             'compression' => 'gz',
             'vmid' => $vmid,
             'ctime' => 1585604370,
@@ -94,7 +94,7 @@ my $tests = [
             'notesfilename' => "vzdump-qemu-$vmid-2020_03_30-21_39_30.tgz" . $NOTES_EXT,
             'type' => 'qemu',
             'format' => 'tar',
-            'decompressor' => ['tar', '-z'],
+            'decompressor' => ['zcat'],
             'compression' => 'gz',
             'vmid' => $vmid,
             'ctime' => 1585604370,
@@ -108,7 +108,7 @@ my $tests = [
             'filename' => "vzdump-qemu-$vmid-whatever-the-name_is_here.tgz",
             'type' => 'qemu',
             'format' => 'tar',
-            'decompressor' => ['tar', '-z'],
+            'decompressor' => ['zcat'],
             'compression' => 'gz',
             'is_std_name' => 0,
         },
@@ -117,24 +117,16 @@ my $tests = [
 
 # add new compression fromats to test
 my $decompressor = {
-    tar => {
-        gz => ['tar', '-z'],
-        lzo => ['tar', '--lzop'],
-        zst => ['tar', '--zstd'],
-        bz2 => ['tar', '--bzip2'],
-    },
-    vma => {
-        gz => ['zcat'],
-        lzo => ['lzop', '-d', '-c'],
-        zst => ['zstd', '-q', '-d', '-c'],
-        bz2 => ['bzcat', '-q'],
-    },
+    gz => ['zcat'],
+    lzo => ['lzop', '-d', '-c'],
+    zst => ['zstd', '-q', '-d', '-c'],
+    bz2 => ['bzcat', '-q'],
 };
 
 my $bkp_suffix = {
-    qemu => ['vma', $decompressor->{vma}],
-    lxc => ['tar', $decompressor->{tar}],
-    openvz => ['tar', $decompressor->{tar}],
+    qemu => ['vma', $decompressor],
+    lxc => ['tar', $decompressor],
+    openvz => ['tar', $decompressor],
 };
 
 # create more test cases for backup files matches

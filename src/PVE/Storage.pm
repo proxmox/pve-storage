@@ -1756,31 +1756,17 @@ sub decompressor_info {
     }
 
     my $decompressor = {
-        tar => {
-            gz => ['tar', '-z'],
-            lzo => ['tar', '--lzop'],
-            zst => ['tar', '--zstd'],
-            bz2 => ['tar', '--bzip2'],
-        },
-        vma => {
-            gz => ['zcat'],
-            lzo => ['lzop', '-d', '-c'],
-            zst => ['zstd', '-q', '-d', '-c'],
-            bz2 => ['bzcat', '-q'],
-        },
-        iso => {
-            gz => ['zcat'],
-            lzo => ['lzop', '-d', '-c'],
-            zst => ['zstd', '-q', '-d', '-c'],
-            bz2 => ['bzcat', '-q'],
-        },
+        gz => ['zcat'],
+        lzo => ['lzop', '-d', '-c'],
+        zst => ['zstd', '-q', '-d', '-c'],
+        bz2 => ['bzcat', '-q'],
     };
 
     die "ERROR: archive format not defined\n"
-        if !defined($decompressor->{$format});
+        if !($format eq 'iso' || $format eq 'tar' || $format eq 'vma');
 
     my $decomp;
-    $decomp = $decompressor->{$format}->{$comp} if $comp;
+    $decomp = $decompressor->{$comp} if $comp;
 
     my $info = {
         format => $format,
