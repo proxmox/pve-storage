@@ -18,6 +18,7 @@ my $res = $harness->runtests(
     "get_subdir_test.pm",
     "filesystem_path_test.pm",
     "prune_backups_test.pm",
+    "free_image_test.pm",
 );
 
 exit -1 if !$res || $res->{failed} || $res->{parse_errors};

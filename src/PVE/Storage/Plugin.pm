@@ -1263,9 +1263,9 @@ sub free_image {
     }
 
     # try to cleanup directory to not clutter storage with empty $vmid dirs if
-    # all images from a guest got deleted
-    my $dir = dirname($path);
-    rmdir($dir);
+    # all images from a guest got deleted, but keep the shared content type dirs
+    my ($vtype) = $class->parse_volname($volname);
+    rmdir(dirname($path)) if $vtype eq 'images';
 
     return undef;
 }
