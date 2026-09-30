@@ -1742,6 +1742,7 @@ sub volume_snapshot_delete {
                 },
             );
         };
+        die "error deleting snapshot $snap: $@" if $@;
         fork_cleanup_worker($cleanup_worker);
 
     } else {
