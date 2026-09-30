@@ -652,13 +652,8 @@ my sub free_lvm_volumes_locked {
                 next;
             }
 
-            eval { $secure_delete_cmd->($lvmpath) };
-            if (my $cleanup_err = $@) {
-                print STDERR "ERROR: cleanup failed for lv $name: $cleanup_err";
-                eval { rename_after_failed_cleanup($class, $scfg, $storeid, $vg, $name) };
-                $total_cleanup_errors += 1;
-                next;
-            } else {
+            eval {
+                $secure_delete_cmd->($lvmpath);
                 lock_storage_with_acquire_retry(
                     $class,
                     $storeid,
@@ -668,8 +663,14 @@ my sub free_lvm_volumes_locked {
                         run_command($cmd, errmsg => "lvremove '$vg/del-$name' error");
                     },
                 );
-                print "successfully removed volume $name ($vg/del-$name)\n";
+            };
+            if (my $cleanup_err = $@) {
+                print STDERR "ERROR: cleanup failed for lv $name: $cleanup_err";
+                eval { rename_after_failed_cleanup($class, $scfg, $storeid, $vg, $name) };
+                $total_cleanup_errors += 1;
+                next;
             }
+            print "successfully removed volume $name ($vg/del-$name)\n";
         }
         if ($total_cleanup_errors != 0) {
             my $number_of_vols = scalar @$volnames;
