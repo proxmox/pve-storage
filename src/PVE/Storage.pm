@@ -2264,7 +2264,7 @@ sub complete_storage_enabled {
 sub complete_content_type {
     my ($cmdname, $pname, $cvalue) = @_;
 
-    return [qw(rootdir images vztmpl iso backup snippets)];
+    return [qw(rootdir images vztmpl iso backup snippets import)];
 }
 
 sub complete_volume {
