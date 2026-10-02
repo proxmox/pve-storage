@@ -420,14 +420,24 @@ sub status {
     return (0, 0, 0, $active);
 }
 
+my sub esxi_assert_volname_is_valid {
+    my ($volname) = @_;
+
+    die "failed to parse volname '$volname'\n"
+        if $volname !~ m!^([^/]+)/([^/]+)/(.+)$!;
+
+    for my $component (split('/', $volname)) {
+        die "invalid volume name '$volname'\n" if $component eq '..';
+    }
+}
+
 sub parse_volname {
     my ($class, $volname) = @_;
 
     # it doesn't really make sense tbh, we can't return an owner, the format
     # may be a 'vmx' (config), the paths are arbitrary...
 
-    die "failed to parse volname '$volname'\n"
-        if $volname !~ m!^([^/]+)/([^/]+)/(.+)$!;
+    esxi_assert_volname_is_valid($volname);
 
     return ('import', $volname, 0, undef, undef, undef, 'vmx') if $volname =~ /\.vmx$/;
 
@@ -487,6 +497,8 @@ sub path {
     my ($class, $scfg, $volname, $storeid, $snapname) = @_;
 
     die "storage '$class' does not support snapshots\n" if defined $snapname;
+
+    esxi_assert_volname_is_valid($volname);
 
     return mount_dir($storeid) . '/' . $volname;
 }
