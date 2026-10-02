@@ -3,12 +3,13 @@ package PVE::Storage::ESXiPlugin;
 use strict;
 use warnings;
 
-use Fcntl qw(F_GETFD F_SETFD FD_CLOEXEC);
+use Fcntl qw(F_GETFD F_SETFD FD_CLOEXEC O_RDONLY);
 use File::Path qw(mkpath remove_tree);
 use JSON qw(from_json);
 use Net::IP;
 use POSIX ();
 
+use PVE::File;
 use PVE::Network;
 use PVE::Systemd;
 use PVE::Tools qw(file_get_contents file_set_contents run_command);
@@ -301,8 +302,10 @@ sub get_import_metadata : prototype($$$$$) {
         die "storage '$storeid' is not activated\n";
     }
 
+    my $vmx_fh = PVE::Tools::open_beneath(mount_dir($storeid), $volname, O_RDONLY);
+
     my $manifest = $class->get_manifest($storeid, $scfg, 0);
-    my $contents = file_get_contents($vmx_path);
+    my $contents = PVE::File::safe_read_from($vmx_fh, undef, 0, $vmx_path);
     my $vmx = PVE::Storage::ESXiPlugin::VMX->parse(
         $storeid, $scfg, $volname, $contents, $manifest,
     );
