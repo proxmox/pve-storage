@@ -682,6 +682,13 @@ my sub free_lvm_volumes_locked {
     };
 
     if ($scfg->{saferemove} || $on_remove_opts->{discard}) {
+        # The cleanup worker overwrites or discards the data, so refuse volumes that are still in
+        # use, like lvremove does for a direct removal. Deactivating does the same in-use check and
+        # waits for transient openers like udev. The worker activates the volumes again.
+        for my $name (@$volnames) {
+            my $cmd = ['/sbin/lvchange', '-aln', "$vg/$name"];
+            run_command($cmd, errmsg => "can't deactivate LV '$vg/$name'");
+        }
         for my $name (@$volnames) {
             # avoid long running task, so we only rename here
             my $cmd = ['/sbin/lvrename', $vg, $name, "del-$name"];
