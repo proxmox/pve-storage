@@ -409,7 +409,10 @@ my sub free_lvm_volumes_locked {
         if ($bdev && $bdev =~ m|^/dev/(dm-\d+)|) {
             $sysdir = "/sys/block/$1";
         } else {
-            warn "skip cleanup of volume '$lvmpath' - no device mapper link\n";
+            # removing the volume without zeroing it out would leave its data readable by new volumes
+            die "cannot zero out volume '$lvmpath' - no device mapper link\n"
+                if $scfg->{saferemove};
+            warn "skip discarding volume '$lvmpath' - no device mapper link\n";
             return;
         }
 
