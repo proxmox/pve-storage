@@ -1,3 +1,74 @@
+libpve-storage-perl (9.1.12) trixie; urgency=medium
+
+  * esxi: reject volume names with '..' path components, which could resolve
+    to files outside of the storage's mount point, and open vmx files only
+    beneath that mount point.
+
+  * esxi: keep the SMBIOS UUID of imported guests. ESXi stores it with the
+    first three fields byte-swapped, so the guest saw a different UUID after
+    the import, which can affect software licenses or activations bound to it.
+
+  * fix #7339: lvm: add an 'on-volume-remove' storage option with a 'discard'
+    action. Removed volumes then get discarded (TRIM) in the background task
+    before their final removal, so that thin-provisioned SAN LUNs can reclaim
+    the space. Discards are issued in batches aligned to the device's discard
+    granularity, and a volume on a device that turns out to not support
+    discard is removed without it.
+
+  * lvm: improve removing volumes with 'saferemove' enabled:
+    - zero out volumes range by range with the kernel's zero-out operation,
+      falling back to writing zeroes if the storage does not support it.
+    - the 'saferemove_throughput' limit now also applies to the kernel's
+      zero-out operation, not only to the fallback. For example, a configured
+      '-10485760' limits wiping to 10 MiB/s, so zeroing out a 1 TiB volume
+      takes about 29 hours. Remove the setting to wipe at full speed.
+    - validate 'saferemove_throughput' in the configuration. Values with the
+      k, m and g unit suffixes are still accepted, other spellings like '10mb'
+      are rejected.
+    - keep volumes that could not be zeroed out, renamed to
+      'failed-<N>-del-<name>', for a manual zero-out instead of freeing their
+      space with the old data on it.
+    - refuse to wipe or discard a volume that is still in use on the node,
+      like a direct removal does.
+    - retry acquiring the storage lock for the final removal, and continue
+      with the remaining volumes if removing one fails.
+
+  * fix #7295: lvm: snapshot rollback: keep the original volume if allocating
+    the new one fails, for storages with 'snapshot-as-volume-chain'.
+
+  * lvm: snapshot delete: report errors from cleaning up after merging the
+    snapshot, instead of reporting success.
+
+  * lvm: snapshot: warn if renaming a volume back fails after the new top
+    volume could not be allocated.
+
+  * partially fix #7554: lvm: refuse to export or import qcow2 volumes as raw,
+    which silently produced an unbootable guest on storage migration.
+
+  * fix #6915: lvmthin: keep space of the size of the pool metadata free when
+    creating a thin pool, between 1 GiB and 16 GiB, so that damaged metadata
+    can be repaired and extended afterwards. Devices smaller than about 3 GiB
+    can no longer be used for a new thin pool.
+
+  * ceph: let the client authentication setting in /etc/pve/ceph.conf decide
+    for storages of the local cluster, instead of requiring Cephx whenever the
+    storage has a key file. Such storages showed up as inactive on clusters
+    with Cephx disabled.
+
+  * storage plugins: check that a given volume name matches the requested
+    format for all storage types when allocating or renaming volumes. RBD now
+    rejects formats other than raw instead of silently creating a raw image.
+    A name without an extension still gets the matching one added, with a
+    warning.
+
+  * plugin api: backward compatible plugin api version bump for the new
+    volume name and format helper methods, which plugins can override to match
+    their naming scheme.
+
+  * pvesm: complete the 'import' content type.
+
+ -- Proxmox Support Team <support@proxmox.com>  Sat, 03 Oct 2026 19:40:00 +0200
+
 libpve-storage-perl (9.1.11) trixie; urgency=medium
 
   * fix #7598: qemu-img: increase timeout for image resizing in worker context
