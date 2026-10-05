@@ -159,7 +159,7 @@ sub parse_volname {
 sub get_parsed_format {
     my ($class, $name) = @_;
 
-    return ($class->parse_volname($name))[6];
+    return ($class->parse_volname($name))[6]; # dies for invalid volume names
 }
 
 # ZFS volume names always encode their format in the name prefix (vm- for raw
@@ -170,6 +170,7 @@ sub volname_for_format {
 
     die "unsupported format '$fmt'\n" if !($class->is_valid_format($fmt));
 
+    # Note that get_parsed_format() validates the name.
     my $name_fmt = $class->get_parsed_format($name);
     return $name if $name_fmt eq $fmt;
 

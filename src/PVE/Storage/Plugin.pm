@@ -851,7 +851,7 @@ sub parse_volname {
 =head3 get_parsed_format
 
 Return the disk format encoded in the given volume name, or C<undef> if the name does not spell one
-out.
+out. If a format is returned, the name must have been validated.
 
 This is an extension point for plugins whose volume names encode the format differently. ZFS
 derives it from the name prefix via C<parse_volname>, while LVM and RBD take it from a known file
@@ -866,7 +866,7 @@ sub get_parsed_format {
 
     return undef if $name !~ m/\.[^.]+$/; # no extension, so no format is spelled out
 
-    return (parse_name_dir($name))[1];
+    return (parse_name_dir($name))[1]; # dies for invalid volume file names
 }
 
 sub is_valid_format {
@@ -904,6 +904,7 @@ sub volname_for_format {
 
     my $parsed_volname_fmt = $class->get_parsed_format($name);
 
+    # Note that get_parsed_format() validates the name if it has a format extension.
     return $name if defined($parsed_volname_fmt) && $parsed_volname_fmt eq $fmt;
 
     my $suggestion = $class->volname_with_format($name, $fmt);
