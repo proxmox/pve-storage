@@ -289,6 +289,21 @@ sub zfs_request {
     return $msg;
 }
 
+my sub zfs_volume_exists {
+    my ($class, $scfg, $volname, $snapname) = @_;
+
+    my $name = ($class->parse_volname($volname))[1];
+    my $dataset = "$scfg->{pool}/${name}";
+    $dataset .= "\@${snapname}" if defined($snapname);
+
+    eval { $class->zfs_request($scfg, 10, 'list', '-o', 'name', '-Hp', $dataset); };
+    if (my $err = $@) {
+        return 0 if $err =~ m/dataset does not exist/;
+        die $err;
+    }
+    return 1;
+}
+
 sub zfs_wait_for_zvol_link {
     my ($class, $scfg, $volname, $timeout) = @_;
 
@@ -739,6 +754,12 @@ sub deactivate_storage {
 
 sub activate_volume {
     my ($class, $storeid, $scfg, $volname, $snapname, $cache) = @_;
+
+    if (!zfs_volume_exists($class, $scfg, $volname, $snapname)) {
+        my $name = "$volname";
+        $name .= "\@${snapname}" if defined($snapname);
+        die "volume ${name} does not exist on storage ${storeid}\n";
+    }
 
     return 1 if defined($snapname);
 
