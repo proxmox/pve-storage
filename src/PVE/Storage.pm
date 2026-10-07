@@ -2204,14 +2204,19 @@ sub volume_import_start {
     my $cpid = open3($input, $info, $info, @$import)
         or die "failed to spawn disk-import child - $!\n";
 
-    my $ready;
+    my ($ready, $output) = (0, '');
     eval {
-        PVE::Tools::run_with_timeout(5, sub { $ready = <$info>; });
+        PVE::Tools::run_with_timeout(5, sub {
+            while (defined(my $line = <$info>)) {
+                return $ready = 1 if $line eq "ready\n";
+                $output .= $line;
+            }
+        });
     };
+    die "failed to read readiness from disk import child: $@\n$output" if $@;
+    die "disk import child exited before signalling readiness\n$output" if !$ready;
 
-    die "failed to read readyness from disk import child: $@\n" if $@;
-
-    print "$ready\n";
+    print "${output}ready\n";
 
     return {
         fh => $info,
