@@ -1,3 +1,15 @@
+libpve-storage-perl (9.1.13) trixie; urgency=medium
+
+  * plugins: better document how volname_for_format() validates the name
+
+  * fix #6969: plugin: keep content directory when freeing its last file, the
+    cleanup is only intended to remove empty `/VMID/` directories when the last
+    guest volume inside is removed
+
+  * check volume access: support checking access for snippets
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 09 Oct 2026 12:00:28 +0200
+
 libpve-storage-perl (9.1.12) trixie; urgency=medium
 
   * esxi: reject volume names with '..' path components, which could resolve
