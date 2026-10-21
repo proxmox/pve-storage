@@ -1066,8 +1066,11 @@ sub volume_import {
     my ($size) = PVE::Storage::Plugin::read_common_header($fh);
     $size = PVE::Storage::Common::align_size_up($size, 1024) / 1024;
 
+    my @options = ('--export-format', '1');
+    push @options, ('--data-pool', $scfg->{'data-pool'}) if $scfg->{'data-pool'};
+
     eval {
-        my $cmd = $rbd_cmd->($scfg, $storeid, 'import', '--export-format', '1', '-', $volname);
+        my $cmd = $rbd_cmd->($scfg, $storeid, 'import', @options, '-', $volname);
         run_rbd_command(
             $cmd,
             errmsg => 'could not import image',
