@@ -1016,7 +1016,7 @@ sub volume_export {
     die "cannot export volumes together with their snapshots in $class\n" if $with_snapshots;
     die "cannot export an incremental stream in $class\n" if defined($base_snapshot);
 
-    my ($size) = $class->volume_size_info($scfg, $storeid, $volname);
+    my $size = $class->volume_size_info($scfg, $storeid, $volname);
     PVE::Storage::Plugin::write_common_header($fh, $size);
     my $cmd = $rbd_cmd->($scfg, $storeid, 'export', '--export-format', '1', $volname, '-');
     run_rbd_command(
