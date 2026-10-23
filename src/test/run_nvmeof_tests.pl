@@ -15,6 +15,7 @@ use PVE::Tools qw(file_set_contents);
 
 use PVE::API2::Storage::Config;
 use PVE::API2::Storage::Scan;
+use PVE::CLI::pvesm;
 use PVE::NVMeOF;
 use PVE::Storage;
 
@@ -689,6 +690,17 @@ subtest 'TCP discovery, fallback and API result' => sub {
             'with the diagnostic of nvme-cli',
         );
     }
+    my $formatter = Test::MockModule->new('PVE::CLIFormatter');
+    my $schema = PVE::API2::Storage::Scan->map_method_by_name('nvmeofscan')->{returns};
+    $formatter->mock(
+        print_api_result => sub {
+            is($_[0], $rows, 'CLI forwards complete discovery rows');
+            is($_[1], $schema, 'CLI forwards discovery schema');
+            is($_[3]->{'output-format'}, 'json', 'CLI supports structured output');
+        },
+    );
+    $PVE::CLI::pvesm::cmddef->{scan}->{nvmeof}->[4]
+        ->($rows, $schema, { 'output-format' => 'json' });
 };
 
 done_testing();

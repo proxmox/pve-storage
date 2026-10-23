@@ -737,6 +737,19 @@ our $cmddef = {
             $print_api_result,
             $PVE::RESTHandler::standard_output_options,
         ],
+        nvmeof => [
+            "PVE::API2::Storage::Scan",
+            'nvmeofscan',
+            ['portal'],
+            { node => $nodename },
+            sub {
+                my ($data, $schema, $options) = @_;
+                PVE::CLIFormatter::print_api_result(
+                    $data, $schema, [qw(subsysnqn portals)], $options,
+                );
+            },
+            $PVE::RESTHandler::standard_output_options,
+        ],
         'san-luns' => [
             "PVE::API2::SAN::Node",
             'luns',
