@@ -42,7 +42,7 @@ our @COMMON_TAR_FLAGS = qw(
 );
 
 our @SHARED_STORAGE = (
-    'iscsi', 'nfs', 'cifs', 'rbd', 'cephfs', 'iscsidirect', 'zfs', 'drbd', 'pbs',
+    'iscsi', 'nfs', 'cifs', 'rbd', 'cephfs', 'iscsidirect', 'zfs', 'drbd', 'pbs', 'nvmeof',
 );
 
 our $QCOW2_PREALLOCATION = {

@@ -38,6 +38,7 @@ $storage->mock(config => sub { $cfg });
 $disk->mock(verify_blockdev_path => sub { $device });
 $disk->mock(is_partition => sub { 0 });
 $disk->mock(get_nvme_transport => sub { 'fc' });
+$disk->mock(read_subsysnqn => sub { 'nqn.test' });
 $disk->mock(is_iscsi_device => sub { 0 });
 $disk->mock(is_mounted => sub { 0 });
 $disk->mock(has_holder => sub { 0 });
@@ -86,6 +87,28 @@ for my $base (qw(fabric nvme-fabric)) {
     eval { PVE::Storage::SAN::assert_lun_unreferenced($cfg, $lun) };
     like($@, qr/base volume/, "native base reference on storage '$base' refuses");
 }
+$cfg->{ids} =
+    { fabric =>
+        { type => 'nvmeof', subsysnqn => 'nqn.test', disable => 1, content => { images => 1 } } };
+eval { PVE::Storage::SAN::assert_lun_unreferenced($cfg, $lun) };
+like(
+    $@,
+    qr/serves images from this subsystem/,
+    'direct namespace image use refuses even when disabled',
+);
+$cfg->{ids}->{fabric}->{content} = { 'vm-vol' => 1 };
+eval { PVE::Storage::SAN::assert_lun_unreferenced($cfg, $lun) };
+like($@, qr/serves images from this subsystem/, 'also when restricted to VM disks');
+$cfg->{ids}->{fabric}->{content} = { none => 1 };
+eval { PVE::Storage::SAN::assert_lun_unreferenced($cfg, $lun) };
+is($@, '', 'connection-only storage permits namespace initialization');
+
+for my $nqn (undef, '') {
+    $disk->mock(read_subsysnqn => sub { $nqn });
+    eval { PVE::Storage::SAN::assert_lun_unreferenced($cfg, $lun) };
+    like($@, qr/cannot read its NVMe subsystem/, 'an unreadable subsystem refuses');
+}
+$disk->mock(read_subsysnqn => sub { 'nqn.test' });
 $cfg->{ids} = {};
 @order = @opens = ();
 $tools->mock(file_get_contents => sub { 1024 });

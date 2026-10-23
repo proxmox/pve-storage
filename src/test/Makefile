@@ -17,6 +17,7 @@ test: \
     test_lvmplugin \
     test_multipath \
     test_multipath_api \
+    test_nvmeof \
     test_ovf \
     test_plugin \
     test_remote_command \
@@ -119,3 +120,7 @@ test_disk_api: run_disk_api_tests.pl
 
 test_storage_create: run_storage_create_tests.pl
 	./run_storage_create_tests.pl
+
+test_nvmeof: run_nvmeof_tests.pl run_nvmeof_taint_tests.pl
+	./run_nvmeof_tests.pl
+	perl -T ./run_nvmeof_taint_tests.pl

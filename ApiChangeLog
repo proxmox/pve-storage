@@ -101,10 +101,11 @@ Future changes should be documented in here.
   declares a property of that name is then not loaded until it renames it, so prefer names that
   are specific to the plugin, for example prefixed with its type.
 
-  As soon as one such plugin is installed, the API checks the parameters for adding and updating a
-  storage against the options of its type alone, for all storage types. Only the sensitive
-  properties of a plugin that does not isolate its own are still accepted without being listed in
-  its `options()`, by their own names: an alias that only another plugin declares for one is not.
+  Since the in-tree 'nvmeof' plugin isolates its properties, the API checks the parameters for
+  adding and updating a storage against the options of its type alone, for all storage types,
+  also for plugins of older API versions. Only the sensitive properties of a plugin that does not
+  isolate its own are still accepted without being listed in its `options()`, by their own names:
+  an alias that only another plugin declares for one is not.
 
   Set 'sensitive-properties' in an isolating plugin, even if empty. Without it, the fallback list of
   version 11 also applies to the plugin's own properties of these names.

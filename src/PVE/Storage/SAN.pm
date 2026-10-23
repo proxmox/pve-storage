@@ -302,6 +302,13 @@ sub lun_partitions($lun) {
 }
 
 sub assert_lun_unreferenced($cfg, $lun, $exempt = undef) {
+    my $name = basename($lun->{devpath});
+    my $nqn;
+    if ($name =~ /^nvme\d+n\d+$/) {
+        # without its subsystem, a storage that offers the namespace to guests cannot be ruled out
+        $nqn = PVE::Diskmanage::read_subsysnqn("/sys/block/$name/device/subsysnqn") // '';
+        die "cannot use '$lun->{devpath}' - cannot read its NVMe subsystem\n" if $nqn eq '';
+    }
     my %vgs = map { $_ => 1 } PVE::Storage::LVMPlugin::lun_volume_groups(
         [$lun->{devpath}, lun_partitions($lun)->@*],
     )->@*;
@@ -323,6 +330,14 @@ sub assert_lun_unreferenced($cfg, $lun, $exempt = undef) {
             && PVE::Storage::san_storage_serves_images($scfg)
         ) {
             die "cannot use '$lun->{devpath}' - storage '$sid' serves images from this target\n";
+        }
+        if (
+            $type eq 'nvmeof'
+            && defined($nqn)
+            && $scfg->{subsysnqn} eq $nqn
+            && PVE::Storage::san_storage_serves_images($scfg)
+        ) {
+            die "cannot use '$lun->{devpath}' - storage '$sid' serves images from this subsystem\n";
         }
         next if $type ne 'lvm' || !$scfg->{base};
         my $base = PVE::Multipath::parse_base_volume($scfg->{base});

@@ -6,6 +6,7 @@ SOURCES= \
 	NFSPlugin.pm \
 	CIFSPlugin.pm \
 	ISCSIPlugin.pm \
+	NVMeOFPlugin.pm \
 	CephFSPlugin.pm \
 	RBDPlugin.pm \
 	ISCSIDirectPlugin.pm \
