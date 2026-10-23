@@ -709,7 +709,9 @@ sub get_disks {
             }
 
             my ($health, $wearout) = ('UNKNOWN', 'N/A');
-            if (!$nosmart) {
+            # SMART queries over fabrics can stall while a path recovers.
+            my $remote_nvme = is_remote_transport('nvme-' . ($nvme_transport // ''));
+            if (!$nosmart && !$remote_nvme) {
                 eval {
                     my $smartdata = get_smart_data($devpath, !is_ssdlike($type));
                     $health = $smartdata->{health} if $smartdata->{health};

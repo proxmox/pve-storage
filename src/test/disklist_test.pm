@@ -284,6 +284,20 @@ sub test_disk_list {
             ok($san_disks->{sda}, 'SAN inventory opts into iSCSI');
         }
 
+        if ($testcasedir eq 'nvme_smart') {
+            my $smart_calls;
+            $diskmanage_module->mock(get_smart_data => sub { $smart_calls++; return {} });
+            for my $transport (qw(tcp rdma fc pcie)) {
+                $smart_calls = 0;
+                $diskmanage_module->mock(get_nvme_transport => sub { $transport });
+                PVE::Diskmanage::get_disks();
+                $testcount++;
+                is($smart_calls, $transport eq 'pcie' ? 1 : 0, "SMART queries for $transport");
+            }
+            $diskmanage_module->unmock('get_smart_data');
+            $diskmanage_module->unmock('get_nvme_transport');
+        }
+
         if (-f "disk_tests/$testcasedir/multipathd_status_expected.json") {
             my $status = PVE::Multipath::path_status_by_wwid();
             my $expected_status =
