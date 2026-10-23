@@ -149,4 +149,46 @@ is_deeply(
 );
 is_deeply(\@opens, [$link], 'VG creation holds the native by-id device');
 
+$cfg->{ids} = { fabric => { type => 'nvmeof', subsysnqn => 'nqn.test', content => { none => 1 } } };
+my @activation;
+my $add = sub {
+    PVE::Storage::LVMPlugin->on_add_hook(
+        'data',
+        { base => 'fabric:nvme-eui.0123456789abcdef', vgname => 'data', shared => 1 },
+    );
+};
+$storage->mock(path => sub { $link });
+$storage->mock(activate_storage => sub { push @activation, 'storage' });
+$storage->mock(activate_volumes => sub { push @activation, 'volume' });
+$lvm->mock(
+    lvm_create_volume_group => sub {
+        is($_[0], $link, 'add hook passes native base');
+        is($_[3]->{exempt}, 'data', 'add hook exempts new storage');
+        ok($_[3]->{'san-only'}, 'and takes the namespace only as SAN LUN');
+    },
+);
+$add->();
+is_deeply(\@activation, ['storage', 'volume'], 'LVM activates the NVMe base before creation');
+$lvm->unmock('lvm_create_volume_group');
+
+# an existing volume group of the same name is taken over without writes
+@order = ();
+$lvm->mock(lvm_pv_info => sub { { vgname => 'data', in_use => 1 } });
+$add->();
+is_deeply(\@order, [qw(lock unlock)], 'an existing volume group is taken over');
+$lvm->mock(lvm_pv_info => sub { undef });
+
+@activation = ();
+$cfg->{ids}->{fabric}->{content} = { images => 1 };
+eval { $add->() };
+like($@, qr/offers its namespaces as disk images/, 'a base with direct use refuses');
+is_deeply(\@activation, [], 'before it activates anything');
+$cfg->{ids}->{fabric}->{content} = { none => 1 };
+
+@order = ();
+$disk->mock(get_nvme_transport => sub { undef });
+eval { $add->() };
+like($@, qr/not recognized as a SAN LUN/, 'a namespace without transport is no local disk');
+is_deeply(\@order, [], 'and nothing is written to it');
+
 done_testing();

@@ -427,7 +427,13 @@ sub lvm_create_volume_group {
     my ($device, $vgname, $shared, $guard) = @_;
     require PVE::Storage::SAN;
     my $lun = PVE::Storage::SAN::lun_for_device($device);
-    return create_volume_group($device, $vgname, undef, $guard) if !$lun;
+    if (!$lun) {
+        # a namespace whose transport cannot be read, like one without a path, is no local disk
+        die "cannot use '$device' - it is not recognized as a SAN LUN, for example as it has no"
+            . " path\n"
+            if $guard && $guard->{'san-only'};
+        return create_volume_group($device, $vgname, undef, $guard);
+    }
     PVE::Storage::SAN::with_lun_lock(
         $lun,
         sub { create_volume_group($device, $vgname, $lun, $guard) },
@@ -1355,9 +1361,12 @@ sub on_add_hook {
         my $basecfg = PVE::Storage::storage_config($cfg, $baseid, 1);
         die "base storage ID '$baseid' does not exist\n" if !$basecfg;
 
-        # we only support iscsi for now
-        die "unsupported base type '$basecfg->{type}'"
-            if $basecfg->{type} ne 'iscsi';
+        die "unsupported base storage type '$basecfg->{type}' - expected iscsi or nvmeof\n"
+            if $basecfg->{type} ne 'iscsi' && $basecfg->{type} ne 'nvmeof';
+        # with direct use, a guest can get the namespace as disk, also with an existing group on it
+        die "storage '$baseid' offers its namespaces as disk images - if no guest uses them"
+            . " directly, set its content to 'none'\n"
+            if $basecfg->{type} eq 'nvmeof' && PVE::Storage::san_storage_serves_images($basecfg);
 
         # Managed multipath requires the coalesced map or a partition of it, never a transient
         # single-path PV.
@@ -1399,7 +1408,12 @@ sub on_add_hook {
             $path,
             $scfg->{vgname},
             $scfg->{shared},
-            { check_storage => $check_target, exempt => $storeid },
+            {
+                check_storage => $check_target,
+                exempt => $storeid,
+                # the volumes of an NVMe over Fabrics storage are whole namespaces
+                'san-only' => $basecfg->{type} eq 'nvmeof',
+            },
         );
     }
 
