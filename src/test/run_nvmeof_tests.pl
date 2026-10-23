@@ -5,6 +5,7 @@ use lib qw(..);
 use Fcntl qw(:flock);
 use File::Path qw(make_path remove_tree);
 use File::Temp qw(tempdir);
+use JSON qw(encode_json);
 use POSIX ();
 use Test::MockModule;
 use Test::More;
@@ -13,6 +14,7 @@ use Time::HiRes ();
 use PVE::Tools qw(file_set_contents);
 
 use PVE::API2::Storage::Config;
+use PVE::API2::Storage::Scan;
 use PVE::NVMeOF;
 use PVE::Storage;
 
@@ -599,6 +601,94 @@ subtest 'the connection check has a time limit too' => sub {
     eval { $class->check_connection('few', $scfg) };
     is($@, "no controller of the subsystem is live\n", 'with a controller for each portal');
     is($pings, 0, 'which the check does not ping');
+};
+
+subtest 'TCP discovery, fallback and API result' => sub {
+    my $record = {
+        subtype => 'nvme subsystem',
+        trtype => 'tcp',
+        subnqn => 'nqn.test',
+        traddr => '192.0.2.1',
+        trsvcid => '4420',
+    };
+    my $raw = encode_json({
+        records =>
+            [$record, $record, { %$record, trtype => 'rdma' }, { %$record, trsvcid => 70000 }],
+    });
+    is_deeply(
+        PVE::NVMeOF::parse_discovery_log($raw),
+        { 'nqn.test' => [{ traddr => '192.0.2.1', trsvcid => 4420 }] },
+        'TCP only, unique valid portals',
+    );
+    my $padded =
+        { %$record, traddr => '192.0.2.1' . (' ' x 10), trsvcid => '4420' . (' ' x 28) };
+    is_deeply(
+        PVE::NVMeOF::parse_discovery_log(encode_json({ records => [$padded] })),
+        { 'nqn.test' => [{ traddr => '192.0.2.1', trsvcid => 4420 }] },
+        'padded address fields',
+    );
+    for my $bad ('garbage', '{}', '[]') {
+        eval { PVE::NVMeOF::parse_discovery_log($bad) };
+        ok($@, 'malformed discovery is not an empty success');
+    }
+    my $nvme = Test::MockModule->new('PVE::NVMeOF');
+    my $net = Test::MockModule->new('PVE::Network');
+    my (@ports, @commands);
+    our $locked;
+    $nvme->mock(with_lock => sub { local $locked = 1; $_[0]->() });
+    $nvme->mock(assert_support => sub { });
+    $nvme->mock(host_identity => sub { { nqn => 'nqn.host', id => 'id' } });
+    $net->mock(tcp_ping => sub { push @ports, $_[1]; $_[1] != 8009 });
+    $nvme->mock(
+        run_command => sub($cmd, %opts) {
+            ok($locked, 'discovery holds the NVMe lock');
+            is($opts{timeout}, 30, 'discovery command timeout');
+            push @commands, $cmd;
+            $opts{outfunc}->($raw);
+        },
+    );
+    my $rows = PVE::API2::Storage::Scan->nvmeofscan({ node => 'n1', portal => '192.0.2.1' });
+    is_deeply(\@ports, [8009, 4420], 'unspecified port tries discovery then I/O port');
+    is_deeply($rows, [{ subsysnqn => 'nqn.test', portals => '192.0.2.1:4420' }], 'API shape');
+    eval {
+        PVE::JSONSchema::validate(
+            $rows,
+            PVE::API2::Storage::Scan->map_method_by_name('nvmeofscan')->{returns},
+        );
+    };
+    is($@, '', 'API schema accepts result');
+    @ports = ();
+    PVE::NVMeOF::discover('[2001:db8::1]:4421');
+    is_deeply(\@ports, [4421], 'explicit port does not fall back');
+    # the discovery port answers but refuses, the I/O port does not answer
+    $net->mock(tcp_ping => sub { $_[1] == 8009 });
+    $nvme->mock(run_command => sub { die "host not allowed\n" });
+    eval { PVE::NVMeOF::discover('192.0.2.1') };
+    like($@, qr/failed - host not allowed$/, 'the error of the answering port is kept');
+    $net->mock(tcp_ping => sub { $_[1] == 4420 });
+    eval { PVE::NVMeOF::discover('192.0.2.1') };
+    like($@, qr/failed - host not allowed$/, 'also if the other port answers');
+    $net->mock(tcp_ping => sub { 0 });
+    eval { PVE::NVMeOF::discover('192.0.2.1') };
+    like($@, qr/failed - no answer from portal$/, 'without any answer');
+    $nvme->mock(assert_support => sub { die "nvme-cli is not installed\n" });
+    eval { PVE::NVMeOF::discover('192.0.2.1') };
+    is($@, "nvme-cli is not installed\n", 'a missing prerequisite is reported as it is');
+    # nvme-cli itself writes its diagnostic to stderr and exits with an error
+    $nvme->unmock('run_command');
+    $nvme->mock(assert_support => sub { });
+    my $cli = "$dir/nvme-refusing";
+    file_set_contents($cli, "#!/bin/sh\necho 'host not allowed' >&2\nexit 1\n", 0755);
+    {
+        local $PVE::NVMeOF::NVME = $cli;
+        $net->mock(tcp_ping => sub { $_[1] == 8009 });
+        eval { PVE::NVMeOF::discover('192.0.2.1') };
+        like(
+            $@,
+            qr/failed - nvme discover: host not allowed$/,
+            'with the diagnostic of nvme-cli',
+        );
+    }
 };
 
 done_testing();

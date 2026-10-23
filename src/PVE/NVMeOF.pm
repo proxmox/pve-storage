@@ -7,11 +7,13 @@ use Digest::SHA qw(sha1_hex);
 use Fcntl qw(:flock F_GETFD F_SETFD FD_CLOEXEC);
 use File::Basename qw(basename);
 use File::Path qw(make_path);
+use JSON qw(decode_json);
 use POSIX qw(ceil);
 use Socket qw(AF_INET AF_INET6 inet_ntop inet_pton);
 use Time::HiRes ();
 
 use PVE::JSONSchema;
+use PVE::Network;
 use PVE::Tools qw(dir_glob_foreach file_read_firstline file_set_contents run_command);
 
 use PVE::Diskmanage;
@@ -311,6 +313,70 @@ sub connect_path($scfg, $path, $limit = undef) {
         die $err;
     }
     return $res;
+}
+
+sub parse_discovery_log($raw) {
+    my $log = decode_json($raw);
+    die "invalid NVMe discovery log\n"
+        if ref($log) ne 'HASH' || ref($log->{records}) ne 'ARRAY';
+    my (%seen, %res);
+    for my $record ($log->{records}->@*) {
+        next
+            if ($record->{subtype} // '') ne 'nvme subsystem' || ($record->{trtype} // '') ne 'tcp';
+        # the log pads the address fields with spaces, which not every nvme-cli removes
+        my ($nqn_raw, $addr, $port) =
+            map { my $v = $_ // ''; $v =~ s/^\s+|\s+$//g; $v }
+            $record->@{qw(subnqn traddr trsvcid)};
+        my $nqn = subsystem_nqn($nqn_raw) // next;
+        my $path = parse_portal(($addr =~ /:/ ? "[$addr]" : $addr) . ":$port") // next;
+        next if $seen{$nqn}->{ format_path($path) }++;
+        push $res{$nqn}->@*, $path;
+    }
+    return \%res;
+}
+
+sub discover($portal) {
+    my $path = parse_portal($portal) // die "invalid portal '$portal'\n";
+    my @ports = $portal =~ /:[0-9]+$/ ? ($path->{trsvcid}) : (8009, 4420);
+    # a missing prerequisite fails on every port, so report it as it is
+    assert_support();
+    my $host = host_identity();
+    my $error;
+    for my $port (@ports) {
+        # keep the error of a port that answered rather than "no answer" from the other port
+        if (!PVE::Network::tcp_ping($path->{traddr}, $port, 2)) {
+            $error //= "no answer from portal\n";
+            next;
+        }
+        my $result = eval {
+            with_lock(sub {
+                my $out = '';
+                run_command(
+                    [
+                        $NVME,
+                        'discover',
+                        '--transport=tcp',
+                        '--traddr',
+                        $path->{traddr},
+                        '--trsvcid',
+                        $port,
+                        '--hostnqn',
+                        $host->{nqn},
+                        '--hostid',
+                        $host->{id},
+                        '--output-format=json',
+                    ],
+                    timeout => 30,
+                    errmsg => 'nvme discover',
+                    outfunc => sub($line) { $out .= "$line\n" },
+                );
+                return parse_discovery_log($out);
+            });
+        };
+        return $result if !$@;
+        $error = $@;
+    }
+    die "discovery at portal '$portal' failed - $error";
 }
 
 1;

@@ -6,6 +6,7 @@ use warnings;
 # NOTE: This API endpoints are mounted by pve-manager's API2::Node module and pvesm CLI
 
 use PVE::JSONSchema qw(get_standard_option);
+use PVE::NVMeOF;
 use PVE::RESTHandler;
 use PVE::SafeSyslog;
 
@@ -49,6 +50,7 @@ __PACKAGE__->register_method({
             { method => 'lvm' },
             { method => 'lvmthin' },
             { method => 'nfs' },
+            { method => 'nvmeof' },
             { method => 'pbs' },
             { method => 'zfs' },
         ];
@@ -297,6 +299,53 @@ __PACKAGE__->register_method({
         }
 
         return $data;
+    },
+});
+
+__PACKAGE__->register_method({
+    name => 'nvmeofscan',
+    path => 'nvmeof',
+    method => 'GET',
+    description =>
+        'List the NVMe over TCP subsystems offered to this node by a discovery controller.',
+    protected => 1,
+    proxyto => 'node',
+    permissions => { check => ['perm', '/storage', ['Datastore.Allocate']] },
+    parameters => {
+        additionalProperties => 0,
+        properties => {
+            node => get_standard_option('pve-node'),
+            portal => {
+                description => 'IPv4 or bracketed IPv6 discovery address with an optional port.'
+                    . ' Without a port, try 8009 then 4420.',
+                type => 'string',
+                format => 'pve-storage-nvme-portal',
+            },
+        },
+    },
+    returns => {
+        type => 'array',
+        items => {
+            type => 'object',
+            additionalProperties => 0,
+            properties => {
+                subsysnqn => { type => 'string', description => 'The subsystem NQN.' },
+                portals => {
+                    type => 'string',
+                    description => 'The discovered TCP portals, comma separated.',
+                },
+            },
+        },
+    },
+    code => sub {
+        my ($param) = @_;
+        my $res = PVE::NVMeOF::discover($param->{portal});
+        return [
+            map { {
+                subsysnqn => $_,
+                portals => join(',', map { PVE::NVMeOF::format_path($_) } $res->{$_}->@*),
+            } } sort keys %$res
+        ];
     },
 });
 

@@ -40,6 +40,7 @@ $nvme->mock(
             'all connect operands are validated and untainted',
         );
         PVE::Tools::run_command(['/usr/bin/true', @$cmd], timeout => 5);
+        $opts{outfunc}->('{"records":[]}') if $opts{outfunc};
     },
 );
 my $path = PVE::NVMeOF::parse_portal($portal);
@@ -55,6 +56,10 @@ for my $bad ('nqn.bad,nqn=other', "nqn.test\n", 'nqn.2014-08.org.nvmexpress.disc
     eval { PVE::NVMeOF::connect_path({ subsysnqn => $bad }, $path) };
     like($@, qr/invalid subsystem/, 'invalid connect subsystem refused');
 }
+my $net = Test::MockModule->new('PVE::Network');
+$net->mock(tcp_ping => sub { 1 });
+eval { PVE::NVMeOF::discover($portal) };
+is($@, '', 'discovery can execute with file-backed host identity in taint mode');
 file_set_contents($PVE::NVMeOF::HOSTID_FILE, "00000000-0000-0000-0000-000000000000\n");
 eval { PVE::NVMeOF::host_identity() };
 like($@, qr/nonzero UUID/, 'zero host ID refused');

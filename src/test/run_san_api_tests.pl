@@ -104,7 +104,7 @@ is_deeply(
 );
 is_deeply(
     [map { $_->{method} } PVE::API2::Storage::Scan->index({ node => 'test' })->@*],
-    [qw(cifs iscsi lvm lvmthin nfs pbs zfs)],
+    [qw(cifs iscsi lvm lvmthin nfs nvmeof pbs zfs)],
     'scan index lists the discovery scans',
 );
 is_deeply(
