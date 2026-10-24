@@ -16,6 +16,7 @@ use PVE::Multipath;
 use PVE::Multipath::Config;
 use PVE::Multipath::Generator;
 use PVE::Multipath::Identity;
+use PVE::NVMeOF;
 use PVE::Storage;
 use PVE::Storage::LVMPlugin;
 
@@ -42,7 +43,9 @@ sub scan_luns($cfg) {
         PVE::Multipath::Config::wwids_for_node($mpcfg, PVE::INotify::nodename())->@*;
     my %listed = map { $_ => 1 } PVE::Multipath::list_etc_multipath_wwids()->@*;
     my $derived = PVE::Multipath::Generator::derived_wwids($cfg, $ids);
-    my (%storage, %expected, %vg_owner, %target_owner, %base_owner, %targets, %paths, %unmapped);
+    my (%storage, %expected, %vg_owner, %target_owner, %base_owner, %nvme_owner, %nvme_paths);
+    my (%targets, %paths);
+    my %unmapped;
 
     my $wanted =
         PVE::Multipath::Generator::wanted_wwids($mpcfg, PVE::INotify::nodename(), $derived);
@@ -58,6 +61,11 @@ sub scan_luns($cfg) {
             if defined($scfg->{target}) && PVE::Storage::san_storage_serves_images($scfg);
         my $base = PVE::Multipath::parse_base_volume($scfg->{base});
         $base_owner{ $base->{wwid} } //= $sid if $base;
+        next if $scfg->{type} ne 'nvmeof';
+        $nvme_owner{ $scfg->{subsysnqn} } //= $sid;
+        # only a storage in use on this node expects its paths here
+        $nvme_paths{ $scfg->{subsysnqn} } //= $sid
+            if PVE::Storage::storage_check_enabled($cfg, $sid, undef, 1);
     }
 
     my %rows;
@@ -102,6 +110,10 @@ sub scan_luns($cfg) {
                 $row->{'nvme-subsystem'} = $nqn;
                 my $nsid = file_read_firstline("/sys/block/$name/nsid");
                 $row->{'nvme-nsid'} = int($nsid) if defined($nsid) && $nsid =~ /^\d+$/;
+                if (my $sid = $nvme_paths{$nqn}) {
+                    $row->{'paths-expected'} =
+                        scalar(PVE::NVMeOF::storage_paths($cfg->{ids}->{$sid})->@*);
+                }
             }
         }
         for my $key (qw(transport vendor model serial)) {
@@ -208,9 +220,12 @@ sub scan_luns($cfg) {
                 $row->{'paths-expected'},
             );
         }
+        my $nvme = $nvme_owner{ $row->{'nvme-subsystem'} // '' };
+        undef $nvme if $nvme && !PVE::Storage::san_storage_serves_images($cfg->{ids}->{$nvme});
         my ($target) =
             map { $target_owner{$_} // () } sort keys(($targets{ $row->{wwid} } // {})->%*);
-        my $owner = $base_owner{ $row->{wwid} } // $vg_owner{ $row->{vgname} // '' } // $target;
+        my $owner = $base_owner{ $row->{wwid} } // $vg_owner{ $row->{vgname} // '' } // $target
+            // $nvme;
         $row->{'used-by-storage'} = $owner if defined($owner);
     }
     return [map { $rows{$_} } sort keys %rows];

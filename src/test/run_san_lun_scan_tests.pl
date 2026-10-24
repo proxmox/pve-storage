@@ -329,6 +329,12 @@ is($rows->[0]->{devpath}, '/dev/sdc', 'the row names the path that its by-id lin
 $disks = { nvme0n1 => { devpath => '/dev/nvme0n1', size => 100, transport => 'nvme-fc' } };
 $scan->mock(file_read_firstline => sub { $_[0] =~ m{/nsid$} ? 1 : 'eui.0123456789abcdef' });
 $disk->mock(read_subsysnqn => sub { 'nqn.test' });
+$cfg->{ids}->{fabric} = {
+    type => 'nvmeof',
+    subsysnqn => 'nqn.test',
+    portals => '192.0.2.1,192.0.2.2',
+    content => { images => 1 },
+};
 $scan->unmock('stable_path');
 $scan->mock(abs_path => sub { '/dev/nvme0n1' });
 $rows = PVE::Storage::SAN::scan_luns($cfg);
@@ -346,6 +352,41 @@ eval { PVE::JSONSchema::validate($rows, $schema) };
 is($@, '', 'native row matches the API schema');
 is($rows->[0]->{'nvme-subsystem'}, 'nqn.test', 'subsystem NQN exposed');
 is($rows->[0]->{'nvme-nsid'}, 1, 'namespace ID exposed');
+is($rows->[0]->{'used-by-storage'}, 'fabric', 'a storage serving the namespaces uses them');
+is($rows->[0]->{'paths-expected'}, 2, 'one expected path per configured portal');
+
+for my $count (1, 3) {
+    $config->mock(
+        read_config => sub { {
+            ids => { 'eui.0123456789abcdef' => { type => 'wwid', 'paths-expected' => $count } },
+        } },
+    );
+    my $entry = PVE::Storage::SAN::scan_luns($cfg);
+    is($entry->[0]->{'paths-expected'}, 2, "a multipath entry does not change it ($count)");
+}
+$config->mock(read_config => sub { { ids => { '3600map' => { type => 'wwid' } } } });
+{
+    local $cfg->{ids}->{fabric}->{content} = { none => 1 };
+    my $plain = PVE::Storage::SAN::scan_luns($cfg);
+    is($plain->[0]->{'used-by-storage'}, undef, 'a connection storage does not');
+    is($plain->[0]->{'paths-expected'}, 2, 'but still tells the expected paths');
+}
+{
+    local $cfg->{ids}->{fabric}->{disable} = 1;
+    my $disabled = PVE::Storage::SAN::scan_luns($cfg);
+    is($disabled->[0]->{'paths-expected'}, undef, 'a disabled storage expects no paths');
+    is($disabled->[0]->{'used-by-storage'}, 'fabric', 'but still uses the namespaces');
+}
+{
+    local $cfg->{ids}->{fabric}->{nodes} = { other => 1 };
+    my $elsewhere = PVE::Storage::SAN::scan_luns($cfg);
+    is($elsewhere->[0]->{'paths-expected'}, undef, 'nor a storage of other nodes');
+}
+for my $base (qw(fabric nvme-fabric)) {
+    $cfg->{ids}->{data}->{base} = "$base:nvme-eui.0123456789abcdef";
+    $rows = PVE::Storage::SAN::scan_luns($cfg);
+    is($rows->[0]->{'used-by-storage'}, 'data', "LVM base consumer takes precedence ($base)");
+}
 
 $disk->mock(is_partition => sub { 1 });
 ok(!PVE::Storage::SAN::is_san_device('/dev/sdb1'), 'a partition is never a LUN');

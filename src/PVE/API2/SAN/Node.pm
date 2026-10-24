@@ -118,8 +118,9 @@ __PACKAGE__->register_method({
                 'paths-expected' => {
                     description => "The number of paths the LUN should have on this node: the"
                         . " highest of the count of its multipath entry and, for each managed"
-                        . " iSCSI storage of the LUN, the number of its portals. Absent if no"
-                        . " count is known.",
+                        . " iSCSI storage of the LUN, the number of its portals. For a namespace"
+                        . " of an NVMe over Fabrics storage, the number of its portals. Absent if"
+                        . " no count is known.",
                     type => 'integer',
                     optional => 1,
                 },
@@ -198,8 +199,8 @@ __PACKAGE__->register_method({
                 },
                 'used-by-storage' => {
                     description => "The storage that uses the LUN: as its base volume or"
-                        . " through the volume group on it, or as an iSCSI storage that serves the"
-                        . " LUNs of its target as images.",
+                        . " through the volume group on it, or as an iSCSI or NVMe over Fabrics"
+                        . " storage that serves the LUNs of its target or subsystem as images.",
                     type => 'string',
                     optional => 1,
                 },
