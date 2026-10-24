@@ -124,6 +124,11 @@ my $node_schema = {
             optional => 1,
             description => 'The iSCSI initiator name of the node.',
         },
+        'nvme-host-nqn' => {
+            type => 'string',
+            optional => 1,
+            description => 'The NVMe host NQN of the node.',
+        },
     },
 };
 

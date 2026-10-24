@@ -65,6 +65,9 @@ sub update_node_status() {
     my $initiator = eval { PVE::Storage::ISCSIPlugin::read_initiator_info() };
     $report->{'iscsi-initiator-name'} = $initiator->{name}
         if $initiator && defined($initiator->{name});
+    require PVE::NVMeOF;
+    my $host = eval { PVE::NVMeOF::host_identity() };
+    $report->{'nvme-host-nqn'} = $host->{nqn} if $host;
     eval {
         die "multipath-tools is not installed\n" if !PVE::Multipath::is_supported();
         die "multipathd is not running or does not respond\n" if !PVE::Multipath::is_running();
@@ -199,7 +202,7 @@ sub cluster_status() {
         $entry->{time} = $report->{time} if defined($report->{time});
         my $offline = exists($members->{$node}) && !$members->{$node}->{online};
         next if $offline || !defined($report->{time}) || time() - $report->{time} > 180;
-        my @keys = qw(error apply-error iscsi-initiator-name other-maps);
+        my @keys = qw(error apply-error iscsi-initiator-name nvme-host-nqn other-maps);
         $entry->{$_} = $report->{$_} for grep { defined($report->{$_}) } @keys;
         $entry->{state} = defined($report->{error}) ? 'unavailable' : 'ok';
         $unhinted{$node} = 1 if $report->{'vgs-unknown'};

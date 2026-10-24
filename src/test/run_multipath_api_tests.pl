@@ -15,6 +15,7 @@ use Test::MockModule;
 use PVE::API2::Multipath;
 use PVE::API2::SAN::Cluster;
 use PVE::Multipath::Generator;
+use PVE::NVMeOF;
 use PVE::Storage;
 
 subtest 'add, update and remove an explicit entry' => sub {
@@ -457,9 +458,12 @@ subtest 'an unconfigured node does not write drop-ins or reload' => sub {
     }
     my $iscsi = Test::MockModule->new('PVE::Storage::ISCSIPlugin');
     $iscsi->mock(read_initiator_info => sub { {} });
+    my $nvme = Test::MockModule->new('PVE::NVMeOF');
+    $nvme->mock(host_identity => sub { die "no host identity\n" });
     my $status = Test::MockModule->new('PVE::Multipath::Status');
     my $report;
     $status->mock(publish => sub { $report = $_[0] });
+
     for my $ids ({}, { plain => { type => 'iscsi', target => 'iqn.test' } }) {
         $storage->mock(config => sub { { ids => $ids } });
         PVE::Multipath::Status::update_node_status();
@@ -686,15 +690,19 @@ subtest 'one entry point applies configuration and reports unavailable reasons' 
     $gen->mock(sync => sub { push @order, 'apply'; { error => 'reload failed' } });
     $status->mock(publish => sub { push @order, 'publish'; $report = $_[0] });
     $iscsi->mock(read_initiator_info => sub { { name => 'iqn.2025-01.example:node' } });
+    my $nvme = Test::MockModule->new('PVE::NVMeOF');
+    $nvme->mock(host_identity => sub { { nqn => 'nqn.2025-01.example:node', id => 'unused' } });
     $mp->mock(is_supported => sub { 0 });
     PVE::Multipath::Status::update_node_status();
     is($report->{error}, 'multipath-tools is not installed', 'missing tools reason only');
+    is($report->{'nvme-host-nqn'}, 'nqn.2025-01.example:node', 'host NQN reported in any case');
     is_deeply(
         \@order,
         [qw(apply publish)],
         'the configuration is applied before the status is published',
     );
     is($report->{'apply-error'}, 'reload failed', 'apply failure is separate');
+    $nvme->mock(host_identity => sub { die "no host identity\n" });
     $mp->mock(is_supported => sub { 1 });
     $mp->mock(is_running => sub { 0 });
     PVE::Multipath::Status::update_node_status();
@@ -703,6 +711,7 @@ subtest 'one entry point applies configuration and reports unavailable reasons' 
         'multipathd is not running or does not respond',
         'stopped daemon reason only',
     );
+    ok(!exists($report->{'nvme-host-nqn'}), 'no host NQN without a valid host identity');
     $mp->mock(is_running => sub { 1 });
     $mp->mock(get_maps => sub { die "bad JSON\n" });
     PVE::Multipath::Status::update_node_status();
@@ -757,7 +766,7 @@ subtest 'API returns final node and LUN states' => sub {
                 },
             ],
         }),
-        n2 => encode_report({ time => $NOW, luns => [] }),
+        n2 => encode_report({ time => $NOW, luns => [], 'nvme-host-nqn' => 'nqn.test:n2' }),
         n3 => encode_report({ time => $NOW - 181, luns => [] }),
         n4 => encode_report({ time => $NOW, luns => [] }),
         n5 => encode_report({ time => $NOW, error => 'multipath-tools is not installed' }),
@@ -788,6 +797,7 @@ subtest 'API returns final node and LUN states' => sub {
         'final node states',
     );
     is($res->{nodes}->{n3}->{time}, $NOW - 181, 'old report time retained');
+    is($res->{nodes}->{n2}->{'nvme-host-nqn'}, 'nqn.test:n2', 'host NQN passed on');
     my $lun = $res->{luns}->[0];
     is($lun->{state}, 'missing', 'worst known state');
     is($lun->{nodes}->{n1}->{state}, 'optimal', 'observed healthy map');
