@@ -161,7 +161,7 @@ sub lvm_destroy_volume_group {
 }
 
 sub lvm_vgs {
-    my ($includepvs) = @_;
+    my ($includepvs, $nohints) = @_;
 
     my $cmd = [
         '/sbin/vgs',
@@ -172,8 +172,9 @@ sub lvm_vgs {
         'b',
         '--unbuffered',
         '--nosuffix',
-        '--options',
     ];
+    push @$cmd, '--nohints' if $nohints;
+    push @$cmd, '--options';
 
     my $cols = [qw(vg_name vg_size vg_free lv_count)];
 
@@ -1420,25 +1421,35 @@ sub volume_snapshot_info {
     return $info;
 }
 
+# LVM hints can miss PVs written by another node onto previously empty devices. Probe without
+# hints once per activation cache; rebuild only when new VGs appear, since rebuilding also resets
+# LVM autoactivation records.
+my sub find_unhinted_vgs {
+    my ($cache) = @_;
+
+    $cache->{vgscaned} = 1;
+
+    my $vgs = lvm_vgs(0, 1);
+    my @unhinted = grep { !$cache->{vgs}->{$_} } sort keys %$vgs;
+    return if !@unhinted;
+
+    eval {
+        run_command(['/sbin/pvscan', '--cache'], outfunc => sub { });
+    };
+    warn "rebuilding the LVM device hints failed - $@" if $@;
+
+    # add, never replace: an incomplete listing must not hide volume groups found before
+    $cache->{vgs}->{$_} = $vgs->{$_} for @unhinted;
+    # the cached logical volume list lacks the volumes of these volume groups
+    delete $cache->{lvs};
+}
+
 sub activate_storage {
     my ($class, $storeid, $scfg, $cache) = @_;
 
     $cache->{vgs} = lvm_vgs() if !$cache->{vgs};
 
-    # In LVM2, vgscans take place automatically;
-    # this is just to be sure
-    if (
-        $cache->{vgs}
-        && !$cache->{vgscaned}
-        && !$cache->{vgs}->{ $scfg->{vgname} }
-    ) {
-        $cache->{vgscaned} = 1;
-        my $cmd = ['/sbin/vgscan', '--ignorelockingfailure', '--mknodes'];
-        eval {
-            run_command($cmd, outfunc => sub { });
-        };
-        warn $@ if $@;
-    }
+    find_unhinted_vgs($cache) if !$cache->{vgscaned} && !$cache->{vgs}->{ $scfg->{vgname} };
 
     # we do not acticate any volumes here ('vgchange -aly')
     # instead, volumes are activate individually later
