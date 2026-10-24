@@ -131,13 +131,16 @@ sub iscsi_discovery {
     assert_iscsi_support();
 
     my $res = {};
+    my ($answered, $succeeded, $last_error);
     for my $portal ($portals->@*) {
-        next if !iscsi_test_portal($target_in, $portal, $cache); # fixme: raise exception here?
+        next if !iscsi_test_portal($target_in, $portal, $cache);
+        $answered = 1;
 
         my $cmd = [$ISCSIADM, '--mode', 'discovery', '--type', 'sendtargets', '--portal', $portal];
         eval {
             run_command(
                 $cmd,
+                errmsg => $portal,
                 outfunc => sub {
                     my $line = shift;
 
@@ -151,9 +154,22 @@ sub iscsi_discovery {
             );
         };
 
+        if (my $err = $@) {
+            # iscsiadm fails with this message if the portal reports no targets
+            if ($err !~ m/: No portals found$/) {
+                $last_error = $err;
+                $res = {};
+                next;
+            }
+        }
+        $succeeded = 1;
+
         # In case of multipath we can stop after receiving targets from any available portal
         last if scalar(keys %$res) > 0;
     }
+
+    die "no portal of the target answered: " . join(', ', $portals->@*) . "\n" if !$answered;
+    die "discovery failed on every portal - $last_error" if !$succeeded;
 
     return $res;
 }

@@ -1,6 +1,6 @@
 all: test
 
-test: test_zfspoolplugin test_lvmplugin test_lvm_lock_retry test_disklist test_bwlimit test_plugin test_ovf test_volume_access
+test: test_iscsi test_zfspoolplugin test_lvmplugin test_lvm_lock_retry test_disklist test_bwlimit test_plugin test_ovf test_volume_access
 
 test_zfspoolplugin: run_test_zfspoolplugin.pl
 	./run_test_zfspoolplugin.pl
@@ -26,3 +26,6 @@ test_ovf: run_ovf_tests.pl
 
 test_volume_access: run_volume_access_tests.pl
 	./run_volume_access_tests.pl
+
+test_iscsi: run_iscsi_discovery_tests.pl
+	./run_iscsi_discovery_tests.pl
