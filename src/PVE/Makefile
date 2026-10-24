@@ -5,6 +5,7 @@ install:
 	install -D -m 0644 Storage.pm ${DESTDIR}${PERLDIR}/PVE/Storage.pm
 	install -D -m 0644 Diskmanage.pm ${DESTDIR}${PERLDIR}/PVE/Diskmanage.pm
 	install -D -m 0644 ISCSI/Topology.pm ${DESTDIR}${PERLDIR}/PVE/ISCSI/Topology.pm
+	install -D -m 0644 Multipath.pm ${DESTDIR}${PERLDIR}/PVE/Multipath.pm
 	install -D -m 0644 CephConfig.pm ${DESTDIR}${PERLDIR}/PVE/CephConfig.pm
 	install -D -m 0644 GuestImport.pm ${DESTDIR}${PERLDIR}/PVE/GuestImport.pm
 	make -C Storage install

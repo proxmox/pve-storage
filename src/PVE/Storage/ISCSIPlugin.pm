@@ -10,6 +10,7 @@ use IO::File;
 
 use PVE::ISCSI::Topology;
 use PVE::JSONSchema qw(get_standard_option);
+use PVE::Multipath;
 use PVE::Storage::Plugin;
 use PVE::Tools
     qw(run_command file_read_firstline trim dir_glob_regex dir_glob_foreach $IPV4RE $IPV6RE);
@@ -588,7 +589,7 @@ $resolve_virtual_devices = sub {
         my $uuid = file_read_firstline("/sys/$dev/dm/uuid") // '';
         my ($name) = $dev =~ m!([^/]+)$!;
         die "'$name' is neither a multipath map nor a partition of one\n"
-            if $uuid !~ m/^(?:part\d+-)?mpath-\S+$/;
+            if !PVE::Multipath::parse_dm_uuid($uuid);
 
         dir_glob_foreach(
             "/sys/$dev/slaves",
