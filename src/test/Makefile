@@ -1,6 +1,6 @@
 all: test
 
-test: test_iscsi test_zfspoolplugin test_lvmplugin test_lvm_create test_lvm_lock_retry test_lvm_base_volume test_lvm_hints test_disklist test_bwlimit test_plugin test_ovf test_volume_access test_remote_command test_sensitive_properties test_import_stream test_multipath
+test: test_iscsi test_zfspoolplugin test_lvmplugin test_lvm_create test_lvm_lock_retry test_lvm_base_volume test_lvm_hints test_disklist test_bwlimit test_plugin test_ovf test_volume_access test_remote_command test_sensitive_properties test_import_stream test_multipath test_san_libraries
 
 test_zfspoolplugin: run_test_zfspoolplugin.pl
 	./run_test_zfspoolplugin.pl
@@ -55,3 +55,6 @@ test_import_stream: run_import_stream_tests.pl
 
 test_multipath: run_multipath_tests.pl
 	./run_multipath_tests.pl
+
+test_san_libraries: run_san_library_tests.pl
+	./run_san_library_tests.pl

@@ -4,6 +4,7 @@ use v5.36;
 use lib ('.', '..');
 use Test::More;
 use PVE::Multipath;
+use PVE::Multipath::Config;
 use PVE::Tools qw(file_get_contents);
 
 subtest 'multipathd JSON fixtures' => sub {
@@ -85,6 +86,69 @@ subtest 'multipathd JSON fixtures' => sub {
     ok($@, 'invalid JSON fails');
     is(PVE::Multipath::derive_health(1, 1, 2), 'degraded', 'removed expected path is degraded');
     is(PVE::Multipath::derive_health(0, 0), 'failed', 'empty map is failed');
+};
+
+subtest 'WWID entries, generated configuration and overrides check' => sub {
+    my $cfg = PVE::Multipath::Config->parse_config(
+        'multipath.cfg',
+        "wwid: 3600a\n\talias data\n\tnodes n1\n\tno-path-retry fail\n\tpaths-expected 2\n",
+    );
+    is_deeply(PVE::Multipath::Config::wwid_list($cfg), ['3600a'], 'WWID is listed');
+    is_deeply(PVE::Multipath::Config::wwids_for_node($cfg, 'n2'), [], 'node restriction');
+    is_deeply(
+        [sort keys PVE::Multipath::Config::wwid_api_schema()->%*],
+        [qw(alias no-path-retry nodes paths-expected)],
+        'only four options',
+    );
+    like(
+        PVE::Multipath::Config::generate_managed_conf(),
+        qr/auto_resize grow_only/,
+        'generated defaults set auto_resize',
+    );
+    like(
+        PVE::Multipath::Config::build_multipaths_block($cfg, 'n1'),
+        qr/no_path_retry fail/,
+        'per-LUN option',
+    );
+    unlike(
+        PVE::Multipath::Config::build_multipaths_block($cfg, 'n1'),
+        qr/expected/,
+        'the expected path count is not a multipath option',
+    );
+    is_deeply(
+        PVE::Multipath::Config::parse_wwids("# header\n/3600a/\n/-bad/\n"),
+        ['3600a'],
+        'allow-list parser',
+    );
+    eval { PVE::Multipath::Config::check_overrides('multipaths { }') };
+    like($@, qr/configure LUNs/, 'LUN configuration belongs in explicit entries');
+    eval { PVE::Multipath::Config::check_overrides("multipaths\ndefaults {\n}\n") };
+    like($@, qr/configure LUNs/, 'also as a bare section name, which multipath still enters');
+    # multipath reads the byte as space and closes 'devices' with the '}' of an unknown section
+    my $nested = "devices {\n\tbogus {\n\t}\n\x80multipaths {\n\t}\n}\n";
+    eval { PVE::Multipath::Config::check_overrides($nested) };
+    like($@, qr/configure LUNs/, 'and at any depth');
+    eval { PVE::Multipath::Config::check_overrides("\x80multipaths\ndefaults {\n}\n") };
+    like($@, qr/configure LUNs/, 'also behind a byte outside of ASCII');
+    $nested =~ s/\x80/\x{e9}/;
+    eval { PVE::Multipath::Config::check_overrides($nested) };
+    like($@, qr/configure LUNs/, 'or a letter outside of ASCII');
+    eval { PVE::Multipath::Config::check_overrides("multipaths\"x\"y\ndefaults {\n}\n") };
+    like($@, qr/configure LUNs/, 'or with a quoted string glued to it');
+    eval { PVE::Multipath::Config::check_overrides("devices\n{\n}\n") };
+    like($@, qr/'\{' has to follow its section name/, 'nor a brace on a line of its own');
+    eval {
+        PVE::Multipath::Config::check_overrides("defaults {\n\tuser_friendly_names no\n}\n");
+    };
+    is($@, '', 'raw defaults override is allowed');
+    eval { PVE::Multipath::Config::check_overrides('defaults { user_friendly_names no }') };
+    like($@, qr/'\{' has to end its line/, 'but not on one line, multipath ignores the rest');
+    eval { PVE::Multipath::Config::check_overrides("defaults {\n\tuser_friendly_names no }\n") };
+    like($@, qr/'\}' has to stand alone on its line/, 'nor with a closing brace after a value');
+    eval {
+        PVE::Multipath::Config::check_overrides("blacklist {\n\tdevnode ^nvme[0-9]{1,3}\n}\n");
+    };
+    like($@, qr/quote a value that contains braces/, 'a value with braces needs quotes');
 };
 
 subtest 'map identity from the dm UUID and map members' => sub {
