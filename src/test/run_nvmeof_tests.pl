@@ -289,9 +289,17 @@ subtest 'sysfs topology' => sub {
     eval { PVE::NVMeOF::namespaces('nqn.test') };
     like($@, qr/cannot read the WWID/, 'an unreadable namespace is an error, not a gone one');
     file_set_contents("$sys/block/nvme0n1/wwid", "eui.abc\n");
+    make_path(map { "$sys/class/nvme-subsystem/nvme-subsys1/nvme1n$_" } 1 .. 3);
+    file_set_contents("$sys/class/nvme-subsystem/nvme-subsys1/subsysnqn", "nqn.other\n");
+    is_deeply(
+        PVE::NVMeOF::namespace_counts(),
+        { 'nqn.test' => 1, 'nqn.other' => 3 },
+        'namespaces counted per subsystem',
+    );
     make_path("$sys/class/nvme-subsystem/nvme-subsys9");
     eval { PVE::NVMeOF::namespaces('nqn.test') };
     like($@, qr/cannot read the NQN/, 'so is a subsystem that could be the one asked for');
+    is(scalar(keys PVE::NVMeOF::namespace_counts()->%*), 2, 'the counts leave it out');
     rmdir("$sys/class/nvme-subsystem/nvme-subsys9");
 };
 

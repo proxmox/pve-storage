@@ -971,6 +971,15 @@ sub get_multipath_disks {
     return $disklist;
 }
 
+# 'change' is transient; paths in 'inaccessible' or 'persistent-loss' cannot serve IO even on a live
+# controller
+sub nvme_path_is_usable {
+    my ($path) = @_;
+    my $ana = $path->{'ana-state'};
+    return $path->{state} eq 'live'
+        && (!defined($ana) || $ana eq 'optimized' || $ana eq 'non-optimized');
+}
+
 # Native multipath creates per-path namespace children nvmeXcYnZ below controllers. Local
 # single-controller devices lack these children and are omitted.
 sub get_nvme_path_status {
@@ -1006,15 +1015,8 @@ sub get_nvme_path_status {
                             my $ana = file_read_firstline("$ctrldir/$pathdev/ana_state");
                             $entry->{'ana-state'} = $ana if defined($ana);
 
-                            # 'change' is transient; paths in 'inaccessible' or 'persistent-loss'
-                            # cannot serve IO even on a live controller
-                            my $usable = $state eq 'live'
-                                && (!defined($ana)
-                                    || $ana eq 'optimized'
-                                    || $ana eq 'non-optimized');
-
                             my $status = $res->{$head} //= { active => 0, paths => [] };
-                            $status->{active}++ if $usable;
+                            $status->{active}++ if nvme_path_is_usable($entry);
                             push @{ $status->{paths} }, $entry;
                         },
                     );

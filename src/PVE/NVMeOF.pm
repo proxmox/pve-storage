@@ -4,7 +4,8 @@ use v5.36;
 
 use Cwd qw(abs_path);
 use Digest::SHA qw(sha1_hex);
-use Fcntl qw(:flock F_GETFD F_SETFD FD_CLOEXEC);
+use Errno qw(EBUSY ENOENT);
+use Fcntl qw(:flock F_GETFD F_SETFD FD_CLOEXEC O_EXCL O_RDONLY);
 use File::Basename qw(basename);
 use File::Path qw(make_path);
 use JSON qw(decode_json);
@@ -12,6 +13,7 @@ use POSIX qw(ceil);
 use Socket qw(AF_INET AF_INET6 inet_ntop inet_pton);
 use Time::HiRes ();
 
+use PVE::Cluster;
 use PVE::JSONSchema;
 use PVE::Network;
 use PVE::Tools qw(dir_glob_foreach file_read_firstline file_set_contents run_command);
@@ -24,6 +26,7 @@ our $HOSTNQN_FILE = '/etc/nvme/hostnqn';
 our $HOSTID_FILE = '/etc/nvme/hostid';
 our $RUN_DIR = '/run/pve/nvmeof';
 our $LOCK_WAIT = 10;
+our $SWAPS = '/proc/swaps';
 # no control characters, which could reach logs and the arguments of nvme-cli
 our $NQN_PATTERN = 'nqn\.[^\s\x00-\x1f\x7f,=]+';
 our $DISCOVERY_NQN = 'nqn.2014-08.org.nvmexpress.discovery';
@@ -175,31 +178,55 @@ sub path_controller($controllers, $path) {
     return undef;
 }
 
+# Calls $code with the subsystem NQN and the device name of each namespace of this node, or only
+# of those of the subsystem $only.
+my sub foreach_namespace($code, $only = undef) {
+    my $dir = "$SYSFS/class/nvme-subsystem";
+    # For one subsystem, the caller goes by which namespaces are missing, so a directory that cannot
+    # be read must not look empty. One that is gone is.
+    my $entries = sub($path, $pattern) {
+        my $dh;
+        if (!opendir($dh, $path)) {
+            return () if $! == ENOENT || !defined($only);
+            die "cannot read '$path' - $!\n";
+        }
+        my @res = sort grep { /\A$pattern\z/ } readdir($dh);
+        closedir($dh);
+        return @res;
+    };
+    for my $subsys ($entries->($dir, 'nvme-subsys[0-9]+')) {
+        # one that cannot be read could be the subsystem asked for, whose namespaces must not
+        # look gone
+        my $nqn = PVE::Diskmanage::read_subsysnqn("$dir/$subsys/subsysnqn");
+        if (!defined($nqn)) {
+            die "cannot read the NQN of NVMe subsystem '$subsys'\n" if defined($only);
+            next;
+        }
+        next if defined($only) && $nqn ne $only;
+        $code->($nqn, $_) for $entries->("$dir/$subsys", 'nvme[0-9]+n[0-9]+');
+    }
+}
+
 sub namespaces($subsystem) {
     my $res = {};
-    my $dir = "$SYSFS/class/nvme-subsystem";
-    dir_glob_foreach(
-        $dir,
-        'nvme-subsys[0-9]+',
-        sub($subsys, @) {
-            # one that cannot be read could be this subsystem, whose namespaces must not look gone
-            my $nqn = PVE::Diskmanage::read_subsysnqn("$dir/$subsys/subsysnqn")
-                // die "cannot read the NQN of NVMe subsystem '$subsys'\n";
-            return if $nqn ne $subsystem;
-            dir_glob_foreach(
-                "$dir/$subsys",
-                'nvme[0-9]+n[0-9]+',
-                sub($dev, @) {
-                    # a failed read must not look like a namespace that is gone
-                    my $wwid = file_read_firstline("$SYSFS/block/$dev/wwid")
-                        // die "cannot read the WWID of namespace '$dev'\n";
-                    my $size = file_read_firstline("$SYSFS/block/$dev/size")
-                        // die "cannot read the size of namespace '$dev'\n";
-                    $res->{$dev} = { wwid => $wwid, size => int($size) * 512 };
-                },
-            );
+    foreach_namespace(
+        sub($nqn, $dev) {
+            # a failed read must not look like a namespace that is gone
+            my $wwid = file_read_firstline("$SYSFS/block/$dev/wwid")
+                // die "cannot read the WWID of namespace '$dev'\n";
+            my $size = file_read_firstline("$SYSFS/block/$dev/size")
+                // die "cannot read the size of namespace '$dev'\n";
+            $res->{$dev} = { wwid => $wwid, size => int($size) * 512 };
         },
+        $subsystem,
     );
+    return $res;
+}
+
+# The number of namespaces of each subsystem of this node, from one pass over the subsystems.
+sub namespace_counts() {
+    my $res = {};
+    foreach_namespace(sub($nqn, @) { $res->{$nqn}++ });
     return $res;
 }
 
@@ -377,6 +404,163 @@ sub discover($portal) {
         $error = $@;
     }
     die "discovery at portal '$portal' failed - $error";
+}
+
+# A swap area on a namespace has no holder, mount or file descriptor of a process.
+my sub is_swap($device) {
+    my %rdevs = map {
+        my $rdev = (stat($_))[6];
+        defined($rdev) ? ($rdev => 1) : ()
+    } ($device, glob("${device}p[0-9]*"));
+    for my $line (split(/\n/, PVE::Tools::file_get_contents($SWAPS))) {
+        my ($swap) = split(/\s+/, $line);
+        next if !defined($swap) || $swap !~ m!^/!;
+        return 1 if $swap =~ m!^\Q$device\E(?:p[0-9]+)?$!;
+        my $rdev = (stat($swap))[6];
+        return 1 if defined($rdev) && $rdevs{$rdev};
+    }
+    return 0;
+}
+
+# A mount in another mount namespace, like that of a container, is not in /proc/mounts here and has
+# no holder, but it claims the device exclusively, as holders and swap do.
+sub is_claimed($device) {
+    sysopen(my $fh, $device, O_RDONLY | O_EXCL) and return 0;
+    return $! == EBUSY;
+}
+
+# The expected subsystem and portal refuse a controller that replaced the one the caller listed.
+sub disconnect_guarded($controller, $expected = {}) {
+    my ($name) = $controller =~ /\A(nvme[0-9]+)\z/;
+    die "invalid controller name '$controller'\n" if !defined($name);
+    # A namespace that would lose its last usable path gets checked for use, which takes a while on
+    # a subsystem with many. A task runs this, which holds no lock on the storage configuration.
+    return with_lock(
+        sub {
+            require PVE::Storage;
+            require PVE::Storage::SAN;
+            my $ctrl = controllers()->{$name}
+                // die "'$name' is not an NVMe over Fabrics controller\n";
+            if (
+                (
+                    defined($expected->{subsysnqn})
+                    && $expected->{subsysnqn} ne $ctrl->{subsystem}
+                )
+                || (defined($expected->{portal}) && $expected->{portal} ne format_path($ctrl))
+            ) {
+                die
+                    "controller '$name' is no longer connected to the listed subsystem and portal\n";
+            }
+            # Without native multipath a namespace is a device of its controller and has no head
+            # device, which the checks below go by. Its name can carry the number of the subsystem.
+            my $own_devices = sub {
+                my $found = 0;
+                dir_glob_foreach(
+                    "$SYSFS/class/nvme-fabrics/ctl/$name",
+                    'nvme[0-9]+n[0-9]+',
+                    sub { $found = 1 },
+                );
+                return $found;
+            };
+            die "cannot disconnect '$name' - its namespaces do not use native NVMe multipath\n"
+                if $own_devices->();
+            my $namespaces = namespaces($ctrl->{subsystem});
+            my $status = PVE::Diskmanage::get_nvme_path_status();
+            my %heads = map { $_ => 1 } keys %$namespaces;
+            for my $head (keys %$status) {
+                $heads{$head} = 1
+                    if grep { $_->{device} eq "/dev/$name" } $status->{$head}->{paths}->@*;
+            }
+            PVE::Cluster::cfs_update(1);
+            my $cfg = PVE::Storage::config();
+            my (%relied, %referenced);
+            for my $head (sort keys %heads) {
+                my $paths = $status->{$head}->{paths} // [];
+                my @others = grep { $_->{device} ne "/dev/$name" } @$paths;
+                if (grep { PVE::Diskmanage::nvme_path_is_usable($_) } @others) {
+                    $relied{$head} = 1;
+                    next;
+                }
+                my $ns = $namespaces->{$head};
+                if (!defined($ns)) {
+                    die
+                        "cannot disconnect '$name' - namespace '$head' has no device on this node"
+                        . " to check for use\n";
+                }
+                my $device = "/dev/$head";
+                if (
+                    PVE::Diskmanage::is_mounted($device)
+                    || PVE::Diskmanage::has_holder($device)
+                    || is_swap($device)
+                    || is_claimed($device)
+                ) {
+                    die
+                        "cannot disconnect '$name' - namespace '$head' is in use and has no other"
+                        . " usable path\n";
+                }
+                # an opener that is gone within a second, like an LVM scan of the status pass, is no
+                # use of the namespace
+                my $opener;
+                for my $try (1 .. 4) {
+                    Time::HiRes::usleep(300_000) if $try > 1;
+                    $opener = PVE::Diskmanage::device_opener($device, glob("${device}p[0-9]*"));
+                    last if !defined($opener);
+                }
+                if (defined($opener)) {
+                    die
+                        "cannot disconnect '$name' - process $opener has namespace '$head' open and"
+                        . " it has no other usable path\n";
+                }
+                # The check of the storage references reads the namespace. Removing a path that is not
+                # usable either costs no usable path, and a reconnecting one cannot be read.
+                next if !grep {
+                    $_->{device} eq "/dev/$name" && PVE::Diskmanage::nvme_path_is_usable($_)
+                } @$paths;
+                eval {
+                    PVE::Storage::SAN::assert_lun_unreferenced(
+                        $cfg,
+                        { devpath => $device, wwid => $ns->{wwid} },
+                    );
+                };
+                die "cannot disconnect '$name' - $@" if $@;
+                $referenced{$head} = 1;
+            }
+            # The checks take a while, in which a path can fail or recover, a namespace can appear
+            # and the controller number can pass to a new controller, so look again right before
+            # the removal. That narrows what can change unseen, but cannot rule it out.
+            my $changed =
+                "cannot disconnect '$name' - the paths of the subsystem changed meanwhile\n";
+            $status = PVE::Diskmanage::get_nvme_path_status();
+            for my $head (sort keys %$status) {
+                my @paths = ($status->{$head}->{paths} // [])->@*;
+                my ($own) = grep { $_->{device} eq "/dev/$name" } @paths;
+                next if !$own;
+                next if grep {
+                    $_->{device} ne "/dev/$name" && PVE::Diskmanage::nvme_path_is_usable($_)
+                } @paths;
+                # it loses its last usable path, which the checks above have to have covered
+                die $changed
+                    if $relied{$head}
+                    || !$heads{$head}
+                    || (PVE::Diskmanage::nvme_path_is_usable($own) && !$referenced{$head});
+            }
+            my $now_namespaces = namespaces($ctrl->{subsystem});
+            my $wwids = sub($res) {
+                join(',', map { "$_=$res->{$_}->{wwid}" } sort keys %$res);
+            };
+            die $changed if $wwids->($now_namespaces) ne $wwids->($namespaces);
+            die $changed if $own_devices->();
+            my $now = controllers()->{$name};
+            die "cannot disconnect '$name' - the controller changed meanwhile\n"
+                if !$now
+                || grep { ($now->{$_} // '') ne ($ctrl->{$_} // '') }
+                qw(subsystem transport traddr trsvcid);
+            die "nvme-cli is not installed\n" if !is_supported();
+            run_command([$NVME, 'disconnect', '--device', "/dev/$name"], timeout => 30);
+            return;
+        },
+        300,
+    );
 }
 
 1;

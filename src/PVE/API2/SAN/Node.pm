@@ -10,12 +10,18 @@ use PVE::Storage;
 use PVE::Storage::SAN;
 
 use PVE::API2::ISCSI;
+use PVE::API2::NVMeOF;
 
 use base qw(PVE::RESTHandler);
 
 __PACKAGE__->register_method({
     subclass => "PVE::API2::ISCSI",
     path => 'iscsi',
+});
+
+__PACKAGE__->register_method({
+    subclass => "PVE::API2::NVMeOF",
+    path => 'nvmeof',
 });
 
 __PACKAGE__->register_method({
@@ -42,7 +48,7 @@ __PACKAGE__->register_method({
         links => [{ rel => 'child', href => "{name}" }],
     },
     code => sub {
-        return [map { +{ name => $_ } } qw(iscsi luns)];
+        return [map { +{ name => $_ } } qw(iscsi luns nvmeof)];
     },
 });
 

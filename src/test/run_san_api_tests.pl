@@ -109,7 +109,7 @@ is_deeply(
 );
 is_deeply(
     PVE::API2::SAN::Node->index({ node => 'test' }),
-    [{ name => 'iscsi' }, { name => 'luns' }],
+    [{ name => 'iscsi' }, { name => 'luns' }, { name => 'nvmeof' }],
     'node SAN index',
 );
 for my $case (
