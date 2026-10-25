@@ -7,7 +7,6 @@ use PVE::Storage::LVMPlugin;
 use PVE::Diskmanage;
 use PVE::JSONSchema qw(get_standard_option);
 use PVE::API2::Storage::Config;
-use PVE::Tools qw(lock_file run_command);
 
 use PVE::RPCEnvironment;
 use PVE::RESTHandler;
