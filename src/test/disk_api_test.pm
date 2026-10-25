@@ -244,4 +244,25 @@ subtest 'volume group creation leaves SAN locking to the LVM helper' => sub {
     $disk->unmock($_) for @mocked;
 };
 
+subtest 'shared volume groups cannot be destroyed' => sub {
+    my $storage = Test::MockModule->new('PVE::Storage');
+    my $lvm = Test::MockModule->new('PVE::Storage::LVMPlugin');
+    my $rpc = Test::MockModule->new('PVE::RPCEnvironment');
+    $rpc->mock(get => sub { bless {}, 'MultipathTestRPC' });
+    my $cfg = { ids => { shared => { type => 'lvm', vgname => 'data', shared => 1 } } };
+    $storage->mock(config => sub { $cfg });
+    $diskmanage_module->mock(locked_disk_action => sub { $_[0]->() });
+    my @writes;
+    $lvm->mock(lvm_vgs => sub { { data => { pvs => [] } } });
+    $lvm->mock(lvm_destroy_volume_group => sub { push @writes, $_[0] });
+    eval {
+        PVE::API2::Disks::LVM->delete({ node => 'n1', name => 'data', 'cleanup-disks' => 1 });
+    };
+    like($@, qr/shared storage 'shared'/, 'shared reference refuses deletion');
+    is_deeply(\@writes, [], 'refused VG is not removed');
+    $cfg->{ids}->{shared}->{shared} = 0;
+    PVE::API2::Disks::LVM->delete({ node => 'n1', name => 'data' });
+    is_deeply(\@writes, ['data'], 'node-local deletion still works');
+};
+
 done_testing();

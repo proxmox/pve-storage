@@ -3,6 +3,7 @@ package PVE::API2::Disks::LVM;
 use strict;
 use warnings;
 
+use PVE::Storage;
 use PVE::Storage::LVMPlugin;
 use PVE::Storage::SAN;
 use PVE::Diskmanage;
@@ -230,7 +231,9 @@ __PACKAGE__->register_method({
             "Requires additionally 'Datastore.Allocate' on /storage when setting 'cleanup-config'",
         check => ['perm', '/', ['Sys.Modify']],
     },
-    description => "Remove an LVM Volume Group.",
+    description =>
+        "Remove an LVM Volume Group. Refused if a shared storage is configured with a"
+        . " volume group of that name.",
     parameters => {
         additionalProperties => 0,
         properties => {
@@ -266,6 +269,14 @@ __PACKAGE__->register_method({
 
         my $worker = sub {
             PVE::Diskmanage::locked_disk_action(sub {
+                my $cfg = PVE::Storage::config();
+                for my $sid (sort keys $cfg->{ids}->%*) {
+                    my $scfg = $cfg->{ids}->{$sid};
+                    if ($scfg->{shared} && ($scfg->{vgname} // '') eq $name) {
+                        die "cannot remove volume group '$name' - shared storage '$sid' is"
+                            . " configured with a volume group of that name\n";
+                    }
+                }
                 my $vgs = PVE::Storage::LVMPlugin::lvm_vgs(1);
                 die "no such volume group '$name'\n" if !$vgs->{$name};
 
