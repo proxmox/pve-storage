@@ -12,6 +12,7 @@ use File::Temp qw(tempdir);
 use Test::More;
 use Test::MockModule;
 use PVE::Multipath::Generator;
+use PVE::Storage;
 
 subtest 'add-only generation and failed reload throttle' => sub {
     my $dir = tempdir('multipath-test-XXXX', DIR => '.', CLEANUP => 1);
@@ -353,6 +354,275 @@ subtest 'storage LUNs are the identified paths of the storage target' => sub {
         $expected,
         'paths of other targets and transports in a full collection are left out',
     );
+};
+
+subtest 'an unconfigured node does not write drop-ins or reload' => sub {
+    my $dir = tempdir('multipath-empty-XXXX', DIR => '.', CLEANUP => 1);
+    local $PVE::Multipath::Generator::DEFAULTS_DROPIN = "$dir/defaults";
+    local $PVE::Multipath::Generator::OVERRIDES_DROPIN = "$dir/overrides";
+    local $PVE::Multipath::Generator::ALIASES_DROPIN = "$dir/aliases";
+    local $PVE::Multipath::Generator::RECONFIGURE_PENDING = "$dir/pending";
+    my $config = Test::MockModule->new('PVE::Multipath::Config');
+    $config->mock(read_config => sub { { ids => {} } });
+    $config->mock(read_overrides => sub { '' });
+    my $storage = Test::MockModule->new('PVE::Storage');
+    my $identity = Test::MockModule->new('PVE::Multipath::Identity');
+    $identity->mock(collect => sub { die "unexpected identity collection\n" });
+    my $mp = Test::MockModule->new('PVE::Multipath');
+    $mp->mock(is_supported => sub { 1 });
+    $mp->mock(is_running => sub { 1 });
+    $mp->mock(get_maps => sub { [] });
+    $mp->mock(list_etc_multipath_wwids => sub { [] });
+    my $generator = Test::MockModule->new('PVE::Multipath::Generator');
+    my @changes;
+
+    for my $function (qw(file_set_contents make_path)) {
+        $generator->mock($function => sub { push @changes, $function });
+    }
+    for my $function (qw(add_wwid reconfigure)) {
+        $mp->mock($function => sub { push @changes, $function });
+    }
+    my $iscsi = Test::MockModule->new('PVE::Storage::ISCSIPlugin');
+    $iscsi->mock(read_initiator_info => sub { {} });
+    my $status = Test::MockModule->new('PVE::Multipath::Status');
+    my $report;
+    $status->mock(publish => sub { $report = $_[0] });
+    for my $ids ({}, { plain => { type => 'iscsi', target => 'iqn.test' } }) {
+        $storage->mock(config => sub { { ids => $ids } });
+        PVE::Multipath::Status::update_node_status();
+        ok(!exists($report->{error}), 'running daemon reports successfully');
+        ok(!exists($report->{'apply-error'}), 'unconfigured application succeeds');
+        is_deeply(\@changes, [], 'no write, mkdir, allow-list addition or reload');
+        is_deeply([glob("$dir/*")], [], 'no generated files or pending marker');
+    }
+};
+
+my sub encode_report($report) { return PVE::Multipath::Status::encode_report($report) }
+
+# rows as a node reports them for many LUNs, by default with random SCSI WWIDs
+my sub luns($count, $prefix = '3') {
+    require Digest::MD5;
+    return [
+        map {
+            my $hash = Digest::MD5::md5_hex("wwid$_");
+            {
+                wwid => $prefix . substr($hash . $hash, 0, 33 - length($prefix)),
+                size => (16 + hex(substr(Digest::MD5::md5_hex("size$_"), 0, 3))) * 1024**3,
+                vgname => sprintf('vg-lun-%04d', $_),
+                storages => ['san-netapp01'],
+                state => 'optimal',
+                'paths-total' => 4,
+                'paths-active' => 4,
+                'paths-expected' => 4,
+            }
+        } 1 .. $count
+    ];
+}
+
+subtest 'unchanged reports wait a minute, lost ones are resent, oversized ones are errors' => sub {
+    my $cluster = Test::MockModule->new('PVE::Cluster');
+    my $node = Test::MockModule->new('PVE::INotify');
+    $node->mock(nodename => sub { 'n1' });
+    my (%raw, @sent);
+    $cluster->mock(get_node_kv => sub { \%raw });
+    $cluster->mock(
+        broadcast_node_kv => sub($key, $data) {
+            is($key, 'multipath', 'one node key');
+            push @sent, PVE::Multipath::Status::decode_report($data);
+            $raw{n1} = $data;
+        },
+    );
+    my $report = {
+        luns => [{
+            wwid => '3600a',
+            name => 'data',
+            state => 'optimal',
+            'paths-total' => 2,
+            'paths-active' => 2,
+        }],
+    };
+    PVE::Multipath::Status::publish($report);
+    $NOW += 59;
+    PVE::Multipath::Status::publish($report);
+    is(scalar(@sent), 1, 'same report younger than 60 seconds is skipped');
+    $NOW++;
+    PVE::Multipath::Status::publish($report);
+    is(scalar(@sent), 2, 'report refreshed at 60 seconds');
+    %raw = ();
+    PVE::Multipath::Status::publish($report);
+    is(scalar(@sent), 3, 'lost pmxcfs value is republished without local send state');
+    PVE::Multipath::Status::publish(
+        { luns => luns(2000), 'iscsi-initiator-name' => 'iqn.2026-11.test:n1' });
+    is($sent[-1]->{error}, 'too many LUNs to report', 'oversized report is an error');
+    ok(!exists($sent[-1]->{luns}), 'not an empty or partial LUN report');
+    is(
+        $sent[-1]->{'iscsi-initiator-name'},
+        'iqn.2026-11.test:n1',
+        'which keeps the node identity',
+    );
+};
+
+subtest 'a compressed report holds 1000 LUNs of one array' => sub {
+    my $cluster = Test::MockModule->new('PVE::Cluster');
+    my $node = Test::MockModule->new('PVE::INotify');
+    $node->mock(nodename => sub { 'n1' });
+    my (%raw, @sent);
+    $cluster->mock(get_node_kv => sub { \%raw });
+    $cluster->mock(broadcast_node_kv => sub($key, $data) { push @sent, $raw{n1} = $data });
+    my $report = { luns => luns(1000, '3600a098038314c4a') };
+    PVE::Multipath::Status::publish($report);
+    my $sent = PVE::Multipath::Status::decode_report($sent[0]);
+    is_deeply($sent->{luns}, $report->{luns}, 'all rows are sent');
+    like($sent[0], qr{\A[A-Za-z0-9+/]+=*\z}, 'in base64 without line breaks');
+    is_deeply(
+        JSON::decode_json(Compress::Zlib::uncompress(MIME::Base64::decode_base64($sent[0]))),
+        $sent,
+        'of the JSON compressed with zlib',
+    );
+    PVE::Multipath::Status::publish($report);
+    is(scalar(@sent), 1, 'and read back');
+};
+
+subtest 'only managed maps and those under a storage get a row' => sub {
+    my $gen = Test::MockModule->new('PVE::Multipath::Generator');
+    my $status = Test::MockModule->new('PVE::Multipath::Status');
+    my $mp = Test::MockModule->new('PVE::Multipath');
+    my $iscsi = Test::MockModule->new('PVE::Storage::ISCSIPlugin');
+    my $storage = Test::MockModule->new('PVE::Storage');
+    my $lvm = Test::MockModule->new('PVE::Storage::LVMPlugin');
+    my $report;
+    $status->mock(publish => sub { $report = $_[0] });
+    $iscsi->mock(read_initiator_info => sub { undef });
+    $mp->mock(is_supported => sub { 1 }, is_running => sub { 1 });
+    $mp->mock(
+        get_maps => sub {
+            return [
+                map { {
+                    wwid => "3600$_",
+                    sysfs => "dm-$_",
+                    'paths-active' => 2,
+                    'paths-total' => 2,
+                } } 1 .. 5
+            ];
+        },
+    );
+    $gen->mock(sync => sub { { wwids => { '36001' => {} } } });
+    $lvm->mock(
+        cached_pv_volume_groups => sub { { '/dev/dm-2' => 'vgsan', '/dev/dm-3' => 'vgother' } },
+    );
+    my $ids = {
+        san => { type => 'lvm', vgname => 'vgsan' },
+        based =>
+            { type => 'lvm', vgname => 'vgbase', base => 'conn:0.0.0.dm-uuid-mpath-36004' },
+    };
+    $storage->mock(config => sub { { ids => $ids } });
+    PVE::Multipath::Status::update_node_status();
+    is_deeply(
+        [map { $_->{wwid} } $report->{luns}->@*],
+        ['36001', '36002', '36004'],
+        'a wanted map, one with the volume group of a storage and a base volume',
+    );
+    is($report->{'other-maps'}, 2, 'the other maps are counted');
+    ok(!exists($report->{'vgs-unknown'}), 'volume groups known from the hints of LVM');
+
+    for my $base (qw(conn scsi-conn)) {
+        local $ids->{legacy} =
+            { type => 'lvm', vgname => 'vglegacy', base => "$base:0.0.1.scsi-36005" };
+        PVE::Multipath::Status::update_node_status();
+        ok(
+            grep({ $_->{wwid} eq '36005' } $report->{luns}->@*),
+            "and a base volume by its SCSI name, on storage '$base'",
+        );
+    }
+    $lvm->mock(cached_pv_volume_groups => sub { undef });
+    PVE::Multipath::Status::update_node_status();
+    is_deeply(
+        [map { $_->{wwid} } $report->{luns}->@*],
+        ['36001', '36004'],
+        'without hints only the maps that the configuration names',
+    );
+    is($report->{'other-maps'}, 3, 'the map of the volume group counts as other');
+    ok($report->{'vgs-unknown'}, 'and the report says that volume groups are unknown');
+    $storage->mock(config => sub { die "no configuration\n" });
+    PVE::Multipath::Status::update_node_status();
+    is(scalar($report->{luns}->@*), 5, 'all maps without the storage configuration');
+    ok(!exists($report->{'other-maps'}), 'and no count');
+    $storage->mock(config => sub { { ids => $ids } });
+    $mp->mock(get_maps => sub { [] });
+    PVE::Multipath::Status::update_node_status();
+    ok(!exists($report->{'vgs-unknown'}),
+        'unknown volume groups only matter for left out maps');
+};
+
+subtest 'a LUN of a storage without a map is missing' => sub {
+    my $gen = Test::MockModule->new('PVE::Multipath::Generator');
+    my $status = Test::MockModule->new('PVE::Multipath::Status');
+    my $mp = Test::MockModule->new('PVE::Multipath');
+    my $iscsi = Test::MockModule->new('PVE::Storage::ISCSIPlugin');
+    my $storage = Test::MockModule->new('PVE::Storage');
+    my $lvm = Test::MockModule->new('PVE::Storage::LVMPlugin');
+    my %raw;
+    $status->mock(publish => sub { $raw{n1} = encode_report({ $_[0]->%*, time => $NOW }) });
+    $iscsi->mock(read_initiator_info => sub { undef });
+    $mp->mock(is_supported => sub { 1 }, is_running => sub { 1 }, get_maps => sub { [] });
+    $lvm->mock(cached_pv_volume_groups => sub { {} });
+    $gen->mock(
+        sync => sub {
+            return {
+                wwids => {
+                    '3600a' => { storages => ['san'], 'paths-expected' => 2 },
+                    '3600b' => {},
+                    '3600c' => { storages => ['san'] },
+                },
+                added => ['3600c'],
+            };
+        },
+    );
+    $storage->mock(
+        config => sub { { ids => { san => { type => 'iscsi', 'managed-multipath' => 1 } } } });
+    PVE::Multipath::Status::update_node_status();
+    is_deeply(
+        PVE::Multipath::Status::decode_report($raw{n1})->{luns},
+        [{ wwid => '3600a', state => 'missing', storages => ['san'], 'paths-expected' => 2 }],
+        'the LUN of the storage, not one of an entry, nor one added in this pass',
+    );
+};
+
+subtest 'one entry point applies configuration and reports unavailable reasons' => sub {
+    my $gen = Test::MockModule->new('PVE::Multipath::Generator');
+    my $status = Test::MockModule->new('PVE::Multipath::Status');
+    my $mp = Test::MockModule->new('PVE::Multipath');
+    my $iscsi = Test::MockModule->new('PVE::Storage::ISCSIPlugin');
+    my ($report, @order);
+    $gen->mock(sync => sub { push @order, 'apply'; { error => 'reload failed' } });
+    $status->mock(publish => sub { push @order, 'publish'; $report = $_[0] });
+    $iscsi->mock(read_initiator_info => sub { { name => 'iqn.2025-01.example:node' } });
+    $mp->mock(is_supported => sub { 0 });
+    PVE::Multipath::Status::update_node_status();
+    is($report->{error}, 'multipath-tools is not installed', 'missing tools reason only');
+    is_deeply(
+        \@order,
+        [qw(apply publish)],
+        'the configuration is applied before the status is published',
+    );
+    is($report->{'apply-error'}, 'reload failed', 'apply failure is separate');
+    $mp->mock(is_supported => sub { 1 });
+    $mp->mock(is_running => sub { 0 });
+    PVE::Multipath::Status::update_node_status();
+    is(
+        $report->{error},
+        'multipathd is not running or does not respond',
+        'stopped daemon reason only',
+    );
+    $mp->mock(is_running => sub { 1 });
+    $mp->mock(get_maps => sub { die "bad JSON\n" });
+    PVE::Multipath::Status::update_node_status();
+    is($report->{error}, 'bad JSON', 'query error without unavailable prefix');
+    $mp->mock(get_maps =>
+        sub { [{ wwid => '3600a', name => 'data', 'paths-active' => 1, 'paths-total' => 2 }] });
+    PVE::Multipath::Status::update_node_status();
+    is($report->{luns}->[0]->{state}, 'degraded', 'all maps while the wanted ones are unknown');
+    ok(!exists($report->{supported}), 'the report has no separate "supported" field');
 };
 
 done_testing();

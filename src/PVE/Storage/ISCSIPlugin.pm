@@ -21,7 +21,23 @@ use base qw(PVE::Storage::Plugin);
 # iscsi helper function
 
 my $ISCSIADM = '/usr/bin/iscsiadm';
+our $INITIATOR_NAME_FILE = '/etc/iscsi/initiatorname.iscsi';
 our $SYSFS = '/sys';
+
+sub read_initiator_info {
+    my $content = eval { PVE::Tools::file_get_contents($INITIATOR_NAME_FILE, 64 * 1024) };
+    return undef if !defined($content);
+
+    my $res = {};
+    for my $line (split(/\n/, $content)) {
+        if ($line =~ m/^\s*InitiatorName\s*=\s*(\S+)\s*$/) {
+            $res->{name} = $1;
+        } elsif ($line =~ m/^\s*InitiatorAlias\s*=\s*(.+?)\s*$/) {
+            $res->{alias} = $1;
+        }
+    }
+    return defined($res->{name}) ? $res : undef;
+}
 
 my $found_iscsi_adm_exe;
 my sub assert_iscsi_support {

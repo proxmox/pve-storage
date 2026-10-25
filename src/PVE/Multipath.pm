@@ -9,6 +9,7 @@ use PVE::Tools qw(run_command file_get_contents file_read_firstline dir_glob_for
 
 use PVE::Diskmanage;
 use PVE::Multipath::Config;
+use PVE::Storage::Plugin;
 
 my $MULTIPATH = '/sbin/multipath';
 my $MULTIPATHD = '/sbin/multipathd';
@@ -17,6 +18,23 @@ sub parse_dm_uuid($uuid) {
     my ($part, $wwid) = ($uuid // '') =~ /^(?:part([1-9][0-9]*)-)?mpath-(\S+)$/;
     return undef if !defined($wwid);
     return { wwid => $wwid, defined($part) ? (partition => int($part)) : () };
+}
+
+# The LUN that the base volume of an LVM storage names: a multipath map, a SCSI or an NVMe device,
+# or a partition of one. The storage ID comes off first, as it can look like a device name as well.
+sub parse_base_volume($volid) {
+    my ($storeid, $volname) = PVE::Storage::Plugin::parse_volume_id($volid // '', 1);
+    my ($kind, $id) = ($volname // '') =~ m/(?:^|\.)(dm-uuid|scsi|nvme)-(\S+)$/;
+    return undef if !defined($id);
+    if ($kind eq 'dm-uuid') {
+        my $map = parse_dm_uuid($id) // return undef;
+        return { storage => $storeid, kind => 'map', wwid => $map->{wwid} };
+    }
+    my $wwid = $id =~ s/(?<=.)-part[0-9]+$//r;
+    my $base = { storage => $storeid, kind => $kind, wwid => $wwid };
+    # A textual SCSI WWID can itself end in what looks like a partition suffix.
+    $base->{full_wwid} = $id if $kind eq 'scsi' && $id ne $wwid;
+    return $base;
 }
 
 sub map_info() {

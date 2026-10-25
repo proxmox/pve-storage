@@ -50,4 +50,59 @@ subtest 'omitted optional arguments behave like undef' => sub {
     }
 };
 
+subtest 'volume groups are read from the LVM hint file, if it is usable' => sub {
+    require PVE::Storage::LVMPlugin;
+    my $lvm = Test::MockModule->new('PVE::Storage::LVMPlugin');
+    my $contents;
+    $lvm->mock(
+        file_get_contents => sub {
+            is($_[0], '/run/lvm/hints', 'only the existing LVM cache is read');
+            die "No such file\n" if !defined($contents);
+            return $contents;
+        },
+    );
+    $lvm->mock(abs_path => sub { $_[0] eq '/dev/disk/by-id/test' ? '/dev/dm-0' : $_[0] });
+    $lvm->mock(run_command => sub { die "unexpected device probe\n" });
+    $lvm->redefine(
+        file_read_firstline => sub { $_[0] =~ m{/dm-3/dm/uuid$} ? 'part1-mpath-36001' : undef },
+    );
+    my $tools = Test::MockModule->new('PVE::Tools');
+    $tools->redefine(
+        dir_glob_foreach => sub { $_[2]->('dm-2') if $_[0] eq '/sys/class/block/dm-3/slaves' });
+    my $head = "# Created by vgs pid 1\nhints_version: 2.1\n";
+    for my $case (
+        [undef, undef, 'missing file'],
+        ['', undef, 'empty file'],
+        ["# Created empty by vgs pid 1\n", undef, 'file that LVM left without content'],
+        ["scan:/dev/sda pvid:abc devn:8:0 vg:data\n", undef, 'no version line'],
+        [
+            "hints_version: 3.0\nscan:/dev/sda pvid:abc devn:8:0 vg:data\n",
+            undef,
+            'other format version',
+        ],
+        [$head, {}, 'no PVs'],
+        ["${head}scan=/dev/sda pvid=abc devn=8:0 vg=data\n", {}, 'different format'],
+        ["${head}scan:/dev/sda pvid:abc devn:8:0 vg:-\n", {}, 'orphan PV'],
+        ["${head}scan:/dev/sda pvid:abc devn:8:0 vg:[unknown]\n", {}, 'unknown VG'],
+        [
+            "${head}scan:/dev/sda pvid:abc devn:8:0 vg:data\n",
+            { '/dev/sda' => 'data' },
+            'cached VG',
+        ],
+        [
+            "${head}scan:/dev/disk/by-id/test pvid:abc devn:253:0 vg:data\n",
+            { '/dev/dm-0' => 'data' },
+            'resolved device name',
+        ],
+        [
+            "${head}scan:/dev/dm-3 pvid:abc devn:253:3 vg:data\n",
+            { '/dev/dm-3' => 'data', '/dev/dm-2' => 'data' },
+            'partition of a multipath map',
+        ],
+    ) {
+        $contents = $case->[0];
+        is_deeply(PVE::Storage::LVMPlugin::cached_pv_volume_groups(), $case->[1], $case->[2]);
+    }
+};
+
 done_testing();

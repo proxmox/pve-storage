@@ -19,7 +19,7 @@ use PVE::INotify;
 use PVE::JSONSchema qw(get_standard_option);
 use PVE::Multipath;
 use PVE::RESTEnvironment qw(log_warn);
-use PVE::Tools qw(run_command file_read_firstline trim);
+use PVE::Tools qw(run_command file_get_contents file_read_firstline trim);
 
 use PVE::Storage::Common;
 use PVE::Storage::Plugin;
@@ -138,6 +138,28 @@ sub lvm_pv_info {
 
     die "unable to probe '$device' - no PV found\n" if !$pvinfo;
     return $pvinfo;
+}
+
+sub cached_pv_volume_groups {
+    my $data = eval { file_get_contents('/run/lvm/hints') } // '';
+    # LVM leaves the file without content when devices change and while it sees duplicate PVs
+    return undef if $data !~ m/^hints_version: 2\./m;
+    my $res = {};
+    while ($data =~ m/^scan:(\/dev\/\S+) pvid:\S+ devn:\d+:\d+ vg:([a-zA-Z0-9+_.-]+)$/mg) {
+        next if $2 eq '-';
+        my ($device, $vg) = (abs_path($1) // $1, $2);
+        $res->{$device} = $vg;
+        # a volume group on a partition of a multipath map counts for the map as well
+        my $sysdir = '/sys/class/block/' . basename($device);
+        my $map = PVE::Multipath::parse_dm_uuid(file_read_firstline("$sysdir/dm/uuid"));
+        next if !$map || !$map->{partition};
+        PVE::Tools::dir_glob_foreach(
+            "$sysdir/slaves",
+            'dm-\d+',
+            sub { $res->{"/dev/$_[0]"} //= $vg },
+        );
+    }
+    return $res;
 }
 
 sub clear_first_sector {

@@ -168,6 +168,57 @@ subtest 'map identity from the dm UUID and map members' => sub {
     );
 };
 
+subtest 'the LUN that an LVM base volume names' => sub {
+    for my $case (
+        ['conn:0.0.0.dm-uuid-mpath-3600a', 'map', 'a multipath map'],
+        ['conn:0.0.0.dm-uuid-part1-mpath-3600a', 'map', 'a partition of a map'],
+        [
+            'conn:0.0.0.dm-uuid-mpath-1VENDOR_vol-part1',
+            'map',
+            'a map with a textual WWID',
+            '1VENDOR_vol-part1',
+        ],
+        [
+            'conn:0.0.0.dm-uuid-part2-mpath-1VENDOR_vol-part1',
+            'map',
+            'a partition of that map',
+            '1VENDOR_vol-part1',
+        ],
+        ['conn:0.0.1.scsi-3600a', 'scsi', 'a SCSI device'],
+        [
+            'conn:0.0.1.scsi-3600a-part1',
+            'scsi',
+            'a partition or a full SCSI WWID',
+            '3600a',
+            '3600a-part1',
+        ],
+        [
+            'scsi-conn:0.0.1.scsi-3600a',
+            'scsi',
+            'on a storage whose ID looks like a device name',
+        ],
+        ['fabric:nvme-eui.3600a', 'nvme', 'an NVMe namespace'],
+        ['fabric:nvme-eui.3600a-part12', 'nvme', 'a partition of an NVMe namespace'],
+    ) {
+        my ($volid, $kind, $text, $wwid, $full) = @$case;
+        my ($storage) = split(/:/, $volid);
+        $wwid //= $kind eq 'nvme' ? 'eui.3600a' : '3600a';
+        is_deeply(
+            PVE::Multipath::parse_base_volume($volid),
+            {
+                storage => $storage,
+                kind => $kind,
+                wwid => $wwid,
+                defined($full) ? (full_wwid => $full) : (),
+            },
+            $text,
+        );
+    }
+    for my $volid ('conn:0.0.0.lun-1', 'dm-uuid-mpath-3600a', '', undef) {
+        ok(!PVE::Multipath::parse_base_volume($volid), 'no LUN in ' . ($volid // 'undef'));
+    }
+};
+
 subtest 'command timeouts, and the wait for a map only checks its by-id link' => sub {
     my $mp = Test::MockModule->new('PVE::Multipath');
     my @calls;
