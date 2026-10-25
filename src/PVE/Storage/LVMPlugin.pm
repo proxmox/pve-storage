@@ -951,6 +951,9 @@ sub on_add_hook {
 
         PVE::Storage::activate_storage($cfg, $baseid);
 
+        # Activating the base volume verifies that it belongs to its target.
+        PVE::Storage::activate_volumes($cfg, [$base]);
+
         # a failing hook does not remove a volume group it created, so check the device first
         assert_device_discard_supported($path)
             if discard_on_remove_requested($scfg->{'on-volume-remove'});
