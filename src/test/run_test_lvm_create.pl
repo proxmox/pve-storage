@@ -121,6 +121,20 @@ for my $case (
 }
 
 reset_case();
+my $storage_checks = 0;
+my $guard = { check_storage => sub { $storage_checks++; die "conflicting storage\n" } };
+eval { PVE::Storage::LVMPlugin::lvm_create_volume_group('/dev/disk/by-id/test', 'test', 1, $guard) };
+is($@, "conflicting storage\n", 'storage check refuses an initialization');
+is_deeply(\@writes, [], 'storage check runs before writes');
+reset_case();
+$signatures = [{ type => 'LVM2_member' }];
+$label = '/dev/sda: LVM2 PV';
+$pv = '/dev/sda:1024:test:aaaaaa-bbbb-cccc-dddd-eeee-ffff-gggggg:1';
+eval { PVE::Storage::LVMPlugin::lvm_create_volume_group('/dev/disk/by-id/test', 'test', 1, $guard) };
+is($@, '', 'an existing volume group is accepted without a storage check');
+is($storage_checks, 1, 'storage check only for an initialization');
+
+reset_case();
 $held = '/dev/sda';
 like(create(), qr{another block device uses '/dev/sda'}, 'holder refused');
 is_deeply(\@writes, [], 'holder: no writes');

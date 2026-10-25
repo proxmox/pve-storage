@@ -149,7 +149,7 @@ sub clear_first_sector {
 }
 
 sub lvm_create_volume_group {
-    my ($device, $vgname, $shared) = @_;
+    my ($device, $vgname, $shared, $guard) = @_;
 
     $device = PVE::Diskmanage::verify_blockdev_path($device);
     my $refuse_data = sub {
@@ -238,6 +238,7 @@ sub lvm_create_volume_group {
     }
     $refuse_data->(keys %signatures) if %signatures;
 
+    $guard->{check_storage}->($device) if $guard && $guard->{check_storage};
     clear_first_sector($device); # else pvcreate fails
 
     # we use --metadatasize 250k, which reseults in "pe_start = 512"
@@ -1067,7 +1068,27 @@ sub on_add_hook {
         assert_device_discard_supported($path)
             if discard_on_remove_requested($scfg->{'on-volume-remove'});
 
-        lvm_create_volume_group($path, $scfg->{vgname}, $scfg->{shared});
+        # Only initializing the LUN needs the check, an existing volume group on it can be added.
+        my $check_target = sub {
+            my $target = $basecfg->{target} or return;
+            for my $sid (sort keys $cfg->{ids}->%*) {
+                my $other = $cfg->{ids}->{$sid};
+                next if ($other->{target} // '') ne $target;
+                next if !PVE::Storage::san_storage_serves_images($other);
+                # an iSCSI storage offers its LUNs as disk images unless its content is 'none'
+                my $hint =
+                    $other->{type} eq 'iscsi'
+                    ? " - if no guest uses its LUNs directly, set its content to 'none'"
+                    : '';
+                die "storage '$sid' serves disk images from this target$hint\n";
+            }
+        };
+        lvm_create_volume_group(
+            $path,
+            $scfg->{vgname},
+            $scfg->{shared},
+            { check_storage => $check_target },
+        );
     }
 
     assert_discard_supported($scfg->{vgname}, $scfg->{'on-volume-remove'}, $scfg->{nodes});

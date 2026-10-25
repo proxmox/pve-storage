@@ -9,8 +9,9 @@ test_lvmplugin: run_test_lvmplugin.pl run_test_lvm_throughput.pl
 	./run_test_lvmplugin.pl
 	./run_test_lvm_throughput.pl
 
-test_lvm_create: run_test_lvm_create.pl
+test_lvm_create: run_test_lvm_create.pl run_test_lvm_base_conflicts.pl
 	./run_test_lvm_create.pl
+	./run_test_lvm_base_conflicts.pl
 
 test_lvm_lock_retry: run_test_lvm_lock_retry.pl
 	./run_test_lvm_lock_retry.pl

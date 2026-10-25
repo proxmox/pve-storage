@@ -1719,6 +1719,13 @@ sub target_is_used {
     return undef;
 }
 
+# Whether a storage on a SAN target or NVMe subsystem hands out its LUNs or namespaces as guest
+# disks, directly or as ZFS over iSCSI volumes, so that none of them may be taken over or wiped.
+sub san_storage_serves_images {
+    my ($scfg) = @_;
+    return $scfg->{content}->{images} || $scfg->{type} eq 'iscsidirect' || $scfg->{type} eq 'zfs';
+}
+
 sub volume_is_used {
     my ($cfg, $volid) = @_;
 
