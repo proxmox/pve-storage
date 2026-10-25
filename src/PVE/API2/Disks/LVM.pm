@@ -4,6 +4,7 @@ use strict;
 use warnings;
 
 use PVE::Storage::LVMPlugin;
+use PVE::Storage::SAN;
 use PVE::Diskmanage;
 use PVE::JSONSchema qw(get_standard_option);
 use PVE::API2::Storage::Config;
@@ -130,10 +131,13 @@ __PACKAGE__->register_method({
             name => get_standard_option('pve-storage-id'),
             device => {
                 type => 'string',
-                description => 'The block device you want to create the volume group on',
+                description => 'The block device you want to create the volume group on.'
+                    . ' Multipath mapped devices are supported.',
             },
             add_storage => {
-                description => "Configure storage using the Volume Group",
+                description => "Configure storage using the Volume Group. On a SAN LUN, this"
+                    . " adds a new shared storage for all nodes. On a local disk, the storage is"
+                    . " for this node, or this node joins a matching storage of that ID.",
                 type => 'boolean',
                 optional => 1,
                 default => 0,
@@ -152,48 +156,63 @@ __PACKAGE__->register_method({
         my $node = $param->{node};
 
         $dev = PVE::Diskmanage::verify_blockdev_path($dev);
-        PVE::Diskmanage::assert_disk_unused($dev);
+        my $san = PVE::Storage::SAN::is_san_device($dev);
+        PVE::Diskmanage::assert_disk_unused($dev) if !$san;
 
         my $storage_params = {
             type => 'lvm',
             vgname => $name,
             storage => $name,
             content => 'rootdir,images',
-            shared => 0,
-            nodes => $node,
+            shared => $san ? 1 : 0,
+            $san ? () : (nodes => $node),
         };
         my $verify_params = [qw(vgname)];
 
         if ($param->{add_storage}) {
             $rpcenv->check($user, "/storage", ['Datastore.Allocate']);
 
-            # reserve the name and add as disabled, will be enabled below if creation works out
+            # only local volume groups of the same name may share a storage that exists already
+            die "storage ID '$name' already defined\n"
+                if $san && PVE::Storage::storage_config(PVE::Storage::config(), $name, 1);
+
+            # a dry run that checks the parameters, the storage is added after the volume group
             PVE::API2::Storage::Config->create_or_update(
                 $name, $node, $storage_params, $verify_params, 1,
             );
         }
 
+        my $create_group = sub {
+            PVE::Diskmanage::assert_disk_unused($dev) if !$san;
+            die "volume group with name '${name}' already exists on node '${node}'\n"
+                if PVE::Storage::LVMPlugin::lvm_vgs()->{$name};
+
+            if (PVE::Diskmanage::is_partition($dev)) {
+                eval { PVE::Diskmanage::change_parttype($dev, '8E00'); };
+                warn $@ if $@;
+            }
+
+            # the given name, so that the LUN lookup notices if it passed to another device during
+            # its scan
+            PVE::Storage::LVMPlugin::lvm_create_volume_group(
+                $san ? $param->{device} : $dev,
+                $name,
+                $san,
+            );
+
+            PVE::Diskmanage::udevadm_trigger($dev);
+
+            if ($param->{add_storage} && $san) {
+                # must not join a storage that someone added with this ID in the meantime
+                PVE::API2::Storage::Config->create({%$storage_params});
+            } elsif ($param->{add_storage}) {
+                PVE::API2::Storage::Config->create_or_update(
+                    $name, $node, $storage_params, $verify_params,
+                );
+            }
+        };
         my $worker = sub {
-            PVE::Diskmanage::locked_disk_action(sub {
-                PVE::Diskmanage::assert_disk_unused($dev);
-                die "volume group with name '${name}' already exists on node '${node}'\n"
-                    if PVE::Storage::LVMPlugin::lvm_vgs()->{$name};
-
-                if (PVE::Diskmanage::is_partition($dev)) {
-                    eval { PVE::Diskmanage::change_parttype($dev, '8E00'); };
-                    warn $@ if $@;
-                }
-
-                PVE::Storage::LVMPlugin::lvm_create_volume_group($dev, $name);
-
-                PVE::Diskmanage::udevadm_trigger($dev);
-
-                if ($param->{add_storage}) {
-                    PVE::API2::Storage::Config->create_or_update(
-                        $name, $node, $storage_params, $verify_params,
-                    );
-                }
-            });
+            $san ? $create_group->() : PVE::Diskmanage::locked_disk_action($create_group);
         };
 
         return $rpcenv->fork_worker('lvmcreate', $name, $user, $worker);

@@ -8,7 +8,7 @@ use Fcntl qw(O_RDWR O_EXCL);
 use File::Basename;
 use IO::File;
 use JSON;
-use List::Util qw(max);
+use List::Util qw(max min);
 use POSIX qw(ceil);
 use Time::HiRes qw(clock_gettime CLOCK_MONOTONIC);
 
@@ -162,6 +162,90 @@ sub cached_pv_volume_groups {
     return $res;
 }
 
+sub lun_volume_groups {
+    my ($devices) = @_;
+    my $output = '';
+    run_command(
+        [
+            '/sbin/pvs',
+            '--nohints',
+            '--readonly',
+            # Every PV on the devices counts. Without these options, pvs leaves out a path whose
+            # WWID is in the wwids file of multipath, also while no map holds it, and the volume
+            # groups of other hosts or of lvmlockd.
+            '--config',
+            'devices/multipath_component_detection=0',
+            '--foreign',
+            '--shared',
+            '--devices',
+            join(',', @$devices),
+            '--reportformat',
+            'json',
+            '--options',
+            'pv_name,vg_name',
+        ],
+        timeout => 10,
+        outfunc => sub { $output .= "$_[0]\n" },
+    );
+    my $data = decode_json($output);
+    my $pvs = $data->{report}->[0]->{pv};
+    die "unable to inspect volume groups - invalid pvs report\n" if ref($pvs) ne 'ARRAY';
+    my (%vgs, %reported);
+    for my $pv (@$pvs) {
+        my $vg = $pv->{vg_name};
+        die "unable to inspect volume groups - missing volume group metadata\n"
+            if !defined($vg) || $vg eq '[unknown]';
+        $vgs{$vg} = 1 if length($vg);
+        if (defined($pv->{pv_name})) {
+            my $rdev = (stat($pv->{pv_name}))[6];
+            $reported{$rdev} = 1 if defined($rdev);
+        }
+    }
+    # pvs can succeed without reporting a device whose label it could not read.
+    for my $device (@$devices) {
+        my $error = "cannot read '$device' to check it for LVM";
+        my $rdev = (stat($device))[6] // die "$error - $!\n";
+        my $name = basename(abs_path($device) // $device);
+        my $sectors = file_read_firstline("/sys/class/block/$name/size")
+            // die "$error - unknown size\n";
+        # A partition has the queue of its disk. The size goes into the command line.
+        my ($block) =
+            (file_read_firstline("/sys/class/block/$name/queue/logical_block_size")
+                // file_read_firstline("/sys/class/block/$name/../queue/logical_block_size") // '')
+            =~ m/^([0-9]+)$/;
+        $block //= 512;
+        # LVM looks for its label in the first four 512-byte sectors. One block of at least 4 KiB
+        # covers them and is aligned for a direct read. A device can be smaller, like the 1 KiB of
+        # an extended partition. The data fits in a pipe, outfunc would split it into lines.
+        my $size = max(4096, $block);
+        my $expected = min($size, $sectors * 512);
+        next if !$expected;
+        pipe(my $reader, my $writer) or die "$error - $!\n";
+        my $reason = '';
+        eval {
+            run_command(
+                ['dd', "if=$device", "bs=$size", 'count=1', 'iflag=direct', 'status=none'],
+                timeout => 10,
+                output => '>&' . fileno($writer),
+                errfunc => sub { $reason .= "$_[0]\n" },
+            );
+        };
+        if (my $err = $@) {
+            chomp(my $cause = $reason || $err);
+            die "$error - $cause\n";
+        }
+        close($writer);
+        my $length = read($reader, my $labels, $size) // die "$error - $!\n";
+        die "$error - short read\n" if $length != $expected;
+        next if $reported{$rdev};
+        for my $sector (0 .. min(3, $expected / 512 - 1)) {
+            die "cannot use '$device' - it has an LVM label that LVM does not report\n"
+                if substr($labels, $sector * 512, 8) eq 'LABELONE';
+        }
+    }
+    return [sort keys %vgs];
+}
+
 sub clear_first_sector {
     my ($dev) = shift;
 
@@ -172,10 +256,17 @@ sub clear_first_sector {
     }
 }
 
-sub lvm_create_volume_group {
-    my ($device, $vgname, $shared, $guard) = @_;
-
+my sub create_volume_group {
+    my ($device, $vgname, $lun, $guard) = @_;
     $device = PVE::Diskmanage::verify_blockdev_path($device);
+    my $fh;
+    if ($lun) {
+        sysopen($fh, $lun->{'by-id'}, O_RDWR) or die "cannot open '$device' - $!\n";
+    }
+    my $check_name = sub {
+        PVE::Storage::SAN::assert_same_device($lun, $fh, $device) if $lun;
+    };
+    $check_name->();
     my $refuse_data = sub {
         my (@types) = @_;
         die "device '$device' contains data ("
@@ -193,7 +284,8 @@ sub lvm_create_volume_group {
         if !defined($size) || $size !~ m/^\d+$/ || !$size;
     die "unable to probe '$device' - missing device mapper identity\n"
         if basename($device) =~ m/^dm-\d+$/ && !defined($uuid);
-    if (defined($uuid) && $uuid =~ m/^mpath-/) {
+    my $map = PVE::Multipath::parse_dm_uuid($uuid);
+    if ($map && !$map->{partition}) {
         # A queueing map without a running path can stall even a read-only probe.
         my $running = 0;
         PVE::Tools::dir_glob_foreach(
@@ -220,6 +312,9 @@ sub lvm_create_volume_group {
     }
     my %signatures = map { $_->{type} => 1 } $probe->@*;
     my $res = lvm_pv_info($device, $signatures{LVM2_member});
+    # check the name again after the probes: a volume group they found only counts if the name still
+    # leads to the held LUN
+    $check_name->();
 
     # A PV without metadata copies can belong to a VG whose other devices are not visible. The
     # sentinel is not a VG name or orphan proof, even if the use flag contradicts it.
@@ -228,7 +323,9 @@ sub lvm_create_volume_group {
         && ($res->{vgname} eq '[unknown]' || (!$res->{vgname} && $res->{in_use} ne '0'));
 
     if ($res && $res->{vgname}) {
-        return if $res->{vgname} eq $vgname; # already created
+        # Only a storage added with the LUN as base volume takes over its volume group. A volume
+        # group that another node created on the LUN can be missing from the hints of this node.
+        return if $res->{vgname} eq $vgname && (!$lun || $guard); # already created
         die "device '$device' is already used by volume group '$res->{vgname}'\n";
     }
 
@@ -262,23 +359,51 @@ sub lvm_create_volume_group {
     }
     $refuse_data->(keys %signatures) if %signatures;
 
+    # Only initializing the device needs the checks, an existing volume group on it can be added.
     $guard->{check_storage}->($device) if $guard && $guard->{check_storage};
-    clear_first_sector($device); # else pvcreate fails
+    if ($lun) {
+        my $exempt = $guard ? $guard->{exempt} : undef;
+        # probe the verified kernel path of the held device, not a mapper alias
+        my $held = { %$lun, devpath => $device };
+        PVE::Storage::SAN::assert_lun_unreferenced(PVE::Storage::config(), $held, $exempt);
+        PVE::Storage::SAN::assert_lun_paths_unused($held);
+        # a guest with the LUN as disk has it open, without being a holder or a storage reference
+        my $opener = PVE::Diskmanage::device_opener($device);
+        die "cannot create volume group on '$device' - process $opener has it open\n"
+            if defined($opener);
+    }
+
+    $check_name->();
+    clear_first_sector($lun ? '/proc/' . $$ . '/fd/' . fileno($fh) : $device);
 
     # we use --metadatasize 250k, which reseults in "pe_start = 512"
     # so pe_start is aligned on a 128k boundary (advantage for SSDs)
     my $cmd = ['/sbin/pvcreate', '--metadatasize', '250k', $device];
 
-    run_command($cmd, errmsg => "pvcreate '$device' error");
+    $check_name->();
+    run_command($cmd, errmsg => "pvcreate '$device' error", $lun ? (timeout => 30) : ());
 
     $cmd = ['/sbin/vgcreate', $vgname, $device];
     # push @$cmd, '-c', 'y' if $shared; # we do not use this yet
 
+    $check_name->();
     run_command(
         $cmd,
+        $lun ? (timeout => 30) : (),
         errmsg => "vgcreate $vgname $device error",
         errfunc => $ignore_no_medium_warnings,
         outfunc => $ignore_no_medium_warnings,
+    );
+}
+
+sub lvm_create_volume_group {
+    my ($device, $vgname, $shared, $guard) = @_;
+    require PVE::Storage::SAN;
+    my $lun = PVE::Storage::SAN::lun_for_device($device);
+    return create_volume_group($device, $vgname, undef, $guard) if !$lun;
+    PVE::Storage::SAN::with_lun_lock(
+        $lun,
+        sub { create_volume_group($device, $vgname, $lun, $guard) },
     );
 }
 
@@ -1164,7 +1289,7 @@ sub on_add_hook {
             $path,
             $scfg->{vgname},
             $scfg->{shared},
-            { check_storage => $check_target },
+            { check_storage => $check_target, exempt => $storeid },
         );
     }
 

@@ -105,4 +105,31 @@ subtest 'volume groups are read from the LVM hint file, if it is usable' => sub 
     }
 };
 
+subtest 'the names of a held LUN have to mean the held device' => sub {
+    require PVE::Storage::SAN;
+    open(my $fh, '<', '/dev/null') or die "cannot open /dev/null - $!\n";
+    my $lun = { 'by-id' => '/dev/null', devpath => '/dev/null' };
+    my $check = sub {
+        eval { PVE::Storage::SAN::assert_same_device(@_) };
+        return $@;
+    };
+    is($check->($lun, $fh, '/dev/null'), '', 'same device behind all names');
+    like(
+        $check->({ %$lun, 'by-id' => '/dev/zero' }, $fh),
+        qr/'\/dev\/zero' changed/,
+        'by-id name',
+    );
+    like(
+        $check->({ %$lun, devpath => '/dev/zero' }, $fh),
+        qr/'\/dev\/zero' changed/,
+        'device path',
+    );
+    like(
+        $check->($lun, $fh, '/dev/zero'),
+        qr/'\/dev\/zero' changed/,
+        'name used for the commands',
+    );
+    like($check->($lun, $fh, '/dev/gone'), qr/'\/dev\/gone' changed/, 'name without a device');
+};
+
 done_testing();

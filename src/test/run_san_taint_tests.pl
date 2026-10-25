@@ -31,4 +31,54 @@ for my $bad ('-bad', '1:2', '../dev', "3600a\n") {
     like($@, qr/invalid WWID/, 'ambiguous identity refused');
 }
 
+# the LUN that write operations get must be usable in command lines and lock names
+use PVE::Storage::SAN;
+my $san = Test::MockModule->new('PVE::Storage::SAN');
+my $tainted_dev = PVE::Tools::file_get_contents('/proc/self/comm') =~ s/.*//sr . '/dev/null';
+ok(tainted($tainted_dev), 'device path derived from a file is tainted');
+$san->mock(
+    is_san_device => sub { 1 },
+    scan_luns => sub {
+        return [{
+            devpath => $tainted_dev,
+            wwid => $wwid,
+            'by-id' => '/dev/null',
+            usage => 'unused',
+            multipath => 'none',
+        }];
+    },
+);
+my $disks = Test::MockModule->new('PVE::Diskmanage');
+$disks->mock(verify_blockdev_path => sub { '/dev/null' });
+my $storage = Test::MockModule->new('PVE::Storage');
+$storage->mock(config => sub { { ids => {} } });
+my $lun = PVE::Storage::SAN::lun_for_device('/dev/null');
+ok(!tainted($lun->{devpath}), 'LUN device path is untainted');
+ok(!tainted($lun->{wwid}), 'LUN WWID is untainted');
+is($lun->{wwid}, '3600a', 'LUN WWID is unchanged');
+
+# the label check puts the logical block size of the device, read from sysfs, into the dd command
+use PVE::Storage::LVMPlugin;
+my $lvm = Test::MockModule->new('PVE::Storage::LVMPlugin');
+my $taint = PVE::Tools::file_get_contents('/proc/self/comm') =~ s/.*//sr;
+for my $block (512, 4096, 16384) {
+    my $sectors = $block > 4096 ? $block / 512 : 8;
+    $lvm->mock(
+        file_read_firstline => sub($path) {
+            return "$taint$sectors" if $path =~ m{/size$};
+            return "$taint$block" if $path =~ m{/queue/logical_block_size$};
+            return undef;
+        },
+        run_command => sub($cmd, %opts) {
+            return $opts{outfunc}->('{"report":[{"pv":[]}]}') if $cmd->[0] eq '/sbin/pvs';
+            PVE::Tools::run_command(['/usr/bin/true', @$cmd]);
+            open(my $out, $opts{output}) or die "$!\n";
+            print {$out} "\0" x ($block > 4096 ? $block : 4096);
+            close($out) or die "$!\n";
+        },
+    );
+    my $vgs = eval { PVE::Storage::LVMPlugin::lun_volume_groups(['/dev/null']) };
+    is_deeply([$@, $vgs], ['', []], "the label check runs with a tainted block size of $block");
+}
+
 done_testing();

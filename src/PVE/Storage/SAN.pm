@@ -5,6 +5,7 @@ use v5.36;
 use Cwd qw(abs_path);
 use File::Basename qw(basename);
 
+use PVE::Cluster;
 use PVE::INotify;
 use PVE::Tools qw(file_read_firstline dir_glob_foreach);
 
@@ -219,6 +220,162 @@ sub is_san_device($device, $info = undef) {
         $info->{map}
         || $info->{session}
         || PVE::Diskmanage::is_remote_transport($info->{transport}) ? 1 : 0;
+}
+
+sub lun_for_device($name) {
+    my $device = PVE::Diskmanage::verify_blockdev_path($name);
+    return undef if !is_san_device($device);
+    my $rows = scan_luns(PVE::Storage::config());
+    # the device behind a name such as a by-id one can pass to another LUN during the scan
+    die "cannot use '$device' - the device behind '$name' changed\n"
+        if (abs_path($name) // '') ne $device;
+    for my $lun (@$rows) {
+        next if (abs_path($lun->{devpath}) // '') ne $device;
+        die "cannot use '$device' - no link under /dev/disk/by-id names the WWID of the LUN\n"
+            if !$lun->{'by-id'};
+        # read from sysfs, but used in command lines and in the name of the cluster lock
+        ($lun->{devpath}) = $lun->{devpath} =~ m{\A(/dev/[A-Za-z0-9_.:+/-]+)\z}
+            or die "cannot use '$device' - unexpected device path\n";
+        ($lun->{wwid}) = $lun->{wwid} =~ m/\A([A-Za-z0-9_.:+=-]+)\z/
+            or die "cannot use '$device' - unexpected WWID\n";
+        return $lun;
+    }
+    die "cannot use '$device' - use the device that the SAN LUN list shows for the LUN, or its"
+        . " multipath map\n";
+}
+
+sub lun_partitions($lun) {
+    my $device = PVE::Diskmanage::verify_blockdev_path($lun->{devpath});
+    my $name = basename($device);
+    my @parts;
+    dir_glob_foreach(
+        "/sys/class/block/$name",
+        "\Q$name\E.+",
+        sub($part, @) {
+            my ($path) = "/dev/$part" =~ m{\A(/dev/[A-Za-z0-9_.+-]+)\z};
+            push @parts, $path if defined($path) && -e "/sys/class/block/$name/$part/partition";
+        },
+    );
+    dir_glob_foreach(
+        "/sys/class/block/$name/holders",
+        'dm-\\d+',
+        sub($part, @) {
+            my $map = PVE::Multipath::parse_dm_uuid(
+                file_read_firstline("/sys/class/block/$part/dm/uuid"));
+            my ($path) = "/dev/$part" =~ m{\A(/dev/dm-\d+)\z};
+            push @parts, $path
+                if defined($path) && $map && $map->{partition} && $map->{wwid} eq $lun->{wwid};
+        },
+    );
+    return \@parts;
+}
+
+sub assert_lun_unreferenced($cfg, $lun, $exempt = undef) {
+    my %vgs = map { $_ => 1 } PVE::Storage::LVMPlugin::lun_volume_groups(
+        [$lun->{devpath}, lun_partitions($lun)->@*],
+    )->@*;
+    # the paths of a LUN can belong to more than one target
+    my $sessions = PVE::ISCSI::Topology::device_map();
+    my %targets =
+        map { $_->{target} => 1 } map { $sessions->{ basename($_) } // () } lun_paths($lun)->@*;
+    $targets{ $lun->{'iscsi-target'} } = 1 if defined($lun->{'iscsi-target'});
+    for my $sid (sort keys $cfg->{ids}->%*) {
+        next if defined($exempt) && $sid eq $exempt;
+        my $scfg = $cfg->{ids}->{$sid};
+        my $type = $scfg->{type};
+        if ($vgs{ $scfg->{vgname} // '' }) {
+            die "cannot use '$lun->{devpath}' - volume group is used by storage '$sid'\n";
+        }
+        if (
+            defined($scfg->{target})
+            && $targets{ $scfg->{target} }
+            && PVE::Storage::san_storage_serves_images($scfg)
+        ) {
+            die "cannot use '$lun->{devpath}' - storage '$sid' serves images from this target\n";
+        }
+        next if $type ne 'lvm' || !$scfg->{base};
+        my $base = PVE::Multipath::parse_base_volume($scfg->{base});
+        my $matches = $base
+            && ($base->{wwid} eq $lun->{wwid}
+                || (defined($base->{full_wwid}) && $base->{full_wwid} eq $lun->{wwid}));
+        if (!$matches) {
+            my $path = eval { abs_path(PVE::Storage::path($cfg, $scfg->{base})) };
+            my $device = abs_path($lun->{devpath});
+            $matches = defined($path) && defined($device) && $path eq $device;
+        }
+        die "cannot use '$lun->{devpath}' - storage '$sid' uses this LUN as its base volume\n"
+            if $matches;
+    }
+    return;
+}
+
+# Serializes writes to a LUN cluster-wide. The storage configuration read in the code is current.
+sub with_lun_lock($lun, $code) {
+    my $key = $lun->{wwid} =~ s/([^A-Za-z0-9_.:-])/sprintf('=%02x', ord($1))/ger;
+    PVE::Cluster::cfs_lock_domain("san-$key", undef, $code);
+    die $@ if $@;
+}
+
+# Device names can pass to another device while a LUN waits for its lock or is worked on. All
+# names used for it have to mean the device that is held open.
+sub assert_same_device($lun, $fh, @names) {
+    my @held = stat($fh);
+    for my $name ($lun->{'by-id'}, $lun->{devpath}, @names) {
+        my @named = stat($name);
+        die "cannot use '$lun->{devpath}' - the device behind '$name' changed\n"
+            if !@held || !@named || $held[6] != $named[6];
+    }
+}
+
+sub lun_paths($lun) {
+    my $paths = PVE::Multipath::Identity::collect(all => 1)->{paths};
+    my %names = map { $_ => 1 } grep { $paths->{$_}->{wwid} eq $lun->{wwid} } keys %$paths;
+    my $device = basename(abs_path($lun->{devpath}) // $lun->{devpath});
+    dir_glob_foreach(
+        "/sys/class/block/$device/slaves",
+        'sd[a-z]+',
+        sub($slave, @) { $names{$slave} = 1 },
+    );
+    return [map { m/^(sd[a-z]+)$/ ? "/dev/$1" : () } sort keys %names];
+}
+
+# The other paths of a LUN reach the same data, but neither the exclusive open of the LUN nor the
+# checks of its device cover them.
+sub assert_lun_paths_unused($lun) {
+    my $device = basename(abs_path($lun->{devpath}) // $lun->{devpath});
+    my %devices; # the paths and their partitions
+    for my $path (grep { basename($_) ne $device } lun_paths($lun)->@*) {
+        if (my $mounted = PVE::Diskmanage::is_mounted($path)) {
+            die "cannot use '$lun->{devpath}' - the LUN is mounted through '$mounted'\n";
+        }
+        my $name = basename($path);
+        $devices{$path} = 1;
+        dir_glob_foreach(
+            "/sys/class/block/$name",
+            "\Q$name\E\\d+",
+            sub($part, @) {
+                $devices{"/dev/$part"} = 1;
+            },
+        );
+    }
+    for my $path (sort keys %devices) {
+        dir_glob_foreach(
+            '/sys/class/block/' . basename($path) . '/holders',
+            '[^.].*',
+            sub($holder, @) {
+                if ($holder ne $device) {
+                    die "cannot use '$lun->{devpath}' - another block device uses the LUN"
+                        . " through '$path'\n";
+                }
+            },
+        );
+    }
+    my $openers = PVE::Diskmanage::device_openers([sort keys %devices], writable => 1);
+    for my $path (sort keys %$openers) {
+        my $opener = $openers->{$path};
+        die "cannot use '$lun->{devpath}' - process $opener->{pid} ($opener->{command}) has the"
+            . " LUN open through '$path'\n";
+    }
 }
 
 1;

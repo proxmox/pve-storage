@@ -10,9 +10,12 @@ use Test::More;
 
 use lib ('.', '..');
 use PVE::Storage::LVMPlugin;
+use PVE::Storage::SAN;
 
 my $lvm = Test::MockModule->new('PVE::Storage::LVMPlugin');
 my $disk = Test::MockModule->new('PVE::Diskmanage');
+my $san = Test::MockModule->new('PVE::Storage::SAN');
+$san->mock(lun_for_device => sub { undef });
 my $tools = Test::MockModule->new('PVE::Tools');
 my $inotify = Test::MockModule->new('PVE::INotify');
 $inotify->mock(nodename => sub { 'testnode' });
@@ -43,6 +46,7 @@ $lvm->mock(
             if $_[0] =~ m{/(?:uevent|size)/partition$};
         return $partitioned ? '1' : undef if $_[0] =~ m{/partition$};
         return $holder_uuid if $_[0] =~ m{/dm-5/dm/uuid$};
+        return 'part1-mpath-3600abc' if $map eq 'partition' && $_[0] =~ m{/uuid$};
         return $map ? 'mpath-3600abc' : undef if $_[0] =~ m{/uuid$};
         return $running ? 'running' : 'offline' if $_[0] =~ m{/state$};
         die "unexpected read $_[0]";
@@ -119,6 +123,10 @@ for my $case (
     is_deeply(\@probes, [], "$case->[0]: no device reads");
     is_deeply(\@writes, [], "$case->[0]: no writes");
 }
+reset_case();
+($map, $running) = ('partition', 0);
+is(create(), '', 'the partition of a map has the map as member, not its paths');
+is(scalar(@writes), 3, 'so it is set up like a local partition');
 
 reset_case();
 my $storage_checks = 0;
@@ -170,6 +178,44 @@ like(
     qr/contains data \(gpt\)/,
     'a partition table of a map is data, kpartx may not map it',
 );
+reset_case();
+($signatures, $partitioned) = ([{ type => 'PMBR' }, { type => 'gpt' }], 1);
+$san->mock(
+    lun_for_device =>
+        sub { { wwid => '3600abc', devpath => '/dev/sda', 'by-id' => '/dev/null' } },
+    with_lun_lock => sub { $_[1]->() },
+);
+like(
+    create(),
+    qr{the device behind '/dev/sda' changed},
+    'a device name that no longer means the held LUN is refused',
+);
+is_deeply(\@writes, [], 'changed device: no writes');
+$san->mock(assert_same_device => sub { });
+like(create(), qr/contains data \(PMBR, gpt\)/, 'a partitioned LUN that is no map is data too');
+is_deeply(\@writes, [], 'partitioned LUN: no writes');
+reset_case();
+my $opener = '4711 (kvm)';
+$disk->mock(device_opener => sub { $opener });
+$san->mock(assert_lun_unreferenced => sub { });
+my $storage = Test::MockModule->new('PVE::Storage');
+$storage->mock(config => sub { { ids => {} } });
+like(create(), qr/process 4711 \(kvm\) has it open/, 'a LUN that a process has open is refused');
+is_deeply(\@writes, [], 'open LUN: no writes');
+$opener = undef;
+is(create(), '', 'a LUN that no process has open is initialized');
+is(scalar(@writes), 3, 'unused LUN: initialized');
+reset_case();
+$signatures = [{ type => 'LVM2_member' }];
+$label = '/dev/sda: LVM2 PV';
+$pv = '/dev/sda:1024:test:aaaaaa-bbbb-cccc-dddd-eeee-ffff-gggggg:1';
+my $checked = 0;
+$san->mock(assert_same_device => sub { die "device changed\n" if ++$checked == 2 });
+like(create(), qr/device changed/, 'an existing volume group only counts on the held LUN');
+$san->unmock('assert_lun_unreferenced');
+$san->unmock('assert_same_device');
+$san->unmock('with_lun_lock');
+$san->mock(lun_for_device => sub { undef });
 
 my $uuid = 'aaaaaa-bbbb-cccc-dddd-eeee-ffff-gggggg';
 for my $vg ('test', 'other', 'unknown', '') {

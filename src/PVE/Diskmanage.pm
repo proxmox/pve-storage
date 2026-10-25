@@ -1166,6 +1166,51 @@ sub change_parttype {
     run_command(['sgdisk', "-t${partnum}:${parttype}", $blockdev], errmsg => $err);
 }
 
+# Returns the PID and command name of a process for each of the block devices that a process has
+# open, as hash by the resolved path of the device. With 'writable', a process that opened the
+# device only for reading does not count. Only detects an open through the device nodes in /dev
+# of the host, not one through the device node that a container has of its own.
+sub device_openers {
+    my ($devices, %param) = @_;
+
+    # the device number tells a device from a file of that name in another mount namespace
+    my %nodes;
+    for my $path (grep { defined($_) } map { abs_path($_) } @$devices) {
+        my $st = stat($path) // next;
+        $nodes{$path} = $st->rdev;
+    }
+    my $openers = {};
+    return $openers if !%nodes;
+
+    opendir(my $proc, '/proc') or return $openers;
+    for my $pid (grep { m/^\d+$/ && $_ != $$ } readdir($proc)) {
+        opendir(my $fds, "/proc/$pid/fd") or next;
+        for my $fd (readdir($fds)) {
+            my $target = readlink("/proc/$pid/fd/$fd") // next;
+            next if !defined($nodes{$target}) || $openers->{$target};
+            my $st = stat("/proc/$pid/fd/$fd") // next;
+            next if $st->rdev != $nodes{$target};
+            if ($param{writable}) {
+                # the permissions of the link are the access mode of the open file
+                my $link = lstat("/proc/$pid/fd/$fd") // next;
+                next if !($link->mode & S_IWUSR);
+            }
+            my $comm = file_read_firstline("/proc/$pid/comm") // 'unknown';
+            $openers->{$target} = { pid => $pid, command => $comm };
+        }
+    }
+    return $openers;
+}
+
+# Returns the PID and command name of a process that has one of the block devices open, if any.
+sub device_opener {
+    my (@devices) = @_;
+
+    my $openers = device_openers(\@devices);
+    my ($opener) = map { $openers->{$_} } sort keys %$openers;
+    return $opener ? "$opener->{pid} ($opener->{command})" : undef;
+}
+
 # Wipes all labels and the first 200 MiB of a disk/partition (or the whole if it is smaller).
 # If called with a partition, also sets the partition type to 0x83 'Linux filesystem'.
 # Expected to be called with a result of verify_blockdev_path().
