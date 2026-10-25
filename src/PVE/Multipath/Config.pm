@@ -2,6 +2,8 @@ package PVE::Multipath::Config;
 
 use v5.36;
 
+use Digest::SHA qw(sha1_hex);
+
 use PVE::Cluster qw(cfs_register_file cfs_read_file cfs_write_file cfs_lock_file);
 use PVE::JSONSchema qw(get_standard_option);
 use PVE::SectionConfig;
@@ -144,6 +146,7 @@ sub read_config() { return cfs_read_file('multipath.cfg') }
 sub write_cluster_config($cfg) { cfs_write_file('multipath.cfg', $cfg) }
 sub read_overrides() { return cfs_read_file('multipath-overrides.conf') }
 sub write_overrides($text) { cfs_write_file('multipath-overrides.conf', $text) }
+sub overrides_digest($text) { return sha1_hex($text // '') }
 
 # An exception object passes unchanged, so that the API keeps its status code and field errors.
 sub lock_config($code, $errmsg = undef) {
@@ -173,6 +176,18 @@ sub wwids_for_node($cfg, $node) {
         wwid_list($cfg)->@*];
 }
 
+sub wwid_sections($cfg) {
+    my $res = {};
+    for my $wwid (wwid_list($cfg)->@*) {
+        my $section = $cfg->{ids}->{$wwid};
+        my $entry = { map { $_ => $section->{$_} } grep { $_ ne 'type' } keys %$section };
+        $entry->{nodes} = __PACKAGE__->encode_value('wwid', 'nodes', $entry->{nodes})
+            if $entry->{nodes};
+        $res->{$wwid} = $entry;
+    }
+    return $res;
+}
+
 sub build_multipaths_block($cfg, $node) {
     my $out = "# Managed by Proxmox VE.\nmultipaths {\n";
     for my $wwid (wwids_for_node($cfg, $node)->@*) {
@@ -184,6 +199,18 @@ sub build_multipaths_block($cfg, $node) {
         $out .= "\t}\n";
     }
     return "$out}\n";
+}
+
+sub apply_section_update($section, $param, $delete) {
+    for my $key (sort keys %$param) {
+        $section->{$key} = __PACKAGE__->decode_value($section->{type}, $key, $param->{$key});
+    }
+    PVE::SectionConfig::delete_from_config(
+        $section,
+        $properties,
+        $param,
+        [PVE::Tools::split_list($delete // '')],
+    );
 }
 
 1;

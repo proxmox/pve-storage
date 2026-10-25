@@ -9,10 +9,81 @@ BEGIN {
 }
 use lib ('.', '..');
 use File::Temp qw(tempdir);
+use Storable qw(dclone);
 use Test::More;
 use Test::MockModule;
+use PVE::API2::Multipath;
 use PVE::Multipath::Generator;
 use PVE::Storage;
+
+subtest 'add, update and remove an explicit entry' => sub {
+    my $cfg = { ids => {}, digest => 'a' x 40 };
+    my $config = Test::MockModule->new('PVE::Multipath::Config');
+    $config->mock(read_config => sub { dclone($cfg) });
+    $config->mock(lock_config => sub { $_[0]->() });
+    $config->mock(write_cluster_config => sub { $cfg = $_[0] });
+    PVE::API2::Multipath->add_wwid({ wwid => '3600a', alias => 'data' });
+    is(
+        $cfg->{ids}->{'3600a'}->{alias},
+        'data',
+        'entry can be added without node reports or tools',
+    );
+    eval { PVE::API2::Multipath->add_wwid({ wwid => '3600b', alias => 'data' }) };
+    like($@, qr/already|used|alias/, 'duplicate alias refused');
+
+    my @namespaces = (
+        'eui.0123456789abcdef',
+        'uuid.6b5f0c22-1111-4e2a-9c3b-000000000001',
+        'nvme.1b36-31323334-51454d55-00000001',
+    );
+    for my $wwid (@namespaces) {
+        eval { PVE::API2::Multipath->add_wwid({ wwid => $wwid, 'paths-expected' => 2 }) };
+        like($@, qr/native NVMe multipath/, "namespace WWID $wwid refused");
+        ok(!$cfg->{ids}->{$wwid}, 'and not added');
+    }
+    PVE::API2::Multipath->update_wwid({ wwid => '3600a', 'no-path-retry' => 'fail' });
+    is($cfg->{ids}->{'3600a'}->{'no-path-retry'}, 'fail', 'per-LUN setting updated');
+    eval { PVE::API2::Multipath->update_wwid({ wwid => '3600a', digest => 'b' x 40 }) };
+    like($@, qr/modified/, 'digest checked');
+    PVE::API2::Multipath->remove_wwid({ wwid => '3600a' });
+    is_deeply($cfg->{ids}, {}, 'entry removed without local device commands');
+
+    for my $name (qw(read_wwid add_wwid update_wwid remove_wwid)) {
+        my $schema = PVE::API2::Multipath->map_method_by_name($name)->{parameters};
+        eval { PVE::JSONSchema::validate({ wwid => '8:16' }, $schema) };
+        like($@, qr/wwid: value does not match/,
+            "$name refuses an ambiguous WWID as parameter");
+    }
+    is_deeply(
+        PVE::API2::Multipath->index({}),
+        [map { { name => $_ } } qw(overrides wwid)],
+        'index',
+    );
+};
+
+subtest 'a parameter error under the lock keeps its status and field' => sub {
+    my $cfg = { ids => { '3600a' => { type => 'wwid' } }, digest => 'a' x 40 };
+    my $config = Test::MockModule->new('PVE::Multipath::Config');
+    $config->mock(read_config => sub { dclone($cfg) });
+    $config->mock(write_cluster_config => sub { $cfg = $_[0] });
+    # as PVE::Cluster does it, the error of the code is left in $@
+    $config->mock(
+        cfs_lock_file => sub {
+            eval { $_[2]->() };
+            return undef;
+        },
+    );
+    eval { PVE::API2::Multipath->add_wwid({ wwid => '3600a' }) };
+    my $err = $@;
+    is(ref($err) ? $err->{code} : $err, 400, 'a duplicate entry is a parameter error');
+    like(
+        ref($err) ? $err->{errors}->{wwid} : '',
+        qr/already has an explicit multipath entry/,
+        'of the WWID',
+    );
+    eval { PVE::API2::Multipath->update_wwid({ wwid => '3600a', digest => 'b' x 40 }) };
+    like($@, qr/^updating WWID '3600a' failed - .*modified/, 'another error names the action');
+};
 
 subtest 'add-only generation and failed reload throttle' => sub {
     my $dir = tempdir('multipath-test-XXXX', DIR => '.', CLEANUP => 1);
