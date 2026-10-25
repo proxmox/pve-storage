@@ -1634,8 +1634,8 @@ sub volume_snapshot_info {
 }
 
 # LVM hints can miss PVs written by another node onto previously empty devices. Probe without
-# hints once per activation cache; rebuild only when new VGs appear, since rebuilding also resets
-# LVM autoactivation records.
+# hints, normally once per activation cache and again after activating a missing base volume;
+# rebuild only when new VGs appear, since rebuilding also resets LVM autoactivation records.
 my sub find_unhinted_vgs {
     my ($cache) = @_;
 
@@ -1656,10 +1656,45 @@ my sub find_unhinted_vgs {
     delete $cache->{lvs};
 }
 
+# The base device may still be appearing after transport activation; wait before retrying LVM.
+my sub activate_missing_base {
+    my ($storeid, $scfg, $cache) = @_;
+
+    # The lists of the cache can predate the device, so list again. Merge the result into the cached
+    # list instead of replacing it: an incomplete listing must not hide volume groups found before.
+    $cache->{vgs} = { $cache->{vgs}->%*, lvm_vgs()->%* };
+    delete $cache->{lvs};
+    return if $cache->{vgs}->{ $scfg->{vgname} };
+
+    my $activated = eval {
+        my $cfg = PVE::Storage::config();
+        my ($baseid, $volname) = PVE::Storage::Plugin::parse_volume_id($scfg->{base});
+        my $basecfg = PVE::Storage::storage_config($cfg, $baseid);
+        my $plugin = PVE::Storage::Plugin->lookup($basecfg->{type});
+        # the activation of this storage activated the base storage with the same cache before
+        $plugin->activate_volume($baseid, $basecfg, $volname, undef, $cache);
+        1;
+    };
+    if (!$activated) {
+        warn "storage '$storeid': activating base volume '$scfg->{base}' failed - $@";
+        # nothing came up for a listing to find; activate_storage() still probes without hints
+        # once per cache, but not again for every storage whose base volume is missing
+        return;
+    }
+
+    # A new device invalidates LVM's hints, but a PV written remotely to an existing device does
+    # not; retry without hints after each missing-base activation.
+    $cache->{vgs} = { $cache->{vgs}->%*, lvm_vgs()->%* };
+    find_unhinted_vgs($cache) if !$cache->{vgs}->{ $scfg->{vgname} };
+}
+
 sub activate_storage {
     my ($class, $storeid, $scfg, $cache) = @_;
 
     $cache->{vgs} = lvm_vgs() if !$cache->{vgs};
+
+    activate_missing_base($storeid, $scfg, $cache)
+        if $scfg->{base} && !$cache->{vgs}->{ $scfg->{vgname} };
 
     find_unhinted_vgs($cache) if !$cache->{vgscaned} && !$cache->{vgs}->{ $scfg->{vgname} };
 
