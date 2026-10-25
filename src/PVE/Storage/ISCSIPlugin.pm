@@ -11,6 +11,7 @@ use IO::File;
 use PVE::ISCSI::Topology;
 use PVE::JSONSchema qw(get_standard_option);
 use PVE::Multipath;
+use PVE::Multipath::Identity;
 use PVE::Storage::Plugin;
 use PVE::Tools
     qw(run_command file_read_firstline trim dir_glob_regex dir_glob_foreach $IPV4RE $IPV6RE);
@@ -292,17 +293,23 @@ sub load_stable_scsi_paths {
     return $stable_paths;
 }
 
+# The LUNs of the iSCSI sessions, { target => { volname => info } }. With $map_names a LUN is named
+# after its multipath map, see PVE::Multipath::Identity, and only the LUNs of $target are listed.
 sub iscsi_device_list {
+    my ($map_names, $target) = @_;
 
     my $res = {};
 
     my $stable_paths = load_stable_scsi_paths();
+    my $ids = $map_names ? PVE::Multipath::Identity::collect(targets => { $target => 1 }) : undef;
 
     my $device_map = PVE::ISCSI::Topology::device_map($SYSFS);
 
     for my $bdev (sort keys %$device_map) {
         my $info = $device_map->{$bdev};
         my ($channel, $id, $lun) = $info->@{qw(channel id lun)};
+
+        my $path_dev = $bdev;
 
         #check multipath
         if (-d "$SYSFS/block/$bdev/holders") {
@@ -311,6 +318,15 @@ sub iscsi_device_list {
         }
 
         my $blockdev = $stable_paths->{$bdev};
+        # scsi-<wwid> can name a member before assembly; dm-uuid-mpath-<wwid> only names the map.
+        # Managed volumes keep the map name even while assembly is pending.
+        if ($map_names) {
+            my $wwid =
+                $info->{target} eq $target
+                ? PVE::Multipath::Identity::path_wwid($ids, $path_dev)
+                : undef;
+            $blockdev = defined($wwid) ? "dm-uuid-mpath-$wwid" : undef;
+        }
         next if !$blockdev;
 
         my $size = file_read_firstline("$SYSFS/block/$bdev/size");
@@ -362,6 +378,12 @@ sub properties {
             type => 'string',
             format => 'pve-storage-portal-dns',
         },
+        'managed-multipath' => {
+            title => "Multipath",
+            description => "Manage multipath access to the storage's LUNs and include them in"
+                . " the cluster-wide path-health monitoring.",
+            type => 'boolean',
+        },
     };
 }
 
@@ -373,6 +395,7 @@ sub options {
         disable => { optional => 1 },
         content => { optional => 1 },
         bwlimit => { optional => 1 },
+        'managed-multipath' => { optional => 1 },
     };
 }
 
@@ -443,13 +466,15 @@ sub list_images {
 
     my $res = [];
 
-    $cache->{iscsi_devices} = iscsi_device_list() if !$cache->{iscsi_devices};
+    my $cache_key =
+        $scfg->{'managed-multipath'} ? "iscsi_devices_mpath:$scfg->{target}" : 'iscsi_devices';
+    $cache->{$cache_key} //= iscsi_device_list($scfg->{'managed-multipath'}, $scfg->{target});
 
     # we have no owner for iscsi devices
 
     my $target = $scfg->{target};
 
-    if (my $dat = $cache->{iscsi_devices}->{$target}) {
+    if (my $dat = $cache->{$cache_key}->{$target}) {
 
         foreach my $volname (keys %$dat) {
 
@@ -619,6 +644,25 @@ $resolve_virtual_devices = sub {
 
 sub activate_volume {
     my ($class, $storeid, $scfg, $volname, $snapname, $cache) = @_;
+
+    if ($scfg->{'managed-multipath'}) {
+        my ($wwid) = $volname =~ m/\.dm-uuid-mpath-(\S+)$/;
+        if (defined($wwid) && !-b "/dev/disk/by-id/dm-uuid-mpath-$wwid") {
+            # A status pass has more storages to query and looks again in a few seconds anyway. So
+            # it neither waits for the map nor asks multipathd for the paths of the LUN.
+            if ($cache && $cache->{status_only}) {
+                die "multipath map for WWID '$wwid' is not assembled"
+                    . " - check the multipath status of this node\n";
+            }
+            # Activation can race map assembly at login or boot. Only wait for a LUN that is there.
+            my $ids = PVE::Multipath::Identity::collect(targets => { $scfg->{target} => 1 });
+            die "LUN with WWID '$wwid' is not visible on this node\n"
+                if !grep { $_->{wwid} eq $wwid } values $ids->{paths}->%*;
+            PVE::Multipath::wait_for_map($wwid)
+                or die "multipath map for WWID '$wwid' did not assemble in time"
+                . " - check the multipath status of this node\n";
+        }
+    }
 
     my $path = $class->filesystem_path($scfg, $volname, $snapname);
     my $real_path = Cwd::realpath($path);

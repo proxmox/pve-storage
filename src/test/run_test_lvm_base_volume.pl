@@ -13,12 +13,12 @@ use lib ('.', '..');
 use PVE::Storage;
 use PVE::Storage::LVMPlugin;
 
-my (@calls, $volume_error);
+my (@calls, $volume_error, $managed);
 
 my $storage = Test::MockModule->new('PVE::Storage');
 $storage->mock(
     config => sub { {} },
-    storage_config => sub { { type => 'iscsi' } },
+    storage_config => sub { { type => 'iscsi', 'managed-multipath' => $managed } },
     path => sub { '/dev/disk/by-id/scsi-test' },
     activate_storage => sub { push @calls, 'activate_storage' },
     activate_volumes => sub {
@@ -45,5 +45,17 @@ $volume_error = "volume '0.0.0.scsi-test' not part of target 'iqn.test'\n";
 eval { PVE::Storage::LVMPlugin->on_add_hook('lvm', $scfg) };
 is($@, $volume_error, 'failing base volume activation aborts adding the storage');
 ok(!grep({ $_ eq 'lvm_create_volume_group' } @calls), 'no volume group created on that device');
+
+($managed, $volume_error) = (1, undef);
+eval { PVE::Storage::LVMPlugin->on_add_hook('lvm', $scfg) };
+like(
+    $@,
+    qr/is not a multipath map - use its 'dm-uuid-mpath-<WWID>' volume/,
+    'managed multipath refuses the name of a single path, and names the one to use',
+);
+for my $name (qw(dm-uuid-mpath-3600a dm-uuid-part1-mpath-3600a)) {
+    eval { PVE::Storage::LVMPlugin->on_add_hook('lvm', { %$scfg, base => "san:0.0.0.$name" }) };
+    is($@, '', "managed multipath accepts $name");
+}
 
 done_testing();

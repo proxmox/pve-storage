@@ -36,6 +36,7 @@ my $available = {
     keyring => 'string',
     krbd => 'boolean',
     lio_tpg => 'string',
+    'managed-multipath' => 'boolean',
     'master-pubkey' => 'string',
     'max-protected-backups' => 'integer minimum=-1',
     mkdir => 'boolean',

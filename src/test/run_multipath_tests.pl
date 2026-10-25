@@ -3,6 +3,7 @@
 use v5.36;
 use lib ('.', '..');
 use Test::More;
+use Test::MockModule;
 use PVE::Multipath;
 use PVE::Multipath::Config;
 use PVE::Tools qw(file_get_contents);
@@ -165,6 +166,17 @@ subtest 'map identity from the dm UUID and map members' => sub {
         { sdb => 'dm-0', sdc => 'dm-0' },
         'each member device maps to its map',
     );
+};
+
+subtest 'command timeouts, and the wait for a map only checks its by-id link' => sub {
+    my $mp = Test::MockModule->new('PVE::Multipath');
+    my @calls;
+    $mp->mock(run_command => sub($cmd, %opts) { push @calls, [$cmd, $opts{timeout}] });
+    ok(
+        !PVE::Multipath::wait_for_map('nonexistent-test-lun', 0),
+        'missing by-id block link times out',
+    );
+    is_deeply(\@calls, [], 'waiting never queries the daemon');
 };
 
 done_testing();

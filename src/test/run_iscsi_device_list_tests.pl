@@ -75,4 +75,33 @@ is_deeply(
     'LUN address and size',
 );
 
+# With managed multipath, the volumes are named after the map, also while it is pending. The map of
+# sdc is assembled, those of sda and sdb are not.
+make_path("$root/sys/block/sdc/holders/dm-0");
+put('block/dm-0/size', '4096');
+my $identity = Test::MockModule->new('PVE::Multipath::Identity');
+$identity->mock(
+    collect => sub {
+        return { paths => { map { $_ => { wwid => "3600$_" } } qw(sda sdb sdc sdd) } };
+    },
+);
+my $cache = {};
+my %listed;
+for my $name (qw(a b)) {
+    my $scfg = { target => "iqn.target-$name", 'managed-multipath' => 1 };
+    my $images = PVE::Storage::ISCSIPlugin->list_images("st-$name", $scfg, undef, undef, $cache);
+    $listed{$name} = { map { $_->{volid} => $_->{size} } @$images };
+}
+is_deeply(
+    \%listed,
+    {
+        a => { 'st-a:0.0.1.dm-uuid-mpath-3600sda' => 2048 * 512 },
+        b => {
+            'st-b:0.1.1.dm-uuid-mpath-3600sdb' => 2048 * 512,
+            'st-b:0.1.2.dm-uuid-mpath-3600sdc' => 4096 * 512,
+        },
+    },
+    'managed storages that share a cache list the LUNs of their own target by map name',
+);
+
 done_testing();

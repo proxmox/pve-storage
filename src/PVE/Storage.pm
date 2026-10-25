@@ -1586,7 +1586,7 @@ sub storage_info {
         push @$slist, $storeid;
     }
 
-    my $cache = {};
+    my $cache = { status_only => 1 };
 
     foreach my $storeid (keys %$ids) {
         my $scfg = $ids->{$storeid};

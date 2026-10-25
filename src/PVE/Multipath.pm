@@ -8,6 +8,7 @@ use JSON qw(decode_json);
 use PVE::Tools qw(run_command file_read_firstline dir_glob_foreach);
 
 use PVE::Diskmanage;
+use PVE::Multipath::Config;
 
 my $MULTIPATH = '/sbin/multipath';
 my $MULTIPATHD = '/sbin/multipathd';
@@ -117,6 +118,31 @@ sub parse_maps_json($json) {
     return \@maps;
 }
 
+sub parse_path_identities($text) {
+    my @lines = grep { length } split(/\n/, $text // '');
+    return {} if @lines == 1 && $lines[0] eq 'ok';
+    my $res = {};
+    for my $line (@lines) {
+        my ($dev, $wwid) = split(/\|/, $line, 2);
+        return undef if !defined($wwid);
+        next if $dev !~ /^sd[a-z]+$/ || $wwid !~ $PVE::Multipath::Config::WWID_RE;
+        $res->{$dev} = { wwid => $wwid };
+    }
+    return $res;
+}
+
+sub query_path_identities() {
+    assert_supported();
+    my $text = '';
+    run_command(
+        [$MULTIPATHD, 'show', 'paths', 'raw', 'format', '%d|%w'],
+        timeout => 5,
+        outfunc => sub($line) { $text .= "$line\n" },
+        errfunc => sub($line) { },
+    );
+    return parse_path_identities($text) // die "multipathd returned an invalid path list\n";
+}
+
 sub get_maps() {
     assert_supported();
     my $json = '';
@@ -131,6 +157,16 @@ sub get_maps() {
             if $map->{sysfs};
     }
     return $maps;
+}
+
+sub wait_for_map($wwid, $timeout = 10) {
+    my $link = "/dev/disk/by-id/dm-uuid-mpath-$wwid";
+    my $deadline = time() + ($timeout // 10);
+    while (1) {
+        return 1 if -b $link;
+        return undef if time() >= $deadline;
+        sleep(1);
+    }
 }
 
 1;

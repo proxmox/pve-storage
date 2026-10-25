@@ -17,6 +17,7 @@ use PVE::Exception qw(raise_param_exc);
 use PVE::Format qw(render_bytes render_duration);
 use PVE::INotify;
 use PVE::JSONSchema qw(get_standard_option);
+use PVE::Multipath;
 use PVE::RESTEnvironment qw(log_warn);
 use PVE::Tools qw(run_command file_read_firstline trim);
 
@@ -1101,11 +1102,21 @@ sub on_add_hook {
         die "unsupported base type '$basecfg->{type}'"
             if $basecfg->{type} ne 'iscsi';
 
+        # Managed multipath requires the coalesced map or a partition of it, never a transient
+        # single-path PV.
+        my ($uuid) = $volname =~ m/\.dm-uuid-(\S+)$/;
+        if ($basecfg->{'managed-multipath'} && !PVE::Multipath::parse_dm_uuid($uuid)) {
+            die "base volume '$volname' of storage '$baseid' is not a multipath map - use its"
+                . " 'dm-uuid-mpath-<WWID>' volume, or 'dm-uuid-part<N>-mpath-<WWID>' for a"
+                . " partition\n";
+        }
+
         my $path = PVE::Storage::path($cfg, $base);
 
         PVE::Storage::activate_storage($cfg, $baseid);
 
-        # Activating the base volume verifies that it belongs to its target.
+        # the base's activate_volume checks target membership and, with managed multipath, waits
+        # for the map to assemble before the VG is created on it, but not for a partition of one
         PVE::Storage::activate_volumes($cfg, [$base]);
 
         # a failing hook does not remove a volume group it created, so check the device first

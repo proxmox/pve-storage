@@ -1,6 +1,6 @@
 all: test
 
-test: test_iscsi test_zfspoolplugin test_lvmplugin test_lvm_create test_lvm_lock_retry test_lvm_base_volume test_lvm_hints test_disklist test_bwlimit test_plugin test_ovf test_volume_access test_remote_command test_sensitive_properties test_import_stream test_multipath test_san_libraries
+test: test_iscsi test_zfspoolplugin test_lvmplugin test_lvm_create test_lvm_lock_retry test_lvm_base_volume test_lvm_hints test_disklist test_bwlimit test_plugin test_ovf test_volume_access test_remote_command test_sensitive_properties test_import_stream test_multipath test_san_libraries test_lun_identity
 
 test_zfspoolplugin: run_test_zfspoolplugin.pl
 	./run_test_zfspoolplugin.pl
@@ -40,7 +40,8 @@ test_volume_access: run_volume_access_tests.pl
 test_remote_command: run_remote_command_tests.pl
 	./run_remote_command_tests.pl
 
-test_iscsi: run_iscsi_discovery_tests.pl run_iscsi_rescan_tests.pl run_iscsi_device_list_tests.pl run_iscsi_session_tests.pl run_iscsi_volume_tests.pl
+test_iscsi: run_iscsi_activation_tests.pl run_iscsi_discovery_tests.pl run_iscsi_rescan_tests.pl run_iscsi_device_list_tests.pl run_iscsi_session_tests.pl run_iscsi_volume_tests.pl
+	./run_iscsi_activation_tests.pl
 	./run_iscsi_discovery_tests.pl
 	./run_iscsi_rescan_tests.pl
 	./run_iscsi_device_list_tests.pl
@@ -58,3 +59,6 @@ test_multipath: run_multipath_tests.pl
 
 test_san_libraries: run_san_library_tests.pl
 	./run_san_library_tests.pl
+
+test_lun_identity: run_lun_identity_tests.pl
+	./run_lun_identity_tests.pl
