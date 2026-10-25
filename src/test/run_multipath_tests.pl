@@ -171,7 +171,19 @@ subtest 'map identity from the dm UUID and map members' => sub {
 subtest 'command timeouts, and the wait for a map only checks its by-id link' => sub {
     my $mp = Test::MockModule->new('PVE::Multipath');
     my @calls;
+    $mp->mock(is_supported => sub { 1 });
     $mp->mock(run_command => sub($cmd, %opts) { push @calls, [$cmd, $opts{timeout}] });
+    PVE::Multipath::add_wwid('3600a');
+    PVE::Multipath::reconfigure();
+    is_deeply(
+        \@calls,
+        [
+            [['/sbin/multipath', '-a', '--', '3600a'], 10],
+            [['/sbin/multipathd', 'reconfigure'], 30],
+        ],
+        'status loop commands have timeouts',
+    );
+    @calls = ();
     ok(
         !PVE::Multipath::wait_for_map('nonexistent-test-lun', 0),
         'missing by-id block link times out',

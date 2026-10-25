@@ -347,6 +347,23 @@ sub iscsi_device_list {
     return $res;
 }
 
+# Each portal of the connection storage contributes one expected path.
+sub multipath_lun_wwids {
+    my ($class, $scfg, $ids) = @_;
+
+    my $res = { wwids => {} };
+    my $target = $scfg->{target};
+
+    my @wwids =
+        map { $_->{wwid} } grep { ($_->{target} // '') eq $target } values $ids->{paths}->%*;
+    # the portal lookup needs iscsiadm, which a node without paths of the target may lack
+    return $res if !@wwids;
+    my $portals = iscsi_portals($target, $scfg->{portal});
+    $res->{wwids}->{$_} = { 'paths-expected' => scalar(@$portals) } for @wwids;
+
+    return $res;
+}
+
 # Configuration
 
 sub type {

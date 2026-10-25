@@ -29,7 +29,7 @@ sub collect(%param) {
                 ($wwid) = $data =~ m/^E:ID_SERIAL=(.+)$/m;
             }
             return if !defined($wwid) || $wwid !~ $PVE::Multipath::Config::WWID_RE;
-            $paths{$dev} = { wwid => $wwid };
+            $paths{$dev} = { wwid => $wwid, $session ? (target => $session->{target}) : () };
         },
     );
     return {

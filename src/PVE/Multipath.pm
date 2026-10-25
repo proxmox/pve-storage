@@ -5,7 +5,7 @@ use v5.36;
 use Encode qw(decode encode);
 use JSON qw(decode_json);
 
-use PVE::Tools qw(run_command file_read_firstline dir_glob_foreach);
+use PVE::Tools qw(run_command file_get_contents file_read_firstline dir_glob_foreach);
 
 use PVE::Diskmanage;
 use PVE::Multipath::Config;
@@ -167,6 +167,23 @@ sub wait_for_map($wwid, $timeout = 10) {
         return undef if time() >= $deadline;
         sleep(1);
     }
+}
+
+sub list_etc_multipath_wwids() {
+    return [] if !-e '/etc/multipath/wwids';
+    return PVE::Multipath::Config::parse_wwids(file_get_contents('/etc/multipath/wwids'));
+}
+
+sub add_wwid($wwid) {
+    assert_supported();
+    my ($id) = $wwid =~ /^($PVE::Multipath::Config::WWID_PATTERN)\z/;
+    die "invalid WWID '$wwid'\n" if !defined($id);
+    run_command([$MULTIPATH, '-a', '--', $id], timeout => 10);
+}
+
+sub reconfigure() {
+    assert_supported();
+    run_command([$MULTIPATHD, 'reconfigure'], timeout => 30);
 }
 
 1;
