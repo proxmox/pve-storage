@@ -10,6 +10,7 @@ use PVE::Cluster;
 use PVE::INotify;
 
 use PVE::Multipath;
+use PVE::Multipath::Config;
 use PVE::Multipath::Generator;
 
 my $json = JSON->new->utf8->canonical;
@@ -24,6 +25,16 @@ sub encode_report($data) {
 sub decode_report($raw) {
     my $data = eval { $json->decode(uncompress(decode_base64($raw // '')) // die "invalid\n") };
     return ref($data) eq 'HASH' ? $data : undef;
+}
+
+sub worst_state(@states) {
+    my %rank = (unknown => -1, optimal => 0, degraded => 1, missing => 2, failed => 3);
+    my $worst = 'unknown';
+    for my $state (@states) {
+        $worst = $state
+            if defined($state) && exists($rank{$state}) && $rank{$state} > $rank{$worst};
+    }
+    return $worst;
 }
 
 sub publish($report) {
@@ -96,6 +107,8 @@ sub update_node_status() {
             $lun->{size} = $map->{size} if defined($map->{size});
             $lun->{name} = $map->{name} if defined($map->{name}) && $map->{name} ne $wwid;
             $lun->{storages} = $info->{storages} if $info->{storages};
+            $lun->{'paths-expected'} = $info->{'paths-expected'}
+                if defined($info->{'paths-expected'});
             $lun->{vgname} = $vg if defined($vg);
             push $report->{luns}->@*, $lun;
         }
@@ -120,6 +133,122 @@ sub update_node_status() {
     }
     eval { publish($report) };
     warn "multipath: cannot publish node status - $@" if $@;
+}
+
+sub cluster_status() {
+    require PVE::Storage;
+
+    my $cfg = PVE::Multipath::Config::read_config();
+    my $storage = PVE::Storage::config();
+    my $all_nodes = PVE::Cluster::get_nodelist();
+    my $members = PVE::Cluster::get_members();
+    my $raw = PVE::Cluster::get_node_kv($KEY);
+    my %reports = map { $_ => decode_report($raw->{$_}) // {} } @$all_nodes;
+    my %reported = map { $_->{wwid} => 1 }
+        grep { defined($_->{wwid}) } map { ($_->{luns} // [])->@* } values %reports;
+    my (%nodes, %luns, %expected, %observed, %vg_owner, %disabled_owner);
+    # the nodes that list a map because the configuration names it for them
+    my (%managed, %unhinted);
+    my $storage_nodes = sub($scfg) {
+        return $scfg->{nodes} && $scfg->{nodes}->%* ? [keys $scfg->{nodes}->%*] : $all_nodes;
+    };
+    # only an enabled iSCSI storage with the option requests the maps of its LUNs, on its nodes
+    my %current = map { $_ => 1 } @$all_nodes;
+    my $requests_maps = sub($sid, $node = undef) {
+        my $scfg = defined($sid) ? $storage->{ids}->{$sid} : undef;
+        my $requests = $scfg && $scfg->{type} eq 'iscsi' && $scfg->{'managed-multipath'};
+        return 0 if !$requests || $scfg->{disable};
+        my @nodes = grep { $current{$_} } $storage_nodes->($scfg)->@*;
+        return defined($node) ? !!grep({ $_ eq $node } @nodes) : !!@nodes;
+    };
+    for my $wwid (PVE::Multipath::Config::wwid_list($cfg)->@*) {
+        my $entry = $cfg->{ids}->{$wwid};
+        $luns{$wwid} = { wwid => $wwid, explicit => 1 };
+        $luns{$wwid}->{name} = $entry->{alias} if defined($entry->{alias});
+        $expected{$wwid}->{$_} = $managed{$wwid}->{$_} = 1 for $storage_nodes->($entry)->@*;
+    }
+    for my $sid (sort keys $storage->{ids}->%*) {
+        my $scfg = $storage->{ids}->{$sid};
+        $vg_owner{ $scfg->{vgname} } //= $sid if defined($scfg->{vgname});
+        next if $scfg->{type} ne 'lvm';
+        my $base = PVE::Multipath::parse_base_volume($scfg->{base}) // next;
+        next if $base->{kind} eq 'nvme'; # a namespace, which has no map
+        # A base volume by its SCSI name is a map only if its iSCSI storage requests maps. The name
+        # can also be another by-id link of the LUN, so only a WWID that a node reports counts.
+        my $map = $requests_maps->($base->{storage}) && $reported{ $base->{wwid} };
+        next if $base->{kind} eq 'scsi' && !$map;
+        my $wwid = $base->{wwid};
+        # a disabled storage expects its map nowhere, but uses it if it is listed for another reason
+        if ($scfg->{disable}) {
+            $disabled_owner{$wwid} //= $sid;
+            next;
+        }
+        $luns{$wwid} //= { wwid => $wwid, explicit => 0 };
+        $luns{$wwid}->{'used-by-storage'} //= $sid;
+        $managed{$wwid}->{$_} = 1 for @$all_nodes;
+        $luns{$wwid}->{'multipath-storage'} //= $base->{storage}
+            if $requests_maps->($base->{storage});
+        $expected{$wwid}->{$_} = 1 for $storage_nodes->($scfg)->@*;
+    }
+    for my $node (sort @$all_nodes) {
+        my $report = $reports{$node};
+        my $entry = $nodes{$node} = { state => 'no-report' };
+        $entry->{time} = $report->{time} if defined($report->{time});
+        my $offline = exists($members->{$node}) && !$members->{$node}->{online};
+        next if $offline || !defined($report->{time}) || time() - $report->{time} > 180;
+        my @keys = qw(error apply-error iscsi-initiator-name other-maps);
+        $entry->{$_} = $report->{$_} for grep { defined($report->{$_}) } @keys;
+        $entry->{state} = defined($report->{error}) ? 'unavailable' : 'ok';
+        $unhinted{$node} = 1 if $report->{'vgs-unknown'};
+        next if $entry->{state} ne 'ok';
+
+        for my $lun (($report->{luns} // [])->@*) {
+            my $wwid = $lun->{wwid} // next;
+            my $row = $luns{$wwid} //= { wwid => $wwid, explicit => 0 };
+            $row->{$_} //= $lun->{$_} for grep { defined($lun->{$_}) } qw(name size);
+            my $owner = defined($lun->{vgname}) ? $vg_owner{ $lun->{vgname} } : undef;
+            $row->{'used-by-storage'} //= $owner if defined($owner);
+            # a shared LVM storage on the map needs it on its nodes, also without a base volume
+            my $lvm = defined($owner) ? $storage->{ids}->{$owner} : undef;
+            if ($lvm && $lvm->{type} eq 'lvm' && $lvm->{shared} && !$lvm->{disable}) {
+                $expected{$wwid}->{$_} = 1 for $storage_nodes->($lvm)->@*;
+            }
+            for my $sid (($lun->{storages} // [])->@*) {
+                my $scfg = $storage->{ids}->{$sid} // next;
+                $row->{'multipath-storage'} //= $sid if $requests_maps->($sid, $node);
+                $row->{'used-by-storage'} //= $sid
+                    if PVE::Storage::san_storage_serves_images($scfg);
+                $expected{$wwid}->{$_} = 1
+                    for !$scfg->{disable} ? $storage_nodes->($scfg)->@* : ();
+                $managed{$wwid}->{$_} = 1
+                    for $requests_maps->($sid) ? $storage_nodes->($scfg)->@* : ();
+            }
+            $observed{$wwid}->{$node} = {
+                state => worst_state($lun->{state}),
+                map { $_ => $lun->{$_} }
+                    grep { defined($lun->{$_}) }
+                    qw(name size paths-active paths-total paths-expected),
+            };
+        }
+    }
+    for my $wwid (sort keys %luns) {
+        my $row = $luns{$wwid};
+        $row->{nodes} = {};
+        for my $node (sort @$all_nodes) {
+            if ($observed{$wwid}->{$node}) {
+                $row->{nodes}->{$node} = $observed{$wwid}->{$node};
+            } elsif ($expected{$wwid}->{$node}) {
+                my $listed = $nodes{$node}->{state} eq 'ok';
+                # without the hint file of LVM a node leaves a map out that it only knows through
+                # the volume group of a storage
+                $listed = 0 if $unhinted{$node} && !$managed{$wwid}->{$node};
+                $row->{nodes}->{$node} = { state => $listed ? 'missing' : 'unknown' };
+            }
+        }
+        $row->{state} = worst_state(map { $_->{state} } values $row->{nodes}->%*);
+        $row->{'used-by-storage'} //= $disabled_owner{$wwid} if defined($disabled_owner{$wwid});
+    }
+    return { nodes => \%nodes, luns => [map { $luns{$_} } sort keys %luns] };
 }
 
 1;

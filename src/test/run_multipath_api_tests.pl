@@ -56,7 +56,7 @@ subtest 'add, update and remove an explicit entry' => sub {
     }
     is_deeply(
         PVE::API2::Multipath->index({}),
-        [map { { name => $_ } } qw(overrides wwid)],
+        [map { { name => $_ } } qw(overrides status wwid)],
         'index',
     );
 };
@@ -632,6 +632,8 @@ subtest 'a LUN of a storage without a map is missing' => sub {
     my $iscsi = Test::MockModule->new('PVE::Storage::ISCSIPlugin');
     my $storage = Test::MockModule->new('PVE::Storage');
     my $lvm = Test::MockModule->new('PVE::Storage::LVMPlugin');
+    my $cluster = Test::MockModule->new('PVE::Cluster');
+    my $config = Test::MockModule->new('PVE::Multipath::Config');
     my %raw;
     $status->mock(publish => sub { $raw{n1} = encode_report({ $_[0]->%*, time => $NOW }) });
     $iscsi->mock(read_initiator_info => sub { undef });
@@ -657,6 +659,13 @@ subtest 'a LUN of a storage without a map is missing' => sub {
         [{ wwid => '3600a', state => 'missing', storages => ['san'], 'paths-expected' => 2 }],
         'the LUN of the storage, not one of an entry, nor one added in this pass',
     );
+    $cluster->mock(get_nodelist => sub { ['n1'] }, get_members => sub { {} });
+    $cluster->mock(get_node_kv => sub { \%raw });
+    $config->mock(read_config => sub { { ids => {} } });
+    my ($row) = PVE::Multipath::Status::cluster_status()->{luns}->@*;
+    is($row->{wwid}, '3600a', 'the cluster status lists it');
+    is($row->{state}, 'missing', 'as missing');
+    is($row->{'multipath-storage'}, 'san', 'with the storage that requests it');
 };
 
 subtest 'one entry point applies configuration and reports unavailable reasons' => sub {
@@ -693,7 +702,289 @@ subtest 'one entry point applies configuration and reports unavailable reasons' 
         sub { [{ wwid => '3600a', name => 'data', 'paths-active' => 1, 'paths-total' => 2 }] });
     PVE::Multipath::Status::update_node_status();
     is($report->{luns}->[0]->{state}, 'degraded', 'all maps while the wanted ones are unknown');
+    ok(!exists($report->{luns}->[0]->{'paths-expected'}), 'no expected count without a source');
+    $gen->mock(sync => sub { { wwids => { '3600a' => { 'paths-expected' => 3 } } } });
+    $mp->mock(get_maps =>
+        sub { [{ wwid => '3600a', name => 'data', 'paths-active' => 2, 'paths-total' => 2 }] });
+    PVE::Multipath::Status::update_node_status();
+    is($report->{luns}->[0]->{'paths-expected'}, 3, 'expected count reported');
+    is($report->{luns}->[0]->{state}, 'degraded', 'fewer paths than expected');
     ok(!exists($report->{supported}), 'the report has no separate "supported" field');
+};
+
+subtest 'API returns final node and LUN states' => sub {
+    my $cluster = Test::MockModule->new('PVE::Cluster');
+    my $config = Test::MockModule->new('PVE::Multipath::Config');
+    my $storage = Test::MockModule->new('PVE::Storage');
+    $cluster->mock(get_nodelist => sub { [qw(n1 n2 n3 n4 n5)] });
+    $cluster->mock(get_members => sub { { n4 => { online => 0 } } });
+    my %raw = (
+        n1 => encode_report({
+            time => $NOW,
+            luns => [
+                {
+                    wwid => '3600a',
+                    state => 'optimal',
+                    'paths-total' => 2,
+                    'paths-active' => 2,
+                    'paths-expected' => 2,
+                    storages => ['iscsi'],
+                    vgname => 'vgfc',
+                },
+                {
+                    wwid => '3600d',
+                    state => 'optimal',
+                    'paths-total' => 2,
+                    'paths-active' => 2,
+                    storages => ['off'],
+                    vgname => 'vgshared',
+                },
+                {
+                    wwid => '3600f',
+                    state => 'optimal',
+                    'paths-total' => 2,
+                    'paths-active' => 2,
+                    storages => ['scoped'],
+                },
+            ],
+        }),
+        n2 => encode_report({ time => $NOW, luns => [] }),
+        n3 => encode_report({ time => $NOW - 181, luns => [] }),
+        n4 => encode_report({ time => $NOW, luns => [] }),
+        n5 => encode_report({ time => $NOW, error => 'multipath-tools is not installed' }),
+    );
+    $cluster->mock(get_node_kv => sub { \%raw });
+    my $entries = { '3600a' => { type => 'wwid' } };
+    $config->mock(read_config => sub { { ids => $entries } });
+    $storage->mock(
+        config => sub { {
+            ids => {
+                iscsi => { type => 'iscsi', 'managed-multipath' => 1 },
+                lvm => { type => 'lvm', base => 'iscsi:0.0.0.dm-uuid-mpath-3600b' },
+                fc => { type => 'lvm', vgname => 'vgfc' },
+                off => { type => 'iscsi' },
+                lvmoff => { type => 'lvm', base => 'off:0.0.0.dm-uuid-mpath-3600c' },
+                shared => { type => 'lvm', vgname => 'vgshared', shared => 1 },
+                gone =>
+                    { type => 'iscsi', 'managed-multipath' => 1, nodes => { departed => 1 } },
+                lvmgone => { type => 'lvm', base => 'gone:0.0.0.dm-uuid-mpath-3600e' },
+                scoped => { type => 'iscsi', 'managed-multipath' => 1, nodes => { n2 => 1 } },
+            },
+        } },
+    );
+    my $res = PVE::API2::Multipath->status({});
+    is_deeply(
+        [map { $res->{nodes}->{$_}->{state} } qw(n1 n2 n3 n4 n5)],
+        [qw(ok ok no-report no-report unavailable)],
+        'final node states',
+    );
+    is($res->{nodes}->{n3}->{time}, $NOW - 181, 'old report time retained');
+    my $lun = $res->{luns}->[0];
+    is($lun->{state}, 'missing', 'worst known state');
+    is($lun->{nodes}->{n1}->{state}, 'optimal', 'observed healthy map');
+    is($lun->{nodes}->{n2}->{state}, 'missing', 'expected map absent from current report');
+    is($lun->{nodes}->{n3}->{state}, 'unknown', 'stale observation');
+    is($lun->{'used-by-storage'}, 'fc', 'storage attributed through the reported volume group');
+    is($res->{luns}->[1]->{wwid}, '3600b', 'LVM base included without observation');
+    is($res->{luns}->[1]->{'used-by-storage'}, 'lvm', 'LVM consumer attributed');
+    is($lun->{'multipath-storage'}, 'iscsi', 'reported storage requests the map');
+    is($res->{luns}->[1]->{'multipath-storage'}, 'iscsi', 'base storage requests the map');
+    is($lun->{nodes}->{n1}->{'paths-expected'}, 2, 'expected path count of the node');
+    my %lun = map { $_->{wwid} => $_ } $res->{luns}->@*;
+    ok(
+        !exists($lun{'3600c'}->{'multipath-storage'}),
+        'a base without multipath requests nothing',
+    );
+    ok(!exists($lun{'3600d'}->{'multipath-storage'}), 'neither does a reported one');
+    ok(
+        !exists($lun{'3600e'}->{'multipath-storage'}),
+        'a base for no current node requests nothing',
+    );
+    ok(!exists($lun{'3600f'}->{'multipath-storage'}), 'a storage requests on its nodes only');
+    is(
+        $lun{'3600d'}->{nodes}->{n2}->{state},
+        'missing',
+        'the nodes of a shared LVM expect the map',
+    );
+    is($lun{'3600d'}->{'used-by-storage'}, 'shared', 'shared LVM attributed by volume group');
+    {
+        local $raw{n2} = encode_report({ time => $NOW, luns => [], 'vgs-unknown' => 1 });
+        my %unhinted = map { $_->{wwid} => $_ } PVE::API2::Multipath->status({})->{luns}->@*;
+        is(
+            $unhinted{'3600d'}->{nodes}->{n2}->{state},
+            'unknown',
+            'a node without LVM hints may have left out the map of a volume group',
+        );
+        is($unhinted{'3600a'}->{nodes}->{n2}->{state}, 'missing', 'but for one with an entry');
+        is(
+            $unhinted{'3600f'}->{nodes}->{n2}->{state},
+            'missing',
+            'and for one that an iSCSI storage requests there',
+        );
+        local $entries->{'3600d'} = { type => 'wwid', nodes => { n1 => 1 } };
+        %unhinted = map { $_->{wwid} => $_ } PVE::API2::Multipath->status({})->{luns}->@*;
+        is(
+            $unhinted{'3600d'}->{nodes}->{n2}->{state},
+            'unknown',
+            'an entry for other nodes does not change that',
+        );
+    }
+    eval {
+        PVE::JSONSchema::validate(
+            $res,
+            PVE::API2::Multipath->map_method_by_name('status')->{returns},
+        );
+    };
+    is($@, '', 'result satisfies the API schema');
+    is(
+        PVE::Multipath::Status::worst_state(qw(unknown optimal failed degraded missing)),
+        'failed',
+        'failed ranks above missing, degraded, optimal and unknown',
+    );
+};
+
+subtest 'every storage that requests a map counts' => sub {
+    my $cluster = Test::MockModule->new('PVE::Cluster');
+    my $config = Test::MockModule->new('PVE::Multipath::Config');
+    my $storage = Test::MockModule->new('PVE::Storage');
+    $cluster->mock(get_nodelist => sub { [qw(n1 n2 n3)] });
+    $cluster->mock(get_members => sub { {} });
+    my $lun = {
+        wwid => '3600x',
+        state => 'optimal',
+        'paths-total' => 2,
+        'paths-active' => 2,
+        storages => [qw(s1 s2)],
+    };
+    my %raw = map { $_ => encode_report({ time => $NOW, luns => [$lun] }) } qw(n1 n2);
+    $raw{n3} = encode_report({ time => $NOW, luns => [] });
+    $cluster->mock(get_node_kv => sub { \%raw });
+    $config->mock(read_config => sub { { ids => {} } });
+    $storage->mock(
+        config => sub { {
+            ids => {
+                s1 =>
+                    { type => 'iscsi', 'managed-multipath' => 1, nodes => { n1 => 1, n2 => 1 } },
+                s2 => {
+                    type => 'iscsi',
+                    'managed-multipath' => 1,
+                    nodes => { n3 => 1 },
+                    content => { images => 1 },
+                },
+            },
+        } },
+    );
+    my ($row) = PVE::Multipath::Status::cluster_status()->{luns}->@*;
+    is($row->{nodes}->{n3}->{state}, 'missing', 'a node of the second storage expects the map');
+    is($row->{'used-by-storage'}, 's2', 'which serves its LUNs');
+};
+
+subtest 'a base volume by its SCSI name is a map if its storage requests maps' => sub {
+    my $cluster = Test::MockModule->new('PVE::Cluster');
+    my $config = Test::MockModule->new('PVE::Multipath::Config');
+    my $storage = Test::MockModule->new('PVE::Storage');
+    $cluster->mock(get_nodelist => sub { [qw(n1 n2)] });
+    $cluster->mock(get_members => sub { {} });
+    # n1 sees the LUN, but has no map for it
+    my $missing = { wwid => '3600a', state => 'missing', storages => ['managed'] };
+    my $observed = { wwid => '3600b', state => 'optimal' };
+    my %raw = (
+        n1 => encode_report({ time => $NOW, luns => [$missing, $observed] }),
+        n2 => encode_report({ time => $NOW, luns => [] }),
+    );
+    $cluster->mock(get_node_kv => sub { \%raw });
+    $config->mock(read_config => sub { { ids => {} } });
+    $storage->mock(
+        config => sub { {
+            ids => {
+                managed => { type => 'iscsi', 'managed-multipath' => 1 },
+                plain => { type => 'iscsi' },
+                mapped => { type => 'lvm', base => 'managed:0.0.1.scsi-3600a', shared => 1 },
+                single => { type => 'lvm', base => 'plain:0.0.1.scsi-3600b' },
+                # the iSCSI storage lists a LUN by another of its by-id names in some setups
+                alias => {
+                    type => 'lvm',
+                    base => 'managed:0.0.2.scsi-SLIO-ORG_block1_abc',
+                    shared => 1,
+                },
+            },
+        } },
+    );
+    my %lun = map { $_->{wwid} => $_ } PVE::Multipath::Status::cluster_status()->{luns}->@*;
+    is_deeply(
+        $lun{'3600a'},
+        {
+            wwid => '3600a',
+            explicit => 0,
+            'used-by-storage' => 'mapped',
+            'multipath-storage' => 'managed',
+            state => 'missing',
+            nodes => { n1 => { state => 'missing' }, n2 => { state => 'missing' } },
+        },
+        'the map that the storage requests is expected on its nodes',
+    );
+    is_deeply(
+        $lun{'3600b'},
+        {
+            wwid => '3600b',
+            explicit => 0,
+            state => 'optimal',
+            nodes => { n1 => { state => 'optimal' } },
+        },
+        'the plain base gives an observed map neither an owner nor an expected second node',
+    );
+    ok(
+        !$lun{'SLIO-ORG_block1_abc'},
+        'a SCSI name in a base volume that is not a reported WWID is no LUN of its own',
+    );
+};
+
+subtest 'a disabled storage expects no map' => sub {
+    my $cluster = Test::MockModule->new('PVE::Cluster');
+    my $config = Test::MockModule->new('PVE::Multipath::Config');
+    my $storage = Test::MockModule->new('PVE::Storage');
+    $cluster->mock(get_nodelist => sub { [qw(n1 n2)] });
+    $cluster->mock(get_members => sub { {} });
+    my %raw = map { $_ => encode_report({ time => $NOW, luns => [] }) } qw(n1 n2);
+    $cluster->mock(get_node_kv => sub { \%raw });
+    $config->mock(read_config => sub { { ids => {} } });
+    $storage->mock(
+        config => sub { {
+            ids => {
+                conn => { type => 'iscsi', 'managed-multipath' => 1, disable => 1 },
+                current => { type => 'lvm', vgname => 'current', shared => 1 },
+                san => {
+                    type => 'lvm',
+                    base => 'conn:0.0.1.dm-uuid-mpath-3600a',
+                    shared => 1,
+                    disable => 1,
+                },
+            },
+        } },
+    );
+    is_deeply(PVE::Multipath::Status::cluster_status()->{luns}, [], 'its LUN is not missing');
+    $raw{n1} =
+        encode_report({ time => $NOW, luns => [{ wwid => '3600a', state => 'optimal' }] });
+    is_deeply(
+        PVE::Multipath::Status::cluster_status()->{luns},
+        [{
+            wwid => '3600a',
+            explicit => 0,
+            'used-by-storage' => 'san',
+            state => 'optimal',
+            nodes => { n1 => { state => 'optimal' } },
+        }],
+        'a map that a node reports is still used by it',
+    );
+    $raw{n2} = encode_report({
+        time => $NOW,
+        luns => [{ wwid => '3600a', state => 'optimal', vgname => 'current' }],
+    });
+    is(
+        PVE::Multipath::Status::cluster_status()->{luns}->[0]->{'used-by-storage'},
+        'current',
+        'unless an enabled storage uses it',
+    );
 };
 
 done_testing();
