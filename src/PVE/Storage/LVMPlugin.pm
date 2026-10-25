@@ -11,6 +11,7 @@ use JSON;
 use List::Util qw(max);
 use Time::HiRes qw(clock_gettime CLOCK_MONOTONIC);
 
+use PVE::Diskmanage;
 use PVE::Exception qw(raise_param_exc);
 use PVE::Format qw(render_bytes render_duration);
 use PVE::INotify;
@@ -54,25 +55,36 @@ my sub fork_cleanup_worker {
 }
 
 sub lvm_pv_info {
-    my ($device) = @_;
+    my ($device, $require_pv) = @_;
 
     die "no device specified" if !$device;
 
     my $has_label = 0;
+    my $file_result;
 
-    my $cmd = ['/usr/bin/file', '-L', '-s', $device];
+    my $cmd = ['/usr/bin/file', '-E', '-L', '-s', $device];
     run_command(
         $cmd,
+        timeout => 10,
         outfunc => sub {
             my $line = shift;
+            die "unable to probe '$device' - malformed file output\n"
+                if defined($file_result) || $line !~ m/^\Q$device\E:\s+\S/;
+            $file_result = $line;
             $has_label = 1 if $line =~ m/LVM2/;
         },
     );
+    die "unable to probe '$device' - empty file output\n" if !defined($file_result);
 
-    return undef if !$has_label;
+    return undef if !$has_label && !$require_pv;
 
     $cmd = [
         '/sbin/pvs',
+        '--nohints',
+        '--readonly',
+        '--devices',
+        $device,
+        '--binary',
         '--separator',
         ':',
         '--noheadings',
@@ -81,19 +93,33 @@ sub lvm_pv_info {
         '--unbuffered',
         '--nosuffix',
         '--options',
-        'pv_name,pv_size,vg_name,pv_uuid',
+        'pv_name,pv_size,vg_name,pv_uuid,pv_in_use',
         $device,
     ];
 
     my $pvinfo;
     run_command(
         $cmd,
+        timeout => 10,
         outfunc => sub {
             my $line = shift;
 
             $line = trim($line);
 
-            my ($pvname, $size, $vgname, $uuid) = split(':', $line);
+            my ($pvname, $size, $vgname, $uuid, $in_use, @extra) = split(':', $line, -1);
+            # LVM names a device-mapper device by its /dev/mapper link, not the dm node
+            my $listed = defined($pvname) ? abs_path($pvname) // $pvname : '';
+            if (
+                @extra
+                || !defined($in_use)
+                || $in_use !~ m/^(?:0|1|unknown|)$/
+                || $listed ne (abs_path($device) // $device)
+                || $size !~ m/^\d+(?:\.\d+)?$/
+                || ($vgname ne '[unknown]' && $vgname !~ m/^[a-zA-Z0-9+_.-]*$/)
+                || $uuid !~ m/^[a-zA-Z0-9]{6}(?:-[a-zA-Z0-9]{4}){5}-[a-zA-Z0-9]{6}$/
+            ) {
+                die "unable to probe '$device' - malformed pvs output\n";
+            }
 
             die "found multiple pvs entries for device '$device'\n"
                 if $pvinfo;
@@ -103,10 +129,12 @@ sub lvm_pv_info {
                 size => int($size),
                 vgname => $vgname,
                 uuid => $uuid,
+                in_use => $in_use,
             };
         },
     );
 
+    die "unable to probe '$device' - no PV found\n" if !$pvinfo;
     return $pvinfo;
 }
 
@@ -123,12 +151,92 @@ sub clear_first_sector {
 sub lvm_create_volume_group {
     my ($device, $vgname, $shared) = @_;
 
-    my $res = lvm_pv_info($device);
+    $device = PVE::Diskmanage::verify_blockdev_path($device);
+    my $refuse_data = sub {
+        my (@types) = @_;
+        die "device '$device' contains data ("
+            . join(', ', sort @types)
+            . ") - wipe it first if it is no longer needed\n";
+    };
 
-    if ($res->{vgname}) {
+    my $sysdir = '/sys/class/block/' . basename($device);
+    my $uuid = file_read_firstline("$sysdir/dm/uuid");
+    my $mounted = PVE::Diskmanage::is_mounted($device);
+    die "unable to create volume group - '$mounted' is mounted\n" if $mounted;
+
+    my $size = file_read_firstline("$sysdir/size");
+    die "unable to probe '$device' - device is unavailable\n"
+        if !defined($size) || $size !~ m/^\d+$/ || !$size;
+    die "unable to probe '$device' - missing device mapper identity\n"
+        if basename($device) =~ m/^dm-\d+$/ && !defined($uuid);
+    if (defined($uuid) && $uuid =~ m/^mpath-/) {
+        # A queueing map without a running path can stall even a read-only probe.
+        my $running = 0;
+        PVE::Tools::dir_glob_foreach(
+            "$sysdir/slaves",
+            '[^.].*',
+            sub {
+                my $state = file_read_firstline("$sysdir/slaves/$_[0]/device/state");
+                $running = 1 if defined($state) && $state eq 'running';
+            },
+        );
+        die "unable to probe '$device' - multipath map has no running path\n" if !$running;
+    }
+
+    my $output = '';
+    run_command(
+        ['wipefs', '--no-act', '--json', $device],
+        timeout => 10,
+        outfunc => sub { $output .= "$_[0]\n" },
+    );
+    my $probe = eval { PVE::Diskmanage::parse_wipefs_signatures($output) };
+    if (my $err = $@) {
+        my $kind = $err eq "Malformed wipefs signature\n" ? 'signature' : 'output';
+        die "unable to probe '$device' - malformed wipefs $kind\n";
+    }
+    my %signatures = map { $_->{type} => 1 } $probe->@*;
+    my $res = lvm_pv_info($device, $signatures{LVM2_member});
+
+    # A PV without metadata copies can belong to a VG whose other devices are not visible. The
+    # sentinel is not a VG name or orphan proof, even if the use flag contradicts it.
+    die "device '$device' belongs to a volume group whose metadata is not visible on this node\n"
+        if $res
+        && ($res->{vgname} eq '[unknown]' || (!$res->{vgname} && $res->{in_use} ne '0'));
+
+    if ($res && $res->{vgname}) {
         return if $res->{vgname} eq $vgname; # already created
         die "device '$device' is already used by volume group '$res->{vgname}'\n";
     }
+
+    # Only checked once creation is needed: the active logical volumes of a group are its holders.
+    if (my $held = PVE::Diskmanage::has_holder($device)) {
+        # kpartx maps the partitions of a device-mapper device as its holders. Such holders indicate
+        # a partition table, not a user.
+        my @holders;
+        PVE::Tools::dir_glob_foreach("$sysdir/holders", '[^.].*', sub { push @holders, $_[0] });
+        my $partitions = defined($uuid) && @holders && !grep {
+            (file_read_firstline("/sys/class/block/$_/dm/uuid") // '') !~ m/^part\d+-\Q$uuid\E$/
+        } @holders;
+        $refuse_data->('partitions') if $partitions;
+        die "unable to create volume group - another block device uses '$held'\n";
+    }
+
+    delete $signatures{LVM2_member} if $res && !$res->{vgname};
+    # An empty partition table, as initializing a disk with GPT leaves, holds no data. The kernel
+    # lists the partitions of a disk as subdirectories named after it; those of a map may not be
+    # mapped, so a table there counts.
+    my @data = grep { !m/^(?:PMBR|gpt|dos)$/ } keys %signatures;
+    if (%signatures && !@data && !defined($uuid)) {
+        my $partitions = 0;
+        my $name = basename($device);
+        PVE::Tools::dir_glob_foreach(
+            $sysdir,
+            "\Q$name\E.+",
+            sub { $partitions++ if defined(file_read_firstline("$sysdir/$_[0]/partition")) },
+        );
+        %signatures = () if !$partitions;
+    }
+    $refuse_data->(keys %signatures) if %signatures;
 
     clear_first_sector($device); # else pvcreate fails
 

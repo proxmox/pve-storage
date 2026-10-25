@@ -73,6 +73,25 @@ sub init_disk {
     return 1;
 }
 
+sub parse_wipefs_signatures {
+    my ($json) = @_;
+
+    my $probe = decode_json($json);
+    die "Malformed wipefs output\n"
+        if ref($probe) ne 'HASH' || ref($probe->{signatures}) ne 'ARRAY';
+    for my $signature ($probe->{signatures}->@*) {
+        if (
+            ref($signature) ne 'HASH'
+            || !defined($signature->{type})
+            || ref($signature->{type})
+            || $signature->{type} !~ m/^[a-zA-Z0-9_.+-]+$/
+        ) {
+            die "Malformed wipefs signature\n";
+        }
+    }
+    return $probe->{signatures};
+}
+
 sub disk_is_used {
     my ($disk) = @_;
 
