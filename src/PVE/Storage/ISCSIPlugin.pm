@@ -3,7 +3,8 @@ package PVE::Storage::ISCSIPlugin;
 use strict;
 use warnings;
 
-use File::stat;
+use Digest::SHA qw(sha256_hex);
+use Fcntl qw(LOCK_EX LOCK_NB);
 use IO::Dir;
 use IO::File;
 
@@ -212,27 +213,48 @@ sub iscsi_logout {
     run_command([$ISCSIADM, '--mode', 'node', '--targetname', $target, '--logout']);
 }
 
-my $rescan_filename = "/var/run/pve-iscsi-rescan.lock";
+our $ISCSI_RESCAN_DIR = '/run';
+
+sub claim_iscsi_rescan {
+    my ($target) = @_;
+
+    my $filename = "$ISCSI_RESCAN_DIR/pve-iscsi-rescan-" . sha256_hex($target);
+    my $claimed = eval {
+        my $fh = IO::File->new($filename, '+>>') or die "cannot open '$filename' - $!\n";
+        if (!flock($fh, LOCK_EX | LOCK_NB)) {
+            die "cannot lock '$filename' - $!\n" if !$!{EWOULDBLOCK};
+            # a concurrent claim is updating the timestamp, and rescans if one is due
+            $fh->close();
+            return 0;
+        }
+        $fh->seek(0, 0) or die "cannot seek '$filename' - $!\n";
+        my $last = $fh->getline();
+        die "cannot read '$filename' - $!\n" if $fh->error();
+        # a timestamp left incomplete, for example by a crash while writing it, counts as none
+        $last = undef if defined($last) && $last !~ m/^\d+\n$/;
+        my $now = time();
+        my $elapsed = defined($last) ? $now - $last : undef;
+        my $claim = !defined($elapsed) || $elapsed < 0 || $elapsed >= 10;
+
+        if ($claim) {
+            $fh->truncate(0) or die "cannot update '$filename' - $!\n";
+            $fh->print("$now\n") && $fh->flush() or die "cannot update '$filename' - $!\n";
+        }
+        $fh->close() or die "cannot close '$filename' - $!\n";
+        $claim;
+    };
+    if (my $err = $@) {
+        warn "skipping iSCSI rescan of target '$target' - $err";
+        return 0;
+    }
+    return $claimed;
+}
 
 sub iscsi_session_rescan {
-    my $session_list = shift;
+    my ($target, $session_list) = @_;
 
     assert_iscsi_support();
-
-    my $rstat = stat($rescan_filename);
-
-    if (!$rstat) {
-        if (my $fh = IO::File->new($rescan_filename, "a")) {
-            utime undef, undef, $fh;
-            close($fh);
-        }
-    } else {
-        my $atime = $rstat->atime;
-        my $tdiff = time() - $atime;
-        # avoid frequent rescans
-        return if !($tdiff < 0 || $tdiff > 10);
-        utime undef, undef, $rescan_filename;
-    }
+    return if !claim_iscsi_rescan($target);
 
     foreach my $session (@$session_list) {
         my $cmd = [$ISCSIADM, '--mode', 'session', '--sid', $session->{session_id}, '--rescan'];
@@ -517,7 +539,7 @@ sub activate_storage {
         warn $@ if $@;
     } else {
         # make sure we get all devices
-        iscsi_session_rescan($sessions);
+        iscsi_session_rescan($scfg->{target}, $sessions);
     }
 }
 
