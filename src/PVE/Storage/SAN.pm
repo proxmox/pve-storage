@@ -3,11 +3,12 @@ package PVE::Storage::SAN;
 use v5.36;
 
 use Cwd qw(abs_path);
+use Fcntl qw(O_RDWR O_EXCL);
 use File::Basename qw(basename);
 
 use PVE::Cluster;
 use PVE::INotify;
-use PVE::Tools qw(file_read_firstline dir_glob_foreach);
+use PVE::Tools qw(file_read_firstline dir_glob_foreach run_command);
 
 use PVE::Diskmanage;
 use PVE::ISCSI::Topology;
@@ -327,6 +328,9 @@ sub assert_same_device($lun, $fh, @names) {
     }
 }
 
+# The SCSI paths of the LUN. Without a map, udev keeps the signatures it has seen for each of them,
+# so a wipe needs a udev trigger for every path. The members of a map count whatever their identity,
+# which without multipathd comes from udev and can differ from the one of the map.
 sub lun_paths($lun) {
     my $paths = PVE::Multipath::Identity::collect(all => 1)->{paths};
     my %names = map { $_ => 1 } grep { $paths->{$_}->{wwid} eq $lun->{wwid} } keys %$paths;
@@ -376,6 +380,58 @@ sub assert_lun_paths_unused($lun) {
         die "cannot use '$lun->{devpath}' - process $opener->{pid} ($opener->{command}) has the"
             . " LUN open through '$path'\n";
     }
+}
+
+sub wipe_lun($lun) {
+    # Probe the kernel path of the held device, not a mapper alias that can pass to another LUN.
+    my $device = PVE::Diskmanage::verify_blockdev_path($lun->{'by-id'});
+    sysopen(my $fh, $lun->{'by-id'}, O_RDWR) or die "cannot open '$device' - $!\n";
+    assert_same_device($lun, $fh, $device);
+    PVE::Storage::LVMPlugin::assert_running_path($device);
+    my $held = { %$lun, devpath => $device };
+    assert_lun_unreferenced(PVE::Storage::config(), $held);
+    assert_lun_paths_unused($held);
+    my $parts = lun_partitions($held);
+    my %parts = map { basename($_) => 1 } @$parts;
+    dir_glob_foreach(
+        '/sys/class/block/' . basename($device) . '/holders',
+        '[^.].*',
+        sub($name, @) {
+            die "cannot wipe '$device' - another block device uses it\n" if !$parts{$name};
+        },
+    );
+    for my $path ($device, @$parts) {
+        die "cannot wipe '$device' - '$path' is mounted\n" if PVE::Diskmanage::is_mounted($path);
+        next if $path eq $device;
+        die "cannot wipe '$device' - another block device uses '$path'\n"
+            if PVE::Diskmanage::has_holder($path);
+    }
+    # a guest with the LUN as disk has it open, without being a holder or a storage reference
+    my $opener = PVE::Diskmanage::device_opener($device, @$parts);
+    die "cannot wipe '$device' - process $opener has it open\n" if defined($opener);
+    # the name of a partition can pass to another device as well, after it was listed
+    my $check_part = sub($part) {
+        assert_same_device($lun, $fh, $device);
+        die "cannot wipe '$device' - '$part' is no longer one of its partitions\n"
+            if !grep { $_ eq $part } lun_partitions($held)->@*;
+    };
+    for my $part (@$parts) {
+        $check_part->($part);
+        run_command(['wipefs', '--all', $part], timeout => 10);
+        if ($part =~ m{^/dev/dm-}) {
+            $check_part->($part);
+            run_command(['dmsetup', 'remove', '--retry', $part], timeout => 10);
+        }
+    }
+    assert_same_device($lun, $fh, $device);
+    # claim what was checked: while the first descriptor is open, its device number cannot pass to
+    # another device, so an equal number means the same device
+    sysopen(my $claim, $lun->{'by-id'}, O_RDWR | O_EXCL) or die "cannot claim '$device' - $!\n";
+    die "cannot wipe '$device' - the device behind '$lun->{'by-id'}' changed\n"
+        if (stat($claim))[6] != (stat($fh))[6];
+    close($fh);
+    my $path = '/proc/' . $$ . '/fd/' . fileno($claim);
+    PVE::Diskmanage::wipe_blockdev($device, $path);
 }
 
 1;

@@ -76,8 +76,9 @@ test_san_taint: run_san_taint_tests.pl
 test_san_lun_scan: run_san_lun_scan_tests.pl
 	./run_san_lun_scan_tests.pl
 
-test_san_api: run_san_api_tests.pl run_san_nvme_tests.pl
+test_san_api: run_san_api_tests.pl run_san_wipe_tests.pl run_san_nvme_tests.pl
 	./run_san_api_tests.pl
+	./run_san_wipe_tests.pl
 	./run_san_nvme_tests.pl
 
 test_disk_api: run_disk_api_tests.pl

@@ -162,6 +162,13 @@ sub cached_pv_volume_groups {
     return $res;
 }
 
+# LVM keeps listing a PV that was wiped by other means in its hint file until two more LVM commands
+# have run. It writes a new file when there is none.
+sub refresh_cached_pv_volume_groups {
+    unlink '/run/lvm/hints';
+    lvm_vgs();
+}
+
 sub lun_volume_groups {
     my ($devices) = @_;
     my $output = '';
@@ -256,6 +263,24 @@ sub clear_first_sector {
     }
 }
 
+# A queueing map without a running path can stall even a read-only probe.
+sub assert_running_path {
+    my ($device) = @_;
+    my $sysdir = '/sys/class/block/' . basename($device);
+    my $map = PVE::Multipath::parse_dm_uuid(file_read_firstline("$sysdir/dm/uuid"));
+    return if !$map || $map->{partition};
+    my $running = 0;
+    PVE::Tools::dir_glob_foreach(
+        "$sysdir/slaves",
+        '[^.].*',
+        sub {
+            my $state = file_read_firstline("$sysdir/slaves/$_[0]/device/state");
+            $running = 1 if defined($state) && $state eq 'running';
+        },
+    );
+    die "unable to probe '$device' - multipath map has no running path\n" if !$running;
+}
+
 my sub create_volume_group {
     my ($device, $vgname, $lun, $guard) = @_;
     $device = PVE::Diskmanage::verify_blockdev_path($device);
@@ -284,20 +309,7 @@ my sub create_volume_group {
         if !defined($size) || $size !~ m/^\d+$/ || !$size;
     die "unable to probe '$device' - missing device mapper identity\n"
         if basename($device) =~ m/^dm-\d+$/ && !defined($uuid);
-    my $map = PVE::Multipath::parse_dm_uuid($uuid);
-    if ($map && !$map->{partition}) {
-        # A queueing map without a running path can stall even a read-only probe.
-        my $running = 0;
-        PVE::Tools::dir_glob_foreach(
-            "$sysdir/slaves",
-            '[^.].*',
-            sub {
-                my $state = file_read_firstline("$sysdir/slaves/$_[0]/device/state");
-                $running = 1 if defined($state) && $state eq 'running';
-            },
-        );
-        die "unable to probe '$device' - multipath map has no running path\n" if !$running;
-    }
+    assert_running_path($device);
 
     my $output = '';
     run_command(

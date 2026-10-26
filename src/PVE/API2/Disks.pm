@@ -9,6 +9,8 @@ use HTTP::Status qw(:constants);
 use PVE::Diskmanage;
 use PVE::JSONSchema qw(get_standard_option);
 use PVE::SafeSyslog;
+use PVE::Storage::LVMPlugin;
+use PVE::Storage::SAN;
 use PVE::Tools qw(run_command);
 
 use PVE::API2::Disks::Directory;
@@ -295,8 +297,9 @@ __PACKAGE__->register_method({
             node => get_standard_option('pve-node'),
             disk => {
                 type => 'string',
-                description => "Block device name",
-                pattern => '^/dev/[a-zA-Z0-9\/]+$',
+                description =>
+                    "Block device name. A SAN LUN can also be given by a by-id or mapper name.",
+                pattern => '^/dev/[a-zA-Z0-9._:+/-]+$',
             },
         },
     },
@@ -306,18 +309,39 @@ __PACKAGE__->register_method({
 
         my $disk = PVE::Diskmanage::verify_blockdev_path($param->{disk});
 
-        my $mounted = PVE::Diskmanage::is_mounted($disk);
-        die "disk/partition '${mounted}' is mounted\n" if $mounted;
+        my $lun = PVE::Storage::SAN::lun_for_device($param->{disk});
+        if (!$lun) {
+            # A by-id, mapper or dm-N name could also select a logical volume or a partition of a
+            # multipath map, which the checks for mounts and holders do not protect.
+            if ($param->{disk} !~ m{^/dev/[a-zA-Z0-9/]+$}) {
+                die "cannot wipe '$param->{disk}' - a name of this form is only accepted for a"
+                    . " SAN LUN\n";
+            }
 
-        my $held = PVE::Diskmanage::has_holder($disk);
-        die "disk/partition '${held}' has a holder\n" if $held;
+            my $mounted = PVE::Diskmanage::is_mounted($disk);
+            die "disk/partition '${mounted}' is mounted\n" if $mounted;
+
+            my $held = PVE::Diskmanage::has_holder($disk);
+            die "disk/partition '${held}' has a holder\n" if $held;
+        }
 
         my $rpcenv = PVE::RPCEnvironment::get();
         my $authuser = $rpcenv->get_user();
 
         my $worker = sub {
-            PVE::Diskmanage::wipe_blockdev($disk);
-            PVE::Diskmanage::udevadm_trigger($disk);
+            if ($lun) {
+                PVE::Storage::SAN::with_lun_lock(
+                    $lun,
+                    sub { PVE::Storage::SAN::wipe_lun($lun) },
+                );
+                PVE::Diskmanage::udevadm_trigger($disk, PVE::Storage::SAN::lun_paths($lun)->@*);
+                eval { run_command(['udevadm', 'settle', '--timeout=30'], timeout => 35) };
+                warn $@ if $@;
+                PVE::Storage::LVMPlugin::refresh_cached_pv_volume_groups();
+            } else {
+                PVE::Diskmanage::wipe_blockdev($disk);
+                PVE::Diskmanage::udevadm_trigger($disk);
+            }
         };
 
         my $basename = basename($disk); # avoid '/' in the ID

@@ -265,4 +265,50 @@ subtest 'shared volume groups cannot be destroyed' => sub {
     is_deeply(\@writes, ['data'], 'node-local deletion still works');
 };
 
+subtest 'wipe takes names beyond the old pattern for a LUN only' => sub {
+    my $san = Test::MockModule->new('PVE::Storage::SAN');
+    my $rpc = Test::MockModule->new('PVE::RPCEnvironment');
+    $rpc->mock(get => sub { bless {}, 'MultipathTestRPC' });
+    my ($lun, @wiped);
+    $san->mock(
+        lun_for_device => sub { $lun },
+        with_lun_lock => sub { push @wiped, $_[0]->{wwid} },
+        lun_paths => sub { [] },
+    );
+    $diskmanage_module->mock(
+        verify_blockdev_path => sub { $_[0] },
+        is_mounted => sub { },
+        has_holder => sub { },
+        wipe_blockdev => sub { push @wiped, $_[0] },
+        udevadm_trigger => sub { },
+    );
+    my $api = Test::MockModule->new('PVE::API2::Disks');
+    $api->mock(run_command => sub { });
+    my $lvm = Test::MockModule->new('PVE::Storage::LVMPlugin');
+    $lvm->mock(refresh_cached_pv_volume_groups => sub { });
+    my $wipe = sub($name) {
+        return
+            eval { PVE::API2::Disks->wipe_disk({ node => 'n1', disk => $name }); 1 } ? '' : $@;
+    };
+
+    my @other = qw(
+        /dev/dm-7 /dev/mapper/3600a-part1 /dev/disk/by-id/dm-uuid-part1-mpath-3600a
+        /dev/pve/vm-100-disk-0
+    );
+    for my $name (@other) {
+        like($wipe->($name), qr/only accepted for a SAN LUN/, "$name is refused");
+    }
+    is($wipe->('/dev/sdb1'), '', 'a partition by its kernel name is wiped');
+    $lun = { wwid => '3600a' };
+    is(
+        $wipe->('/dev/disk/by-id/dm-uuid-mpath-3600a'),
+        '',
+        'a LUN by the name of its map is wiped',
+    );
+    is_deeply(\@wiped, ['/dev/sdb1', '3600a'], 'nothing else got wiped');
+
+    my @mocked = qw(verify_blockdev_path is_mounted has_holder wipe_blockdev udevadm_trigger);
+    $diskmanage_module->unmock($_) for @mocked;
+};
+
 done_testing();

@@ -31,6 +31,7 @@ my $mp = Test::MockModule->new('PVE::Multipath');
 my $lvm = Test::MockModule->new('PVE::Storage::LVMPlugin');
 my $storage = Test::MockModule->new('PVE::Storage');
 my $cluster = Test::MockModule->new('PVE::Cluster');
+my $tools = Test::MockModule->new('PVE::Tools');
 my $cfg = { ids => {} };
 my @order;
 $storage->mock(config => sub { $cfg });
@@ -45,6 +46,7 @@ $mp->mock(device_map => sub { undef });
 $san->mock(abs_path => sub { $device });
 $san->mock(scan_luns => sub { [$lun] });
 $san->mock(lun_partitions => sub { [] });
+$san->mock(dir_glob_foreach => sub { });
 $san->mock(assert_same_device => sub { ok(defined(fileno($_[1])), 'held descriptor checked') });
 $lvm->mock(lun_volume_groups => sub { push @order, 'check'; [] });
 $cluster->mock(
@@ -85,6 +87,20 @@ for my $base (qw(fabric nvme-fabric)) {
     like($@, qr/base volume/, "native base reference on storage '$base' refuses");
 }
 $cfg->{ids} = {};
+@order = @opens = ();
+$tools->mock(file_get_contents => sub { 1024 });
+$disk->mock(
+    run_command => sub {
+        my ($cmd, %opts) = @_;
+        push @order, $cmd->[0];
+        my ($path) = map { /^of=(.*)$/ ? $1 : m{^(/proc/\d+/fd/\d+)$} ? $1 : () } @$cmd;
+        ok(defined($path) && -e $path, 'native wipe writes through the held descriptor');
+    },
+);
+PVE::Storage::SAN::with_lun_lock($lun, sub { PVE::Storage::SAN::wipe_lun($lun) });
+is_deeply(\@order, [qw(lock check wipefs dd unlock)], 'native wipe sequencing');
+is_deeply(\@opens, [$link, $link], 'native wipe opens its by-id name');
+
 @order = @opens = ();
 $lvm->mock(file_read_firstline => sub { $_[0] =~ m{/size$} ? 1024 : undef });
 $lvm->mock(lvm_pv_info => sub { undef });

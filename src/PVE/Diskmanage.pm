@@ -1214,8 +1214,10 @@ sub device_opener {
 # Wipes all labels and the first 200 MiB of a disk/partition (or the whole if it is smaller).
 # If called with a partition, also sets the partition type to 0x83 'Linux filesystem'.
 # Expected to be called with a result of verify_blockdev_path().
+# With $writepath, writes through that path instead, for example the /proc path of a descriptor of
+# the caller, and leaves child partitions and the partition type alone.
 sub wipe_blockdev {
-    my ($devpath) = @_;
+    my ($devpath, $writepath) = @_;
 
     my $devname = basename($devpath);
     my $dev_size = PVE::Tools::file_get_contents("/sys/class/block/$devname/size");
@@ -1227,30 +1229,49 @@ sub wipe_blockdev {
     my $count = ($size < 200) ? $size : 200;
 
     my $to_wipe = [];
-    dir_glob_foreach(
-        "/sys/class/block/${devname}",
-        "${devname}.+",
-        sub {
-            my ($part) = @_;
-            push $to_wipe->@*, "/dev/${part}" if -b "/dev/${part}";
-        },
-    );
+    if (!defined($writepath)) {
+        dir_glob_foreach(
+            "/sys/class/block/${devname}",
+            "${devname}.+",
+            sub {
+                my ($part) = @_;
+                push $to_wipe->@*, "/dev/${part}" if -b "/dev/${part}";
+            },
+        );
+    }
 
     if (scalar($to_wipe->@*) > 0) {
         print "found child partitions to wipe: " . join(', ', $to_wipe->@*) . "\n";
     }
-    push $to_wipe->@*, $devpath; # put actual device last
+    push $to_wipe->@*, $writepath // $devpath; # put actual device last
 
     print "wiping block device ${devpath}\n";
 
-    run_command(['wipefs', '--all', $to_wipe->@*], errmsg => "error wiping '${devpath}'");
-
+    # With a write path, the caller holds the device open exclusively, which already checked for
+    # other exclusive users. Unless forced, wipefs would try the same and fail on that descriptor.
     run_command(
-        ['dd', 'if=/dev/zero', "of=${devpath}", 'bs=1M', 'conv=fdatasync', "count=${count}"],
+        ['wipefs', '--all', defined($writepath) ? ('--force') : (), $to_wipe->@*],
         errmsg => "error wiping '${devpath}'",
+        defined($writepath) ? (timeout => 10) : (),
     );
 
-    if (is_partition($devpath)) {
+    my $target = $writepath // $devpath;
+    run_command(
+        [
+            'dd',
+            'if=/dev/zero',
+            "of=${target}",
+            'bs=1M',
+            'conv=fdatasync',
+            defined($writepath)
+            ? ('iflag=count_bytes', 'count=' . ($count * 1024 * 1024))
+            : "count=${count}",
+        ],
+        errmsg => "error wiping '${devpath}'",
+        defined($writepath) ? (timeout => 60) : (),
+    );
+
+    if (!defined($writepath) && is_partition($devpath)) {
         eval { change_parttype($devpath, '8300'); };
         warn $@ if $@;
     }
