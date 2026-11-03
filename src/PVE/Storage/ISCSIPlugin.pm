@@ -18,6 +18,7 @@ use base qw(PVE::Storage::Plugin);
 # iscsi helper function
 
 my $ISCSIADM = '/usr/bin/iscsiadm';
+our $SYSFS = '/sys';
 
 my $found_iscsi_adm_exe;
 my sub assert_iscsi_support {
@@ -289,11 +290,33 @@ sub load_stable_scsi_paths {
     return $stable_paths;
 }
 
+# Offload initiators can run several sessions on one SCSI host, so the LUNs of a session are the
+# ones below its own target, not all LUNs of its host.
+my sub foreach_session_lun {
+    my ($sessiondir, $code) = @_;
+
+    dir_glob_foreach(
+        $sessiondir,
+        'target\d+:\d+:\d+',
+        sub {
+            my ($targetdir) = @_;
+            dir_glob_foreach(
+                "$sessiondir/$targetdir",
+                '\d+:(\d+):(\d+):(\d+)',
+                sub {
+                    my ($hctl, $channel, $id, $lun) = @_;
+                    $code->("$sessiondir/$targetdir/$hctl", $channel, $id, $lun);
+                },
+            );
+        },
+    );
+}
+
 sub iscsi_device_list {
 
     my $res = {};
 
-    my $dirname = '/sys/class/iscsi_session';
+    my $dirname = "$SYSFS/class/iscsi_session";
 
     my $stable_paths = load_stable_scsi_paths();
 
@@ -306,39 +329,33 @@ sub iscsi_device_list {
             my $target = file_read_firstline("$dirname/$ent/targetname");
             return if !$target;
 
-            my (undef, $host) = dir_glob_regex("$dirname/$ent/device", 'target(\d+):.*');
-            return if !defined($host);
-
-            dir_glob_foreach(
-                "/sys/bus/scsi/devices",
-                "$host:" . '(\d+):(\d+):(\d+)',
+            foreach_session_lun(
+                "$dirname/$ent/device",
                 sub {
-                    my ($tmp, $channel, $id, $lun) = @_;
+                    my ($devdir, $channel, $id, $lun) = @_;
 
-                    my $type = file_read_firstline("/sys/bus/scsi/devices/$tmp/type");
+                    my $type = file_read_firstline("$devdir/type");
                     return if !defined($type) || $type ne '0'; # list disks only
 
                     my $bdev;
-                    if (-d "/sys/bus/scsi/devices/$tmp/block") { # newer kernels
-                        (undef, $bdev) =
-                            dir_glob_regex("/sys/bus/scsi/devices/$tmp/block/", '([A-Za-z]\S*)');
+                    if (-d "$devdir/block") { # newer kernels
+                        (undef, $bdev) = dir_glob_regex("$devdir/block/", '([A-Za-z]\S*)');
                     } else {
-                        (undef, $bdev) =
-                            dir_glob_regex("/sys/bus/scsi/devices/$tmp", 'block:(\S+)');
+                        (undef, $bdev) = dir_glob_regex($devdir, 'block:(\S+)');
                     }
                     return if !$bdev;
 
                     #check multipath
-                    if (-d "/sys/block/$bdev/holders") {
+                    if (-d "$SYSFS/block/$bdev/holders") {
                         my $multipathdev =
-                            dir_glob_regex("/sys/block/$bdev/holders", '[A-Za-z]\S*');
+                            dir_glob_regex("$SYSFS/block/$bdev/holders", '[A-Za-z]\S*');
                         $bdev = $multipathdev if $multipathdev;
                     }
 
                     my $blockdev = $stable_paths->{$bdev};
                     return if !$blockdev;
 
-                    my $size = file_read_firstline("/sys/block/$bdev/size");
+                    my $size = file_read_firstline("$SYSFS/block/$bdev/size");
                     return if !$size;
 
                     my $volid = "$channel.$id.$lun.$blockdev";
@@ -351,8 +368,6 @@ sub iscsi_device_list {
                         'id' => int($id),
                         'lun' => int($lun),
                     };
-
-                    #print "TEST: $target $session $host,$bus,$tg,$lun $blockdev\n";
                 },
             );
 

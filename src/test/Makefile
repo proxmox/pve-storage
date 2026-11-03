@@ -33,8 +33,9 @@ test_ovf: run_ovf_tests.pl
 test_volume_access: run_volume_access_tests.pl
 	./run_volume_access_tests.pl
 
-test_iscsi: run_iscsi_discovery_tests.pl run_iscsi_rescan_tests.pl run_iscsi_session_tests.pl run_iscsi_volume_tests.pl
+test_iscsi: run_iscsi_discovery_tests.pl run_iscsi_rescan_tests.pl run_iscsi_device_list_tests.pl run_iscsi_session_tests.pl run_iscsi_volume_tests.pl
 	./run_iscsi_discovery_tests.pl
 	./run_iscsi_rescan_tests.pl
+	./run_iscsi_device_list_tests.pl
 	./run_iscsi_session_tests.pl
 	./run_iscsi_volume_tests.pl
