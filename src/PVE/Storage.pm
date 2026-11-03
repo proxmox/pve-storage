@@ -2206,12 +2206,15 @@ sub volume_import_start {
 
     my ($ready, $output) = (0, '');
     eval {
-        PVE::Tools::run_with_timeout(5, sub {
-            while (defined(my $line = <$info>)) {
-                return $ready = 1 if $line eq "ready\n";
-                $output .= $line;
-            }
-        });
+        PVE::Tools::run_with_timeout(
+            5,
+            sub {
+                while (defined(my $line = <$info>)) {
+                    return $ready = 1 if $line eq "ready\n";
+                    $output .= $line;
+                }
+            },
+        );
     };
     die "failed to read readiness from disk import child: $@\n$output" if $@;
     die "disk import child exited before signalling readiness\n$output" if !$ready;
