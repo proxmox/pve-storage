@@ -4,6 +4,8 @@ use strict;
 use warnings;
 use IO::File;
 use POSIX qw(ENOENT);
+
+use PVE::Cmd qw(build_ssh_command);
 use PVE::Tools qw(run_command);
 use PVE::Storage::ZFSPoolPlugin;
 use PVE::RESTEnvironment qw(log_warn);
@@ -23,7 +25,7 @@ use constant FORMAT_EXTENSION => {
 my $ZFS_CHAR_RE = qr/[a-zA-Z0-9\_\.\-]/;
 
 my @ssh_opts = ('-o', 'BatchMode=yes');
-my @ssh_cmd = ('/usr/bin/ssh', @ssh_opts);
+my @ssh_base_cmd = ('/usr/bin/ssh', @ssh_opts);
 my $id_rsa_path = '/etc/pve/priv/zfs';
 
 my $lun_cmds = {
@@ -87,22 +89,27 @@ sub zfs_request {
 
         my $target = 'root@' . $scfg->{portal};
 
-        my $cmd = [@ssh_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", $target];
+        my $ssh_cmd = [@ssh_base_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", '--', $target];
+        my $remote_cmd = [];
 
         if ($method eq 'zpool_list') {
-            push @$cmd, 'zpool', 'list';
+            push $remote_cmd->@*, 'zpool', 'list';
         } else {
-            push @$cmd, 'zfs', $method;
+            push $remote_cmd->@*, 'zfs', $method;
         }
 
-        push @$cmd, @params;
+        push $remote_cmd->@*, @params;
 
         my $output = sub {
             my $line = shift;
             $msg .= "$line\n";
         };
 
-        run_command($cmd, outfunc => $output, timeout => $timeout);
+        run_command(
+            build_ssh_command($ssh_cmd, $remote_cmd),
+            outfunc => $output,
+            timeout => $timeout,
+        );
     }
 
     return $msg;
@@ -261,8 +268,9 @@ sub on_add_hook {
             # Debian 12. Keep that implementation as-is for backwards compatibility, but use custom
             # logic here.
             my $target = 'root@' . $scfg->{portal};
-            my $cmd = [@ssh_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", $target];
-            push $cmd->@*, 'ls', '/dev/zvol';
+            my $ssh_cmd =
+                [@ssh_base_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", '--', $target];
+            my $cmd = build_ssh_command($ssh_cmd, ['ls', '/dev/zvol']);
 
             my $rc = eval { run_command($cmd, timeout => 10, noerr => 1, quiet => 1) };
             my $err = $@;
