@@ -654,14 +654,8 @@ __PACKAGE__->register_method({
                 errmsg => "mkdir failed",
             );
 
-            $cmd = [
-                '/usr/bin/scp',
-                $ssh_options->@*,
-                '-p',
-                '--',
-                $tmpfilename,
-                "[$remip]:" . PVE::Tools::shell_quote($dest),
-            ];
+            $cmd =
+                ['/usr/bin/scp', $ssh_options->@*, '-p', '--', $tmpfilename, "[$remip]:$dest"];
 
             $err_cleanup =
                 sub { run_command(build_ssh_command($ssh_cmd, ['rm', '-f', '--', $dest])) };
