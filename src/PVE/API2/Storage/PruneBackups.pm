@@ -12,6 +12,19 @@ use PVE::Tools qw(extract_param);
 
 use base qw(PVE::RESTHandler);
 
+my sub assert_prune_permission {
+    my ($rpcenv, $authuser, $storeid, $vmid) = @_;
+
+    if (defined($vmid)) {
+        $rpcenv->check($authuser, "/storage/$storeid", ['Datastore.AllocateSpace']);
+        $rpcenv->check($authuser, "/vms/$vmid", ['VM.Backup']);
+    } else {
+        $rpcenv->check($authuser, "/storage/$storeid", ['Datastore.Allocate']);
+    }
+
+    return;
+}
+
 __PACKAGE__->register_method({
     name => 'dryrun',
     path => '',
@@ -20,12 +33,9 @@ __PACKAGE__->register_method({
         "Get prune information for backups. NOTE: this is only a preview and might not be "
         . "what a subsequent prune call does if backups are removed/added in the meantime.",
     permissions => {
-        check => [
-            'perm',
-            '/storage/{storage}',
-            ['Datastore.Audit', 'Datastore.AllocateSpace'],
-            any => 1,
-        ],
+        description => "You need the 'Datastore.Allocate' privilege on the storage "
+            . "(or if a VM ID is specified, 'Datastore.AllocateSpace' and 'VM.Backup' for the VM).",
+        user => 'all',
     },
     protected => 1,
     proxyto => 'node',
@@ -100,6 +110,9 @@ __PACKAGE__->register_method({
     code => sub {
         my ($param) = @_;
 
+        my $rpcenv = PVE::RPCEnvironment::get();
+        my $authuser = $rpcenv->get_user();
+
         my $cfg = PVE::Storage::config();
 
         my $vmid = extract_param($param, 'vmid');
@@ -109,6 +122,8 @@ __PACKAGE__->register_method({
         my $prune_backups = extract_param($param, 'prune-backups');
         $prune_backups = PVE::JSONSchema::parse_property_string('prune-backups', $prune_backups)
             if defined($prune_backups);
+
+        assert_prune_permission($rpcenv, $authuser, $storeid, $vmid);
 
         return PVE::Storage::prune_backups($cfg, $storeid, $prune_backups, $vmid, $type, 1);
     },
@@ -177,12 +192,7 @@ __PACKAGE__->register_method({
         $prune_backups = PVE::JSONSchema::parse_property_string('prune-backups', $prune_backups)
             if defined($prune_backups);
 
-        if (defined($vmid)) {
-            $rpcenv->check($authuser, "/storage/$storeid", ['Datastore.AllocateSpace']);
-            $rpcenv->check($authuser, "/vms/$vmid", ['VM.Backup']);
-        } else {
-            $rpcenv->check($authuser, "/storage/$storeid", ['Datastore.Allocate']);
-        }
+        assert_prune_permission($rpcenv, $authuser, $storeid, $vmid);
 
         my $id = (defined($vmid) ? "$vmid@" : '') . $storeid;
         my $worker = sub {
