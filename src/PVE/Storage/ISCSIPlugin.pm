@@ -623,6 +623,14 @@ $resolve_virtual_devices = sub {
 
     my $resolved = [];
     if ($dev =~ m!^/devices/virtual/block/!) {
+        # All paths of a multipath map lead to one LUN, possibly through other target names. Other
+        # virtual devices, such as linear maps or logical volumes, can include disks outside the
+        # target, so one disk of the target does not make them part of it.
+        my $uuid = file_read_firstline("/sys/$dev/dm/uuid") // '';
+        my ($name) = $dev =~ m!([^/]+)$!;
+        die "'$name' is neither a multipath map nor a partition of one\n"
+            if $uuid !~ m/^(?:part\d+-)?mpath-\S+$/;
+
         dir_glob_foreach(
             "/sys/$dev/slaves",
             '([^.].+)',
@@ -660,7 +668,8 @@ sub activate_volume {
     die "resolved realpath '$real_path' is not a block device\n" if !-b $real_path;
 
     my $device_path = $udev_query_path->($real_path);
-    my $resolved_paths = $resolve_virtual_devices->($device_path);
+    my $resolved_paths = eval { $resolve_virtual_devices->($device_path) };
+    die "volume '$volname' not part of target '$scfg->{target}' - $@" if $@;
 
     my $found = $check_devices_part_of_target->($resolved_paths, $scfg->{target});
     die "volume '$volname' not part of target '$scfg->{target}'\n" if !$found;
