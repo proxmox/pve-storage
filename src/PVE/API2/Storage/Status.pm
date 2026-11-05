@@ -7,6 +7,7 @@ use File::Basename;
 use File::Path;
 use POSIX qw(ENOENT);
 
+use PVE::Cmd qw(build_ssh_command);
 use PVE::Cluster;
 use PVE::Exception qw(raise_param_exc);
 use PVE::INotify;
@@ -640,15 +641,16 @@ __PACKAGE__->register_method({
             my $ssh_options =
                 PVE::SSHInfo::ssh_info_to_ssh_opts({ ip => $remip, name => $node });
 
-            my @remcmd = ('/usr/bin/ssh', $ssh_options->@*, $remip, '--');
+            my $ssh_cmd = ['/usr/bin/ssh', $ssh_options->@*, '--', $remip];
 
             eval { # activate remote storage
-                run_command([@remcmd, '/usr/sbin/pvesm', 'status', '--storage', $storage]);
+                my $rem_cmd = ['/usr/sbin/pvesm', 'status', '--storage', $storage];
+                run_command(build_ssh_command($ssh_cmd, $rem_cmd));
             };
             die "can't activate storage '$storage' on node '$node': $@\n" if $@;
 
             run_command(
-                [@remcmd, '/bin/mkdir', '-p', '--', PVE::Tools::shell_quote($dirname)],
+                build_ssh_command($ssh_cmd, ['/bin/mkdir', '-p', '--', $dirname]),
                 errmsg => "mkdir failed",
             );
 
@@ -661,7 +663,8 @@ __PACKAGE__->register_method({
                 "[$remip]:" . PVE::Tools::shell_quote($dest),
             ];
 
-            $err_cleanup = sub { run_command([@remcmd, 'rm', '-f', '--', $dest]) };
+            $err_cleanup =
+                sub { run_command(build_ssh_command($ssh_cmd, ['rm', '-f', '--', $dest])) };
         } else {
             PVE::Storage::activate_storage($cfg, $storage);
             File::Path::make_path($dirname);
