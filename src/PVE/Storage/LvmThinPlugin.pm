@@ -69,7 +69,7 @@ sub parse_volname {
 
     PVE::Storage::Plugin::parse_lvm_name($volname);
 
-    if ($volname =~ m/^((vm|base)-(\d+)-\S+)$/) {
+    if ($volname =~ m/^((vm|base)-(\d+)-\S+)\z/) {
         return ('images', $1, $3, undef, undef, $2 eq 'base', 'raw');
     }
 

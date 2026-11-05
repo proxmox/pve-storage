@@ -1126,7 +1126,7 @@ sub parse_volname {
 
     PVE::Storage::Plugin::parse_lvm_name($volname);
 
-    if ($volname =~ m/^(vm-(\d+)-\S+)$/) {
+    if ($volname =~ m/^(vm-(\d+)-\S+)\z/) {
         my $name = $1;
         my $vmid = $2;
         my $format = $volname =~ m/\.qcow2$/ ? 'qcow2' : 'raw';

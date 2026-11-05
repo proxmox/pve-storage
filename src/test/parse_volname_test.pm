@@ -391,6 +391,12 @@ for my $plugin_name (qw(LVMPlugin LvmThinPlugin RBDPlugin ZFSPlugin ZFSPoolPlugi
                 plugin => "PVE::Storage::$plugin_name",
                 expected => map_error_message($plugin_name, '-123-disk-0'),
             },
+            {
+                description => "$plugin_name - trailing newline",
+                volname => "vm-123-disk-0\n",
+                plugin => "PVE::Storage::$plugin_name",
+                expected => map_error_message($plugin_name, "vm-123-disk-0\n", 1),
+            },
         );
 
     # Test disallowed chars
@@ -432,18 +438,6 @@ for my $plugin_name (qw(LVMPlugin LvmThinPlugin RBDPlugin ZFSPlugin ZFSPoolPlugi
                 expected => [
                     'images', 'vm-112-disk-0', 112, 'base-1000-disk-0', 1000, $is_base->(0), 'raw',
                 ],
-            },
-        );
-}
-
-for my $plugin_name (qw(ZFSPlugin ZFSPoolPlugin)) {
-    push $tests->@*,
-        (
-            {
-                description => "$plugin_name - trailing newline",
-                volname => "vm-123-disk-0\n",
-                plugin => "PVE::Storage::$plugin_name",
-                expected => map_error_message($plugin_name, "vm-123-disk-0\n"),
             },
         );
 }

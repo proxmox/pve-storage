@@ -513,7 +513,7 @@ sub on_delete_hook {
 sub parse_volname {
     my ($class, $volname) = @_;
 
-    if ($volname =~ m/^((base-(\d+)-\S+)\/)?((base|vm)-(\d+)-\S+)$/) {
+    if ($volname =~ m/^((base-(\d+)-\S+)\/)?((base|vm)-(\d+)-\S+)\z/) {
         return ('images', $4, $6, $2, $3, $5 eq 'base', 'raw');
     }
 
