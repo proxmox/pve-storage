@@ -870,7 +870,7 @@ my $volume_import_prepare = sub {
     my $migration_snapshot = $opts->{migration_snapshot} ? 1 : 0;
     my $allow_rename = $opts->{allow_rename} ? 1 : 0;
 
-    my $recv = ['pvesm', 'import', $volid, $format, $path, '-with-snapshots', $with_snapshots];
+    my $recv = ['pvesm', 'import', '-with-snapshots', $with_snapshots];
     if (defined($snapshot)) {
         push @$recv, '-snapshot', $snapshot;
     }
@@ -884,6 +884,8 @@ my $volume_import_prepare = sub {
         push @$recv, '-base', $base_snapshot;
     }
 
+    push @$recv, '--', $volid, $format, $path;
+
     return $recv;
 };
 
@@ -895,13 +897,15 @@ my $volume_export_prepare = sub {
     my $migration_snapshot = $opts->{migration_snapshot} ? 1 : 0;
     my $ratelimit_bps = $opts->{ratelimit_bps};
 
-    my $send = ['pvesm', 'export', $volid, $format, '-', '-with-snapshots', $with_snapshots];
+    my $send = ['pvesm', 'export', '-with-snapshots', $with_snapshots];
     if (defined($snapshot)) {
         push @$send, '-snapshot', $snapshot;
     }
     if (defined($base_snapshot)) {
         push @$send, '-base', $base_snapshot;
     }
+
+    push @$send, '--', $volid, $format, '-';
 
     my $cstream;
     if (defined($ratelimit_bps)) {
