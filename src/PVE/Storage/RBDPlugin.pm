@@ -513,8 +513,8 @@ sub on_delete_hook {
 sub parse_volname {
     my ($class, $volname) = @_;
 
-    if ($volname =~ m/^((base-(\d+)-\S+)\/)?((base)?(vm)?-(\d+)-\S+)$/) {
-        return ('images', $4, $7, $2, $3, $5, 'raw');
+    if ($volname =~ m/^((base-(\d+)-\S+)\/)?((base|vm)-(\d+)-\S+)$/) {
+        return ('images', $4, $6, $2, $3, $5 eq 'base', 'raw');
     }
 
     die "unable to parse rbd volume name '$volname'\n";

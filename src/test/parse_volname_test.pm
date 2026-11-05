@@ -300,10 +300,9 @@ my sub map_is_base {
     my ($plugin_name, $is_base) = @_;
 
     if ($is_base) {
-        return 'base' if $plugin_name eq 'RBDPlugin';
         return 1;
     } else {
-        return undef if $plugin_name eq 'LVMPlugin' || $plugin_name eq 'RBDPlugin';
+        return undef if $plugin_name eq 'LVMPlugin';
         return '';
     }
 }
@@ -316,7 +315,7 @@ my sub map_error_message {
     $type_in_msg = 'zfs' if $type_in_msg eq 'zfspool';
     $type_in_msg = 'lvm' if $type_in_msg eq 'lvmthin';
 
-    if ($disallowed_char && $type_in_msg eq 'lvm') {
+    if (($disallowed_char || $volume_name =~ m/^-/) && $type_in_msg eq 'lvm') {
         return "lvm name '$volume_name' contains illegal characters\n";
     }
 
@@ -381,6 +380,12 @@ for my $plugin_name (qw(LVMPlugin LvmThinPlugin RBDPlugin ZFSPlugin ZFSPoolPlugi
                 volname => "rm-123-disk-0",
                 plugin => "PVE::Storage::$plugin_name",
                 expected => map_error_message($plugin_name, 'rm-123-disk-0'),
+            },
+            {
+                description => "$plugin_name - missing prefix",
+                volname => "-123-disk-0",
+                plugin => "PVE::Storage::$plugin_name",
+                expected => map_error_message($plugin_name, '-123-disk-0'),
             },
         );
 
