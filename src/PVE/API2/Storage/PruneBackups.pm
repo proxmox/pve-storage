@@ -4,6 +4,7 @@ use strict;
 use warnings;
 
 use PVE::Cluster;
+use PVE::Exception qw(raise_perm_exc);
 use PVE::JSONSchema qw(get_standard_option);
 use PVE::RESTHandler;
 use PVE::RPCEnvironment;
@@ -15,11 +16,13 @@ use base qw(PVE::RESTHandler);
 my sub assert_prune_permission {
     my ($rpcenv, $authuser, $storeid, $vmid) = @_;
 
+    return if $rpcenv->check($authuser, "/storage/$storeid", ['Datastore.Allocate'], 1);
+
     if (defined($vmid)) {
         $rpcenv->check($authuser, "/storage/$storeid", ['Datastore.AllocateSpace']);
         $rpcenv->check($authuser, "/vms/$vmid", ['VM.Backup']);
     } else {
-        $rpcenv->check($authuser, "/storage/$storeid", ['Datastore.Allocate']);
+        raise_perm_exc("/storage/$storeid, Datastore.Allocate");
     }
 
     return;
