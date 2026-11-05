@@ -14,6 +14,7 @@ use Cwd 'abs_path';
 use Socket;
 use Time::Local qw(timelocal);
 
+use PVE::Cmd qw(build_ssh_command);
 use PVE::Tools qw(run_command file_read_firstline dir_glob_foreach $IPV6RE);
 use PVE::Cluster qw(cfs_read_file cfs_write_file cfs_lock_file);
 use PVE::DataCenterConfig;
@@ -974,10 +975,13 @@ sub storage_migrate {
         }
 
         my $ssh = PVE::SSHInfo::ssh_info_to_command($target_sshinfo);
-        push @$recv, (@$ssh, '--');
+        $recv = build_ssh_command(
+            $ssh,
+            $volume_import_prepare->($target_volid, $format, $import_fn, $opts),
+        );
+    } else {
+        $recv = $volume_import_prepare->($target_volid, $format, $import_fn, $opts);
     }
-
-    push @$recv, ($volume_import_prepare->($target_volid, $format, $import_fn, $opts)->@*);
 
     my $new_volid;
     my $pattern = volume_imported_message(undef, 1);
