@@ -1,3 +1,57 @@
+libpve-storage-perl (9.1.14) trixie; urgency=medium
+
+  * rbd: use the configured 'data-pool' when importing volumes, for example
+    during offline remote migration. Imported images previously kept their
+    data in the metadata pool, where it does not count towards the reported
+    storage usage. To relocate such an image, move its disk to another storage
+    and back.
+
+  * rbd: do not run 'rbd du' when exporting a volume, as only the image size is
+    needed. On images without the fast-diff feature, 'rbd du' has to go through
+    every object, which can take a long time.
+
+  * fix #8076: zfs: check that a volume exists when activating it, to fix a
+    regression with cloud-init disks. Previously, activating a missing zvol only
+    failed after a 300 second timeout in worker context. It now fails right away
+    with a clear error. Missing snapshots are now also detected during
+    activation.
+
+  * partially fix #7840: remote migration: wait until the disk import is ready.
+    Any earlier output of the import command was mistaken for its 'ready'
+    message, so the disk transfer could start before the command was listening.
+    An import that exits early now results in a clear error.
+
+  * pvesm: extractconfig: also allow users with 'Datastore.Allocate' on the
+    backup storage, matching the permissions for restoring a backup.
+
+  * fix #8169: pvesm: extractconfig: fix a regression that prevented extracting
+    the configuration of guest backups without a guest ID, for example manually
+    renamed ones. Accessing such a backup requires 'Datastore.Allocate' on the
+    storage.
+
+  * disks: remove trailing spaces from SCSI vendor and model names read from
+    sysfs. The disk list showed, for example, "NETAPP  " as the vendor.
+
+  * iscsi: report an error when scanning a portal that does not answer or where
+    discovery fails, instead of showing an empty target list. A portal without
+    targets still results in an empty list. During storage activation, discovery
+    errors are now logged as warnings and the login is still attempted.
+
+  * iscsi: recognize existing sessions over any transport, such as iSER or
+    offload initiators, not only TCP. Storage activation and status checks did
+    not see these sessions, so the storage was reported as inactive and
+    activation tried to log in again.
+
+  * iscsi: fix activating volumes connected through iSER or offload initiators,
+    which failed with an error saying the volume is not part of the target.
+
+  * lvm: check that an iSCSI base volume is part of its storage's target before
+    creating a volume group on it. A volume name can refer to a device outside
+    of the target, which would otherwise get initialized as an LVM physical
+    volume.
+
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 05 Nov 2026 01:38:35 +0100
+
 libpve-storage-perl (9.1.13) trixie; urgency=medium
 
   * plugins: better document how volname_for_format() validates the name
