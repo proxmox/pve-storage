@@ -1,3 +1,19 @@
+libpve-storage-perl (9.1.15) trixie; urgency=medium
+
+  * remote commands: shell-quote the arguments of commands run on other nodes or
+    storage servers and clearly separate them from options, preserving spaces
+    and special characters.
+
+  * zfs: only accept volume names with characters that ZFS allows. ZFS over
+    iSCSI additionally rejects and no longer lists names containing ':', which
+    at least the LIO and Istgt providers do not handle properly.
+
+  * rbd: only accept volume names with the 'vm-' or 'base-' prefix. Other names
+    could only come from a manual import and were accepted by accident. Such
+    volumes need to be renamed.
+
+ -- Proxmox Support Team <support@proxmox.com>  Thu, 05 Nov 2026 22:10:55 +0100
+
 libpve-storage-perl (9.1.14) trixie; urgency=medium
 
   * rbd: use the configured 'data-pool' when importing volumes, for example
