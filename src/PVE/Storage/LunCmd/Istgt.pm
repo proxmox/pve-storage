@@ -7,6 +7,7 @@ package PVE::Storage::LunCmd::Istgt;
 use strict;
 use warnings;
 
+use PVE::Cmd qw(build_ssh_command);
 use PVE::Tools qw(run_command file_read_firstline trim dir_glob_regex dir_glob_foreach);
 
 my @CONFIG_FILES = (
@@ -83,8 +84,10 @@ my $read_config = sub {
     my $daemon = 0;
     foreach my $config (@CONFIG_FILES) {
         $err = undef;
-        my $cmd =
-            [@ssh_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", $target, $luncmd, $config];
+        my $cmd = build_ssh_command(
+            [@ssh_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", '--', $target],
+            [$luncmd, $config],
+        );
         eval {
             run_command($cmd, outfunc => $output, errfunc => $errfunc, timeout => $timeout);
         };
@@ -448,6 +451,7 @@ my $add_view = sub {
             cmd => 'ssh',
             method => $DAEMON,
             params => \@params,
+            'skip-shell-quote' => 1,
         };
     } else {
         @params = ('-HUP', '`cat ' . "$SETTINGS->{pidfile}`");
@@ -455,6 +459,7 @@ my $add_view = sub {
             cmd => 'ssh',
             method => 'kill',
             params => \@params,
+            'skip-shell-quote' => 1,
         };
     }
 
@@ -545,12 +550,22 @@ sub run_lun_command {
                 @scp_cmd,
                 '-i',
                 "$id_rsa_path/$scfg->{portal}_id_rsa",
+                '--',
                 $method,
                 "$target:$params[0]",
             ];
         } else {
+            if (!$res->{'skip-shell-quote'}) {
+                my $cmd_str = join(' ', ($method, @params));
+                die "internal error - missing implementation for command $cmd_str\n";
+            }
             $cmd = [
-                @ssh_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", $target, $method,
+                @ssh_cmd,
+                '-i',
+                "$id_rsa_path/$scfg->{portal}_id_rsa",
+                '--',
+                $target,
+                $method,
                 @params,
             ];
         }
@@ -567,7 +582,8 @@ sub run_lun_command {
             open(my $fh, '>', $file) or die "Could not open file '$file' $!";
             print $fh $OLD_CONFIG;
             close $fh;
-            $cmd = [@scp_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", $file, $CONFIG_FILE];
+            $cmd =
+                [@scp_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", '--', $file, $CONFIG_FILE];
             eval { run_command($cmd, outfunc => $output, timeout => $timeout); };
             $err1 = $@ if $@;
             unlink $file;

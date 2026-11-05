@@ -16,6 +16,7 @@ package PVE::Storage::LunCmd::Iet;
 use strict;
 use warnings;
 
+use PVE::Cmd qw(build_ssh_command);
 use PVE::Tools qw(run_command file_read_firstline trim dir_glob_regex dir_glob_foreach);
 
 sub get_base;
@@ -69,8 +70,10 @@ my $execute_command = sub {
         ];
     } else {
         $target = 'root@' . $scfg->{portal};
-        $cmd = [@ssh_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", $target, '--', $method,
-            @params];
+        $cmd = build_ssh_command(
+            [@ssh_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", '--', $target],
+            [$method, @params],
+        );
     }
 
     eval { run_command($cmd, outfunc => $output, errfunc => $errfunc, timeout => $timeout); };
@@ -110,8 +113,10 @@ my $read_config = sub {
 
     $target = 'root@' . $scfg->{portal};
 
-    my $cmd =
-        [@ssh_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", $target, $luncmd, $CONFIG_FILE];
+    my $cmd = build_ssh_command(
+        [@ssh_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", '--', $target],
+        [$luncmd, $CONFIG_FILE],
+    );
     eval { run_command($cmd, outfunc => $output, errfunc => $errfunc, timeout => $timeout); };
     if ($@) {
         die $err if ($err !~ /No such file or directory/);

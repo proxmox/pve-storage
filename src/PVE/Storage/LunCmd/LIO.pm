@@ -21,6 +21,8 @@ package PVE::Storage::LunCmd::LIO;
 
 use strict;
 use warnings;
+
+use PVE::Cmd qw(build_ssh_command);
 use PVE::Tools qw(run_command);
 use JSON;
 
@@ -58,15 +60,10 @@ my $execute_remote_command = sub {
     my $errfunc = sub { $err .= "$_[0]\n" };
 
     $target = 'root@' . $scfg->{portal};
-    $cmd = [
-        @ssh_cmd,
-        '-i',
-        "$id_rsa_path/$scfg->{portal}_id_rsa",
-        $target,
-        '--',
-        $remote_command,
-        @params,
-    ];
+    $cmd = build_ssh_command(
+        [@ssh_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", '--', $target],
+        [$remote_command, @params],
+    );
 
     eval { run_command($cmd, outfunc => $output, errfunc => $errfunc, timeout => $timeout); };
     if ($@) {
@@ -102,8 +99,10 @@ my $read_config = sub {
     $target = 'root@' . $scfg->{portal};
 
     foreach my $oneFile (@CONFIG_FILES) {
-        my $cmd =
-            [@ssh_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", $target, $luncmd, $oneFile];
+        my $cmd = build_ssh_command(
+            [@ssh_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", '--', $target],
+            [$luncmd, $oneFile],
+        );
         eval {
             run_command($cmd, outfunc => $output, errfunc => $errfunc, timeout => $timeout);
         };

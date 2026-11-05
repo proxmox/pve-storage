@@ -4,6 +4,8 @@ use strict;
 use warnings;
 
 use Digest::MD5 qw(md5_hex);
+
+use PVE::Cmd qw(build_ssh_command);
 use PVE::Tools qw(run_command file_read_firstline trim dir_glob_regex dir_glob_foreach);
 
 my @ssh_opts = ('-o', 'BatchMode=yes');
@@ -66,7 +68,7 @@ sub run_lun_command {
         @params = ('-l', @params);
     } elsif ($method eq 'list_lu') {
         $guid = $params[0];
-        @params = undef;
+        @params = ();
     } elsif ($method eq 'add_view') {
         if ($scfg->{comstar_tg}) {
             unshift @params, $scfg->{comstar_tg};
@@ -84,15 +86,10 @@ sub run_lun_command {
 
     $target = 'root@' . $scfg->{portal};
 
-    my $cmd = [
-        @ssh_cmd,
-        '-i',
-        "$id_rsa_path/$scfg->{portal}_id_rsa",
-        $target,
-        $luncmd,
-        $lunmethod,
-        @params,
-    ];
+    my $cmd = build_ssh_command(
+        [@ssh_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", '--', $target],
+        [$luncmd, $lunmethod, @params],
+    );
 
     run_command($cmd, outfunc => $output, timeout => $timeout);
 
