@@ -19,6 +19,7 @@ my $res = $harness->runtests(
     "filesystem_path_test.pm",
     "prune_backups_test.pm",
     "free_image_test.pm",
+    "zfs_list_zvol_test.pm",
 );
 
 exit -1 if !$res || $res->{failed} || $res->{parse_errors};
