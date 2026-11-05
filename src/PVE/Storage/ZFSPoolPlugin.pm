@@ -103,55 +103,6 @@ sub options {
 
 # static zfs helper methods
 
-sub zfs_get_char_re {
-    return $ZFS_CHAR_RE;
-}
-
-sub zfs_parse_zvol_list {
-    my ($class, $text, $pool) = @_;
-
-    my $char_re = $class->zfs_get_char_re();
-
-    my $list = ();
-
-    return $list if !$text;
-
-    my @lines = split /\n/, $text;
-    foreach my $line (@lines) {
-        my ($dataset, $size, $origin, $type, $refquota) = split(/\s+/, $line);
-        next if !($type eq 'volume' || $type eq 'filesystem');
-
-        my $zvol = {};
-        my @parts = split /\//, $dataset;
-        next if scalar(@parts) < 2; # we need pool/name
-        my $name = pop @parts;
-        my $parsed_pool = join('/', @parts);
-        next if $parsed_pool ne $pool;
-
-        next if $name !~ m!^(vm|base|subvol|basevol)-(\d+)-($char_re+)\z!;
-        $zvol->{owner} = $2;
-
-        $zvol->{name} = $name;
-        if ($type eq 'filesystem') {
-            if ($refquota eq 'none') {
-                $zvol->{size} = 0;
-            } else {
-                $zvol->{size} = $refquota + 0;
-            }
-            $zvol->{format} = 'subvol';
-        } else {
-            $zvol->{size} = $size + 0;
-            $zvol->{format} = 'raw';
-        }
-        if ($origin !~ /^-$/) {
-            $zvol->{origin} = $origin;
-        }
-        push @$list, $zvol;
-    }
-
-    return $list;
-}
-
 sub parse_volname {
     my ($class, $volname) = @_;
 
@@ -208,6 +159,10 @@ sub volname_with_format {
 }
 
 # virtual zfs methods (subclass can overwrite them)
+
+sub zfs_get_char_re {
+    return $ZFS_CHAR_RE;
+}
 
 sub on_add_hook {
     my ($class, $storeid, $scfg, %param) = @_;
@@ -496,6 +451,51 @@ sub zfs_delete_zvol {
     die $err if $err;
 }
 
+sub zfs_parse_zvol_list {
+    my ($class, $text, $pool) = @_;
+
+    my $char_re = $class->zfs_get_char_re();
+
+    my $list = ();
+
+    return $list if !$text;
+
+    my @lines = split /\n/, $text;
+    foreach my $line (@lines) {
+        my ($dataset, $size, $origin, $type, $refquota) = split(/\s+/, $line);
+        next if !($type eq 'volume' || $type eq 'filesystem');
+
+        my $zvol = {};
+        my @parts = split /\//, $dataset;
+        next if scalar(@parts) < 2; # we need pool/name
+        my $name = pop @parts;
+        my $parsed_pool = join('/', @parts);
+        next if $parsed_pool ne $pool;
+
+        next if $name !~ m!^(vm|base|subvol|basevol)-(\d+)-($char_re+)\z!;
+        $zvol->{owner} = $2;
+
+        $zvol->{name} = $name;
+        if ($type eq 'filesystem') {
+            if ($refquota eq 'none') {
+                $zvol->{size} = 0;
+            } else {
+                $zvol->{size} = $refquota + 0;
+            }
+            $zvol->{format} = 'subvol';
+        } else {
+            $zvol->{size} = $size + 0;
+            $zvol->{format} = 'raw';
+        }
+        if ($origin !~ /^-$/) {
+            $zvol->{origin} = $origin;
+        }
+        push @$list, $zvol;
+    }
+
+    return $list;
+}
+
 sub zfs_list_zvol {
     my ($class, $scfg) = @_;
 
@@ -513,7 +513,7 @@ sub zfs_list_zvol {
     );
     # It's still required to have zfs_parse_zvol_list filter by pool, because -d1 lists
     # $scfg->{pool} too and while unlikely, it could be named to be mistaken for a volume.
-    my $zvols = zfs_parse_zvol_list($class, $text, $scfg->{pool});
+    my $zvols = $class->zfs_parse_zvol_list($text, $scfg->{pool});
     return {} if !$zvols;
 
     my $list = {};
