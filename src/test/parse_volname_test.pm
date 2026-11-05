@@ -325,7 +325,7 @@ my sub map_error_message {
 my sub map_disallowed_chars {
     my ($plugin_name) = @_;
 
-    return [] if $plugin_name ne 'LVMPlugin' && $plugin_name ne 'LvmThinPlugin';
+    return [] if $plugin_name eq 'RBDPlugin';
 
     my $disallowed_chars = [];
 
@@ -336,6 +336,10 @@ my sub map_disallowed_chars {
         next if $i >= ord('A') && $i <= ord('Z');
         next if $i == ord('_');
         next if $i >= ord('a') && $i <= ord('z');
+
+        # FIXME: MAJOR VERSION: get rid of this exception
+        next if $i == ord(':') && $plugin_name eq 'ZFSPoolPlugin';
+
         push $disallowed_chars->@*, chr($i);
     }
 
@@ -428,6 +432,18 @@ for my $plugin_name (qw(LVMPlugin LvmThinPlugin RBDPlugin ZFSPlugin ZFSPoolPlugi
                 expected => [
                     'images', 'vm-112-disk-0', 112, 'base-1000-disk-0', 1000, $is_base->(0), 'raw',
                 ],
+            },
+        );
+}
+
+for my $plugin_name (qw(ZFSPlugin ZFSPoolPlugin)) {
+    push $tests->@*,
+        (
+            {
+                description => "$plugin_name - trailing newline",
+                volname => "vm-123-disk-0\n",
+                plugin => "PVE::Storage::$plugin_name",
+                expected => map_error_message($plugin_name, "vm-123-disk-0\n"),
             },
         );
 }

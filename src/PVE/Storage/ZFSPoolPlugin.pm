@@ -21,6 +21,8 @@ use constant FORMAT_EXTENSION => {
     subvol => '',
 };
 
+my $ZFS_CHAR_RE = qr/[a-zA-Z0-9\_\.\-\:]/;
+
 sub verify_zfs_blocksize {
     my ($value, $noerr) = @_;
 
@@ -101,8 +103,14 @@ sub options {
 
 # static zfs helper methods
 
+sub zfs_get_char_re {
+    return $ZFS_CHAR_RE;
+}
+
 sub zfs_parse_zvol_list {
-    my ($text, $pool) = @_;
+    my ($class, $text, $pool) = @_;
+
+    my $char_re = $class->zfs_get_char_re();
 
     my $list = ();
 
@@ -120,7 +128,7 @@ sub zfs_parse_zvol_list {
         my $parsed_pool = join('/', @parts);
         next if $parsed_pool ne $pool;
 
-        next unless $name =~ m!^(vm|base|subvol|basevol)-(\d+)-(\S+)$!;
+        next if $name !~ m!^(vm|base|subvol|basevol)-(\d+)-($char_re+)\z!;
         $zvol->{owner} = $2;
 
         $zvol->{name} = $name;
@@ -147,7 +155,11 @@ sub zfs_parse_zvol_list {
 sub parse_volname {
     my ($class, $volname) = @_;
 
-    if ($volname =~ m/^(((base|basevol)-(\d+)-\S+)\/)?((base|basevol|vm|subvol)-(\d+)-\S+)$/) {
+    my $char_re = $class->zfs_get_char_re();
+
+    if ($volname =~
+        m/^(((base|basevol)-(\d+)-$char_re+)\/)?((base|basevol|vm|subvol)-(\d+)-$char_re+)\z/
+    ) {
         my $format = ($6 eq 'subvol' || $6 eq 'basevol') ? 'subvol' : 'raw';
         my $isBase = ($6 eq 'base' || $6 eq 'basevol');
         return ('images', $5, $7, $2, $4, $isBase, $format);
@@ -501,7 +513,7 @@ sub zfs_list_zvol {
     );
     # It's still required to have zfs_parse_zvol_list filter by pool, because -d1 lists
     # $scfg->{pool} too and while unlikely, it could be named to be mistaken for a volume.
-    my $zvols = zfs_parse_zvol_list($text, $scfg->{pool});
+    my $zvols = zfs_parse_zvol_list($class, $text, $scfg->{pool});
     return {} if !$zvols;
 
     my $list = {};

@@ -20,6 +20,8 @@ use constant FORMAT_EXTENSION => {
     raw => '',
 };
 
+my $ZFS_CHAR_RE = qr/[a-zA-Z0-9\_\.\-]/;
+
 my @ssh_opts = ('-o', 'BatchMode=yes');
 my @ssh_cmd = ('/usr/bin/ssh', @ssh_opts);
 my $id_rsa_path = '/etc/pve/priv/zfs';
@@ -55,6 +57,10 @@ my $zfs_get_base = sub {
         $zfs_unknown_scsi_provider->($scfg->{iscsiprovider});
     }
 };
+
+sub zfs_get_char_re {
+    return $ZFS_CHAR_RE;
+}
 
 sub zfs_request {
     my ($class, $scfg, $timeout, $method, @params) = @_;
