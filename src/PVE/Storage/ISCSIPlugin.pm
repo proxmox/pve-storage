@@ -536,7 +536,7 @@ my $check_devices_part_of_target = sub {
 
     my $found = 0;
     for my $path (@$device_paths) {
-        if ($path =~ m!^/devices/platform/host\d+/session(\d+)/target\d+:\d:\d!) {
+        if ($path =~ m!/host\d+/session(\d+)/target\d+:\d+:\d+!) {
             my $session_id = $1;
 
             my $targetname = file_read_firstline(
