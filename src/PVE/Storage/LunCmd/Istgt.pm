@@ -536,44 +536,26 @@ sub run_lun_command {
         $is_add_view = 1;
         $timeout = 15;
     }
-    if (ref $cmdmap->{cmd} eq 'CODE') {
-        $res = $cmdmap->{cmd}->($scfg, $timeout, $method, @params);
-        if (ref $res) {
-            $method = $res->{method};
-            @params = @{ $res->{params} };
-            if ($res->{cmd} eq 'scp') {
-                $cmd = [
-                    @scp_cmd,
-                    '-i',
-                    "$id_rsa_path/$scfg->{portal}_id_rsa",
-                    $method,
-                    "$target:$params[0]",
-                ];
-            } else {
-                $cmd = [
-                    @ssh_cmd,
-                    '-i',
-                    "$id_rsa_path/$scfg->{portal}_id_rsa",
-                    $target,
-                    $method,
-                    @params,
-                ];
-            }
+    $res = $cmdmap->{cmd}->($scfg, $timeout, $method, @params);
+    if (ref $res) {
+        $method = $res->{method};
+        @params = @{ $res->{params} };
+        if ($res->{cmd} eq 'scp') {
+            $cmd = [
+                @scp_cmd,
+                '-i',
+                "$id_rsa_path/$scfg->{portal}_id_rsa",
+                $method,
+                "$target:$params[0]",
+            ];
         } else {
-            return $res;
+            $cmd = [
+                @ssh_cmd, '-i', "$id_rsa_path/$scfg->{portal}_id_rsa", $target, $method,
+                @params,
+            ];
         }
     } else {
-        $luncmd = $cmdmap->{cmd};
-        $method = $cmdmap->{method};
-        $cmd = [
-            @ssh_cmd,
-            '-i',
-            "$id_rsa_path/$scfg->{portal}_id_rsa",
-            $target,
-            $luncmd,
-            $method,
-            @params,
-        ];
+        return $res;
     }
 
     eval { run_command($cmd, outfunc => $output, timeout => $timeout); };
