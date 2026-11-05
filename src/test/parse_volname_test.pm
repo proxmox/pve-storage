@@ -296,6 +296,137 @@ foreach my $virt (keys %$non_bkp_suffix) {
     }
 }
 
+my sub map_is_base {
+    my ($plugin_name, $is_base) = @_;
+
+    if ($is_base) {
+        return 'base' if $plugin_name eq 'RBDPlugin';
+        return 1;
+    } else {
+        return undef if $plugin_name eq 'LVMPlugin' || $plugin_name eq 'RBDPlugin';
+        return '';
+    }
+}
+
+my sub map_error_message {
+    my ($plugin_name, $volume_name, $disallowed_char) = @_;
+
+    my $plugin = "PVE::Storage::$plugin_name";
+    my $type_in_msg = $plugin->type();
+    $type_in_msg = 'zfs' if $type_in_msg eq 'zfspool';
+    $type_in_msg = 'lvm' if $type_in_msg eq 'lvmthin';
+
+    if ($disallowed_char && $type_in_msg eq 'lvm') {
+        return "lvm name '$volume_name' contains illegal characters\n";
+    }
+
+    return "unable to parse $type_in_msg volume name '$volume_name'\n";
+}
+
+my sub map_disallowed_chars {
+    my ($plugin_name) = @_;
+
+    return [] if $plugin_name ne 'LVMPlugin' && $plugin_name ne 'LvmThinPlugin';
+
+    my $disallowed_chars = [];
+
+    for (my $i = 0; $i < 128; $i++) {
+        # Do not simply use PVE::Storage::SAFE_CHAR_CLASS_RE, but hard-code for proper testing
+        next if $i == ord('-') || $i == ord('.');
+        next if $i >= ord('0') && $i <= ord('9');
+        next if $i >= ord('A') && $i <= ord('Z');
+        next if $i == ord('_');
+        next if $i >= ord('a') && $i <= ord('z');
+        push $disallowed_chars->@*, chr($i);
+    }
+
+    push $disallowed_chars->@*, 'ä', '此';
+
+    return $disallowed_chars;
+}
+
+# common tests for some block-based plugins
+for my $plugin_name (qw(LVMPlugin LvmThinPlugin RBDPlugin ZFSPlugin ZFSPoolPlugin)) {
+    my $is_base = sub { return map_is_base($plugin_name, $_[0]); };
+
+    push $tests->@*,
+        (
+            {
+                description => "$plugin_name - regular disk name",
+                volname => "vm-123-disk-0",
+                plugin => "PVE::Storage::$plugin_name",
+                expected => [
+                    'images', 'vm-123-disk-0', 123, undef, undef, $is_base->(0), 'raw',
+                ],
+            },
+            {
+                description => "$plugin_name - regular disk name with big numbers",
+                volname => "vm-999999999-disk-999",
+                plugin => "PVE::Storage::$plugin_name",
+                expected => [
+                    'images', 'vm-999999999-disk-999', 999999999, undef, undef, $is_base->(0),
+                    'raw',
+                ],
+            },
+            {
+                description => "$plugin_name - custom disk name",
+                volname => "vm-123-something-else.foo",
+                plugin => "PVE::Storage::$plugin_name",
+                expected => [
+                    'images', 'vm-123-something-else.foo', 123, undef, undef, $is_base->(0), 'raw',
+                ],
+            },
+            {
+                description => "$plugin_name - invalid prefix",
+                volname => "rm-123-disk-0",
+                plugin => "PVE::Storage::$plugin_name",
+                expected => map_error_message($plugin_name, 'rm-123-disk-0'),
+            },
+        );
+
+    # Test disallowed chars
+    my $disallowed_chars = map_disallowed_chars($plugin_name) // [];
+    for my $chr ($disallowed_chars->@*) {
+        push $tests->@*,
+            (
+                {
+                    description => "$plugin_name - $chr character",
+                    volname => "vm-123-invalid${chr}char",
+                    plugin => "PVE::Storage::$plugin_name",
+                    expected => map_error_message($plugin_name, "vm-123-invalid${chr}char", 1),
+                },
+            );
+    }
+
+    # LVMPlugin does not support creating base images at the moment.
+    next if grep { $plugin_name eq $_ } (qw(LVMPlugin));
+    push $tests->@*,
+        (
+            {
+                description => "$plugin_name - base disk name",
+                volname => "base-123-disk-0",
+                plugin => "PVE::Storage::$plugin_name",
+                expected => [
+                    'images', 'base-123-disk-0', 123, undef, undef, $is_base->(1), 'raw',
+                ],
+            },
+        );
+
+    # All clones are independent for LvmThin, so no linked clones.
+    next if grep { $plugin_name eq $_ } (qw(LvmThinPlugin));
+    push $tests->@*,
+        (
+            {
+                description => "$plugin_name - linked clone disk name",
+                volname => "base-1000-disk-0/vm-112-disk-0",
+                plugin => "PVE::Storage::$plugin_name",
+                expected => [
+                    'images', 'vm-112-disk-0', 112, 'base-1000-disk-0', 1000, $is_base->(0), 'raw',
+                ],
+            },
+        );
+}
+
 # tests for PBS backup archives
 push $tests->@*,
     (
