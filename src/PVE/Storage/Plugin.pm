@@ -808,6 +808,8 @@ sub parse_name_dir {
     die "unable to parse volume filename '$name'\n";
 }
 
+# FIXME: MAJOR VERSION: restrict allowed characters for native plugins. To [a-zA-Z0-9\_\-] or
+# other suitable set for the specific plugin, as for example, iSCSI and PBS need a bit more.
 sub parse_volname {
     my ($class, $volname) = @_;
 
