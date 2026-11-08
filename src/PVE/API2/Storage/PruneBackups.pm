@@ -128,7 +128,20 @@ __PACKAGE__->register_method({
 
         assert_prune_permission($rpcenv, $authuser, $storeid, $vmid);
 
-        return PVE::Storage::prune_backups($cfg, $storeid, $prune_backups, $vmid, $type, 1);
+        my $prune_list =
+            PVE::Storage::prune_backups($cfg, $storeid, $prune_backups, $vmid, $type, 1);
+
+        # The guest filter of file-based storages also matches renamed archives that merely contain
+        # the guest ID, and those can belong to another guest or to none at all.
+        return [
+            grep {
+                my $volid = $_->{volid};
+                eval {
+                    PVE::Storage::check_volume_access($rpcenv, $authuser, $cfg, undef, $volid);
+                };
+                !$@;
+            } $prune_list->@*
+        ];
     },
 });
 

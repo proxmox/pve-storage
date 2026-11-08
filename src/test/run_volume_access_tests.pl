@@ -3,18 +3,24 @@
 use strict;
 use warnings;
 
+use File::Path qw(make_path);
+use File::Temp qw(tempdir);
 use Test::MockModule;
 use Test::More;
 
 use lib ('.', '..');
 
+use PVE::API2::Storage::PruneBackups;
 use PVE::RPCEnvironment;
 use PVE::Storage;
 use PVE::Storage::Plugin;
+use PVE::Tools;
 
-my $storage_cfg = <<'EOF';
+my $storage_dir = tempdir(CLEANUP => 1);
+
+my $storage_cfg = <<"EOF";
 dir: dir
-	path /mnt/pve/dir
+	path $storage_dir
 	content vztmpl,snippets,iso,backup,rootdir,images
 EOF
 
@@ -251,4 +257,61 @@ for my $t (@tests) {
         is($actual_allowed, $expected_allowed_types->{$type}, $description);
     }
 }
+
+my $storage_module = Test::MockModule->new('PVE::Storage');
+$storage_module->mock(activate_storage => sub { });
+
+my @backups = (
+    'vzdump-qemu-100-2025_07_29-13_00_55.vma',
+    'vzdump-qemu-100-2025_07_30-13_00_55.vma',
+    'vzdump-qemu-200-2025_07_29-13_00_55.vma',
+    'vzdump-qemu-200-before-100-upgrade.vma',
+    'vzdump-100-renamed.tar.zst',
+);
+
+make_path("$storage_dir/dump");
+PVE::Tools::file_set_contents("$storage_dir/dump/$_", '') for @backups;
+
+my @volids = map { "dir:backup/$_" } @backups;
+my $guest_100_backups = [sort @volids[0, 1]];
+my $guest_100_matches = [sort @volids[0, 1, 3, 4]];
+my $all_backups = [sort @volids];
+
+# The guest filter of file-based storages also matches renamed archives of other guests or of none,
+# and the dry run must only list those to users who can see them in the content listing.
+my @prune_tests = (
+    {
+        vmid => 100,
+        expected => {
+            'root@pam' => $guest_100_matches,
+            'dsallocate@pve' => $guest_100_matches,
+            'backup@pve' => $guest_100_backups,
+        },
+    },
+    {
+        expected => {
+            'root@pam' => $all_backups,
+            'dsallocate@pve' => $all_backups,
+        },
+    },
+);
+
+for my $t (@prune_tests) {
+    my ($vmid, $expected) = $t->@{qw(vmid expected)};
+
+    for my $user (@users) {
+        my $description = "prune dry run, user: $user, vmid: " . ($vmid // 'none');
+        $rpcenv->set_user($user);
+
+        my $param = { node => 'localhost', storage => 'dir', 'prune-backups' => 'keep-last=1' };
+        $param->{vmid} = $vmid if defined($vmid);
+
+        my $list = eval { PVE::API2::Storage::PruneBackups->dryrun($param) };
+        note($@) if $@ && $expected->{$user}; # log the error for easy analysis
+        my $actual = $list ? [sort map { $_->{volid} } $list->@*] : undef;
+
+        is_deeply($actual, $expected->{$user}, $description);
+    }
+}
+
 done_testing();
