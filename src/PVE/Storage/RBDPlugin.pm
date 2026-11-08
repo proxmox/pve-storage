@@ -474,6 +474,7 @@ sub properties {
             title => "Keyring",
             description => "Client keyring contents (for external clusters).",
             type => 'string',
+            sensitive => 1,
         },
     };
 }

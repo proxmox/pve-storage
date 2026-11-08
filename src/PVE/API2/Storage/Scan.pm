@@ -134,6 +134,7 @@ __PACKAGE__->register_method({
             password => {
                 description => "User password.",
                 type => 'string',
+                sensitive => 1,
                 optional => 1,
             },
             domain => {
@@ -206,6 +207,7 @@ __PACKAGE__->register_method({
             password => {
                 description => "User password or API token secret.",
                 type => 'string',
+                sensitive => 1,
             },
             fingerprint => get_standard_option('fingerprint-sha256', {
                     optional => 1,

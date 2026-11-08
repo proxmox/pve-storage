@@ -158,6 +158,7 @@ sub properties {
             title => "Password",
             description => "The password used for authentication.",
             type => 'string',
+            sensitive => 1,
             maxLength => 256,
         },
         domain => {

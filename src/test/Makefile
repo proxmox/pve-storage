@@ -1,6 +1,6 @@
 all: test
 
-test: test_iscsi test_zfspoolplugin test_lvmplugin test_lvm_create test_lvm_lock_retry test_lvm_base_volume test_lvm_hints test_disklist test_bwlimit test_plugin test_ovf test_volume_access test_remote_command
+test: test_iscsi test_zfspoolplugin test_lvmplugin test_lvm_create test_lvm_lock_retry test_lvm_base_volume test_lvm_hints test_disklist test_bwlimit test_plugin test_ovf test_volume_access test_remote_command test_sensitive_properties
 
 test_zfspoolplugin: run_test_zfspoolplugin.pl
 	./run_test_zfspoolplugin.pl
@@ -46,3 +46,6 @@ test_iscsi: run_iscsi_discovery_tests.pl run_iscsi_rescan_tests.pl run_iscsi_dev
 	./run_iscsi_device_list_tests.pl
 	./run_iscsi_session_tests.pl
 	./run_iscsi_volume_tests.pl
+
+test_sensitive_properties: run_sensitive_properties_tests.pl
+	./run_sensitive_properties_tests.pl

@@ -57,6 +57,7 @@ sub properties {
             description =>
                 "Encryption key. Use 'autogen' to generate one automatically without passphrase.",
             type => 'string',
+            sensitive => 1,
         },
         'master-pubkey' => {
             title => "Master Public Key",
