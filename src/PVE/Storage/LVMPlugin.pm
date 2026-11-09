@@ -1692,20 +1692,33 @@ sub volume_resize {
         $class->parse_volname($volname);
 
     my $lvmsize = calculate_lvm_size($size / 1024, $format);
-    $lvmsize = "${lvmsize}k";
 
     my $path = $class->path($scfg, $volname, $storeid, $snapname);
 
-    my $cmd = ['/sbin/lvextend', '-L', $lvmsize, $path];
+    # For qcow2, the expected size of the LV might get out of sync, so check.
+    my ($skip_lvextend, $old_lvmsize);
+    if ($format eq 'qcow2') {
+        $old_lvmsize = lvm_lv_size_info($path, 60);
+        $skip_lvextend = 1 if $old_lvmsize >= $lvmsize * 1024;
+    }
 
-    $class->cluster_lock_storage(
-        $storeid,
-        $scfg->{shared},
-        undef,
-        sub {
-            run_command($cmd, errmsg => "error resizing volume '$path'");
-        },
-    );
+    if ($skip_lvextend) {
+        my $oldsize_h = render_bytes($old_lvmsize);
+        my $size_h = render_bytes($lvmsize * 1024);
+        log_warn("LV '$path' already large enough: $oldsize_h >= $size_h");
+    } else {
+        $lvmsize = "${lvmsize}k";
+        my $cmd = ['/sbin/lvextend', '-L', $lvmsize, $path];
+
+        $class->cluster_lock_storage(
+            $storeid,
+            $scfg->{shared},
+            undef,
+            sub {
+                run_command($cmd, errmsg => "error resizing volume '$path'");
+            },
+        );
+    }
 
     if (!$running && $format eq 'qcow2') {
         my $preallocation = PVE::Storage::Plugin::preallocation_cmd_opt($scfg, $format);
