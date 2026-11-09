@@ -475,6 +475,18 @@ sub get_sysdir_info {
         $data->{$attr} = trim(file_read_firstline("$sysdir/device/$attr")) || 'unknown';
     }
 
+    # SCSI devices do not have the ATA rotation rate in udev, but report it in
+    # bytes 4-5 of the block device characteristics VPD page (0xb1), where
+    # values from 0x0401 to 0xfffe are the nominal rotation rate in rpm
+    my $vpd_pgb1 = "$sysdir/device/vpd_pgb1";
+    if (-f $vpd_pgb1) {
+        my $raw = eval { file_get_contents($vpd_pgb1, 4096) } // '';
+        if (length($raw) >= 6) {
+            my $rate = unpack('n', substr($raw, 4, 2));
+            $data->{rpm} = $rate if $rate >= 0x0401 && $rate <= 0xfffe;
+        }
+    }
+
     return $data;
 }
 
@@ -686,6 +698,8 @@ sub get_disks {
                 $type = 'nvme' if $dev =~ m/^nvme\d+n\d+$/;
                 $data->{rpm} = 0;
             } elsif ($sysdata->{rotational} == 1) {
+                $data->{rpm} = $sysdata->{rpm}
+                    if $data->{rpm} == -1 && defined($sysdata->{rpm});
                 if ($data->{rpm} != -1) {
                     $type = 'hdd';
                 } elsif ($data->{usb}) {
