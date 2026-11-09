@@ -493,6 +493,27 @@ my @tests = (
         ],
         expected => [], # returns empty list
     },
+    {
+        description => 'VMID: none, names with a newline',
+        vmid => undef,
+        files => [
+            "$storage_dir/template/iso/debian-9.12.0-amd64-netinst.iso",
+            "$storage_dir/template/iso/debian-9.12.0\namd64-netinst.iso",
+            "$storage_dir/template/iso/debian-9.12.0-amd64-netinst.iso\n",
+            "$storage_dir/dump/vzdump-qemu-16110-before\nupgrade.vma",
+            "$storage_dir/dump/vzdump-qemu-16110-2020_03_30-21_12_40.vma.gz\n",
+            "$storage_dir/snippets/hook\nscript.pl",
+        ],
+        expected => [
+            {
+                'content' => 'iso',
+                'ctime' => DEFAULT_CTIME,
+                'format' => 'iso',
+                'size' => DEFAULT_SIZE,
+                'volid' => 'local:iso/debian-9.12.0-amd64-netinst.iso',
+            },
+        ],
+    },
 );
 
 # provide static vmlist for tests

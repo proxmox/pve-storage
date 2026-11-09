@@ -1802,6 +1802,9 @@ my $get_subdir_files = sub {
     my $res = [];
 
     foreach my $fn (<$path/*>) {
+        # A volume ID cannot represent a name with a newline, see parse_volume_id().
+        next if $fn =~ m/\n/;
+
         my $st = File::stat::stat($fn);
 
         next if (!$st || S_ISDIR($st->mode));

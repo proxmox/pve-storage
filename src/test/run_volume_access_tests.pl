@@ -267,6 +267,7 @@ my @backups = (
     'vzdump-qemu-200-2025_07_29-13_00_55.vma',
     'vzdump-qemu-200-before-100-upgrade.vma',
     'vzdump-100-renamed.tar.zst',
+    "vzdump-qemu-100-before\nupgrade.vma",
 );
 
 make_path("$storage_dir/dump");
@@ -274,10 +275,11 @@ PVE::Tools::file_set_contents("$storage_dir/dump/$_", '') for @backups;
 
 my @volids = map { "dir:backup/$_" } @backups;
 my $guest_100_backups = [sort @volids[0, 1]];
-my $all_backups = [sort @volids];
+my $all_backups = [sort @volids[0 .. 4]];
 
 # A dry run for one guest must not list renamed archives of other guests or of none just because
-# their names contain its ID, as the content listing hides those from users of that guest.
+# their names contain its ID, nor names that no volume ID can represent, as the content listing
+# hides those from users of that guest.
 my @prune_tests = (
     {
         vmid => 100,
