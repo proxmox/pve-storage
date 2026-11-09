@@ -1,3 +1,62 @@
+libpve-storage-perl (9.1.16) trixie; urgency=medium
+
+  * lvm: find a shared volume group that another node created on a device this
+    node already had attached. LVM's device hints could hide such a group, so
+    the storage stayed inactive and guests could not start on or migrate to the
+    node.
+
+  * lvm: check the device before creating a volume group on a base volume or a
+    local disk:
+    - refuse devices that hold data, like a file system, partitions, or a
+      physical volume of another, possibly not fully visible, volume group. An
+      empty partition table, as left by initializing a disk with GPT, is
+      accepted, except on device-mapper devices such as multipath maps.
+    - refuse a LUN of a target from which any storage, including the base
+      storage itself, offers guest disks, such as an iSCSI storage with content
+      'images'. If no guest uses the LUNs directly, set the content of that
+      storage to 'none'. Existing volume groups can still be added.
+    - refuse devices that cannot be checked reliably, for example a multipath
+      map without a working path.
+
+  * iscsi: rescan sessions at most every ten seconds per target instead of per
+    node, so frequent activation of one storage no longer delays detecting new
+    LUNs or size changes on other targets.
+
+  * iscsi: list only the LUNs of the target's own sessions. With offload
+    initiators running sessions to several targets on one SCSI host, each
+    target also listed the LUNs of the others.
+
+  * iscsi: only accept multipath maps or their partitions as virtual devices
+    for a volume. Other device-mapper or RAID devices could combine a disk of
+    the target with disks outside of it. This only affects manually entered
+    volume names.
+
+  * lvm, rbd: reject volume names ending with a newline, as the ZFS plugins
+    already do. For LVM, this also applies to the volume group setting.
+
+  * prune backups: require the same privileges for the preview as for pruning:
+    'Datastore.Allocate' on the storage, or, for a single guest,
+    'Datastore.AllocateSpace' on the storage and 'VM.Backup' on the guest.
+    'Datastore.Audit' or 'Datastore.AllocateSpace' alone no longer allow a
+    preview. Pruning the backups of a single guest now also works with just
+    'Datastore.Allocate'.
+
+  * file-based storages: when listing the backups of a single guest, only
+    include archives whose name starts with 'vzdump-<type>-<guest ID>-', as the
+    access checks do. Renamed archives of other guests or of no guest were
+    included if their name contained the guest ID, for example in the pruning
+    preview and when counting backups for the per-guest backup and protection
+    limits.
+
+  * file-based storages: do not list files whose name contains a newline, as
+    no usable volume ID can refer to them.
+
+  * lvm: do not fail resizing a qcow2 disk, as used with
+    'snapshot-as-volume-chain', if its logical volume is already large enough,
+    for example after a manual resize. A warning is logged instead.
+
+ -- Proxmox Support Team <support@proxmox.com>  Mon, 09 Nov 2026 19:11:19 +0100
+
 libpve-storage-perl (9.1.15) trixie; urgency=medium
 
   * remote commands: shell-quote the arguments of commands run on other nodes or
