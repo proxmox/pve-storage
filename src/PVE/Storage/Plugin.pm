@@ -1824,8 +1824,8 @@ my $get_subdir_files = sub {
             my $format = $2;
             $fn = $1;
 
-            # only match for VMID now, to avoid false positives (VMID in parent directory name)
-            next if defined($vmid) && $fn !~ m/\S+-$vmid-\S+/;
+            # Attribute archives to a guest like parse_volname() does, which the access checks use.
+            next if defined($vmid) && $fn !~ m/^vzdump-(?:openvz|lxc|qemu)-\Q$vmid\E-/;
 
             $info = { volid => "$sid:backup/$fn", format => $format };
 

@@ -274,17 +274,16 @@ PVE::Tools::file_set_contents("$storage_dir/dump/$_", '') for @backups;
 
 my @volids = map { "dir:backup/$_" } @backups;
 my $guest_100_backups = [sort @volids[0, 1]];
-my $guest_100_matches = [sort @volids[0, 1, 3, 4]];
 my $all_backups = [sort @volids];
 
-# The guest filter of file-based storages also matches renamed archives of other guests or of none,
-# and the dry run must only list those to users who can see them in the content listing.
+# A dry run for one guest must not list renamed archives of other guests or of none just because
+# their names contain its ID, as the content listing hides those from users of that guest.
 my @prune_tests = (
     {
         vmid => 100,
         expected => {
-            'root@pam' => $guest_100_matches,
-            'dsallocate@pve' => $guest_100_matches,
+            'root@pam' => $guest_100_backups,
+            'dsallocate@pve' => $guest_100_backups,
             'backup@pve' => $guest_100_backups,
         },
     },

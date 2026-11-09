@@ -282,6 +282,37 @@ my @tests = (
         ],
     },
     {
+        description => 'VMID: 16110, renamed backups',
+        vmid => '16110',
+        files => [
+            "$storage_dir/dump/vzdump-qemu-16110-2020_03_30-21_11_40.vma.gz",
+            "$storage_dir/dump/vzdump-qemu-16110-before-upgrade.vma.zst",
+            "$storage_dir/dump/vzdump-qemu-16111-before-16110-upgrade.vma.zst",
+            "$storage_dir/dump/vzdump-16110-renamed.tar.zst",
+            "$storage_dir/dump/backup-16110-manual.vma",
+        ],
+        expected => [
+            {
+                'content' => 'backup',
+                'ctime' => 1585602700,
+                'format' => 'vma.gz',
+                'size' => DEFAULT_SIZE,
+                'subtype' => 'qemu',
+                'vmid' => '16110',
+                'volid' => 'local:backup/vzdump-qemu-16110-2020_03_30-21_11_40.vma.gz',
+            },
+            {
+                'content' => 'backup',
+                'ctime' => DEFAULT_CTIME,
+                'format' => 'vma.zst',
+                'size' => DEFAULT_SIZE,
+                'subtype' => 'qemu',
+                'vmid' => '16110',
+                'volid' => 'local:backup/vzdump-qemu-16110-before-upgrade.vma.zst',
+            },
+        ],
+    },
+    {
         description => 'VMID: 9004, VM, template, qcow2',
         vmid => '9004',
         files => [
