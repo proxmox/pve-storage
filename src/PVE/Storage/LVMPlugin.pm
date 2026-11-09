@@ -406,6 +406,35 @@ sub lvm_list_volumes {
     return $lvs;
 }
 
+my sub lvm_lv_size_info {
+    my ($path, $timeout) = @_;
+
+    my $cmd = [
+        '/sbin/lvs',
+        '--separator',
+        ':',
+        '--noheadings',
+        '--units',
+        'b',
+        '--unbuffered',
+        '--nosuffix',
+        '--options',
+        'lv_size',
+        $path,
+    ];
+
+    my $size;
+    run_command(
+        $cmd,
+        timeout => $timeout,
+        errmsg => "can't get size of '$path'",
+        outfunc => sub {
+            $size = int(shift);
+        },
+    );
+    return wantarray ? ($size, 'raw', 0, undef) : $size;
+}
+
 # Acquire the storage lock for a cleanup step of volume or snapshot removal, retrying the
 # acquisition so transient lock contention on a busy cluster does not leave a half-removed volume
 # behind. Only the acquisition is retried; $code_started keeps a failure inside the locked section
@@ -1694,30 +1723,7 @@ sub volume_size_info {
 
     return PVE::Storage::Plugin::file_size_info($path, $timeout, $format) if $format eq 'qcow2';
 
-    my $cmd = [
-        '/sbin/lvs',
-        '--separator',
-        ':',
-        '--noheadings',
-        '--units',
-        'b',
-        '--unbuffered',
-        '--nosuffix',
-        '--options',
-        'lv_size',
-        $path,
-    ];
-
-    my $size;
-    run_command(
-        $cmd,
-        timeout => $timeout,
-        errmsg => "can't get size of '$path'",
-        outfunc => sub {
-            $size = int(shift);
-        },
-    );
-    return wantarray ? ($size, 'raw', 0, undef) : $size;
+    return lvm_lv_size_info($path, $timeout);
 }
 
 my sub volume_snapshot_locked {
