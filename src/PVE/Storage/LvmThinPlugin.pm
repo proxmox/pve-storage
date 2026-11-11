@@ -239,7 +239,7 @@ sub list_thinpools {
 sub status {
     my ($class, $storeid, $scfg, $cache) = @_;
 
-    my $lvs = $cache->{lvs} ||= PVE::Storage::LVMPlugin::lvm_list_volumes();
+    my $lvs = $cache->{lvs} ||= PVE::Storage::LVMPlugin::lvm_list_volumes(undef, $cache);
 
     return if !$lvs->{ $scfg->{vgname} };
 
@@ -258,7 +258,7 @@ sub status {
 my $activate_lv = sub {
     my ($vg, $lv, $cache) = @_;
 
-    my $lvs = $cache->{lvs} ||= PVE::Storage::LVMPlugin::lvm_list_volumes();
+    my $lvs = $cache->{lvs} ||= PVE::Storage::LVMPlugin::lvm_list_volumes(undef, $cache);
 
     die "no such logical volume $vg/$lv\n" if !$lvs->{$vg} || !$lvs->{$vg}->{$lv};
 

@@ -4,7 +4,7 @@ use strict;
 use warnings;
 
 use Cwd qw(abs_path);
-use Fcntl qw(O_RDWR O_EXCL);
+use Fcntl qw(O_RDWR O_EXCL O_CREAT :flock);
 use File::Basename;
 use IO::File;
 use JSON;
@@ -438,8 +438,69 @@ sub lvm_destroy_volume_group {
     );
 }
 
+our $LVM_STATUS_TIMEOUT = 15;
+our $LVM_STATUS_LOCK = '/run/pve-storage-lvm-status.lock';
+
+sub run_lvm_command {
+    my ($cache, $cmd, %param) = @_;
+
+    return run_command($cmd, %param) if !$cache || !$cache->{status_only};
+    die $cache->{'lvm-status-error'} if $cache->{'lvm-status-error'};
+
+    my $deadline = clock_gettime(CLOCK_MONOTONIC) + $LVM_STATUS_TIMEOUT - 1;
+    my ($result, $timed_out);
+    eval {
+        ($result, $timed_out) = PVE::Tools::run_fork_with_timeout(
+            $LVM_STATUS_TIMEOUT,
+            sub {
+                # the handlers of the caller, like the shutdown of a daemon, are not for this child
+                $SIG{INT} = $SIG{TERM} = $SIG{QUIT} = 'DEFAULT';
+
+                sysopen(my $lock, $LVM_STATUS_LOCK, O_RDWR | O_CREAT, 0600)
+                    or die "unable to open '$LVM_STATUS_LOCK' - $!\n";
+                my (undef, $lock_timeout) = PVE::Tools::run_with_timeout(
+                    $deadline - clock_gettime(CLOCK_MONOTONIC),
+                    sub {
+                        flock($lock, LOCK_EX) or die "unable to lock '$LVM_STATUS_LOCK' - $!\n";
+                    },
+                );
+                die "LVM status unavailable - another LVM status command is still running\n"
+                    if $lock_timeout;
+
+                my $left = $deadline - clock_gettime(CLOCK_MONOTONIC);
+                die "LVM status unavailable - time limit reached\n" if $left <= 0;
+
+                # The command gets the lock as stdin: LVM closes other descriptors, and a command
+                # stuck in I/O must keep the lock after the killable Perl child exits.
+                my @output;
+                eval {
+                    run_command(
+                        $cmd,
+                        %param,
+                        timeout => $left,
+                        input => '<&' . fileno($lock),
+                        $param{outfunc} ? (outfunc => sub { push @output, $_[0] }) : (),
+                    );
+                };
+                return { output => \@output, error => "$@" };
+            },
+        );
+        die "LVM status unavailable - '$cmd->[0]' or lock acquisition timed out\n"
+            if $timed_out;
+        die "LVM status unavailable - no result from '$cmd->[0]'\n" if !$result;
+        die $result->{error} if $result->{error} =~ m/got timeout\n\z/;
+    };
+    if (my $err = $@) {
+        $cache->{'lvm-status-error'} = $err;
+        die $err;
+    }
+
+    $param{outfunc}->($_) for $result->{output}->@*;
+    die $result->{error} if $result->{error};
+}
+
 sub lvm_vgs {
-    my ($includepvs, $nohints) = @_;
+    my ($includepvs, $nohints, $cache) = @_;
 
     my $cmd = [
         '/sbin/vgs',
@@ -464,7 +525,8 @@ sub lvm_vgs {
 
     my $vgs = {};
     eval {
-        run_command(
+        run_lvm_command(
+            $cache,
             $cmd,
             outfunc => sub {
                 my $line = shift;
@@ -493,6 +555,8 @@ sub lvm_vgs {
     };
     my $err = $@;
 
+    die $err if $err && $cache && $cache->{'lvm-status-error'};
+
     # just warn (vgs return error code 5 if clvmd does not run)
     # but output is still OK (list without clustered VGs)
     warn $err if $err;
@@ -501,7 +565,7 @@ sub lvm_vgs {
 }
 
 sub lvm_list_volumes {
-    my ($vgname) = @_;
+    my ($vgname, $cache) = @_;
 
     my $option_list =
         'vg_name,lv_name,lv_size,lv_attr,pool_lv,data_percent,metadata_percent,snap_percent,uuid,tags,metadata_size,time';
@@ -524,7 +588,8 @@ sub lvm_list_volumes {
     push @$cmd, $vgname if $vgname;
 
     my $lvs = {};
-    run_command(
+    run_lvm_command(
+        $cache,
         $cmd,
         outfunc => sub {
             my $line = shift;
@@ -1750,7 +1815,7 @@ sub list_images {
 sub status {
     my ($class, $storeid, $scfg, $cache) = @_;
 
-    $cache->{vgs} = lvm_vgs() if !$cache->{vgs};
+    $cache->{vgs} = lvm_vgs(undef, undef, $cache) if !$cache->{vgs};
 
     my $vgname = $scfg->{vgname};
 
@@ -1826,14 +1891,17 @@ my sub find_unhinted_vgs {
 
     $cache->{vgscaned} = 1;
 
-    my $vgs = lvm_vgs(0, 1);
+    my $vgs = lvm_vgs(0, 1, $cache);
     my @unhinted = grep { !$cache->{vgs}->{$_} } sort keys %$vgs;
     return if !@unhinted;
 
     eval {
-        run_command(['/sbin/pvscan', '--cache'], outfunc => sub { });
+        run_lvm_command($cache, ['/sbin/pvscan', '--cache'], outfunc => sub { });
     };
-    warn "rebuilding the LVM device hints failed - $@" if $@;
+    if (my $err = $@) {
+        die $err if $cache->{'lvm-status-error'};
+        warn "rebuilding the LVM device hints failed - $err";
+    }
 
     # add, never replace: an incomplete listing must not hide volume groups found before
     $cache->{vgs}->{$_} = $vgs->{$_} for @unhinted;
@@ -1876,7 +1944,7 @@ my sub activate_missing_base {
 sub activate_storage {
     my ($class, $storeid, $scfg, $cache) = @_;
 
-    $cache->{vgs} = lvm_vgs() if !$cache->{vgs};
+    $cache->{vgs} = lvm_vgs(undef, undef, $cache) if !$cache->{vgs};
 
     activate_missing_base($storeid, $scfg, $cache)
         if $scfg->{base} && !$cache->{vgs}->{ $scfg->{vgname} };

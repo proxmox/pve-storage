@@ -1,6 +1,6 @@
 all: test
 
-test: test_iscsi test_zfspoolplugin test_lvmplugin test_lvm_create test_lvm_lock_retry test_lvm_cleanup_name test_lvm_base_volume test_lvm_hints test_disklist test_bwlimit test_plugin test_ovf test_volume_access test_remote_command test_sensitive_properties test_import_stream test_multipath test_san_libraries test_lun_identity test_lvm_base_activation test_multipath_api test_san_taint test_san_lun_scan test_san_api test_disk_api
+test: test_iscsi test_zfspoolplugin test_lvmplugin test_lvm_create test_lvm_lock_retry test_lvm_cleanup_name test_lvm_base_volume test_lvm_hints test_lvm_status test_disklist test_bwlimit test_plugin test_ovf test_volume_access test_remote_command test_sensitive_properties test_import_stream test_multipath test_san_libraries test_lun_identity test_lvm_base_activation test_multipath_api test_san_taint test_san_lun_scan test_san_api test_disk_api
 
 test_zfspoolplugin: run_test_zfspoolplugin.pl
 	./run_test_zfspoolplugin.pl
@@ -25,6 +25,9 @@ test_lvm_base_volume: run_test_lvm_base_volume.pl
 
 test_lvm_hints: run_test_lvm_hints.pl
 	./run_test_lvm_hints.pl
+
+test_lvm_status: run_test_lvm_status.pl
+	./run_test_lvm_status.pl
 
 test_disklist: run_disk_tests.pl
 	./run_disk_tests.pl
