@@ -9,6 +9,7 @@ use MIME::Base64 qw(decode_base64 encode_base64);
 use PVE::Cluster;
 use PVE::INotify;
 
+use PVE::Diskmanage;
 use PVE::Multipath;
 use PVE::Multipath::Config;
 use PVE::Multipath::Generator;
@@ -35,6 +36,44 @@ sub worst_state(@states) {
             if defined($state) && exists($rank{$state}) && $rank{$state} > $rank{$worst};
     }
     return $worst;
+}
+
+# Namespaces use the native multipath of the kernel, so their state does not depend on multipathd.
+my sub namespace_luns($pv_vgs) {
+    require PVE::Storage;
+    my $cfg = PVE::Storage::config();
+    my @storages = grep {
+        $cfg->{ids}->{$_}->{type} eq 'nvmeof'
+            && PVE::Storage::storage_check_enabled($cfg, $_, undef, 1)
+    } sort keys $cfg->{ids}->%*;
+    # reading the paths walks all NVMe namespaces of the node, also those of other plugins
+    return [] if !@storages;
+    my $status = PVE::Diskmanage::get_nvme_path_status();
+    my %luns;
+    for my $sid (@storages) {
+        my $scfg = $cfg->{ids}->{$sid};
+        my $expected = eval { scalar(PVE::NVMeOF::storage_paths($scfg)->@*) };
+        my $namespaces = PVE::NVMeOF::namespaces($scfg->{subsysnqn});
+        for my $name (sort keys %$namespaces) {
+            my $wwid = $namespaces->{$name}->{wwid};
+            next if $luns{$wwid};
+            my $paths = $status->{$name} // { active => 0, paths => [] };
+            my $total = scalar($paths->{paths}->@*);
+            my $lun = $luns{$wwid} = {
+                wwid => $wwid,
+                native => 1,
+                size => $namespaces->{$name}->{size},
+                storages => [$sid],
+                'paths-total' => $total,
+                'paths-active' => $paths->{active},
+                state => PVE::Multipath::derive_health($paths->{active}, $total, $expected),
+            };
+            $lun->{'paths-expected'} = $expected if defined($expected);
+            my $vg = ($pv_vgs // {})->{"/dev/$name"};
+            $lun->{vgname} = $vg if defined($vg);
+        }
+    }
+    return [map { $luns{$_} } sort keys %luns];
 }
 
 sub publish($report) {
@@ -68,11 +107,11 @@ sub update_node_status() {
     require PVE::NVMeOF;
     my $host = eval { PVE::NVMeOF::host_identity() };
     $report->{'nvme-host-nqn'} = $host->{nqn} if $host;
+    require PVE::Storage::LVMPlugin;
+    my $pv_vgs = PVE::Storage::LVMPlugin::cached_pv_volume_groups();
     eval {
         die "multipath-tools is not installed\n" if !PVE::Multipath::is_supported();
         die "multipathd is not running or does not respond\n" if !PVE::Multipath::is_running();
-        require PVE::Storage::LVMPlugin;
-        my $pv_vgs = PVE::Storage::LVMPlugin::cached_pv_volume_groups();
         # A node can have many maps that something else set up, for example a storage plugin with
         # one LUN per guest disk. Only the maps that the node manages, that are the base volume of a
         # storage or hold its volume group get a row, the others are counted.
@@ -134,8 +173,15 @@ sub update_node_status() {
     if (my $error = $@) {
         chomp $error;
         $report->{error} = $error;
-        delete $report->{luns};
+        $report->{luns} = [];
     }
+    my $namespaces = eval { namespace_luns($pv_vgs) };
+    if (my $error = $@) {
+        warn "multipath: cannot query NVMe namespaces - $error";
+        # a consumer must not take the namespaces as gone
+        $report->{'namespaces-unknown'} = 1;
+    }
+    push $report->{luns}->@*, @$namespaces if $namespaces;
     eval { publish($report) };
     warn "multipath: cannot publish node status - $@" if $@;
     return $report;
@@ -152,7 +198,7 @@ sub cluster_status() {
     my %reports = map { $_ => decode_report($raw->{$_}) // {} } @$all_nodes;
     my %reported = map { $_->{wwid} => 1 }
         grep { defined($_->{wwid}) } map { ($_->{luns} // [])->@* } values %reports;
-    my (%nodes, %luns, %expected, %observed, %vg_owner, %disabled_owner);
+    my (%nodes, %luns, %expected, %observed, %vg_owner, %lists, %disabled_owner);
     # the nodes that list a map because the configuration names it for them
     my (%managed, %unhinted);
     my $storage_nodes = sub($scfg) {
@@ -178,7 +224,6 @@ sub cluster_status() {
         $vg_owner{ $scfg->{vgname} } //= $sid if defined($scfg->{vgname});
         next if $scfg->{type} ne 'lvm';
         my $base = PVE::Multipath::parse_base_volume($scfg->{base}) // next;
-        next if $base->{kind} eq 'nvme'; # a namespace, which has no map
         # A base volume by its SCSI name is a map only if its iSCSI storage requests maps. The name
         # can also be another by-id link of the LUN, so only a WWID that a node reports counts.
         my $map = $requests_maps->($base->{storage}) && $reported{ $base->{wwid} };
@@ -190,6 +235,7 @@ sub cluster_status() {
             next;
         }
         $luns{$wwid} //= { wwid => $wwid, explicit => 0 };
+        $luns{$wwid}->{native} = 1 if $base->{kind} eq 'nvme';
         $luns{$wwid}->{'used-by-storage'} //= $sid;
         $managed{$wwid}->{$_} = 1 for @$all_nodes;
         $luns{$wwid}->{'multipath-storage'} //= $base->{storage}
@@ -206,11 +252,13 @@ sub cluster_status() {
         $entry->{$_} = $report->{$_} for grep { defined($report->{$_}) } @keys;
         $entry->{state} = defined($report->{error}) ? 'unavailable' : 'ok';
         $unhinted{$node} = 1 if $report->{'vgs-unknown'};
-        next if $entry->{state} ne 'ok';
 
+        # the node lists its namespaces, also if it is unavailable for its maps
+        $lists{$node} = 1 if $report->{luns} && !$report->{'namespaces-unknown'};
         for my $lun (($report->{luns} // [])->@*) {
             my $wwid = $lun->{wwid} // next;
             my $row = $luns{$wwid} //= { wwid => $wwid, explicit => 0 };
+            $row->{native} = 1 if $lun->{native};
             $row->{$_} //= $lun->{$_} for grep { defined($lun->{$_}) } qw(name size);
             my $owner = defined($lun->{vgname}) ? $vg_owner{ $lun->{vgname} } : undef;
             $row->{'used-by-storage'} //= $owner if defined($owner);
@@ -244,10 +292,10 @@ sub cluster_status() {
             if ($observed{$wwid}->{$node}) {
                 $row->{nodes}->{$node} = $observed{$wwid}->{$node};
             } elsif ($expected{$wwid}->{$node}) {
-                my $listed = $nodes{$node}->{state} eq 'ok';
+                my $listed = $row->{native} ? $lists{$node} : $nodes{$node}->{state} eq 'ok';
                 # without the hint file of LVM a node leaves a map out that it only knows through
                 # the volume group of a storage
-                $listed = 0 if $unhinted{$node} && !$managed{$wwid}->{$node};
+                $listed = 0 if $unhinted{$node} && !$managed{$wwid}->{$node} && !$row->{native};
                 $row->{nodes}->{$node} = { state => $listed ? 'missing' : 'unknown' };
             }
         }

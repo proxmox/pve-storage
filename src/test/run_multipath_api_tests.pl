@@ -686,7 +686,12 @@ subtest 'one entry point applies configuration and reports unavailable reasons' 
     my $status = Test::MockModule->new('PVE::Multipath::Status');
     my $mp = Test::MockModule->new('PVE::Multipath');
     my $iscsi = Test::MockModule->new('PVE::Storage::ISCSIPlugin');
+    my $storage = Test::MockModule->new('PVE::Storage');
+    my $disks = Test::MockModule->new('PVE::Diskmanage');
     my ($report, @order);
+    my $ids = {};
+    $storage->mock(config => sub { { ids => $ids } });
+    $disks->mock(get_nvme_path_status => sub { { nvme1n1 => { active => 1, paths => [{}] } } });
     $gen->mock(sync => sub { push @order, 'apply'; { error => 'reload failed' } });
     $status->mock(publish => sub { push @order, 'publish'; $report = $_[0] });
     $iscsi->mock(read_initiator_info => sub { { name => 'iqn.2025-01.example:node' } });
@@ -728,6 +733,58 @@ subtest 'one entry point applies configuration and reports unavailable reasons' 
     is($report->{luns}->[0]->{'paths-expected'}, 3, 'expected count reported');
     is($report->{luns}->[0]->{state}, 'degraded', 'fewer paths than expected');
     ok(!exists($report->{supported}), 'the report has no separate "supported" field');
+
+    $ids->{nvme} = {
+        type => 'nvmeof',
+        subsysnqn => 'nqn.test:sub',
+        portals => '192.0.2.1,192.0.2.2',
+    };
+    $nvme->mock(
+        namespaces => sub($nqn) {
+            return $nqn eq 'nqn.test:sub'
+                ? { nvme1n1 => { wwid => 'uuid.1', size => 4096 } }
+                : {};
+        },
+    );
+    my $lvm = Test::MockModule->new('PVE::Storage::LVMPlugin');
+    $lvm->mock(cached_pv_volume_groups => sub { { '/dev/nvme1n1' => 'vgns' } });
+    my $namespace = {
+        wwid => 'uuid.1',
+        native => 1,
+        size => 4096,
+        storages => ['nvme'],
+        vgname => 'vgns',
+        'paths-total' => 1,
+        'paths-active' => 1,
+        'paths-expected' => 2,
+        state => 'degraded',
+    };
+    PVE::Multipath::Status::update_node_status();
+    is_deeply($report->{luns}->[1], $namespace, 'namespace with fewer paths than portals');
+    $mp->mock(is_running => sub { 0 });
+    PVE::Multipath::Status::update_node_status();
+    is(
+        $report->{error},
+        'multipathd is not running or does not respond',
+        'stopped daemon still reported',
+    );
+    is_deeply($report->{luns}, [$namespace], 'namespaces do not need multipathd');
+    ok(!$report->{'namespaces-unknown'}, 'which the node could list');
+    {
+        local $ids->{nvme}->{disable} = 1;
+        $disks->mock(get_nvme_path_status => sub { die "walked the NVMe paths\n" });
+        PVE::Multipath::Status::update_node_status();
+        is_deeply($report->{luns}, [], 'a disabled storage reports no namespaces');
+        ok(!$report->{'namespaces-unknown'}, 'and reads no NVMe paths for them');
+        $disks->mock(
+            get_nvme_path_status => sub { { nvme1n1 => { active => 1, paths => [{}] } } });
+    }
+    $nvme->mock(namespaces => sub { die "sysfs gone\n" });
+    {
+        local $SIG{__WARN__} = sub { };
+        PVE::Multipath::Status::update_node_status();
+    }
+    ok($report->{'namespaces-unknown'}, 'a failed namespace query marks the report');
 };
 
 subtest 'API returns final node and LUN states' => sub {
@@ -764,12 +821,31 @@ subtest 'API returns final node and LUN states' => sub {
                     'paths-active' => 2,
                     storages => ['scoped'],
                 },
+                {
+                    wwid => 'uuid.1',
+                    native => 1,
+                    state => 'optimal',
+                    'paths-total' => 2,
+                    'paths-active' => 2,
+                    storages => ['nvme'],
+                },
             ],
         }),
         n2 => encode_report({ time => $NOW, luns => [], 'nvme-host-nqn' => 'nqn.test:n2' }),
         n3 => encode_report({ time => $NOW - 181, luns => [] }),
         n4 => encode_report({ time => $NOW, luns => [] }),
-        n5 => encode_report({ time => $NOW, error => 'multipath-tools is not installed' }),
+        n5 => encode_report({
+            time => $NOW,
+            error => 'multipath-tools is not installed',
+            luns => [{
+                wwid => 'uuid.1',
+                native => 1,
+                state => 'degraded',
+                'paths-total' => 2,
+                'paths-active' => 1,
+                storages => ['nvme'],
+            }],
+        }),
     );
     $cluster->mock(get_node_kv => sub { \%raw });
     my $entries = { '3600a' => { type => 'wwid' } };
@@ -787,6 +863,8 @@ subtest 'API returns final node and LUN states' => sub {
                     { type => 'iscsi', 'managed-multipath' => 1, nodes => { departed => 1 } },
                 lvmgone => { type => 'lvm', base => 'gone:0.0.0.dm-uuid-mpath-3600e' },
                 scoped => { type => 'iscsi', 'managed-multipath' => 1, nodes => { n2 => 1 } },
+                nvme => { type => 'nvmeof', subsysnqn => 'nqn.test:sub' },
+                lvmns => { type => 'lvm', base => 'nvme:nvme-uuid.2', nodes => { n5 => 1 } },
             },
         } },
     );
@@ -846,6 +924,46 @@ subtest 'API returns final node and LUN states' => sub {
             $unhinted{'3600d'}->{nodes}->{n2}->{state},
             'unknown',
             'an entry for other nodes does not change that',
+        );
+    }
+    my $namespace = $lun{'uuid.1'};
+    ok($namespace->{native}, 'namespace marked as native');
+    ok(!exists($namespace->{'multipath-storage'}), 'a namespace has no requested map');
+    is_deeply(
+        { map { $_ => $namespace->{nodes}->{$_}->{state} } keys $namespace->{nodes}->%* },
+        {
+            n1 => 'optimal',
+            n2 => 'missing',
+            n3 => 'unknown',
+            n4 => 'unknown',
+            n5 => 'degraded',
+        },
+        'namespace state of a node without multipathd counts',
+    );
+    is($lun->{nodes}->{n5}->{state}, 'unknown', 'no map state from a node without multipathd');
+    is_deeply(
+        $lun{'uuid.2'},
+        {
+            wwid => 'uuid.2',
+            explicit => 0,
+            native => 1,
+            'used-by-storage' => 'lvmns',
+            state => 'missing',
+            nodes => { n5 => { state => 'missing' } },
+        },
+        'base namespace that a node without multipathd does not report',
+    );
+    $raw{n5} = encode_report({ time => $NOW, error => 'too many LUNs to report' });
+    $res = PVE::API2::SAN::Cluster->status({});
+    %lun = map { $_->{wwid} => $_ } $res->{luns}->@*;
+    is($lun{'uuid.2'}->{nodes}->{n5}->{state}, 'unknown', 'node without a list');
+    {
+        local $raw{n2} = encode_report({ time => $NOW, luns => [], 'namespaces-unknown' => 1 });
+        my %unlisted = map { $_->{wwid} => $_ } PVE::API2::SAN::Cluster->status({})->{luns}->@*;
+        is(
+            $unlisted{'uuid.1'}->{nodes}->{n2}->{state},
+            'unknown',
+            'a node that could not query its namespaces does not miss them',
         );
     }
     eval {

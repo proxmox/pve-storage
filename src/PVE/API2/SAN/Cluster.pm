@@ -43,9 +43,9 @@ my $lun_node_schema = {
     properties => {
         state => {
             $state_schema->%*,
-            description => "The health of the map on the node from its paths, 'missing' if the"
-                . " node should have the map but does not list it, or 'unknown' if the node has no"
-                . " current report that covers the map.",
+            description => "The health of the map or NVMe namespace on the node from its paths,"
+                . " 'missing' if the node should have it but does not list it, or 'unknown' if the"
+                . " node has no current report that covers it.",
         },
         name => {
             type => 'string',
@@ -56,20 +56,21 @@ my $lun_node_schema = {
             type => 'integer',
             minimum => 0,
             optional => 1,
-            description => 'The size of the map in bytes.',
+            description => 'The size of the map or namespace in bytes.',
         },
         'paths-active' => {
             type => 'integer',
             minimum => 0,
             optional => 1,
             description => 'The number of active paths of the map whose checker state is ready,'
-                . ' ghost, or not reported.',
+                . ' ghost, or not reported. For an NVMe namespace, the number of its paths over a'
+                . ' live controller whose ANA state is optimized, non-optimized, or not reported.',
         },
         'paths-total' => {
             type => 'integer',
             minimum => 0,
             optional => 1,
-            description => 'The number of paths of the map.',
+            description => 'The number of paths of the map or namespace.',
         },
         'paths-expected' => {
             type => 'integer',
@@ -77,7 +78,8 @@ my $lun_node_schema = {
             optional => 1,
             description => 'The number of paths the LUN should have on the node: the highest of'
                 . ' the count of its multipath entry and, for each managed iSCSI storage of the'
-                . ' LUN, the number of its portals.',
+                . ' LUN, the number of its portals. For an NVMe namespace, the number of portals'
+                . ' of its NVMe over Fabrics storage.',
         },
     },
 };
@@ -156,8 +158,8 @@ __PACKAGE__->register_method({
             luns => {
                 type => 'array',
                 description =>
-                    "One entry per LUN, identified by its WWID, with the state of its"
-                    . " map on each node and the overall cluster state.",
+                    "One entry per LUN or NVMe namespace, identified by its WWID, with its"
+                    . " path health on each node and the overall cluster state.",
                 items => {
                     type => 'object',
                     additionalProperties => 0,
@@ -165,6 +167,12 @@ __PACKAGE__->register_method({
                         wwid => { type => 'string', description => 'The LUN WWID.' },
                         explicit =>
                             { type => 'boolean', description => 'An explicit entry exists.' },
+                        native => {
+                            type => 'boolean',
+                            optional => 1,
+                            description => 'An NVMe namespace, which uses the native'
+                                . ' multipath of the kernel.',
+                        },
                         name => {
                             type => 'string',
                             optional => 1,
@@ -177,8 +185,9 @@ __PACKAGE__->register_method({
                             optional => 1,
                             description =>
                                 'The storage that uses the LUN: as its base volume or through'
-                                . ' the volume group on it, or as an iSCSI storage that serves'
-                                . ' the LUNs of its target as images.',
+                                . ' the volume group on it, or as an iSCSI or NVMe over Fabrics'
+                                . ' storage that serves the LUNs of its target or subsystem as'
+                                . ' images.',
                         },
                         'multipath-storage' => {
                             type => 'string',
@@ -199,7 +208,7 @@ __PACKAGE__->register_method({
                         },
                         nodes => {
                             type => 'object',
-                            description => "Map health keyed by node name.",
+                            description => "Path health keyed by node name.",
                             additionalProperties => $lun_node_schema,
                         },
                     },
