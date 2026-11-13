@@ -1910,7 +1910,10 @@ sub volume_snapshot_delete {
 
         print "running 'qemu-img commit $childpath'\n";
         #can't use -d here, as it's an lvm volume
-        $cmd = ['/usr/bin/qemu-img', 'commit', '--', $childpath];
+        # keep preallocated base clusters, freeing them lets the image outgrow the LV
+        my $opts = "driver=qcow2,file.driver=host_device,file.filename=$childpath"
+            . ",backing.discard-no-unref=on";
+        $cmd = ['/usr/bin/qemu-img', 'commit', '--image-opts', '--', $opts];
         eval { run_command($cmd) };
         if ($@) {
             warn
