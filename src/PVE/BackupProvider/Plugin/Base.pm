@@ -313,6 +313,11 @@ Might be C<undef> in phase C<abort> for certain error scenarios.
 Boolean indicating whether the job was successful or not. Success means that all
 individual guest backups were successful.
 
+For a VM using bitmaps for incremental backup, the bitmaps on the QEMU side only
+advance past this backup if C<$success> is true. Otherwise, even if
+C<backup_vm()> already returned without error, they keep covering the changes
+read by this backup, so that the next incremental backup includes them again.
+
 =item C<$info>
 
 A hash reference with optional information. Currently, the error message in case
