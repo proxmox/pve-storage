@@ -73,6 +73,16 @@ sub plugindata {
             preallocation => 1,
             'snapshot-as-volume-chain' => 1,
         },
+        'hidden-properties' => {
+            bwlimit => 1,
+            'create-base-path' => 1,
+            'create-subdirs' => 1,
+            'content-dirs' => 1,
+            format => 1,
+            mkdir => 1,
+            options => 1,
+            path => 1,
+        },
         'sensitive-properties' => {},
     };
 }

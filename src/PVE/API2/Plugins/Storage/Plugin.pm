@@ -85,6 +85,7 @@ my sub get_schema_for_plugin($plugin) {
     # also covers the fallback for plugins without 'sensitive-properties' in their plugindata()
     my $sensitive = { map { $_ => 1 } PVE::Storage::Plugin::sensitive_properties($type)->@* };
     my $advanced = $plugindata->{'advanced-properties'} // {};
+    my $hidden = $plugindata->{'hidden-properties'} // {};
 
     my $schema = {};
 
@@ -101,6 +102,7 @@ my sub get_schema_for_plugin($plugin) {
         $property->{sensitive} = ($property->{sensitive} || $sensitive->{$option}) ? 1 : 0;
 
         $property->{'x-advanced'} = $advanced->{$option} ? 1 : 0;
+        $property->{'x-hidden'} = $hidden->{$option} ? 1 : 0;
 
         $schema->{$option} = $property;
 

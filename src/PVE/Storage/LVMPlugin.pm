@@ -861,6 +861,13 @@ sub plugindata {
         'advanced-properties' => {
             'snapshot-as-volume-chain' => 1,
         },
+        'hidden-properties' => {
+            bwlimit => 1,
+            'on-volume-remove' => 1,
+            'saferemove-stepsize' => 1,
+            saferemove_throughput => 1,
+            tagged_only => 1,
+        },
         'sensitive-properties' => {},
     };
 }

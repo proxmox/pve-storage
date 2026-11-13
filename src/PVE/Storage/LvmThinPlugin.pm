@@ -40,6 +40,9 @@ sub plugindata {
             { images => 1, rootdir => 1 },
         ],
         'advanced-properties' => {},
+        'hidden-properties' => {
+            bwlimit => 1,
+        },
         'sensitive-properties' => {},
     };
 }

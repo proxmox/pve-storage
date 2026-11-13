@@ -32,6 +32,9 @@ sub plugindata {
     return {
         content => [{ backup => 1, none => 1 }, { backup => 1 }],
         'advanced-properties' => {},
+        'hidden-properties' => {
+            'master-pubkey' => 1,
+        },
         'sensitive-properties' => {
             'encryption-key' => 1,
             'master-pubkey' => 1,

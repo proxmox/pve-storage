@@ -422,6 +422,10 @@ sub plugindata {
         'advanced-properties' => {
             namespace => 1,
         },
+        'hidden-properties' => {
+            bwlimit => 1,
+            'data-pool' => 1,
+        },
         'sensitive-properties' => { keyring => 1 },
     };
 }

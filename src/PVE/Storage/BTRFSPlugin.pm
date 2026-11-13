@@ -52,6 +52,15 @@ sub plugindata {
         'advanced-properties' => {
             preallocation => 1,
         },
+        'hidden-properties' => {
+            'create-base-path' => 1,
+            'create-subdirs' => 1,
+            format => 1,
+            is_mountpoint => 1,
+            mkdir => 1,
+            nocow => 1,
+            shared => 1,
+        },
         'sensitive-properties' => {},
     };
 }

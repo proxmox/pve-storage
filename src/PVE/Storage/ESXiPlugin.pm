@@ -33,6 +33,10 @@ sub plugindata {
         content => [{ import => 1 }, { import => 1 }],
         format => [{ raw => 1, qcow2 => 1, vmdk => 1 }, 'raw'],
         'advanced-properties' => {},
+        'hidden-properties' => {
+            content => 1,
+            shared => 1,
+        },
         'sensitive-properties' => { password => 1 },
     };
 }

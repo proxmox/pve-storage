@@ -69,6 +69,10 @@ sub plugindata {
         ],
         format => [{ raw => 1, subvol => 1 }, 'raw'],
         'advanced-properties' => {},
+        'hidden-properties' => {
+            bwlimit => 1,
+            mountpoint => 1,
+        },
         'sensitive-properties' => {},
     };
 }

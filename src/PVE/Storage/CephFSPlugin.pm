@@ -119,6 +119,18 @@ sub plugindata {
         content =>
             [{ vztmpl => 1, iso => 1, backup => 1, snippets => 1, import => 1 }, { backup => 1 }],
         'advanced-properties' => {},
+        'hidden-properties' => {
+            bwlimit => 1,
+            'create-base-path' => 1,
+            'create-subdirs' => 1,
+            'content-dirs' => 1,
+            format => 1,
+            fuse => 1,
+            mkdir => 1,
+            options => 1,
+            path => 1,
+            subdir => 1,
+        },
         'sensitive-properties' => { keyring => 1 },
     };
 }
