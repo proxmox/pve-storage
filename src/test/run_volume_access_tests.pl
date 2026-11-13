@@ -70,7 +70,7 @@ $pve_cluster_module->mock(
 my $rpcenv = PVE::RPCEnvironment->init('pub');
 $rpcenv->init_request();
 
-my @types = sort keys PVE::Storage::Plugin::get_vtype_subdirs()->%*;
+my @types = sort (keys PVE::Storage::Plugin::get_vtype_subdirs()->%*, qw(vm-vol vm-state ct-vol));
 my $all_types = { map { $_ => 1 } @types };
 
 my @tests = (
@@ -92,7 +92,9 @@ my @tests = (
         },
         allowed_types => {
             'images' => 1,
+            'vm-vol' => 1,
             'rootdir' => 1,
+            'ct-vol' => 1,
         },
     },
     {
@@ -116,8 +118,19 @@ my @tests = (
             'dsaudit@pve' => 1,
         },
         allowed_types => {
-            'images' => 1,
             'rootdir' => 1,
+            'ct-vol' => 1,
+        },
+    },
+    {
+        volid => 'dir:100/vm-100-state-snap1.raw',
+        denied_users => {
+            'backup@pve' => 1,
+            'dsaudit@pve' => 1,
+        },
+        allowed_types => {
+            'images' => 1,
+            'vm-state' => 1,
         },
     },
     # test different VM IDs
@@ -141,7 +154,9 @@ my @tests = (
         },
         allowed_types => {
             'images' => 1,
+            'vm-vol' => 1,
             'rootdir' => 1,
+            'ct-vol' => 1,
         },
     },
     {
@@ -158,7 +173,9 @@ my @tests = (
         denied_users => {},
         allowed_types => {
             'images' => 1,
+            'vm-vol' => 1,
             'rootdir' => 1,
+            'ct-vol' => 1,
         },
     },
     {
@@ -187,7 +204,9 @@ my @tests = (
         },
         allowed_types => {
             'images' => 1,
+            'vm-vol' => 1,
             'rootdir' => 1,
+            'ct-vol' => 1,
         },
     },
     # test paths

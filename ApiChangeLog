@@ -6,6 +6,34 @@ without breaking anything unaware of it.)
 
 Future changes should be documented in here.
 
+## Version 17:
+
+* Add the volume types `vm-vol`, `vm-state` and `ct-vol`
+
+  A guest volume can now have a more specific type than `images`: `vm-vol` for a volume that a VM
+  uses as a drive, `vm-state` for the saved state of a VM from a snapshot or from hibernation, and
+  `ct-vol` for a volume of a container. `parse_volname()` may return them as volume type.
+
+  The in-tree plugins derive the type from the format and the name of a volume with
+  `$class->guest_volume_vtype($format, $name)` of the base plugin, which other plugins with the same
+  naming scheme can use too. A subvolume is a `ct-vol`, a volume named `vm-<VMID>-state-<NAME>` a
+  `vm-state`, and everything else a `vm-vol`. That includes the raw volumes of containers, which
+  are named like those of VMs.
+
+  A plugin that implements an API version before 17 and inherits `parse_volname()` from an in-tree
+  plugin keeps getting `images` for all guest volumes. That does not hold if it calls the parser
+  of an in-tree plugin by class name, so use `$class->SUPER::parse_volname()` for that. When
+  raising the API version of such a plugin, check its own comparisons with the `images` volume
+  type. The helpers `is_guest_vtype()` and `vtype_matches()` in `PVE::Storage::Common` cover the
+  common cases.
+
+  A plugin that cannot tell the types of its volumes apart can keep returning `images`, which is
+  accepted wherever one of the VM volume types is expected.
+
+  The content types `images` and `rootdir` of a storage allow all volume types of VMs and of
+  containers. So check whether a storage allows a volume type with
+  `PVE::Storage::Common::content_allows()` instead of looking the type up in `$scfg->{content}`.
+
 ## Version 16:
 
 * Add `volname_for_format()`, `get_parsed_format()`, `volname_with_format()`, `is_valid_format()` and

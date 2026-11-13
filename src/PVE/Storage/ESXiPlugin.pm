@@ -446,7 +446,7 @@ sub parse_volname {
 
     my $format = 'raw';
     $format = 'vmdk' if $volname =~ /\.vmdk$/;
-    return ('images', $volname, 0, undef, undef, undef, $format);
+    return ($class->guest_volume_vtype($format), $volname, 0, undef, undef, undef, $format);
 }
 
 sub list_images {

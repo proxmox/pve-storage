@@ -70,7 +70,9 @@ sub parse_volname {
     PVE::Storage::Plugin::parse_lvm_name($volname);
 
     if ($volname =~ m/^((vm|base)-(\d+)-\S+)\z/) {
-        return ('images', $1, $3, undef, undef, $2 eq 'base', 'raw');
+        my ($name, $vmid, $isBase) = ($1, $3, $2 eq 'base');
+        my $vtype = $class->guest_volume_vtype('raw', $name);
+        return ($vtype, $name, $vmid, undef, undef, $isBase, 'raw');
     }
 
     die "unable to parse lvm volume name '$volname'\n";

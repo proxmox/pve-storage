@@ -10,6 +10,15 @@ use Test::More;
 
 my $vmid = 1234;
 
+{
+
+    package PVE::Storage::TestParseVolname::OldApiPlugin;
+
+    use base qw(PVE::Storage::Plugin);
+
+    sub api { return 16; }
+}
+
 # an array of test cases, each test is comprised of the following keys:
 # description => to identify a single test
 # volname     => the input for parse_volname
@@ -22,7 +31,7 @@ my $tests = [
         description => 'VM disk image, linked, qcow2, vm- as base-',
         volname => "$vmid/vm-$vmid-disk-0.qcow2/$vmid/vm-$vmid-disk-0.qcow2",
         expected => [
-            'images',
+            'vm-vol',
             "vm-$vmid-disk-0.qcow2",
             "$vmid",
             "vm-$vmid-disk-0.qcow2",
@@ -101,6 +110,34 @@ my $tests = [
     {
         description => 'Container rootdir, subvol',
         volname => "$vmid/subvol-$vmid-disk-0.subvol",
+        expected =>
+            ['ct-vol', "subvol-$vmid-disk-0.subvol", "$vmid", undef, undef, undef, 'subvol'],
+    },
+    #
+    # VM state
+    #
+    {
+        description => 'VM state of a snapshot',
+        volname => "$vmid/vm-$vmid-state-snap1.raw",
+        expected =>
+            ['vm-state', "vm-$vmid-state-snap1.raw", "$vmid", undef, undef, undef, 'raw'],
+    },
+    {
+        description => 'VM disk image with state in its name only',
+        volname => "$vmid/vm-$vmid-disk-state-1.raw",
+        expected =>
+            ['vm-vol', "vm-$vmid-disk-state-1.raw", "$vmid", undef, undef, undef, 'raw'],
+    },
+    {
+        description => 'Plugin for an older API version, VM state',
+        volname => "$vmid/vm-$vmid-state-snap1.raw",
+        plugin => 'PVE::Storage::TestParseVolname::OldApiPlugin',
+        expected => ['images', "vm-$vmid-state-snap1.raw", "$vmid", undef, undef, undef, 'raw'],
+    },
+    {
+        description => 'Plugin for an older API version, container subvol',
+        volname => "$vmid/subvol-$vmid-disk-0.subvol",
+        plugin => 'PVE::Storage::TestParseVolname::OldApiPlugin',
         expected =>
             ['images', "subvol-$vmid-disk-0.subvol", "$vmid", undef, undef, undef, 'subvol'],
     },
@@ -217,14 +254,14 @@ foreach my $s (@$disk_suffix) {
             description => "VM disk image, $s",
             volname => "$vmid/vm-$vmid-disk-1.$s",
             expected => [
-                'images', "vm-$vmid-disk-1.$s", "$vmid", undef, undef, undef, "$s",
+                'vm-vol', "vm-$vmid-disk-1.$s", "$vmid", undef, undef, undef, "$s",
             ],
         },
         {
             description => "VM disk image, linked, $s",
             volname => "$vmid/base-$vmid-disk-0.$s/$vmid/vm-$vmid-disk-0.$s",
             expected => [
-                'images',
+                'vm-vol',
                 "vm-$vmid-disk-0.$s",
                 "$vmid",
                 "base-$vmid-disk-0.$s",
@@ -237,7 +274,7 @@ foreach my $s (@$disk_suffix) {
             description => "VM disk image, base, $s",
             volname => "$vmid/base-$vmid-disk-0.$s",
             expected => [
-                'images', "base-$vmid-disk-0.$s", "$vmid", undef, undef, 'base-', "$s",
+                'vm-vol', "base-$vmid-disk-0.$s", "$vmid", undef, undef, 'base-', "$s",
             ],
         },
     );
@@ -359,7 +396,7 @@ for my $plugin_name (qw(LVMPlugin LvmThinPlugin RBDPlugin ZFSPlugin ZFSPoolPlugi
                 volname => "vm-123-disk-0",
                 plugin => "PVE::Storage::$plugin_name",
                 expected => [
-                    'images', 'vm-123-disk-0', 123, undef, undef, $is_base->(0), 'raw',
+                    'vm-vol', 'vm-123-disk-0', 123, undef, undef, $is_base->(0), 'raw',
                 ],
             },
             {
@@ -367,7 +404,7 @@ for my $plugin_name (qw(LVMPlugin LvmThinPlugin RBDPlugin ZFSPlugin ZFSPoolPlugi
                 volname => "vm-999999999-disk-999",
                 plugin => "PVE::Storage::$plugin_name",
                 expected => [
-                    'images', 'vm-999999999-disk-999', 999999999, undef, undef, $is_base->(0),
+                    'vm-vol', 'vm-999999999-disk-999', 999999999, undef, undef, $is_base->(0),
                     'raw',
                 ],
             },
@@ -376,7 +413,15 @@ for my $plugin_name (qw(LVMPlugin LvmThinPlugin RBDPlugin ZFSPlugin ZFSPoolPlugi
                 volname => "vm-123-something-else.foo",
                 plugin => "PVE::Storage::$plugin_name",
                 expected => [
-                    'images', 'vm-123-something-else.foo', 123, undef, undef, $is_base->(0), 'raw',
+                    'vm-vol', 'vm-123-something-else.foo', 123, undef, undef, $is_base->(0), 'raw',
+                ],
+            },
+            {
+                description => "$plugin_name - VM state name",
+                volname => "vm-123-state-snap1",
+                plugin => "PVE::Storage::$plugin_name",
+                expected => [
+                    'vm-state', 'vm-123-state-snap1', 123, undef, undef, $is_base->(0), 'raw',
                 ],
             },
             {
@@ -422,7 +467,7 @@ for my $plugin_name (qw(LVMPlugin LvmThinPlugin RBDPlugin ZFSPlugin ZFSPoolPlugi
                 volname => "base-123-disk-0",
                 plugin => "PVE::Storage::$plugin_name",
                 expected => [
-                    'images', 'base-123-disk-0', 123, undef, undef, $is_base->(1), 'raw',
+                    'vm-vol', 'base-123-disk-0', 123, undef, undef, $is_base->(1), 'raw',
                 ],
             },
         );
@@ -436,11 +481,69 @@ for my $plugin_name (qw(LVMPlugin LvmThinPlugin RBDPlugin ZFSPlugin ZFSPoolPlugi
                 volname => "base-1000-disk-0/vm-112-disk-0",
                 plugin => "PVE::Storage::$plugin_name",
                 expected => [
-                    'images', 'vm-112-disk-0', 112, 'base-1000-disk-0', 1000, $is_base->(0), 'raw',
+                    'vm-vol', 'vm-112-disk-0', 112, 'base-1000-disk-0', 1000, $is_base->(0), 'raw',
                 ],
             },
         );
 }
+
+# container subvolumes
+push $tests->@*,
+    (
+        {
+            description => "ZFSPoolPlugin - subvol name",
+            volname => "subvol-123-disk-0",
+            plugin => "PVE::Storage::ZFSPoolPlugin",
+            expected => ['ct-vol', 'subvol-123-disk-0', 123, undef, undef, '', 'subvol'],
+        },
+        {
+            description => "ZFSPoolPlugin - base subvol name",
+            volname => "basevol-123-disk-0",
+            plugin => "PVE::Storage::ZFSPoolPlugin",
+            expected => ['ct-vol', 'basevol-123-disk-0', 123, undef, undef, 1, 'subvol'],
+        },
+        {
+            description => "ZFSPoolPlugin - linked clone subvol name",
+            volname => "basevol-1000-disk-0/subvol-112-disk-0",
+            plugin => "PVE::Storage::ZFSPoolPlugin",
+            expected =>
+            ['ct-vol', 'subvol-112-disk-0', 112, 'basevol-1000-disk-0', 1000, '', 'subvol'],
+        },
+    );
+
+# volumes that are not named like the guest volumes of the other plugins
+push $tests->@*,
+    (
+        {
+            description => "ESXiPlugin - disk in a datacenter named like a VM state volume",
+            volname => "vm-100-state-prod/datastore/debian/debian.vmdk",
+            plugin => 'PVE::Storage::ESXiPlugin',
+            expected => [
+                'vm-vol',
+                'vm-100-state-prod/datastore/debian/debian.vmdk',
+                0,
+                undef,
+                undef,
+                undef,
+                'vmdk',
+            ],
+        },
+        {
+            description => "ISCSIPlugin - LUN",
+            volname => "0.0.0.scsi-36001405b8fdeb9d5d28444482f76d55f",
+            plugin => 'PVE::Storage::ISCSIPlugin',
+            expected => [
+                'vm-vol', 'scsi-36001405b8fdeb9d5d28444482f76d55f', undef, undef, undef, undef,
+                'raw',
+            ],
+        },
+        {
+            description => "ISCSIDirectPlugin - LUN",
+            volname => "lun1",
+            plugin => 'PVE::Storage::ISCSIDirectPlugin',
+            expected => ['vm-vol', '1', undef, undef, undef, undef, 'raw'],
+        },
+    );
 
 # tests for PBS backup archives
 push $tests->@*,
@@ -512,11 +615,15 @@ foreach my $t (@$tests) {
     $seen_vtype->{ @$expected[0] } = 1 if ref $expected eq 'ARRAY';
 }
 
-# to check if all $vtype_subdirs are defined in path_to_volume_id
-# or have a test
-# FIXME re-enable after vtype split changes
-#is_deeply($seen_vtype, $vtype_subdirs, "vtype_subdir check");
-is_deeply({}, {}, "vtype_subdir check");
+# every directory type needs a test: the volumes of VMs and containers all use the directory of the
+# 'images' type, and the in-tree plugins return 'rootdir' for no volume
+my $seen_subdir_vtype = {};
+for my $vtype (keys $seen_vtype->%*) {
+    $vtype = 'images' if PVE::Storage::Common::is_guest_vtype($vtype);
+    $seen_subdir_vtype->{$vtype} = 1;
+}
+delete $vtype_subdirs->{rootdir};
+is_deeply($seen_subdir_vtype, $vtype_subdirs, "vtype_subdir check");
 
 done_testing();
 

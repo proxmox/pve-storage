@@ -249,6 +249,36 @@ my @tests = (
         ],
     },
     {
+        description => 'VMID: 16116, no guest, subvol and raw',
+        vmid => '16116',
+        files => [
+            "$storage_dir/images/16116/subvol-16116-disk-0.subvol/",
+            "$storage_dir/images/16116/vm-16116-disk-1.raw",
+        ],
+        expected => [
+            {
+                'content' => 'rootdir',
+                'ctime' => DEFAULT_CTIME,
+                'format' => 'subvol',
+                'parent' => undef,
+                'size' => DEFAULT_SIZE,
+                'used' => DEFAULT_USED,
+                'vmid' => '16116',
+                'volid' => 'local:16116/subvol-16116-disk-0.subvol',
+            },
+            {
+                'content' => 'images',
+                'ctime' => DEFAULT_CTIME,
+                'format' => 'raw',
+                'parent' => undef,
+                'size' => DEFAULT_SIZE,
+                'used' => DEFAULT_USED,
+                'vmid' => '16116',
+                'volid' => 'local:16116/vm-16116-disk-1.raw',
+            },
+        ],
+    },
+    {
         description => 'VMID: 16114, VM, qcow2, linked clone',
         vmid => '16114',
         files => [

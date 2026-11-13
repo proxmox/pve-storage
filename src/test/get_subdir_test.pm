@@ -27,6 +27,13 @@ foreach my $type (keys %$vtype_subdirs) {
     push @$tests, [$scfg_with_path, $type, $path];
 }
 
+# the volumes of VMs and containers share the directory of the 'images' type
+foreach my $type (qw(vm-vol vm-state ct-vol)) {
+    my $scfg_with_override = { path => '/some/path', 'content-dirs' => { images => 'guests' } };
+    push @$tests, [$scfg_with_path, $type, "$scfg_with_path->{path}/$vtype_subdirs->{images}"];
+    push @$tests, [$scfg_with_override, $type, "$scfg_with_override->{path}/guests"];
+}
+
 # creates additional tests for overrides
 foreach my $type (keys %$vtype_subdirs) {
     my $override = "${type}_override";

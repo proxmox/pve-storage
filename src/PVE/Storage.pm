@@ -43,11 +43,11 @@ use PVE::Storage::BTRFSPlugin;
 use PVE::Storage::ESXiPlugin;
 
 # Storage API version. Increment it on changes in storage API interface.
-use constant APIVER => 16;
+use constant APIVER => 17;
 # Age is the number of versions we're backward compatible with.
 # This is like having 'current=APIVER' and age='APIAGE' in libtool,
 # see https://www.gnu.org/software/libtool/manual/html_node/Libtool-versioning.html
-use constant APIAGE => 7;
+use constant APIAGE => 8;
 
 our $KNOWN_EXPORT_FORMATS = ['raw+size', 'tar+size', 'qcow2+size', 'vmdk+size', 'zfs', 'btrfs'];
 
@@ -625,9 +625,13 @@ sub check_volume_access {
     if ($sid) {
         my ($vtype, undef, $ownervm) = parse_volname($cfg, $volid);
 
-        # Need to allow 'images' when expecting 'rootdir' too - not cleanly separated in plugins.
-        die "unable to use volume $volid - content type needs to be '$type'\n"
-            if defined($type) && $vtype ne $type && ($type ne 'rootdir' || $vtype ne 'images');
+        if (defined($type) && !PVE::Storage::Common::vtype_matches($vtype, $type)) {
+            # the raw volume of a container is named like the volume of a VM
+            my $may_be_ct_raw = PVE::Storage::Common::vtype_matches('ct-vol', $type)
+                && PVE::Storage::Common::vtype_matches($vtype, 'vm-vol');
+            die "unable to use volume $volid - content type needs to be '$type'\n"
+                if !$may_be_ct_raw;
+        }
 
         return if $rpcenv->check($user, "/storage/$sid", ['Datastore.Allocate'], 1);
 
@@ -740,7 +744,8 @@ sub path_to_volume_id {
                 my ($storeid, $volname) = parse_volume_id($info->{volid});
                 my $volpath = $plugin->path($scfg, $volname, $storeid);
                 if ($volpath eq $path) {
-                    return ('images', $info->{volid});
+                    my ($vtype) = $plugin->parse_volname($volname);
+                    return ($vtype, $info->{volid});
                 }
             }
         } elsif ($path =~ m!^\Q$isodir\E/([^/]+$ISO_EXT_RE_0)$!) {
@@ -810,7 +815,9 @@ sub qemu_blockdev_options {
 
     my ($vtype) = $plugin->parse_volname($volname);
     die "cannot use volume of type '$vtype' as a QEMU blockdevice\n"
-        if $vtype ne 'images' && $vtype ne 'iso' && $vtype ne 'import';
+        if !PVE::Storage::Common::vtype_matches($vtype, 'images')
+        && $vtype ne 'iso'
+        && $vtype ne 'import';
 
     my $blockdev =
         $plugin->qemu_blockdev_options($scfg, $storeid, $volname, $machine_version, $options);

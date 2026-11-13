@@ -46,21 +46,21 @@ my @tests = (
         description => 'Image, qcow2',
         volname => "$storage_dir/images/16110/vm-16110-disk-0.qcow2",
         expected => [
-            'images', 'local:16110/vm-16110-disk-0.qcow2',
+            'vm-vol', 'local:16110/vm-16110-disk-0.qcow2',
         ],
     },
     {
         description => 'Image, raw',
         volname => "$storage_dir/images/16112/vm-16112-disk-0.raw",
         expected => [
-            'images', 'local:16112/vm-16112-disk-0.raw',
+            'vm-vol', 'local:16112/vm-16112-disk-0.raw',
         ],
     },
     {
         description => 'Image template, qcow2',
         volname => "$storage_dir/images/9004/base-9004-disk-0.qcow2",
         expected => [
-            'images', 'local:9004/base-9004-disk-0.qcow2',
+            'vm-vol', 'local:9004/base-9004-disk-0.qcow2',
         ],
     },
 
@@ -140,14 +140,14 @@ my @tests = (
         description => 'Rootdir, folder subvol, legacy naming',
         volname => "$storage_dir/images/1234/subvol-1234-disk-0.subvol/", # fileparse needs / at the end
         expected => [
-            'images', 'local:1234/subvol-1234-disk-0.subvol',
+            'ct-vol', 'local:1234/subvol-1234-disk-0.subvol',
         ],
     },
     {
         description => 'Rootdir, folder subvol',
         volname => "$storage_dir/images/1234/subvol-1234-disk-0.subvol/", # fileparse needs / at the end
         expected => [
-            'images', 'local:1234/subvol-1234-disk-0.subvol',
+            'ct-vol', 'local:1234/subvol-1234-disk-0.subvol',
         ],
     },
     {

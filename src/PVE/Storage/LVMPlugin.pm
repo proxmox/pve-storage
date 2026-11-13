@@ -1160,7 +1160,8 @@ sub parse_volname {
         my $name = $1;
         my $vmid = $2;
         my $format = $volname =~ m/\.qcow2$/ ? 'qcow2' : 'raw';
-        return ('images', $name, $vmid, undef, undef, undef, $format);
+        my $vtype = $class->guest_volume_vtype($format, $name);
+        return ($vtype, $name, $vmid, undef, undef, undef, $format);
     }
 
     die "unable to parse lvm volume name '$volname'\n";

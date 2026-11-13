@@ -112,9 +112,11 @@ sub parse_volname {
     if ($volname =~
         m/^(((base|basevol)-(\d+)-$char_re+)\/)?((base|basevol|vm|subvol)-(\d+)-$char_re+)\z/
     ) {
+        my ($name, $vmid, $basename, $basevmid) = ($5, $7, $2, $4);
         my $format = ($6 eq 'subvol' || $6 eq 'basevol') ? 'subvol' : 'raw';
         my $isBase = ($6 eq 'base' || $6 eq 'basevol');
-        return ('images', $5, $7, $2, $4, $isBase, $format);
+        my $vtype = $class->guest_volume_vtype($format, $name);
+        return ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $format);
     }
 
     die "unable to parse zfs volume name '$volname'\n";

@@ -49,7 +49,7 @@ my $test_vols = {
         kind => 'zvol',
         volname => 'vm-102-disk-1',
         filename => 'vm-102-disk-1',
-        type => 'images',
+        type => 'vm-vol',
         vmid => 102,
     },
     vmbase => {
@@ -57,7 +57,7 @@ my $test_vols = {
         kind => 'zvol',
         volname => 'base-100-disk-0',
         filename => 'base-100-disk-0',
-        type => 'images',
+        type => 'vm-vol',
         vmid => 100,
     },
     vmlinked => {
@@ -65,14 +65,14 @@ my $test_vols = {
         base => 'vmbase',
         volname => 'base-100-disk-0/vm-101-disk-0',
         filename => 'vm-101-disk-0',
-        type => 'images',
+        type => 'vm-vol',
         vmid => 101,
     },
     ctdisk => {
         kind => 'subvol',
         volname => 'subvol-202-disk-1',
         filename => 'subvol-202-disk-1',
-        type => 'images',
+        type => 'ct-vol',
         vmid => 202,
     },
     ctbase => {
@@ -80,7 +80,7 @@ my $test_vols = {
         kind => 'subvol',
         volname => 'basevol-200-disk-0',
         filename => 'basevol-200-disk-0',
-        type => 'images',
+        type => 'ct-vol',
         vmid => 200,
     },
     ctlinked => {
@@ -88,7 +88,7 @@ my $test_vols = {
         base => 'ctbase',
         volname => 'basevol-200-disk-0/subvol-201-disk-0',
         filename => 'subvol-201-disk-0',
-        type => 'images',
+        type => 'ct-vol',
         vmid => 201,
     },
 };
@@ -301,8 +301,6 @@ my $test15 = sub {
             'size' => 1073741824,
             'format' => $vol->{format},
         };
-        my $vtype = $vol->{type};
-        $expected->{vtype} = $vtype if $vtype ne 'images' && $vtype ne 'rootdir';
         if (!is_deeply($res, { $storagename => [$expected] })) {
             ++$count;
             warn "Test 15 $name failed\n";

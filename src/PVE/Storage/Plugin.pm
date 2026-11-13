@@ -808,6 +808,32 @@ sub parse_name_dir {
     die "unable to parse volume filename '$name'\n";
 }
 
+=head3 guest_volume_vtype
+
+    my $vtype = $class->guest_volume_vtype($format, $name);
+
+Returns C<ct-vol> if C<$format> is C<subvol>, C<vm-state> if C<$name> is of the form
+C<< vm-<VMID>-state-<NAME> >> and C<vm-vol> for every other guest volume. That includes the raw
+volumes of containers, which are named like the disks of VMs. Omit C<$name> for a volume whose
+name does not follow the naming scheme of the in-tree plugins, like a LUN.
+
+A plugin that implements a storage API version before 17 gets C<images> for all its volumes, as it
+may rely on that being the type of every guest volume.
+
+returns: the volume type
+
+=cut
+
+sub guest_volume_vtype {
+    my ($class, $format, $name) = @_;
+
+    return 'images' if $class->can('api') && $class->api() < 17;
+
+    return 'ct-vol' if $format eq 'subvol';
+    return 'vm-state' if defined($name) && $name =~ m/^vm-\d+-state-/;
+    return 'vm-vol';
+}
+
 # FIXME: MAJOR VERSION: restrict allowed characters for native plugins. To [a-zA-Z0-9\_\-] or
 # other suitable set for the specific plugin, as for example, iSCSI and PBS need a bit more.
 sub parse_volname {
@@ -818,11 +844,13 @@ sub parse_volname {
         parse_name_dir($basename);
         my ($vmid, $name) = ($3, $4);
         my (undef, $format, $isBase) = parse_name_dir($name);
-        return ('images', $name, $vmid, $basename, $basedvmid, $isBase, $format);
+        my $vtype = $class->guest_volume_vtype($format, $name);
+        return ($vtype, $name, $vmid, $basename, $basedvmid, $isBase, $format);
     } elsif ($volname =~ m!^(\d+)/(\S+)$!) {
         my ($vmid, $name) = ($1, $2);
         my (undef, $format, $isBase) = parse_name_dir($name);
-        return ('images', $name, $vmid, undef, undef, $isBase, $format);
+        my $vtype = $class->guest_volume_vtype($format, $name);
+        return ($vtype, $name, $vmid, undef, undef, $isBase, $format);
     } elsif ($volname =~ m!^iso/([^/]+$PVE::Storage::ISO_EXT_RE_0)$!) {
         return ('iso', $1, undef, undef, undef, undef, 'raw');
     } elsif ($volname =~ m!^vztmpl/([^/]+$PVE::Storage::VZTMPL_EXT_RE_1)$!) {
@@ -963,6 +991,8 @@ sub get_subdir {
     my $path = $scfg->{path};
 
     die "storage definition has no path\n" if !$path;
+
+    $vtype = 'images' if PVE::Storage::Common::is_guest_vtype($vtype);
     die "unknown vtype '$vtype'\n" if !exists($vtype_subdirs->{$vtype});
 
     my $subdir = $scfg->{"content-dirs"}->{$vtype} // $vtype_subdirs->{$vtype};
@@ -1904,12 +1934,15 @@ sub list_volumes {
 
         foreach my $item (@$data) {
             if ($type eq 'images' || $type eq 'rootdir') {
+                my (undef, $volname) = parse_volume_id($item->{volid});
+                my $vtype = eval { ($class->parse_volname($volname))[0] } // '';
+
                 my $vminfo = $vmlist->{ids}->{ $item->{vmid} };
                 my $vmtype;
                 if (defined($vminfo)) {
                     $vmtype = $vminfo->{type};
                 }
-                if (defined($vmtype) && $vmtype eq 'lxc') {
+                if ($vtype eq 'ct-vol' || (defined($vmtype) && $vmtype eq 'lxc')) {
                     $item->{content} = 'rootdir';
                 } else {
                     $item->{content} = 'images';

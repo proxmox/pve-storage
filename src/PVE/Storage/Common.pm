@@ -77,9 +77,60 @@ PVE::JSONSchema::register_standard_option(
 
 =pod
 
+=head1 VOLUME TYPES
+
+A volume that belongs to a guest has one of the following types.
+
+=over
+
+=item C<vm-vol>
+
+A volume that a VM uses as one of its drives.
+
+=item C<vm-state>
+
+The saved state of a VM, from a snapshot or from hibernation.
+
+=item C<ct-vol>
+
+A volume that a container uses as its root file system or as a mount point.
+
+=back
+
+The in-tree plugins report the raw volume of a container as C<vm-vol>, as it is named like the
+disk of a VM.
+
+The types C<images> and C<rootdir> are generic. As content type of a storage, C<images> allows all
+volume types of VMs and C<rootdir> all volume types of containers. As volume type, C<images> is
+what a plugin reports that cannot tell the types of its volumes apart.
+
+=cut
+
+my $GENERIC_VTYPE = {
+    'vm-vol' => 'images',
+    'vm-state' => 'images',
+    'ct-vol' => 'rootdir',
+};
+
+=pod
+
 =head1 FUNCTIONS
 
 =cut
+
+=pod
+
+=head3 generic_vtype
+
+    $generic = generic_vtype($vtype)
+
+Returns the generic type that includes the volume type C<$vtype>, or C<undef> if there is none.
+
+=cut
+
+sub generic_vtype : prototype($) ($vtype) {
+    return $GENERIC_VTYPE->{$vtype};
+}
 
 =pod
 
@@ -87,12 +138,54 @@ PVE::JSONSchema::register_standard_option(
 
     $is_guest_vtype = is_guest_vtype($vtype)
 
-Returns whether volumes of type C<$vtype> belong to a guest.
+Returns whether volumes of type C<$vtype> belong to a guest. These are the volume types of VMs and
+containers, and C<images> for plugins that cannot tell them apart. The C<rootdir> volume type that
+an external plugin may report is not one of them, callers that support it check for it themselves.
 
 =cut
 
 sub is_guest_vtype : prototype($) ($vtype) {
-    return $vtype eq 'images';
+    return $vtype eq 'images' || defined($GENERIC_VTYPE->{$vtype});
+}
+
+=pod
+
+=head3 vtype_matches
+
+    $matches = vtype_matches($vtype, $expected)
+
+Returns whether a volume of type C<$vtype> can be used where one of type C<$expected> is required.
+This is the case for equal types, for a generic C<$expected> that includes C<$vtype>, and for a
+C<$vtype> that is the generic type of C<$expected>, as such a volume comes from a plugin that cannot
+tell its volume types apart.
+
+=cut
+
+sub vtype_matches : prototype($$) ($vtype, $expected) {
+    return 1 if $vtype eq $expected;
+    return 1 if ($GENERIC_VTYPE->{$vtype} // '') eq $expected;
+    return 1 if ($GENERIC_VTYPE->{$expected} // '') eq $vtype;
+    return 0;
+}
+
+=pod
+
+=head3 content_allows
+
+    $allowed = content_allows($content, $type)
+
+Returns whether the content types in the hash C<$content>, as found in a storage configuration,
+allow the content type C<$type>. A volume type is also allowed by its generic type, and a generic
+C<$type> if at least one of its volume types is allowed.
+
+=cut
+
+sub content_allows : prototype($$) ($content, $type) {
+    return 1 if $content->{$type};
+    my $generic = $GENERIC_VTYPE->{$type};
+    return 1 if defined($generic) && $content->{$generic};
+    return 1 if grep { $GENERIC_VTYPE->{$_} eq $type && $content->{$_} } keys $GENERIC_VTYPE->%*;
+    return 0;
 }
 
 =pod

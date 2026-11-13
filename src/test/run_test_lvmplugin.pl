@@ -58,12 +58,12 @@ my $test12 = sub {
             }
             warn "Test 12 a: owner is not correct: expected \'102\'  get \'$res[1]\'";
         }
-        if ($res[2] ne "images") {
+        if ($res[2] ne "vm-vol") {
             if (!$fail) {
                 $count++;
                 $fail = 1;
             }
-            warn "Test 12 a: owner is not correct: expected \'images\'  get \'$res[2]\'";
+            warn "Test 12 a: owner is not correct: expected \'vm-vol\'  get \'$res[2]\'";
         }
     };
     if ($@) {
@@ -246,7 +246,7 @@ my $test5 = sub {
             PVE::Storage::parse_volname($cfg, "$storagename:$vmdisk");
 
         if (
-            $vtype ne 'images'
+            $vtype ne 'vm-vol'
             || $vmid ne '102'
             || $name ne $vmdisk
             || defined($basename)
