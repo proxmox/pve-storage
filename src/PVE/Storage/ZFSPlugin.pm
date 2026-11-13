@@ -193,7 +193,7 @@ sub type {
 
 sub plugindata {
     return {
-        content => [{ images => 1 }, { images => 1 }],
+        content => [{ images => 1, 'vm-vol' => 1, 'vm-state' => 1 }, { images => 1 }],
         'sensitive-properties' => {},
     };
 }

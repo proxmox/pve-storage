@@ -34,6 +34,15 @@ Future changes should be documented in here.
   containers. So check whether a storage allows a volume type with
   `PVE::Storage::Common::content_allows()` instead of looking the type up in `$scfg->{content}`.
 
+* Allow `vm-vol`, `vm-state` and `ct-vol` as content types
+
+  A plugin can list these volume types in the valid content types of its `plugindata()`, next to
+  `images` and `rootdir`. A storage of its type can then be restricted to some of them, for example
+  to only hold the state volumes of VMs.
+
+  `list_volumes()` is still only called with `images` and `rootdir` for the volumes of guests, also
+  when volumes of a single type are wanted.
+
 ## Version 16:
 
 * Add `volname_for_format()`, `get_parsed_format()`, `volname_with_format()`, `is_valid_format()` and

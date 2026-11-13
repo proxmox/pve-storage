@@ -1267,8 +1267,8 @@ sub vdisk_list {
             next if $storeid && $storeid ne $sid;
             next if !storage_check_enabled($cfg, $sid, undef, 1);
             my $content = $ids->{$sid}->{content};
-            next if defined($ctype) && !$content->{$ctype};
-            next if !($content->{rootdir} || $content->{images});
+            next if defined($ctype) && !PVE::Storage::Common::content_allows($content, $ctype);
+            next if !grep { PVE::Storage::Common::content_allows($content, $_) } qw(rootdir images);
             push @$storage_list, $sid;
         }
     }
@@ -1324,11 +1324,17 @@ sub volume_list {
 
     my @ctypes = qw(rootdir images vztmpl iso backup snippets import);
 
+    # plugins list the volumes of guests by their generic content type
+    my $vtype;
+    if ($content && defined(my $generic = PVE::Storage::Common::generic_vtype($content))) {
+        ($vtype, $content) = ($content, $generic);
+    }
+
     my $cts = $content ? [$content] : [@ctypes];
 
     my $scfg = PVE::Storage::storage_config($cfg, $storeid);
 
-    $cts = [grep { defined($scfg->{content}->{$_}) } @$cts];
+    $cts = [grep { PVE::Storage::Common::content_allows($scfg->{content}, $_) } @$cts];
 
     my $plugin = PVE::Storage::Plugin->lookup($scfg->{type});
 
@@ -1347,6 +1353,8 @@ sub volume_list {
             $item->{vtype} = $parsed eq 'vm-state' ? 'vm-state' : 'vm-vol';
         }
     }
+
+    @$res = grep { ($_->{vtype} // '') eq $vtype } @$res if defined($vtype);
 
     @$res = sort { lc($a->{volid}) cmp lc($b->{volid}) } @$res;
 
@@ -1490,7 +1498,7 @@ sub storage_info {
         if (defined($content)) {
             my $want_ctype = 0;
             foreach my $ctype (@ctypes) {
-                if ($ids->{$storeid}->{content}->{$ctype}) {
+                if (PVE::Storage::Common::content_allows($ids->{$storeid}->{content}, $ctype)) {
                     $want_ctype = 1;
                     last;
                 }
@@ -1745,7 +1753,10 @@ sub target_is_used {
 # disks, directly or as ZFS over iSCSI volumes, so that none of them may be taken over or wiped.
 sub san_storage_serves_images {
     my ($scfg) = @_;
-    return $scfg->{content}->{images} || $scfg->{type} eq 'iscsidirect' || $scfg->{type} eq 'zfs';
+    return
+        PVE::Storage::Common::content_allows($scfg->{content}, 'images')
+        || $scfg->{type} eq 'iscsidirect'
+        || $scfg->{type} eq 'zfs';
 }
 
 sub volume_is_used {
@@ -2316,7 +2327,7 @@ sub complete_storage_enabled {
 sub complete_content_type {
     my ($cmdname, $pname, $cvalue) = @_;
 
-    return [qw(rootdir images vztmpl iso backup snippets import)];
+    return [qw(rootdir ct-vol images vm-vol vm-state vztmpl iso backup snippets import)];
 }
 
 sub complete_volume {

@@ -7,6 +7,7 @@ use PVE::SafeSyslog;
 use PVE::Tools qw(extract_param extract_sensitive_params);
 use PVE::Cluster qw(cfs_read_file cfs_write_file);
 use PVE::Storage;
+use PVE::Storage::Common;
 use PVE::Storage::Plugin;
 use PVE::Storage::LVMPlugin;
 use PVE::Storage::CIFSPlugin;
@@ -22,6 +23,22 @@ use base qw(PVE::RESTHandler);
 my @ctypes = qw(images vztmpl iso backup);
 
 my $storage_type_enum = PVE::Storage::Plugin->lookup_types();
+
+# Older nodes reject a content list with a type they do not know and fall back to the defaults of
+# the storage type, which may allow more than intended. A type that the storage has already is not
+# checked again, so that the storage can still be changed while a node is offline.
+# FIXME: MAJOR VERSION: This check can be dropped at the next major version bump.
+my sub assert_cluster_knows_content_types {
+    my ($content, $current_content) = @_;
+
+    return if !defined($content);
+
+    my @new_vtypes =
+        grep { defined(PVE::Storage::Common::generic_vtype($_)) && !($current_content // {})->{$_} }
+        keys $content->%*;
+
+    PVE::Cluster::assert_min_cluster_version(9, 2, 29) if scalar(@new_vtypes);
+}
 
 my $api_storage_config = sub {
     my ($cfg, $storeid) = @_;
@@ -248,6 +265,8 @@ __PACKAGE__->register_method({
         my $plugin = PVE::Storage::Plugin->lookup($type);
         my $opts = $plugin->check_config($storeid, $param, 1, 1);
 
+        assert_cluster_knows_content_types($opts->{content});
+
         my $returned_config;
         PVE::Storage::lock_storage_config(
             sub {
@@ -359,6 +378,8 @@ __PACKAGE__->register_method({
 
                 my $plugin = PVE::Storage::Plugin->lookup($type);
                 my $opts = $plugin->check_config($storeid, $param, 0, 1);
+
+                assert_cluster_knows_content_types($opts->{content}, $scfg->{content});
 
                 # Do checks for deletion up-front, but defer actual deletion until after the
                 # on_update_hook(_full) call. This makes it possible to pass the unmodified current

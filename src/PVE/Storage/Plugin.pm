@@ -174,7 +174,10 @@ my $defaultData = {
         ),
         content => {
             description => "Allowed content types.\n\nNOTE: the value "
-                . "'rootdir' is used for Containers, and value 'images' for VMs.\n",
+                . "'rootdir' is used for Containers, and value 'images' for VMs. A storage can"
+                . " instead be restricted to some of their volume types: 'vm-vol' for the disks of"
+                . " VMs, 'vm-state' for the saved states of VMs, and 'ct-vol' for the volumes of"
+                . " Containers.\n",
             type => 'string',
             format => 'pve-storage-content-list',
             optional => 1,
@@ -503,6 +506,12 @@ sub decode_value {
 
         if (scalar(keys $res->%*) == 0 && !$valid_content->{none}) {
             die "storage does not support content type 'none'\n";
+        }
+
+        # a volume type next to its generic type adds nothing
+        for my $vtype (keys $res->%*) {
+            my $generic = PVE::Storage::Common::generic_vtype($vtype);
+            delete $res->{$vtype} if defined($generic) && $res->{$generic};
         }
 
         return $res;
@@ -2134,6 +2143,12 @@ sub activate_storage {
         }
     };
 
+    my $dir_vtypes = {};
+    for my $vtype (keys $scfg->{content}->%*) {
+        $vtype = 'images' if PVE::Storage::Common::is_guest_vtype($vtype);
+        $dir_vtypes->{$vtype} = 1;
+    }
+
     # TODO: mkdir is basically deprecated since 8.0, but we don't warn here until 8.4 or 9.0, as we
     # only got the replacement in 8.0, so no real replacement window, and its really noisy.
 
@@ -2146,7 +2161,7 @@ sub activate_storage {
         for my $vtype (sort keys %$vtype_subdirs) {
             # OpenVZMigrate uses backup (dump) dir
             if (
-                defined($scfg->{content}->{$vtype})
+                defined($dir_vtypes->{$vtype})
                 || ($vtype eq 'backup' && defined($scfg->{content}->{'rootdir'}))
             ) {
                 $try_create_subdir->($vtype);
@@ -2156,7 +2171,7 @@ sub activate_storage {
 
     # check that content dirs are pairwise inequal
     my $resolved_subdirs = {};
-    for my $vtype (sort keys $scfg->{content}->%*) {
+    for my $vtype (sort keys $dir_vtypes->%*) {
         my $subdir = $class->get_subdir($scfg, $vtype);
         my $abs_subdir = abs_path($subdir);
         next if !defined($abs_subdir);

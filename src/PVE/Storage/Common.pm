@@ -79,7 +79,8 @@ PVE::JSONSchema::register_standard_option(
 
 =head1 VOLUME TYPES
 
-A volume that belongs to a guest has one of the following types.
+A volume that belongs to a guest has one of the following types. They are also content types that
+a storage can be restricted to.
 
 =over
 

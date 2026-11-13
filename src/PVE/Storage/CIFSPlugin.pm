@@ -115,7 +115,10 @@ sub plugindata {
         content => [
             {
                 images => 1,
+                'vm-vol' => 1,
+                'vm-state' => 1,
                 rootdir => 1,
+                'ct-vol' => 1,
                 vztmpl => 1,
                 iso => 1,
                 backup => 1,
