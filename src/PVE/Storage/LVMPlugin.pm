@@ -1303,14 +1303,12 @@ my sub lvm_qcow2_format {
 }
 
 my sub calculate_lvm_size {
-    my ($size, $fmt, $backing_snap) = @_;
+    my ($size, $fmt, $measure_options) = @_;
     #input size = qcow2 image size in kb
 
     return $size if $fmt ne 'qcow2';
 
-    my $options = $backing_snap ? ['extended_l2=on', 'cluster_size=128k'] : [];
-
-    my $json = PVE::Storage::Common::qemu_img_measure($size, $fmt, 5, $options);
+    my $json = PVE::Storage::Common::qemu_img_measure($size, $fmt, 5, $measure_options);
     die "failed to query file information with qemu-img measure\n" if !$json;
     my $info = eval { decode_json($json) };
     if ($@) {
@@ -1320,6 +1318,21 @@ my sub calculate_lvm_size {
     die "Missing fully-allocated value from json" if !$info->{'fully-allocated'};
 
     return $info->{'fully-allocated'} / 1024;
+}
+
+# snapshot overlays use other cluster settings than base images, which changes the measured size
+my sub qcow2_measure_options {
+    my ($path) = @_;
+
+    my $json = PVE::Storage::Common::qemu_img_info($path, 'qcow2', 10);
+    my $info = eval { decode_json($json) } // {};
+    my $cluster_size = $info->{'cluster-size'}
+        or die "unable to determine the cluster size of '$path'\n";
+
+    my $options = ["cluster_size=$cluster_size"];
+    push $options->@*, 'extended_l2=on' if $info->{'format-specific'}->{data}->{'extended-l2'};
+
+    return $options;
 }
 
 my sub alloc_lvm_image {
@@ -1340,7 +1353,8 @@ my sub alloc_lvm_image {
     die "no such volume group '$vg'\n" if !defined($vgs->{$vg});
 
     my $free = int($vgs->{$vg}->{free});
-    my $lvmsize = calculate_lvm_size($size, $fmt, $backing_snap);
+    my $measure_options = $backing_snap ? ['extended_l2=on', 'cluster_size=128k'] : [];
+    my $lvmsize = calculate_lvm_size($size, $fmt, $measure_options);
 
     die "not enough free space ($free < $size)\n" if $free < $size;
 
@@ -1691,9 +1705,10 @@ sub volume_resize {
     my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $format) =
         $class->parse_volname($volname);
 
-    my $lvmsize = calculate_lvm_size($size / 1024, $format);
-
     my $path = $class->path($scfg, $volname, $storeid, $snapname);
+
+    my $measure_options = $format eq 'qcow2' ? qcow2_measure_options($path) : undef;
+    my $lvmsize = calculate_lvm_size($size / 1024, $format, $measure_options);
 
     # For qcow2, the expected size of the LV might get out of sync, so check.
     my ($skip_lvextend, $old_lvmsize);
