@@ -58,6 +58,9 @@ my sub get_schema_for_plugin($plugin) {
     my $pdata = $plugin->private();
     my $options = $pdata->{options}->{$type};
 
+    # also covers the fallback for plugins without 'sensitive-properties' in their plugindata()
+    my $sensitive = { map { $_ => 1 } PVE::Storage::Plugin::sensitive_properties($type)->@* };
+
     my $schema = {};
 
     for my $option (keys $options->%*) {
@@ -67,6 +70,11 @@ my sub get_schema_for_plugin($plugin) {
         # Deep clone to prevent any accidental Perl-esque side effects, because
         # we are memoizing each schema through $PLUGIN_SCHEMAS
         my $property = dclone($prop_schema);
+
+        # A value from 'sensitive-properties' goes to the plugin's hooks instead of the storage
+        # config, so a client cannot read it back, whatever the property schema itself declares.
+        $property->{sensitive} = ($property->{sensitive} || $sensitive->{$option}) ? 1 : 0;
+
         $schema->{$option} = $property;
 
         for my $opt_key (keys $options->{$option}->%*) {
