@@ -1962,7 +1962,7 @@ sub extract_vzdump_config {
                 print "$prefix: $message\n";
             };
             my $backup_provider = $plugin->new_backup_provider($scfg, $storeid, $log_function);
-            return $backup_provider->archive_get_guest_config($volname, $storeid);
+            return $backup_provider->archive_get_guest_config($volname);
         }
     }
 
