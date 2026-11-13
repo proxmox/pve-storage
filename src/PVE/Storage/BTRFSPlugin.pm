@@ -13,6 +13,7 @@ use POSIX qw(EEXIST);
 
 use PVE::Tools qw(run_command dir_glob_foreach);
 
+use PVE::Storage::Common;
 use PVE::Storage::DirPlugin;
 
 use constant {
@@ -190,15 +191,16 @@ sub filesystem_path {
 
     my $path = $class->get_subdir($scfg, $vtype);
 
-    $path .= "/$vmid" if $vtype eq 'images';
+    my $is_guest_volume = PVE::Storage::Common::is_guest_vtype($vtype);
+    $path .= "/$vmid" if $is_guest_volume;
 
-    if ($vtype eq 'images' && defined($format) && $format eq 'raw') {
+    if ($is_guest_volume && defined($format) && $format eq 'raw') {
         my $dir = raw_name_to_dir($name);
         if ($snapname) {
             $dir .= "\@$snapname";
         }
         $path .= "/$dir/disk.raw";
-    } elsif ($vtype eq 'images' && defined($format) && $format eq 'subvol') {
+    } elsif ($is_guest_volume && defined($format) && $format eq 'subvol') {
         $path .= "/$name";
         if ($snapname) {
             $path .= "\@$snapname";
@@ -424,7 +426,11 @@ sub free_image {
 
     my ($vtype, undef, $vmid, undef, undef, undef, $format) = $class->parse_volname($volname);
 
-    if (!defined($format) || $vtype ne 'images' || ($format ne 'subvol' && $format ne 'raw')) {
+    if (
+        !defined($format)
+        || !PVE::Storage::Common::is_guest_vtype($vtype)
+        || ($format ne 'subvol' && $format ne 'raw')
+    ) {
         return $class->SUPER::free_image($storeid, $scfg, $volname, $isBase, $_format);
     }
 
@@ -843,7 +849,7 @@ sub volume_import {
     }
 
     my $imagedir = $class->get_subdir($scfg, $vtype);
-    $imagedir .= "/$vmid" if $vtype eq 'images';
+    $imagedir .= "/$vmid" if PVE::Storage::Common::is_guest_vtype($vtype);
 
     my $tmppath = "$imagedir/recv.$vmid.tmp";
     mkdir($imagedir); # FIXME: if $scfg->{mkdir};

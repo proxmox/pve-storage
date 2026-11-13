@@ -25,6 +25,7 @@ use PVE::RPCEnvironment;
 use PVE::SSHInfo;
 use PVE::RESTEnvironment qw(log_warn);
 
+use PVE::Storage::Common;
 use PVE::Storage::Plugin;
 use PVE::Storage::DirPlugin;
 use PVE::Storage::LVMPlugin;
@@ -642,7 +643,9 @@ sub check_volume_access {
         } elsif ($vtype eq 'backup' && $ownervm) {
             $rpcenv->check($user, "/storage/$sid", ['Datastore.AllocateSpace']);
             $rpcenv->check($user, "/vms/$ownervm", ['VM.Backup']);
-        } elsif (($vtype eq 'images' || $vtype eq 'rootdir') && $ownervm) {
+        } elsif (
+            (PVE::Storage::Common::is_guest_vtype($vtype) || $vtype eq 'rootdir') && $ownervm
+        ) {
             $rpcenv->check($user, "/storage/$sid", ['Datastore.Audit']);
             $rpcenv->check($user, "/vms/$ownervm", ['VM.Config.Disk']);
         } elsif ($vtype eq 'snippets') {

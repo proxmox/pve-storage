@@ -83,6 +83,20 @@ PVE::JSONSchema::register_standard_option(
 
 =pod
 
+=head3 is_guest_vtype
+
+    $is_guest_vtype = is_guest_vtype($vtype)
+
+Returns whether volumes of type C<$vtype> belong to a guest.
+
+=cut
+
+sub is_guest_vtype : prototype($) ($vtype) {
+    return $vtype eq 'images';
+}
+
+=pod
+
 =head3 align_size_up
 
     $aligned_size = align_size_up($size, $granularity)

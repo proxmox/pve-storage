@@ -10,6 +10,7 @@ use POSIX;
 use PVE::JSONSchema;
 use PVE::ProcFSTools;
 use PVE::RPCEnvironment;
+use PVE::Storage::Common;
 use PVE::Storage::Plugin;
 use PVE::Tools qw(run_command);
 
@@ -196,7 +197,7 @@ sub path {
     my $path = '';
     my $mountpoint = $scfg->{mountpoint} // "/$scfg->{pool}";
 
-    if ($vtype eq "images") {
+    if (PVE::Storage::Common::is_guest_vtype($vtype)) {
         if ($name =~ m/^subvol-/ || $name =~ m/^basevol-/) {
             $path = "$mountpoint/$name";
         } else {

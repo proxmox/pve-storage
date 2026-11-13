@@ -994,7 +994,7 @@ sub filesystem_path {
 
     my $dir = $class->get_subdir($scfg, $vtype);
 
-    $dir .= "/$vmid" if $vtype eq 'images';
+    $dir .= "/$vmid" if PVE::Storage::Common::is_guest_vtype($vtype);
 
     my $path = "$dir/$name";
 
@@ -1016,7 +1016,7 @@ sub create_base {
     my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $format) =
         $class->parse_volname($volname);
 
-    die "create_base on wrong vtype '$vtype'\n" if $vtype ne 'images';
+    die "create_base on wrong vtype '$vtype'\n" if !PVE::Storage::Common::is_guest_vtype($vtype);
 
     die "create_base not possible with base image\n" if $isBase;
 
@@ -1115,7 +1115,7 @@ sub clone_image {
     my ($vtype, $basename, $basevmid, undef, undef, $isBase, $format) =
         $class->parse_volname($volname);
 
-    die "clone_image on wrong vtype '$vtype'\n" if $vtype ne 'images';
+    die "clone_image on wrong vtype '$vtype'\n" if !PVE::Storage::Common::is_guest_vtype($vtype);
 
     die "this storage type does not support clone_image on snapshot\n" if $snap;
 
@@ -1267,7 +1267,7 @@ sub free_image {
     # try to cleanup directory to not clutter storage with empty $vmid dirs if
     # all images from a guest got deleted, but keep the shared content type dirs
     my ($vtype) = $class->parse_volname($volname);
-    rmdir(dirname($path)) if $vtype eq 'images';
+    rmdir(dirname($path)) if PVE::Storage::Common::is_guest_vtype($vtype);
 
     return undef;
 }
@@ -2360,7 +2360,9 @@ sub volume_export_formats {
             return ();
         }
         return ('tar+size') if $format eq 'subvol';
-        return ('raw+size') if $vtype =~ /^(images|iso|snippets|vztmpl|import)$/;
+        return ('raw+size')
+            if PVE::Storage::Common::is_guest_vtype($vtype)
+            || $vtype =~ /^(iso|snippets|vztmpl|import)$/;
     }
     return ();
 }
@@ -2391,11 +2393,12 @@ sub volume_import {
 
     my ($vtype, $name, $vmid, $basename, $basevmid, $isBase, $file_format) =
         $class->parse_volname($volname);
+    my $is_guest_volume = PVE::Storage::Common::is_guest_vtype($vtype) || $vtype eq 'rootdir';
 
     # XXX: Should we bother with conversion routines at this level? This won't
     # happen without manual CLI usage, so for now we just error out...
     if (
-        ($vtype eq 'images' || $vtype eq 'rootdir')
+        $is_guest_volume
         && $data_format ne $file_format
         && !($data_format eq 'tar' && $file_format eq 'subvol')
     ) {
@@ -2407,7 +2410,7 @@ sub volume_import {
     my ($file) = $class->path($scfg, $volname, $storeid);
     if (-e $file) {
         die "file '$file' already exists\n"
-            if !$allow_rename || ($vtype ne 'images' && $vtype ne 'rootdir');
+            if !$allow_rename || !$is_guest_volume;
         warn "file '$file' already exists - importing with a different name\n";
         $name = undef;
     }
@@ -2415,7 +2418,7 @@ sub volume_import {
     my ($size) = read_common_header($fh);
     $size = PVE::Storage::Common::align_size_up($size, 1024) / 1024;
 
-    if ($vtype eq 'images' || $vtype eq 'rootdir') {
+    if ($is_guest_volume) {
         eval {
             my $allocname =
                 $class->alloc_image($storeid, $scfg, $vmid, $file_format, $name, $size);
@@ -2473,7 +2476,9 @@ sub volume_import_formats {
             return ();
         }
         return ('tar+size') if $format eq 'subvol';
-        return ('raw+size') if $vtype =~ /^(images|iso|snippets|vztmpl|import)$/;
+        return ('raw+size')
+            if PVE::Storage::Common::is_guest_vtype($vtype)
+            || $vtype =~ /^(iso|snippets|vztmpl|import)$/;
     }
     return ();
 }
