@@ -25,6 +25,29 @@ my $PLUGIN_METADATA_SCHEMA = {
     type => 'object',
     additionalProperties => 0,
     properties => {
+        content => {
+            description => "The content types of the plugin.",
+            type => 'object',
+            optional => 0,
+            properties => {
+                supported => {
+                    description => "The content types the plugin supports.",
+                    type => 'array',
+                    optional => 0,
+                    items => {
+                        type => 'string',
+                    },
+                },
+                default => {
+                    description => "The content types enabled by default.",
+                    type => 'array',
+                    optional => 0,
+                    items => {
+                        type => 'string',
+                    },
+                },
+            },
+        },
         origin => {
             description => "Whether the plugin is shipped with Proxmox VE ('builtin') or"
                 . " installed separately ('custom').",
@@ -107,8 +130,13 @@ my sub get_schema_for_plugin($plugin) {
 
 my sub build_plugin_metadata($type) {
     my $plugin = PVE::Storage::Plugin->lookup($type);
+    my $plugindata = $plugin->plugindata();
 
     return {
+        content => {
+            supported => [sort keys $plugindata->{content}->[0]->%*],
+            default => [sort keys $plugindata->{content}->[1]->%*],
+        },
         origin => plugin_origin($plugin),
         schema => get_schema_for_plugin($plugin),
         type => $type,
