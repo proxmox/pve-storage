@@ -46,7 +46,8 @@ sub plugindata {
 sub properties {
     return {
         thinpool => {
-            description => "LVM thin pool LV name.",
+            title => "Thin Pool",
+            description => "Name of the LVM thin pool logical volume.",
             type => 'string',
             format => 'pve-storage-vgname',
         },

@@ -135,21 +135,25 @@ sub plugindata {
 sub properties {
     return {
         share => {
-            description => "CIFS share.",
+            title => "Share",
+            description => "The name of the share to use.",
             type => 'string',
         },
         password => {
-            description => "Password for accessing the share/datastore.",
+            title => "Password",
+            description => "The password used for authentication.",
             type => 'string',
             maxLength => 256,
         },
         domain => {
-            description => "CIFS domain.",
+            title => "Domain",
+            description => "The name of the user domain (workgroup) to use.",
             type => 'string',
             optional => 1,
             maxLength => 256,
         },
         smbversion => {
+            title => "SMB Version",
             description =>
                 "SMB protocol version. 'default' if not set, negotiates the highest SMB2+"
                 . " version supported by both the client and server.",

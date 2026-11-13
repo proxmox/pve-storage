@@ -426,24 +426,31 @@ sub plugindata {
 sub properties {
     return {
         monhost => {
+            title => "Monitor(s)",
             description => "IP addresses of monitors (for external clusters).",
             type => 'string',
             format => 'pve-storage-portal-dns-list',
         },
         pool => {
-            description => "Pool.",
+            title => "Pool",
+            description => "Name of the pool that stores images.",
             type => 'string',
         },
         'data-pool' => {
-            description => "Data Pool (for erasure coding only)",
+            title => "Data Pool",
+            description => "Data pool name for erasure-coded images.",
             type => 'string',
         },
         namespace => {
-            description => "Namespace.",
+            title => "Namespace",
+            description =>
+                "The namespace used for grouping, isolation, or partitioning purposes.",
             type => 'string',
         },
         username => {
-            description => "RBD Id.",
+            title => "Username",
+            description => "The username for authentication. For RBD and CephFS, the Ceph"
+                . " client ID without the 'client.' prefix.",
             type => 'string',
         },
         authsupported => {
@@ -451,11 +458,13 @@ sub properties {
             type => 'string',
         },
         krbd => {
+            title => "KRBD",
             description => "Always access rbd through krbd kernel module.",
             type => 'boolean',
             default => 0,
         },
         keyring => {
+            title => "Keyring",
             description => "Client keyring contents (for external clusters).",
             type => 'string',
         },

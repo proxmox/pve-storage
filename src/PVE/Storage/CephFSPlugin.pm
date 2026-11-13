@@ -125,11 +125,13 @@ sub plugindata {
 sub properties {
     return {
         fuse => {
-            description => "Mount CephFS through FUSE.",
+            title => "Mount with FUSE",
+            description => "Mount the filesystem through FUSE.",
             type => 'boolean',
         },
         'fs-name' => {
-            description => "The Ceph filesystem name.",
+            title => "Filesystem Name",
+            description => "The name or identifier of the filesystem.",
             type => 'string',
             format => 'pve-configid',
         },

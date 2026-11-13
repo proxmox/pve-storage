@@ -76,12 +76,14 @@ sub plugindata {
 sub properties {
     return {
         export => {
-            description => "NFS export path.",
+            title => "Export Path",
+            description => "Path exported by the NFS server (e.g., /srv/nfs).",
             type => 'string',
             format => 'pve-storage-path',
         },
         server => {
-            description => "Server IP or DNS name.",
+            title => "Server",
+            description => "IP address or hostname of the server.",
             type => 'string',
             format => 'pve-storage-server',
         },

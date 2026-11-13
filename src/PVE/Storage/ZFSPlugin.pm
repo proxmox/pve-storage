@@ -201,29 +201,35 @@ sub plugindata {
 sub properties {
     return {
         iscsiprovider => {
-            description => "iscsi provider",
+            title => "iSCSI Provider",
+            description => "The iSCSI target implementation used on the remote machine.",
             type => 'string',
         },
         # this will disable write caching on comstar and istgt.
         # it is not implemented for iet. iet blockio always operates with
         # writethrough caching when not in readonly mode
         nowritecache => {
-            description => "disable write caching on the target",
+            title => "Disable Write Cache",
+            description => "Disable write caching on the iSCSI target.",
             type => 'boolean',
         },
         comstar_tg => {
-            description => "target group for comstar views",
+            title => "Target Group",
+            description => "Target group for COMSTAR views.",
             type => 'string',
         },
         comstar_hg => {
-            description => "host group for comstar views",
+            title => "Host Group",
+            description => "Host group for COMSTAR views.",
             type => 'string',
         },
         lio_tpg => {
-            description => "target portal group for Linux LIO targets",
+            title => "Target Portal Group",
+            description => "Target portal group for Linux LIO targets.",
             type => 'string',
         },
         'zfs-base-path' => {
+            title => "Base Path",
             description => "Base path where to look for the created ZFS block devices. Set"
                 . " automatically during creation if not specified. Usually '/dev/zvol'.",
             type => 'string',

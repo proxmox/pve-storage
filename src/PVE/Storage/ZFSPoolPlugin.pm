@@ -75,17 +75,20 @@ sub plugindata {
 sub properties {
     return {
         blocksize => {
-            description => "ZFS block size",
+            title => "Block Size",
+            description => "ZFS block size.",
             type => 'string',
             format => 'pve-storage-zfs-blocksize',
             format_description => 'a power of 2 with optional k or m suffix',
         },
         sparse => {
-            description => "use sparse volumes",
+            title => "Thin Provision",
+            description => "Use sparse (thin-provisioned) volumes.",
             type => 'boolean',
         },
         mountpoint => {
-            description => "mount point",
+            title => "Mountpoint",
+            description => "Path to the directory where the storage is mounted.",
             type => 'string',
             format => 'pve-storage-path',
         },

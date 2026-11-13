@@ -42,17 +42,20 @@ sub plugindata {
 sub properties {
     return {
         datastore => {
+            title => "Datastore",
             description => "Proxmox Backup Server datastore name.",
             type => 'string',
         },
         # openssl s_client -connect <host>:8007 2>&1 |openssl x509 -fingerprint -sha256
-        fingerprint => get_standard_option('fingerprint-sha256'),
+        fingerprint => get_standard_option('fingerprint-sha256', { title => "Fingerprint" }),
         'encryption-key' => {
+            title => "Encryption Key",
             description =>
                 "Encryption key. Use 'autogen' to generate one automatically without passphrase.",
             type => 'string',
         },
         'master-pubkey' => {
+            title => "Master Public Key",
             description =>
                 "Base64-encoded, PEM-formatted public RSA key. Used to encrypt a copy of the encryption-key which will be added to each encrypted backup.",
             type => 'string',

@@ -394,11 +394,13 @@ sub plugindata {
 sub properties {
     return {
         target => {
-            description => "iSCSI target.",
+            title => "Target",
+            description => "iSCSI target name (an iSCSI Qualified Name - IQN).",
             type => 'string',
         },
         portal => {
-            description => "iSCSI portal (IP or DNS name with optional port).",
+            title => "Portal",
+            description => "iSCSI portal (IP or hostname, optionally with port).",
             type => 'string',
             format => 'pve-storage-portal-dns',
         },

@@ -39,6 +39,7 @@ sub plugindata {
 sub properties {
     return {
         'skip-cert-verification' => {
+            title => "Skip Certificate Verification",
             description =>
                 'Disable TLS certificate verification, only enable on fully trusted networks!',
             type => 'boolean',

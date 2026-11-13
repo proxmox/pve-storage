@@ -56,6 +56,7 @@ sub plugindata {
 sub properties {
     return {
         nocow => {
+            title => "Set NOCOW Flag",
             description => "Set the NOCOW flag on files."
                 . " Disables data checksumming and causes data errors to be unrecoverable from"
                 . " while allowing direct I/O. Only use this if data does not need to be any more"

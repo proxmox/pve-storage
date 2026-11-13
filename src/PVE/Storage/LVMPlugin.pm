@@ -895,20 +895,24 @@ PVE::JSONSchema::register_format(
 sub properties {
     return {
         vgname => {
-            description => "Volume group name.",
+            title => "Volume Group",
+            description => "LVM volume group name.",
             type => 'string',
             format => 'pve-storage-vgname',
         },
         base => {
-            description => "Base volume. This volume is automatically activated.",
+            title => "Base Volume",
+            description => "Volume ID of the base volume (automatically activated).",
             type => 'string',
             format => 'pve-volume-id',
         },
         saferemove => {
+            title => "Wipe Removed Volumes",
             description => "Zero-out data when removing LVs.",
             type => 'boolean',
         },
         'on-volume-remove' => {
+            title => "Volume Removal Actions",
             description => "Optional actions when removing LVs.",
             type => 'string',
             format => 'on-volume-remove',
@@ -916,6 +920,7 @@ sub properties {
                 . " Use 'discard=1' to issue discard (TRIM) requests before removal.",
         },
         'saferemove-stepsize' => {
+            title => "Wipe Step Size",
             description => "Wipe step size in MiB."
                 . " It will be capped to the maximum supported by the storage.",
             default => 32,
@@ -923,11 +928,13 @@ sub properties {
             type => 'integer',
         },
         saferemove_throughput => {
+            title => "Wipe Throughput",
             description => "Wipe throughput in bytes per second (optional suffix: k, m, or g).",
             type => 'string',
             pattern => '-?\d+[kmgKMG]?',
         },
         tagged_only => {
+            title => "Tagged Volumes Only",
             description => "Only list logical volumes tagged with 'pve-vm-ID'.",
             type => 'boolean',
         },

@@ -48,7 +48,9 @@ sub plugindata {
 sub properties {
     return {
         path => {
-            description => "File system path.",
+            title => "Path",
+            description => "Path of the storage in the local file system,"
+                . " for example its base directory or mount point.",
             type => 'string',
             format => 'pve-storage-path',
         },
@@ -60,23 +62,26 @@ sub properties {
             default => 'yes',
         },
         'create-base-path' => {
+            title => "Create Base Directory",
             description => "Create the base directory if it doesn't exist.",
             type => 'boolean',
             default => 'yes',
         },
         'create-subdirs' => {
-            description => "Populate the directory with the default structure.",
+            title => "Populate Base Directory",
+            description => "Populate the base directory with the default structure.",
             type => 'boolean',
             default => 'yes',
         },
         is_mountpoint => {
+            title => "Is Mountpoint",
             description => "Assume the given path is an externally managed mountpoint "
                 . "and consider the storage offline if it is not mounted. "
                 . "Using a boolean (yes/no) value serves as a shortcut to using the target path in this field.",
             type => 'string',
             default => 'no',
         },
-        bwlimit => get_standard_option('bwlimit'),
+        bwlimit => get_standard_option('bwlimit', { title => "Bandwidth Limit" }),
     };
 }
 

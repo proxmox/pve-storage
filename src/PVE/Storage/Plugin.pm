@@ -95,36 +95,44 @@ my %prune_option = (
 our $prune_backups_format = {
     'keep-all' => {
         type => 'boolean',
+        title => "Keep All Backups",
         description => 'Keep all backups. Conflicts with the other options when true.',
         optional => 1,
     },
     'keep-last' => {
-        %prune_option, description => 'Keep the last <N> backups.',
+        %prune_option,
+        title => "Keep Last",
+        description => 'Keep the last <N> backups.',
     },
     'keep-hourly' => {
         %prune_option,
-        description => 'Keep backups for the last <N> different hours. If there is more '
-            . 'than one backup for a single hour, only the latest one is kept.',
+        title => "Keep Hourly",
+        description => 'Keep backups for the last <N> different hours. If there is more'
+            . ' than one backup for a single hour, only the latest one is kept.',
     },
     'keep-daily' => {
         %prune_option,
-        description => 'Keep backups for the last <N> different days. If there is more '
-            . 'than one backup for a single day, only the latest one is kept.',
+        title => "Keep Daily",
+        description => 'Keep backups for the last <N> different days. If there is more'
+            . ' than one backup for a single day, only the latest one is kept.',
     },
     'keep-weekly' => {
         %prune_option,
-        description => 'Keep backups for the last <N> different weeks. If there is more '
-            . 'than one backup for a single week, only the latest one is kept.',
+        title => "Keep Weekly",
+        description => 'Keep backups for the last <N> different weeks. If there is more'
+            . ' than one backup for a single week, only the latest one is kept.',
     },
     'keep-monthly' => {
         %prune_option,
-        description => 'Keep backups for the last <N> different months. If there is more '
-            . 'than one backup for a single month, only the latest one is kept.',
+        title => "Keep Monthly",
+        description => 'Keep backups for the last <N> different months. If there is more'
+            . ' than one backup for a single month, only the latest one is kept.',
     },
     'keep-yearly' => {
         %prune_option,
-        description => 'Keep backups for the last <N> different years. If there is more '
-            . 'than one backup for a single year, only the latest one is kept.',
+        title => "Keep Yearly",
+        description => 'Keep backups for the last <N> different years. If there is more'
+            . ' than one backup for a single year, only the latest one is kept.',
     },
 };
 PVE::JSONSchema::register_format('prune-backups', $prune_backups_format, \&validate_prune_backups);
@@ -147,6 +155,7 @@ sub validate_prune_backups {
 register_standard_option(
     'prune-backups',
     {
+        title => "Backup Retention",
         description => "The retention options with shorter intervals are processed first "
             . "with --keep-last being the very first one. Each option covers a "
             . "specific period of time. We say that backups within this period "
@@ -160,19 +169,27 @@ register_standard_option(
 
 my $defaultData = {
     propertyList => {
-        type => { description => "Storage type." },
+        type => {
+            title => "Type",
+            description => "Storage type.",
+        },
         storage => get_standard_option(
             'pve-storage-id',
-            { completion => \&PVE::Storage::complete_storage },
+            {
+                title => "ID",
+                completion => \&PVE::Storage::complete_storage,
+            },
         ),
         nodes => get_standard_option(
             'pve-node-list',
             {
+                title => "Nodes",
                 description => "List of nodes for which the storage configuration applies.",
                 optional => 1,
             },
         ),
         content => {
+            title => "Content",
             description => "Allowed content types.\n\nNOTE: the value "
                 . "'rootdir' is used for Containers, and value 'images' for VMs. A storage can"
                 . " instead be restricted to some of their volume types: 'vm-vol' for the disks of"
@@ -184,12 +201,14 @@ my $defaultData = {
             completion => \&PVE::Storage::complete_content_type,
         },
         disable => {
+            title => "Disable",
             description => "Flag to disable the storage.",
             type => 'boolean',
             optional => 1,
         },
         'prune-backups' => get_standard_option('prune-backups'),
         'max-protected-backups' => {
+            title => "Maximum Protected",
             description =>
                 "Maximal number of protected backups per guest. Use '-1' for unlimited.",
             type => 'integer',
@@ -199,6 +218,7 @@ my $defaultData = {
                 "Unlimited for users with Datastore.Allocate privilege, 5 for other users",
         },
         shared => {
+            title => "Shared",
             description =>
                 "Indicate that this is a single storage with the same contents on all "
                 . "nodes (or all listed in the 'nodes' option). It will not make the contents of a "
@@ -208,6 +228,7 @@ my $defaultData = {
             optional => 1,
         },
         subdir => {
+            title => "Subdirectory",
             description => "Subdir to mount.",
             type => 'string',
             format => 'pve-storage-path',
@@ -216,11 +237,13 @@ my $defaultData = {
         format => get_standard_option(
             'pve-storage-image-format',
             {
+                title => "Default Format",
                 description => "Default image format.",
                 optional => 1,
             },
         ),
         preallocation => {
+            title => "Preallocation",
             description => "Preallocation mode for raw and qcow2 images. "
                 . "Using 'metadata' on raw images results in preallocation=off.",
             type => 'string',
@@ -229,18 +252,22 @@ my $defaultData = {
             optional => 1,
         },
         'content-dirs' => {
+            title => "Content Directories",
             description => "Overrides for default content type directories.",
             type => "string",
             format => "pve-dir-override-list",
             optional => 1,
         },
         options => {
-            description => "NFS/CIFS mount options (see 'man nfs' or 'man mount.cifs')",
+            title => "Mount Options",
+            description => "Comma-separated list of mount options."
+                . " See 'man nfs', 'man mount.cifs', or 'man mount.ceph' for more information.",
             type => 'string',
             format => 'pve-storage-options',
             optional => 1,
         },
         port => {
+            title => "Port",
             description =>
                 "Use this port to connect to the storage instead of the default one (for"
                 . " example, with PBS or ESXi). For NFS and CIFS, use the 'options' option to"
@@ -252,6 +279,7 @@ my $defaultData = {
         },
         'snapshot-as-volume-chain' => {
             type => 'boolean',
+            title => "Allow Snapshots as Volume-Chain",
             description => 'Enable support for creating storage-vendor agnostic snapshot'
                 . ' through volume backing-chains.',
             default => 0,
