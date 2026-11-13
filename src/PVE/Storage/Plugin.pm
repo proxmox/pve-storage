@@ -103,27 +103,27 @@ our $prune_backups_format = {
     },
     'keep-hourly' => {
         %prune_option,
-        description => 'Keep backups for the last <N> different hours. If there is more'
+        description => 'Keep backups for the last <N> different hours. If there is more '
             . 'than one backup for a single hour, only the latest one is kept.',
     },
     'keep-daily' => {
         %prune_option,
-        description => 'Keep backups for the last <N> different days. If there is more'
+        description => 'Keep backups for the last <N> different days. If there is more '
             . 'than one backup for a single day, only the latest one is kept.',
     },
     'keep-weekly' => {
         %prune_option,
-        description => 'Keep backups for the last <N> different weeks. If there is more'
+        description => 'Keep backups for the last <N> different weeks. If there is more '
             . 'than one backup for a single week, only the latest one is kept.',
     },
     'keep-monthly' => {
         %prune_option,
-        description => 'Keep backups for the last <N> different months. If there is more'
+        description => 'Keep backups for the last <N> different months. If there is more '
             . 'than one backup for a single month, only the latest one is kept.',
     },
     'keep-yearly' => {
         %prune_option,
-        description => 'Keep backups for the last <N> different years. If there is more'
+        description => 'Keep backups for the last <N> different years. If there is more '
             . 'than one backup for a single year, only the latest one is kept.',
     },
 };
