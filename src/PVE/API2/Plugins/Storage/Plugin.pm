@@ -48,6 +48,11 @@ my $PLUGIN_METADATA_SCHEMA = {
                 },
             },
         },
+        'display-name' => {
+            description => "The name of the storage type, if the plugin provides one.",
+            type => 'string',
+            optional => 1,
+        },
         origin => {
             description => "Whether the plugin is shipped with Proxmox VE ('builtin') or"
                 . " installed separately ('custom').",
@@ -138,7 +143,7 @@ my sub build_plugin_metadata($type) {
     my $plugin = PVE::Storage::Plugin->lookup($type);
     my $plugindata = $plugin->plugindata();
 
-    return {
+    my $metadata = {
         content => {
             supported => [sort keys $plugindata->{content}->[0]->%*],
             default => [sort keys $plugindata->{content}->[1]->%*],
@@ -147,6 +152,13 @@ my sub build_plugin_metadata($type) {
         schema => get_schema_for_plugin($plugin),
         type => $type,
     };
+
+    my $display_name = $plugindata->{meta}->{'display-name'};
+    if (defined($display_name) && !ref($display_name) && length($display_name)) {
+        $metadata->{'display-name'} = $display_name;
+    }
+
+    return $metadata;
 }
 
 # plugins/storage/plugin
