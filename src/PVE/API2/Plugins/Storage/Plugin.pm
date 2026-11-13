@@ -105,6 +105,16 @@ my sub get_schema_for_plugin($plugin) {
     return $schema;
 }
 
+my sub build_plugin_metadata($type) {
+    my $plugin = PVE::Storage::Plugin->lookup($type);
+
+    return {
+        origin => plugin_origin($plugin),
+        schema => get_schema_for_plugin($plugin),
+        type => $type,
+    };
+}
+
 # plugins/storage/plugin
 
 __PACKAGE__->register_method({
@@ -143,19 +153,13 @@ __PACKAGE__->register_method({
                 next if plugin_origin($plugin) ne $origin;
             }
 
-            my $schema = eval { get_schema_for_plugin($plugin) };
+            my $metadata = eval { build_plugin_metadata($type) };
             if (my $err = $@) {
-                warn "skipping storage plugin '$type' - cannot build its schema: $err\n";
+                warn "skipping storage plugin '$type' - cannot build its metadata - $err";
                 next;
             }
 
-            my $item = {
-                origin => plugin_origin($plugin),
-                schema => $schema,
-                type => $type,
-            };
-
-            push($result->@*, $item);
+            push($result->@*, $metadata);
         }
 
         return $result;
@@ -186,21 +190,12 @@ __PACKAGE__->register_method({
     code => sub($param) {
         my $param_type = extract_param($param, 'type');
 
-        # Does not fail since `type` is validated first
-        my $plugin = PVE::Storage::Plugin->lookup($param_type);
-
-        my $schema = eval { get_schema_for_plugin($plugin) };
+        my $metadata = eval { build_plugin_metadata($param_type) };
         if (my $err = $@) {
             raise("Cannot build metadata of storage plugin '$param_type' - $err");
         }
 
-        my $result = {
-            origin => plugin_origin($plugin),
-            schema => $schema,
-            type => $param_type,
-        };
-
-        return $result;
+        return $metadata;
     },
 });
 
