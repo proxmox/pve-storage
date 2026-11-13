@@ -75,6 +75,12 @@ __PACKAGE__->register_method({
                     type => 'integer',
                     optional => 1,
                 },
+                vtype => {
+                    description => "Volume type, for volumes of VMs and containers.",
+                    type => 'string',
+                    enum => ['vm-vol', 'vm-state', 'ct-vol'],
+                    optional => 1,
+                },
                 parent => {
                     description => "Volume identifier of parent (for linked cloned).",
                     type => 'string',

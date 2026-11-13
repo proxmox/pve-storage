@@ -1336,6 +1336,18 @@ sub volume_list {
 
     my $res = $plugin->list_volumes($storeid, $scfg, $vmid, $cts);
 
+    # only the content type tells the raw volume of a container from the volume of a VM
+    for my $item (@$res) {
+        my $ctype = $item->{content} // '';
+        if ($ctype eq 'rootdir') {
+            $item->{vtype} = 'ct-vol';
+        } elsif ($ctype eq 'images') {
+            my (undef, $volname) = parse_volume_id($item->{volid});
+            my $parsed = eval { ($plugin->parse_volname($volname))[0] } // '';
+            $item->{vtype} = $parsed eq 'vm-state' ? 'vm-state' : 'vm-vol';
+        }
+    }
+
     @$res = sort { lc($a->{volid}) cmp lc($b->{volid}) } @$res;
 
     return $res;

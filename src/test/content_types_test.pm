@@ -5,9 +5,16 @@ use warnings;
 
 use lib qw(..);
 
+use File::Path qw(make_path);
+use File::Temp;
+use Test::MockModule;
 use Test::More;
 
+use PVE::Cluster;
+use PVE::Storage;
 use PVE::Storage::Common;
+use PVE::Storage::Plugin;
+use PVE::Tools qw(run_command);
 
 # each test is comprised of the following array keys:
 # [0] => content types of a storage
@@ -64,6 +71,46 @@ for my $test ($matches_tests->@*) {
     my $matches = PVE::Storage::Common::vtype_matches($vtype, $required);
     is($matches, $expected, "$vtype " . ($expected ? 'matches' : 'does not match') . " $required");
 }
+
+my $storage_dir = File::Temp->newdir();
+
+my $raw = <<"CFG";
+dir: guests
+	path $storage_dir
+	content images,rootdir
+CFG
+
+my $cfg = PVE::Storage::Plugin->parse_config('storage.cfg', $raw);
+
+# guest 100 is a VM and guest 200 a container with a raw volume, while the container that the
+# subvolume of guest 300 belonged to is gone
+my $mock_cluster = Test::MockModule->new('PVE::Cluster', no_auto => 1);
+$mock_cluster->redefine(
+    get_vmlist => sub {
+        return { ids => { 100 => { type => 'qemu' }, 200 => { type => 'lxc' } } };
+    },
+);
+my $mock_storage = Test::MockModule->new('PVE::Storage', no_auto => 1);
+$mock_storage->redefine(activate_storage => sub { });
+
+for my $file (qw(100/vm-100-disk-0.raw 100/vm-100-state-snap1.raw 200/vm-200-disk-0.raw)) {
+    my $path = "$storage_dir/images/$file";
+    make_path($path =~ s!/[^/]+$!!r);
+    run_command(['/usr/bin/qemu-img', 'create', '-f', 'raw', $path, '1M'], outfunc => sub { });
+}
+make_path("$storage_dir/images/300/subvol-300-disk-0.subvol");
+
+my $vtypes = { map { $_->{volid} => $_->{vtype} } PVE::Storage::volume_list($cfg, 'guests')->@* };
+is_deeply(
+    $vtypes,
+    {
+        'guests:100/vm-100-disk-0.raw' => 'vm-vol',
+        'guests:100/vm-100-state-snap1.raw' => 'vm-state',
+        'guests:200/vm-200-disk-0.raw' => 'ct-vol',
+        'guests:300/subvol-300-disk-0.subvol' => 'ct-vol',
+    },
+    'guests: volume types of the listed volumes',
+);
 
 done_testing();
 

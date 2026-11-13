@@ -98,7 +98,7 @@ A volume that a container uses as its root file system or as a mount point.
 =back
 
 The in-tree plugins report the raw volume of a container as C<vm-vol>, as it is named like the
-disk of a VM.
+disk of a VM. Content listings go by the owning guest to report it as C<ct-vol>.
 
 The types C<images> and C<rootdir> are generic. As content type of a storage, C<images> allows all
 volume types of VMs and C<rootdir> all volume types of containers. As volume type, C<images> is
