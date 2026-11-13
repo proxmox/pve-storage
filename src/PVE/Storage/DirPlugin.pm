@@ -41,6 +41,10 @@ sub plugindata {
             { images => 1, rootdir => 1 },
         ],
         format => [{ raw => 1, qcow2 => 1, vmdk => 1, subvol => 1 }, 'raw'],
+        'advanced-properties' => {
+            preallocation => 1,
+            'snapshot-as-volume-chain' => 1,
+        },
         'sensitive-properties' => {},
     };
 }

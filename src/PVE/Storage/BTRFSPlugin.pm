@@ -49,6 +49,9 @@ sub plugindata {
             { images => 1, rootdir => 1 },
         ],
         format => [{ raw => 1, subvol => 1 }, 'raw'],
+        'advanced-properties' => {
+            preallocation => 1,
+        },
         'sensitive-properties' => {},
     };
 }

@@ -66,6 +66,7 @@ sub plugindata {
     return {
         content => [{ images => 1, 'vm-vol' => 1, none => 1 }, { images => 1 }],
         select_existing => 1,
+        'advanced-properties' => {},
         'sensitive-properties' => {},
     };
 }

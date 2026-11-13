@@ -32,6 +32,7 @@ sub plugindata {
     return {
         content => [{ import => 1 }, { import => 1 }],
         format => [{ raw => 1, qcow2 => 1, vmdk => 1 }, 'raw'],
+        'advanced-properties' => {},
         'sensitive-properties' => { password => 1 },
     };
 }
