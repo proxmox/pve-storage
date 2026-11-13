@@ -9,6 +9,7 @@ use File::Basename;
 use IO::File;
 use JSON;
 use List::Util qw(max);
+use POSIX qw(ceil);
 use Time::HiRes qw(clock_gettime CLOCK_MONOTONIC);
 
 use PVE::Diskmanage;
@@ -1302,6 +1303,19 @@ my sub lvm_qcow2_format {
     }
 }
 
+# room for two copies (old and new while storing) of two fully dirty persistent bitmaps at 64 KiB
+# granularity, and a refcount block for them, assuming 128 KiB clusters
+my sub persistent_bitmaps_headroom {
+    my ($size) = @_; # in KiB
+
+    my $cluster_kib = 128;
+    my $data_clusters = ceil($size / 64 / 8 / ($cluster_kib * 1024));
+    my $table_clusters = ceil($data_clusters * 8 / ($cluster_kib * 1024));
+    my $copy_clusters = 2 * ($data_clusters + $table_clusters) + 1; # one directory cluster
+
+    return (2 * $copy_clusters + 1) * $cluster_kib;
+}
+
 my sub calculate_lvm_size {
     my ($size, $fmt, $measure_options) = @_;
     #input size = qcow2 image size in kb
@@ -1317,7 +1331,7 @@ my sub calculate_lvm_size {
 
     die "Missing fully-allocated value from json" if !$info->{'fully-allocated'};
 
-    return $info->{'fully-allocated'} / 1024;
+    return $info->{'fully-allocated'} / 1024 + persistent_bitmaps_headroom($size);
 }
 
 # snapshot overlays use other cluster settings than base images, which changes the measured size
