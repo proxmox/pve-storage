@@ -310,8 +310,10 @@ Might be C<undef> in phase C<abort> for certain error scenarios.
 
 =item C<$success>
 
-Boolean indicating whether the job was successful or not. Success means that all
-individual guest backups were successful.
+Boolean indicating whether the backup of this guest was successful or not. It
+does not cover the other guests of the job. If something fails after the method
+was called with C<$success> being true, it is called again for the same guest
+with C<$success> being false.
 
 For a VM using bitmaps for incremental backup, the bitmaps on the QEMU side only
 advance past this backup if C<$success> is true. Otherwise, even if
