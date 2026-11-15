@@ -54,6 +54,11 @@ my $api_storage_config = sub {
             PVE::Storage::Plugin->encode_value($scfg->{type}, 'nodes', $scfg->{nodes});
     }
 
+    if (my $content_dirs = $scfg->{'content-dirs'}) {
+        $scfg->{'content-dirs'} =
+            PVE::Storage::Plugin->encode_value($scfg->{type}, 'content-dirs', $content_dirs);
+    }
+
     return $scfg;
 };
 

@@ -112,6 +112,11 @@ zfspool: mixed
 lvm: redundant
 	vgname redundant
 	content images,vm-state
+
+dir: overrides
+	path /srv/overrides
+	content iso,backup
+	content-dirs iso=images/iso,backup=dumps
 CFG
 
 my $cfg = PVE::Storage::Plugin->parse_config('storage.cfg', $raw);
@@ -249,6 +254,16 @@ for my $test ($api_tests->@*) {
 
     is($cluster_asserted, $expected, "$storeid: cluster check for setting content $content");
 }
+
+my $content_dirs = PVE::API2::Storage::Config->read({ storage => 'overrides' })->{'content-dirs'};
+is($content_dirs, 'backup=dumps,iso=images/iso', 'overrides: content directories as read');
+eval {
+    PVE::API2::Storage::Config->update({
+        storage => 'overrides',
+        'content-dirs' => $content_dirs,
+    });
+};
+is($@, '', 'overrides: content directories can be set as read');
 
 done_testing();
 
