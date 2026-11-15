@@ -25,9 +25,9 @@ Package: libpve-storage-perl
 Architecture: all
 Breaks: libpve-guest-common-perl (<< 4.0-3),
         libpve-http-server-perl (<< 4.0-3),
-        pve-container (<< 3.1-2),
-        pve-manager (<< 5.2-12),
-        qemu-server (<< 9.2.10),
+        pve-container (<< 6.1.22),
+        pve-manager (<< 9.2.29),
+        qemu-server (<< 9.2.17),
 Depends: bzip2,
          ceph-common (>= 12.2~),
          ceph-fuse,
