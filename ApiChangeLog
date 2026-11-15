@@ -43,6 +43,52 @@ Future changes should be documented in here.
   `list_volumes()` is still only called with `images` and `rootdir` for the volumes of guests, also
   when volumes of a single type are wanted.
 
+* Allow plugins to describe their properties for the web UI
+
+  The web UI generates the dialog for adding and editing a storage of a third-party plugin from
+  the metadata of the plugin. `GET /plugins/storage/plugin` returns the metadata of all plugins,
+  optionally only of those with the `origin` `builtin` or `custom`, and
+  `GET /plugins/storage/plugin/{type}` that of a single plugin. It consists of the origin, the
+  supported and the default content types from `plugindata()` and a schema with an entry for each
+  option of the plugin: the schema of the property, with `optional` and `fixed` as declared in
+  `options()` and with the hints `sensitive`, `x-advanced` and `x-hidden`.
+
+  This works for a plugin of any supported API version. The following additions to a plugin are
+  all optional and improve the result:
+
+  `title` in the schema of a property is the label of its field. Without it, the label is derived
+  from the name of the property.
+
+  `multiline` in the schema of a string property asks for a text field with several lines. It needs
+  `libpve-common-perl` 9.2.10 or newer and is only a hint for the dialog. The section config still
+  refuses a value that contains a line feed. So such a property has to be listed in
+  `'sensitive-properties'`, which keeps it out of `/etc/pve/storage.cfg`, or the plugin has to
+  encode the value itself, for example in `check_config()`.
+
+  `'advanced-properties'` and `'hidden-properties'` in `plugindata()` are hashes like
+  `'sensitive-properties'`. The properties in the former are moved to the advanced section of the
+  dialog and reported as `x-advanced`, those in the latter are left out of the dialog and reported
+  as `x-hidden`. A hidden property that is required is still shown when adding a storage. The
+  fields that the dialog has for properties shared by all storages, like `nodes`, `disable`,
+  `content` and the backup retention, do not or only partly follow these two hashes and `title`.
+
+  `meta` in `plugindata()` is a hash with information about the plugin itself. Its only key for
+  now is `display-name`, the name that the web UI shows for the storage type.
+
+  A property is reported as `sensitive` if it is listed in `'sensitive-properties'`, or in the
+  fallback list of version 11 for a plugin without that hash, or if its schema sets the `sensitive`
+  keyword. The web UI never shows the value of such a property and leaves it unchanged if the field
+  stays empty. The two declarations differ in what happens to the value: a property in
+  `'sensitive-properties'` is passed to the hooks of the plugin instead of being written to
+  `/etc/pve/storage.cfg`, while the `sensitive` keyword only declares the value a secret. A
+  property that only sets the keyword is stored in `/etc/pve/storage.cfg` and returned when
+  reading the storage configuration through the API, like any other property.
+
+  A property in `'sensitive-properties'` has to be optional in `options()`. Its value is removed
+  before the configuration of a new storage is checked for the required options of the plugin, so
+  a storage with a required one cannot be added. A plugin that needs the value can check for it in
+  `on_add_hook()`, like the ESXi plugin does for its password.
+
 ## Version 16:
 
 * Add `volname_for_format()`, `get_parsed_format()`, `volname_with_format()`, `is_valid_format()` and
