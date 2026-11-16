@@ -67,7 +67,48 @@ PVE::Storage::PBSPlugin->register();
 PVE::Storage::BTRFSPlugin->register();
 PVE::Storage::ESXiPlugin->register();
 
+# A third-party plugin can fail the initialization of all plugins, for example by declaring a
+# property that another one declares too. Leave such plugins out, so that the others keep working.
+sub init_plugins {
+    my ($custom_plugins) = @_;
+
+    eval { PVE::Storage::Plugin->init() };
+    return if !$@;
+
+    my $pdata = PVE::Storage::Plugin->private();
+    my $unregister = sub {
+        my ($class) = @_;
+        delete $pdata->{$_}->{ $class->type() } for qw(plugins plugindata);
+    };
+    $unregister->($_) for $custom_plugins->@*;
+    PVE::Storage::Plugin->init(); # dies if the in-tree plugins are at fault
+
+    # In passes, as a plugin can use a property of one that gets registered after it, and sorted,
+    # so that all nodes leave out the same plugins.
+    my $errors = {};
+    my @pending = sort $custom_plugins->@*;
+    while (@pending) {
+        my @failed;
+        for my $class (@pending) {
+            eval {
+                $class->register();
+                PVE::Storage::Plugin->init();
+            };
+            next if !$@;
+            $errors->{$class} = $@;
+            $unregister->($class);
+            push @failed, $class;
+        }
+        last if scalar(@failed) == scalar(@pending);
+        @pending = @failed;
+    }
+    warn "Error loading storage plugin \"$_\": $errors->{$_}" for @pending;
+
+    PVE::Storage::Plugin->init();
+}
+
 # load third-party plugins
+my $custom_plugins = [];
 if (-d '/usr/share/perl5/PVE/Storage/Custom') {
     dir_glob_foreach(
         '/usr/share/perl5/PVE/Storage/Custom',
@@ -96,6 +137,7 @@ if (-d '/usr/share/perl5/PVE/Storage/Custom') {
                 # all OK, do import and register (i.e., "use")
                 import $file;
                 $modname->register();
+                push $custom_plugins->@*, $modname;
 
                 # If we got this far and the API version is not the same, make some noise:
                 warn
@@ -109,8 +151,7 @@ if (-d '/usr/share/perl5/PVE/Storage/Custom') {
     );
 }
 
-# initialize all plugins
-PVE::Storage::Plugin->init();
+init_plugins($custom_plugins);
 
 # the following REs indicate the number or capture groups via the trailing digit
 # CAUTION don't forget to update the digits accordingly after messing with the capture groups
