@@ -10,83 +10,63 @@ Future changes should be documented in here.
 
 * Add the volume types `vm-vol`, `vm-state` and `ct-vol`
 
-  A guest volume can now have a more specific type than `images`: `vm-vol` for a volume that a VM
-  uses as a drive, `vm-state` for the saved state of a VM from a snapshot or from hibernation, and
-  `ct-vol` for a volume of a container. `parse_volname()` may return them as volume type.
+  `parse_volname()` may return a more specific type than `images` for a guest volume: `vm-vol` for
+  the disk of a VM, `vm-state` for a saved VM state (snapshot or hibernation) and `ct-vol` for a
+  container volume. A plugin that cannot tell them apart can keep returning `images`, which is
+  accepted wherever a VM volume type is expected.
 
-  The in-tree plugins derive the type from the format and the name of a volume with
-  `$class->guest_volume_vtype($format, $name)` of the base plugin, which other plugins with the same
-  naming scheme can use too. A subvolume is a `ct-vol`, a volume named `vm-<VMID>-state-<NAME>` a
-  `vm-state`, and everything else a `vm-vol`. That includes the raw volumes of containers, which
-  are named like those of VMs.
+  The in-tree plugins derive the type with `$class->guest_volume_vtype($format, $name)` of the base
+  plugin, which other plugins with the same naming scheme can use too: a subvolume is a `ct-vol`,
+  a volume named `vm-<VMID>-state-<NAME>` a `vm-state` and everything else a `vm-vol`. That
+  includes raw container volumes, which are named like VM volumes.
 
-  A plugin that implements an API version before 17 and inherits `parse_volname()` from an in-tree
-  plugin keeps getting `images` for all guest volumes. That does not hold if it calls the parser
-  of an in-tree plugin by class name, so use `$class->SUPER::parse_volname()` for that. When
-  raising the API version of such a plugin, check its own comparisons with the `images` volume
-  type. The helpers `is_guest_vtype()` and `vtype_matches()` in `PVE::Storage::Common` cover the
-  common cases.
+  A plugin with an API version before 17 that inherits `parse_volname()` from an in-tree plugin
+  keeps getting `images`, unless it calls that parser by class name, so use
+  `$class->SUPER::parse_volname()`. When raising the API version, check where the plugin compares
+  a volume type with `images`. `is_guest_vtype()` and `vtype_matches()` in `PVE::Storage::Common`
+  cover the common cases.
 
-  A plugin that cannot tell the types of its volumes apart can keep returning `images`, which is
-  accepted wherever one of the VM volume types is expected.
-
-  The content types `images` and `rootdir` of a storage allow all volume types of VMs and of
-  containers. So check whether a storage allows a volume type with
-  `PVE::Storage::Common::content_allows()` instead of looking the type up in `$scfg->{content}`.
+  The content types `images` and `rootdir` allow all volume types of VMs and of containers. Check
+  whether a storage allows a type with `PVE::Storage::Common::content_allows()` instead of looking
+  it up in `$scfg->{content}`.
 
 * Allow `vm-vol`, `vm-state` and `ct-vol` as content types
 
-  A plugin can list these volume types in the valid content types of its `plugindata()`, next to
-  `images` and `rootdir`. A storage of its type can then be restricted to some of them, for example
-  to only hold the state volumes of VMs.
-
-  `list_volumes()` is still only called with `images` and `rootdir` for the volumes of guests, also
-  when volumes of a single type are wanted.
+  A plugin can list them in the content types of its `plugindata()`, next to `images` and
+  `rootdir`. A storage of its type can then be restricted to some of them, for example to VM
+  states. `list_volumes()` is still only called with `images` and `rootdir` for guest volumes.
 
 * Allow plugins to describe their properties for the web UI
 
   The web UI generates the dialog for adding and editing a storage of a third-party plugin from
-  the metadata of the plugin. `GET /plugins/storage/plugin` returns the metadata of all plugins,
-  optionally only of those with the `origin` `builtin` or `custom`, and
-  `GET /plugins/storage/plugin/{type}` that of a single plugin. It consists of the origin, the
-  supported and the default content types from `plugindata()` and a schema with an entry for each
-  option of the plugin: the schema of the property, with `optional` and `fixed` as declared in
-  `options()` and with the hints `sensitive`, `x-advanced` and `x-hidden`.
+  metadata that `GET /plugins/storage/plugin` returns for all plugins, optionally filtered by
+  `origin` (`builtin` or `custom`), and `GET /plugins/storage/plugin/{type}` for one. It holds the
+  origin, the supported and default content types and the schema of each option, with `optional`
+  and `fixed` as in `options()` and the hints `sensitive`, `x-advanced` and `x-hidden`. This works
+  for any supported API version. A plugin can improve its dialog with:
 
-  This works for a plugin of any supported API version. The following additions to a plugin are
-  all optional and improve the result:
+  - `title` in the schema of a property: the label of the field, which is otherwise derived from
+    the name of the property.
+  - `multiline` in the schema of a string property: a text field with several lines. It needs
+    `libpve-common-perl` 9.2.10 and is only a hint, the section config still refuses values with
+    line feeds. So list the property in `'sensitive-properties'` or encode the value in the
+    plugin, for example in `check_config()`.
+  - `'advanced-properties'` and `'hidden-properties'` in `plugindata()`, hashes like
+    `'sensitive-properties'`: the former moves properties to the advanced section, the latter
+    leaves them out of the dialog. A hidden required property is still shown when adding a
+    storage. The fields for properties that all storages share, like `nodes`, `content` and the
+    backup retention, only partly follow these two and `title`.
+  - `meta => { 'display-name' => ... }` in `plugindata()`: the name shown for the storage type.
 
-  `title` in the schema of a property is the label of its field. Without it, the label is derived
-  from the name of the property.
+  A property is reported as `sensitive` if it is in `'sensitive-properties'`, in the fallback list
+  of version 11 for a plugin without that hash, or if its schema sets `sensitive`. The web UI never
+  shows such a value and leaves it unchanged if the field stays empty. Only
+  `'sensitive-properties'` keeps a value out of `/etc/pve/storage.cfg` and passes it to the hooks
+  of the plugin. With the schema keyword alone it is stored and returned by the API like any other
+  property.
 
-  `multiline` in the schema of a string property asks for a text field with several lines. It needs
-  `libpve-common-perl` 9.2.10 or newer and is only a hint for the dialog. The section config still
-  refuses a value that contains a line feed. So such a property has to be listed in
-  `'sensitive-properties'`, which keeps it out of `/etc/pve/storage.cfg`, or the plugin has to
-  encode the value itself, for example in `check_config()`.
-
-  `'advanced-properties'` and `'hidden-properties'` in `plugindata()` are hashes like
-  `'sensitive-properties'`. The properties in the former are moved to the advanced section of the
-  dialog and reported as `x-advanced`, those in the latter are left out of the dialog and reported
-  as `x-hidden`. A hidden property that is required is still shown when adding a storage. The
-  fields that the dialog has for properties shared by all storages, like `nodes`, `disable`,
-  `content` and the backup retention, do not or only partly follow these two hashes and `title`.
-
-  `meta` in `plugindata()` is a hash with information about the plugin itself. Its only key for
-  now is `display-name`, the name that the web UI shows for the storage type.
-
-  A property is reported as `sensitive` if it is listed in `'sensitive-properties'`, or in the
-  fallback list of version 11 for a plugin without that hash, or if its schema sets the `sensitive`
-  keyword. The web UI never shows the value of such a property and leaves it unchanged if the field
-  stays empty. The two declarations differ in what happens to the value: a property in
-  `'sensitive-properties'` is passed to the hooks of the plugin instead of being written to
-  `/etc/pve/storage.cfg`, while the `sensitive` keyword only declares the value a secret. A
-  property that only sets the keyword is stored in `/etc/pve/storage.cfg` and returned when
-  reading the storage configuration through the API, like any other property.
-
-  A property in `'sensitive-properties'` has to be optional in `options()`. Its value is removed
-  before the configuration of a new storage is checked for the required options of the plugin, so
-  a storage with a required one cannot be added. A plugin that needs the value can check for it in
+  A property in `'sensitive-properties'` has to be optional in `options()`: its value is removed
+  before the required options of a new storage are checked. A plugin that needs it can check in
   `on_add_hook()`, like the ESXi plugin does for its password.
 
 ## Version 16:
