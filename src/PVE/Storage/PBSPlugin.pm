@@ -45,17 +45,16 @@ sub plugindata {
 
 sub properties {
     return {
-        port => {
-            title => "Port",
-            description =>
-                "Use this port to connect to the storage instead of the default one (for"
-                . " example, with PBS or ESXi). For NFS and CIFS, use the 'options' option to"
-                . " configure the port via the mount options.",
-            type => 'integer',
-            minimum => 1,
-            maximum => 65535,
-            optional => 1,
-        },
+        port => get_standard_option(
+            'pve-storage-port',
+            {
+                description =>
+                    "Use this port to connect to the storage instead of the default one (for"
+                    . " example, with PBS or ESXi). For NFS and CIFS, use the 'options' option to"
+                    . " configure the port via the mount options.",
+                optional => 1,
+            },
+        ),
         datastore => {
             title => "Datastore",
             description => "Proxmox Backup Server datastore name.",

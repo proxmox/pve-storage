@@ -55,6 +55,23 @@ PVE::JSONSchema::register_standard_option(
     },
 );
 
+=head3 pve-storage-port
+
+The port for connecting to a storage that is reached over the network.
+
+=cut
+
+PVE::JSONSchema::register_standard_option(
+    'pve-storage-port',
+    {
+        title => "Port",
+        description => "Use this port to connect to the storage instead of the default one.",
+        type => 'integer',
+        minimum => 1,
+        maximum => 65535,
+    },
+);
+
 =head3 pve-vm-image-format
 
 Possible formats a VM image can have.
