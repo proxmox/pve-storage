@@ -230,4 +230,80 @@ for my $test ($tests->@*) {
     }
 }
 
+# The loader checks a third-party plugin that isolates its properties before registering it, here
+# with variations of the fixture that are never registered.
+my $variant_count = 0;
+my sub subclass_with($base, %methods) {
+    my $class = 'PVE::Storage::Custom::IsolatedFixtureVariant' . $variant_count++;
+
+    no strict 'refs'; ## no critic (ProhibitNoStrict)
+    @{"${class}::ISA"} = ($base);
+    for my $name (keys %methods) {
+        my $value = $methods{$name};
+        *{"${class}::${name}"} = sub { return $value; };
+    }
+    return $class;
+}
+
+my sub fixture_with(%methods) {
+    return subclass_with('PVE::Storage::Custom::IsolatedFixturePlugin', %methods);
+}
+
+my $isolating = { content => [{ none => 1 }, { none => 1 }], 'isolate-properties' => 1 };
+
+# each test is comprised of the following array keys:
+# [0] => description
+# [1] => plugin class
+# [2] => API version of the plugin
+# [3] => expected error, if any
+my $loader_tests = [
+    ['isolating plugin', 'PVE::Storage::Custom::IsolatedFixturePlugin', 17],
+    [
+        'plugin derived from the directory plugin',
+        subclass_with('PVE::Storage::DirPlugin', plugindata => $isolating),
+        17,
+    ],
+    [
+        'API version without support for isolation',
+        'PVE::Storage::Custom::IsolatedFixturePlugin',
+        16,
+        qr/needs API version 17 or newer \(has 16\)/,
+    ],
+    [
+        'property of the base plugin declared again',
+        fixture_with(properties => { content => { type => 'integer' } }),
+        17,
+        qr/declares the property 'content' of the base plugin/,
+    ],
+    [
+        'parameter for the config digest declared',
+        fixture_with(properties => { digest => { type => 'string', optional => 1 } }),
+        17,
+        qr/declares the property 'digest', which is a parameter of the API/,
+    ],
+    [
+        'parameter for deleting properties declared',
+        fixture_with(properties => { delete => { type => 'boolean', optional => 1 } }),
+        17,
+        qr/declares the property 'delete', which is a parameter of the API/,
+    ],
+    [
+        'properties exposed to other plugins',
+        fixture_with(plugindata => { $isolating->%*, 'expose-properties' => 1 }),
+        17,
+        qr/exposes its isolated properties/,
+    ],
+];
+
+for my $test ($loader_tests->@*) {
+    my ($description, $class, $api_version, $expected) = $test->@*;
+
+    eval { PVE::Storage::assert_isolating_plugin_is_loadable($class, $api_version) };
+    if ($expected) {
+        like($@, $expected, "loader refuses: $description");
+    } else {
+        is($@, '', "loader accepts: $description");
+    }
+}
+
 done_testing();

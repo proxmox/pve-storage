@@ -67,6 +67,26 @@ PVE::Storage::PBSPlugin->register();
 PVE::Storage::BTRFSPlugin->register();
 PVE::Storage::ESXiPlugin->register();
 
+# An own declaration wins over the one of the base plugin, which generic code relies on.
+sub assert_isolating_plugin_is_loadable {
+    my ($class, $api_version) = @_;
+
+    die "isolates its properties, which needs API version 17 or newer (has $api_version)\n"
+        if $api_version < 17;
+    die "exposes its isolated properties, which only in-tree plugins can do\n"
+        if $class->plugindata()->{'expose-properties'};
+
+    my $base = PVE::Storage::Plugin->base_properties();
+    my $own = $class->properties();
+
+    for my $property (sort keys $own->%*) {
+        die "declares the property '$property' of the base plugin\n" if $base->{$property};
+        # its declaration would apply on top when updating a storage of its type
+        die "declares the property '$property', which is a parameter of the API\n"
+            if $property eq 'delete' || $property eq 'digest';
+    }
+}
+
 # A third-party plugin can fail the initialization of all plugins, for example by declaring a
 # property that another one declares too. Leave such plugins out, so that the others keep working.
 sub init_plugins {
@@ -134,6 +154,8 @@ if (-d '/usr/share/perl5/PVE/Storage/Custom') {
                 my $min_version = (APIVER - APIAGE);
                 die "API version too old, please update the plugin ($version < $min_version)\n"
                     if $version < $min_version;
+                assert_isolating_plugin_is_loadable($modname, $version)
+                    if ($modname->plugindata() // {})->{'isolate-properties'};
                 # all OK, do import and register (i.e., "use")
                 import $file;
                 $modname->register();
