@@ -1,3 +1,46 @@
+libpve-storage-perl (9.1.17) trixie; urgency=medium
+
+  * tell the volumes of guests apart by type: 'vm-vol' for the disks of VMs,
+    'vm-state' for their saved states from snapshots and hibernation, and
+    'ct-vol' for the volumes of containers. The content types 'images' and
+    'rootdir' keep allowing all types of VMs and of containers, so existing
+    storage configurations and volumes do not change.
+
+  * allow restricting a storage to some of these volume types, for example to
+    keep VM states off a storage or to dedicate one to them. This is refused
+    until all cluster nodes run pve-manager 9.2.29 or newer, as older nodes
+    cannot read such a content list.
+
+  * break qemu-server older than 9.2.17, pve-container older than 6.1.22 and
+    pve-manager older than 9.2.29, so that these packages get upgraded
+    together. Replication in the older versions does not accept the volume
+    types.
+
+  * plugin api: bump the version to 17 and the age to 8, so plugins for the
+    versions 9 to 16 keep loading. See the ApiChangeLog for the details.
+
+  * api: add endpoints describing the installed storage plugins and their
+    properties, from which the web UI generates the dialogs for storages of
+    third-party plugins. Plugins can provide a display name, field labels and
+    hints for advanced, hidden and multi-line properties.
+
+  * api: return the 'content-dirs' of a storage as the string that adding and
+    updating a storage accept, instead of as an object.
+
+  * mark the properties and scan parameters that hold credentials as sensitive
+    in their schema, so that tools can keep them out of their output.
+
+  * lvm: qcow2: keep the preallocated clusters when deleting the oldest
+    snapshot of a stopped VM, and reserve space for persistent dirty bitmaps.
+    Otherwise the image could outgrow its volume, which pauses the VM on a
+    later write, or a bitmap could get lost.
+
+  * backup provider: do not pass an undocumented extra argument when asking a
+    provider for the guest configuration of an archive, which made providers
+    that declare a signature fail.
+
+ -- Proxmox Support Team <support@proxmox.com>  Mon, 16 Nov 2026 02:58:34 +0100
+
 libpve-storage-perl (9.1.16) trixie; urgency=medium
 
   * lvm: find a shared volume group that another node created on a device this
