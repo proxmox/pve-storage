@@ -69,6 +69,44 @@ Future changes should be documented in here.
   before the required options of a new storage are checked. A plugin that needs it can check in
   `on_add_hook()`, like the ESXi plugin does for its password.
 
+* Allow plugins to isolate their properties
+
+  With `'isolate-properties' => 1` in `plugindata()`, the properties a plugin declares belong to
+  it alone: no other plugin can use them, and their names cannot clash with those of other
+  plugins, including ones that in-tree plugins get later, only with the common properties below.
+  Without it, a third-party plugin is not loaded if it declares a property that an in-tree
+  plugin, or a third-party plugin loaded before it, declares too.
+
+  It requires API version 17, so a plugin whose `api()` also reports older versions must only set
+  it if `PVE::Storage::APIVER` is at least 17. Without it, the plugin has to list its properties
+  in `options()` and use, not declare, a property that another plugin declares, like `server`.
+
+  The properties an isolating plugin declares are its options without being listed in
+  `options()`, and required unless their schema sets `optional`. Listing one there allows marking
+  it `fixed`, and then also decides whether it is optional. What `options()` requires, the API
+  requires as parameter, so a property that the plugin derives a value for has to be optional.
+
+  Besides its own, such a plugin can only use the common properties, which the base plugin
+  declares: `nodes`, `disable`, `shared`, `content`, `content-dirs`, `format`, `preallocation`,
+  `prune-backups`, `max-protected-backups`, `path`, `create-base-path`, `create-subdirs`,
+  `bwlimit`, `base`, `snapshot-as-volume-chain` and the deprecated `mkdir`. Code outside of the
+  plugins reads these from any storage, for example `path` to tell whether its volumes are files,
+  so the plugin must not declare one of them itself, nor the API parameters `delete` and
+  `digest`. The properties of in-tree plugins, like `server`, `username` or `port`, are not
+  available. The plugin declares the ones it needs itself and can use the standard option
+  `pve-storage-port` and the registered formats, like `pve-storage-server`, for them. A plugin
+  that breaks one of these rules, or sets `'expose-properties'`, is not loaded.
+
+  A common property is only added with a new API version, which is announced here. A plugin that
+  declares a property of that name is then not loaded until it renames it, so prefer names that
+  are specific to the plugin, for example prefixed with its type.
+
+  As soon as one such plugin is installed, the API checks the parameters for adding and updating a
+  storage against the options of its type alone, for all storage types. So every plugin has to
+  list the sensitive properties that it uses in `options()`.
+  Set 'sensitive-properties' in such a plugin, even if empty. Without it, the fallback list of
+  version 11 also applies to the plugin's own properties of these names.
+
 ## Version 16:
 
 * Add `volname_for_format()`, `get_parsed_format()`, `volname_with_format()`, `is_valid_format()` and
