@@ -265,13 +265,6 @@ my $defaultData = {
             format => 'pve-volume-id',
             optional => 1,
         },
-        subdir => {
-            title => "Subdirectory",
-            description => "Subdir to mount.",
-            type => 'string',
-            format => 'pve-storage-path',
-            optional => 1,
-        },
         format => get_standard_option(
             'pve-storage-image-format',
             {
@@ -294,25 +287,6 @@ my $defaultData = {
             description => "Overrides for default content type directories.",
             type => "string",
             format => "pve-dir-override-list",
-            optional => 1,
-        },
-        options => {
-            title => "Mount Options",
-            description => "Comma-separated list of mount options."
-                . " See 'man nfs', 'man mount.cifs', or 'man mount.ceph' for more information.",
-            type => 'string',
-            format => 'pve-storage-options',
-            optional => 1,
-        },
-        port => {
-            title => "Port",
-            description =>
-                "Use this port to connect to the storage instead of the default one (for"
-                . " example, with PBS or ESXi). For NFS and CIFS, use the 'options' option to"
-                . " configure the port via the mount options.",
-            type => 'integer',
-            minimum => 1,
-            maximum => 65535,
             optional => 1,
         },
         'snapshot-as-volume-chain' => {

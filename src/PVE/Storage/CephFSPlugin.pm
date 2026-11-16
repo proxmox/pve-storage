@@ -137,6 +137,13 @@ sub plugindata {
 
 sub properties {
     return {
+        subdir => {
+            title => "Subdirectory",
+            description => "Subdir to mount.",
+            type => 'string',
+            format => 'pve-storage-path',
+            optional => 1,
+        },
         fuse => {
             title => "Mount with FUSE",
             description => "Mount the filesystem through FUSE.",

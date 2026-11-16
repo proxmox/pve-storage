@@ -89,6 +89,14 @@ sub plugindata {
 
 sub properties {
     return {
+        options => {
+            title => "Mount Options",
+            description => "Comma-separated list of mount options."
+                . " See 'man nfs', 'man mount.cifs', or 'man mount.ceph' for more information.",
+            type => 'string',
+            format => 'pve-storage-options',
+            optional => 1,
+        },
         export => {
             title => "Export Path",
             description => "Path exported by the NFS server (e.g., /srv/nfs).",
