@@ -227,6 +227,44 @@ my $defaultData = {
             type => 'boolean',
             optional => 1,
         },
+        path => {
+            title => "Path",
+            description => "Path of the storage in the local file system,"
+                . " for example its base directory or mount point.",
+            type => 'string',
+            format => 'pve-storage-path',
+            optional => 1,
+        },
+        mkdir => {
+            description =>
+                "Create the directory if it doesn't exist and populate it with default sub-dirs."
+                . " NOTE: Deprecated, use the 'create-base-path' and 'create-subdirs' options instead.",
+            type => 'boolean',
+            default => 'yes',
+            optional => 1,
+        },
+        'create-base-path' => {
+            title => "Create Base Directory",
+            description => "Create the base directory if it doesn't exist.",
+            type => 'boolean',
+            default => 'yes',
+            optional => 1,
+        },
+        'create-subdirs' => {
+            title => "Populate Base Directory",
+            description => "Populate the base directory with the default structure.",
+            type => 'boolean',
+            default => 'yes',
+            optional => 1,
+        },
+        bwlimit => get_standard_option('bwlimit', { title => "Bandwidth Limit" }),
+        base => {
+            title => "Base Volume",
+            description => "Volume ID of the base volume (automatically activated).",
+            type => 'string',
+            format => 'pve-volume-id',
+            optional => 1,
+        },
         subdir => {
             title => "Subdirectory",
             description => "Subdir to mount.",

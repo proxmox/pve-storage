@@ -9,7 +9,8 @@ use Test::More;
 
 use PVE::Storage::Plugin;
 
-# declares 'is_mountpoint' itself, with another schema than the built-in plugins use for it
+# declares 'is_mountpoint' itself, with another schema than the built-in plugins use for it, and
+# uses properties of the base plugin
 package PVE::Storage::Custom::IsolatedFixturePlugin {
     use base qw(PVE::Storage::Plugin);
 
@@ -33,6 +34,8 @@ package PVE::Storage::Custom::IsolatedFixturePlugin {
 
     sub options {
         return {
+            path => { fixed => 1 },
+            bwlimit => { optional => 1 },
             content => { optional => 1 },
             disable => { optional => 1 },
         };
@@ -51,6 +54,7 @@ dir: local
 	content iso
 
 isolated: fixture
+	path /mnt/fixture
 	fixture-id one
 	content iso
 EOF
@@ -121,6 +125,18 @@ my $tests = [
         qr/nocow: property is not defined in schema/,
     ],
     [
+        'isolated storage, property of the base plugin',
+        'update',
+        { storage => 'fixture', bwlimit => 'migration=100' },
+        [bwlimit => 'migration=100'],
+    ],
+    [
+        'isolated storage, property of the base plugin it does not use',
+        'update',
+        { storage => 'fixture', shared => 1 },
+        qr/shared: property is not defined in schema/,
+    ],
+    [
         'isolated storage, delete an own required property',
         'update',
         { storage => 'fixture', delete => 'fixture-id' },
@@ -135,14 +151,20 @@ my $tests = [
     [
         'create isolated storage',
         'create',
-        { storage => 'new', type => 'isolated', 'fixture-id' => 'two' },
-        ['fixture-id' => 'two'],
+        { storage => 'new', type => 'isolated', path => '/mnt/new', 'fixture-id' => 'two' },
+        [path => '/mnt/new'],
     ],
     [
         'create isolated storage without an own required property',
         'create',
-        { storage => 'new', type => 'isolated', is_mountpoint => 'never' },
+        { storage => 'new', type => 'isolated', path => '/mnt/new' },
         qr/fixture-id: property is missing and it is not optional/,
+    ],
+    [
+        'create built-in storage whose path is derived from its ID',
+        'create',
+        { storage => 'new', type => 'nfs', server => '192.0.2.1', export => '/export' },
+        [path => '/mnt/pve/new'],
     ],
     [
         'create built-in storage with a property of the isolating plugin',

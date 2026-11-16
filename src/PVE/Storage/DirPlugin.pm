@@ -12,7 +12,7 @@ use POSIX;
 
 use PVE::Storage::Plugin;
 use PVE::GuestImport::OVF;
-use PVE::JSONSchema qw(get_standard_option);
+use PVE::JSONSchema;
 
 use base qw(PVE::Storage::Plugin);
 
@@ -60,32 +60,6 @@ sub plugindata {
 
 sub properties {
     return {
-        path => {
-            title => "Path",
-            description => "Path of the storage in the local file system,"
-                . " for example its base directory or mount point.",
-            type => 'string',
-            format => 'pve-storage-path',
-        },
-        mkdir => {
-            description =>
-                "Create the directory if it doesn't exist and populate it with default sub-dirs."
-                . " NOTE: Deprecated, use the 'create-base-path' and 'create-subdirs' options instead.",
-            type => 'boolean',
-            default => 'yes',
-        },
-        'create-base-path' => {
-            title => "Create Base Directory",
-            description => "Create the base directory if it doesn't exist.",
-            type => 'boolean',
-            default => 'yes',
-        },
-        'create-subdirs' => {
-            title => "Populate Base Directory",
-            description => "Populate the base directory with the default structure.",
-            type => 'boolean',
-            default => 'yes',
-        },
         is_mountpoint => {
             title => "Is Mountpoint",
             description => "Assume the given path is an externally managed mountpoint "
@@ -94,7 +68,6 @@ sub properties {
             type => 'string',
             default => 'no',
         },
-        bwlimit => get_standard_option('bwlimit', { title => "Bandwidth Limit" }),
     };
 }
 

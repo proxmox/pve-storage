@@ -910,12 +910,6 @@ sub properties {
             type => 'string',
             format => 'pve-storage-vgname',
         },
-        base => {
-            title => "Base Volume",
-            description => "Volume ID of the base volume (automatically activated).",
-            type => 'string',
-            format => 'pve-volume-id',
-        },
         saferemove => {
             title => "Wipe Removed Volumes",
             description => "Zero-out data when removing LVs.",
