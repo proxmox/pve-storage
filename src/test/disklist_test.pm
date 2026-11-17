@@ -226,6 +226,8 @@ sub test_disk_list {
                 $expected_disk_list->{$disk},
                 "disk $disk should be the same",
             );
+            $testcount++;
+            is_deeply([keys %$disk_tmp], [$disk], "only disk $disk gets returned");
 
             # test wrong parameter
             eval { PVE::Diskmanage::get_disks({ test => 1 }); };

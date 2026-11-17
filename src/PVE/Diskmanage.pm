@@ -572,7 +572,7 @@ sub get_disks {
 
     my $lvmhash = get_lvm_devices($lsblk_info, $san_inventory);
 
-    my $disk_regex = ".*";
+    my $wanted;
     if (defined($disks)) {
         if (!ref($disks)) {
             $disks = [$disks];
@@ -583,21 +583,25 @@ sub get_disks {
         $_ =~ s|cciss/|cciss!| for @$disks;
 
         if ($include_partitions) {
-            # Proper blockdevice is needed for the regex, use parent for partitions.
+            # Proper blockdevice is needed for the lookup, use parent for partitions.
             for my $disk ($disks->@*) {
                 next if !is_partition("/dev/$disk");
                 $disk = strip_dev(get_blockdev("/dev/$disk"));
             }
         }
 
-        $disk_regex = "(?:" . join('|', @$disks) . ")";
+        # Not as one pattern of all names: perl keeps only the last compiled form of the pattern
+        # that dir_glob_foreach() interpolates, and the partition lookup of each disk below uses
+        # another one, so the pattern with all names would be compiled again for every disk.
+        $wanted = { map { $_ => 1 } @$disks };
     }
 
     dir_glob_foreach(
         '/sys/block',
-        $disk_regex,
+        '.*',
         sub {
             my ($dev) = @_;
+            return if $wanted && !$wanted->{$dev};
             # whitelisting following devices
             # - hdX         ide block device
             # - sdX         scsi/sata block device
