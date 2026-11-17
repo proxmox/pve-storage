@@ -19,6 +19,7 @@ my $testcount = 0; # testcount for TAP::Harness
 my $diskmanage_module; # mockmodule for PVE::Diskmanage
 my $multipath_module; # mockmodule for PVE::Multipath
 my $print = 0;
+my $udev_single_queries = 0; # udevadm calls for one device
 
 my $multipath_aliases = {
     '/dev/mapper/mpatha' => '/dev/dm-0',
@@ -33,7 +34,18 @@ sub mocked_run_command {
 
     my $outputlines = [];
     if (my $ref = ref($cmd)) {
-        if ($cmd->[0] =~ m/udevadm/i) {
+        if ($cmd->[0] =~ m/udevadm/i && grep { $_ eq '--export-db' } @$cmd) {
+            # simulate the database of all devices, an empty line ends an entry
+            for my $file (sort glob("disk_tests/$testcasedir/*_udevadm")) {
+                my ($name) = $file =~ m|/([^/]+)$|;
+                my @lines = split(/\n/, read_test_file($name));
+                # the database is keyed by the device path, which older fixtures lack
+                unshift @lines, 'P: /devices/virtual/block/' . ($name =~ s/_udevadm$//r)
+                    if !grep { m/^P: / } @lines;
+                push @$outputlines, @lines, '';
+            }
+        } elsif ($cmd->[0] =~ m/udevadm/i) {
+            $udev_single_queries++;
             # simulate udevadm output
             my $dev = $cmd->[3];
             $dev =~ s|/sys/block/||;
@@ -277,6 +289,58 @@ sub test_disk_list {
             print Dumper($status) if $print;
             $testcount++;
             is_deeply($status, $expected_status, 'nvme path status should be the same');
+        }
+
+        if ($testcasedir eq 'multipath') {
+            my $db = PVE::Diskmanage::get_udev_db();
+            $testcount++;
+            is_deeply(
+                [sort keys %$db],
+                [qw(nvme8n1 nvme9n1 sda sdb sdc sdd)],
+                'udev database has one entry per device',
+            );
+            $udev_single_queries = 0;
+            my $info = PVE::Diskmanage::get_udev_info('/sys/block/sdb', $db);
+            $testcount++;
+            is($info->{serial}, 'SSERb', 'disk found in the udev database');
+            $testcount++;
+            is($udev_single_queries, 0, 'without a query of its own');
+            PVE::Diskmanage::get_udev_info('/sys/block/sdb', {});
+            $testcount++;
+            is(
+                $udev_single_queries,
+                1,
+                'a disk that is not in the database is asked for on its own',
+            );
+
+            $udev_single_queries = 0;
+            my $listed = PVE::Diskmanage::get_disks();
+            $testcount++;
+            is(scalar(keys %$listed), 6, 'all disks listed');
+            $testcount++;
+            is(
+                $udev_single_queries,
+                4,
+                'the database replaces the queries after the first disks',
+            );
+
+            # six disks: 240 block devices are just enough to ask about each of them on its own
+            for my $count (240, 239) {
+                $diskmanage_module->mock(
+                    get_lsblk_info => sub {
+                        return { map { ("/dev/dm-$_" => {}) } 1 .. $count };
+                    },
+                );
+                $udev_single_queries = 0;
+                PVE::Diskmanage::get_disks();
+                $diskmanage_module->unmock('get_lsblk_info');
+                $testcount++;
+                is(
+                    $udev_single_queries,
+                    $count == 240 ? 6 : 5,
+                    "single queries for six disks among $count block devices",
+                );
+            }
         }
 
         done_testing($testcount);

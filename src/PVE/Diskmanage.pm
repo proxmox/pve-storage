@@ -370,21 +370,50 @@ sub get_ceph_volume_infos {
     return $result;
 }
 
-sub get_udev_info {
-    my ($dev) = @_;
-
-    my $info = "";
-    my $data = {};
+# Returns the udev information of all block devices by their kernel name, in the format that
+# 'udevadm info --query all' prints for a single device. One call for all devices takes a fraction
+# of the time that a call per device takes on a node with many disks.
+sub get_udev_db {
+    my $db = {};
+    my $entry = '';
+    my $add = sub {
+        my ($name) = $entry =~ m|^P: .*/([^/\n]+)$|m;
+        $db->{$name} = $entry if defined($name);
+        $entry = '';
+    };
     eval {
         run_command(
-            ['udevadm', 'info', '-p', $dev, '--query', 'all'],
+            ['udevadm', 'info', '--export-db', '--subsystem-match=block'],
             outfunc => sub {
                 my ($line) = @_;
-                $info .= "$line\n";
+                return $add->() if $line eq '';
+                $entry .= "$line\n";
             },
         );
     };
+    # every entry ends with an empty line, so one that a failed command cut off is left out
     warn $@ if $@;
+    return $db;
+}
+
+sub get_udev_info {
+    my ($dev, $udev_db) = @_;
+
+    # a device that showed up after the database got read is not in there
+    my $info = $udev_db ? $udev_db->{ basename($dev) } // '' : '';
+    my $data = {};
+    if (!$info) {
+        eval {
+            run_command(
+                ['udevadm', 'info', '-p', $dev, '--query', 'all'],
+                outfunc => sub {
+                    my ($line) = @_;
+                    $info .= "$line\n";
+                },
+            );
+        };
+        warn $@ if $@;
+    }
     return if !$info;
 
     return if $info !~ m/^E: DEVTYPE=(disk|partition)$/m;
@@ -595,6 +624,13 @@ sub get_disks {
         # another one, so the pattern with all names would be compiled again for every disk.
         $wanted = { map { $_ => 1 } @$disks };
     }
+    # Reading the database of all block devices takes about as long as single queries for a 40th
+    # of the devices that lsblk lists, and a node with multipath maps or many volumes has far more
+    # of those than disks to list. So ask about single disks until that took as long as reading the
+    # database would, and about the first few in any case.
+    my ($udev_db, $udev_queries) = (undef, 0);
+    my $udev_single = scalar(keys %$lsblk_info) / 40;
+    $udev_single = 4 if $udev_single < 4;
 
     dir_glob_foreach(
         '/sys/block',
@@ -616,7 +652,8 @@ sub get_disks {
 
             return if !$san_inventory && is_iscsi_device($dev);
 
-            my $data = get_udev_info("/sys/block/$dev") // return;
+            $udev_db //= get_udev_db() if ++$udev_queries > $udev_single;
+            my $data = get_udev_info("/sys/block/$dev", $udev_db) // return;
             my $devpath = $data->{devpath};
 
             my $sysdir = "/sys/block/$dev";
