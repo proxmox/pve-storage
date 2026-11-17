@@ -1,3 +1,23 @@
+libpve-storage-perl (9.1.18) trixie; urgency=medium
+
+  * plugin api: support third-party plugins that isolate their properties, so
+    that their names cannot clash with those of other plugins. See the
+    ApiChangeLog for the common properties that such a plugin can use.
+
+  * api: do not require the type for updating a storage once a plugin isolates
+    its properties, as neither the web UI nor 'pvesm set' pass it.
+
+  * plugins: do not load an isolating third-party plugin that implements an
+    API version before 17, declares a common property or exposes its
+    properties.
+
+  * plugins: leave out a third-party plugin whose properties clash with those
+    of another plugin, instead of failing to load the storage layer as a whole.
+
+  * plugin api: add the standard option 'pve-storage-port'.
+
+ -- Proxmox Support Team <support@proxmox.com>  Tue, 17 Nov 2026 21:42:07 +0100
+
 libpve-storage-perl (9.1.17) trixie; urgency=medium
 
   * tell the volumes of guests apart by type: 'vm-vol' for the disks of VMs,
