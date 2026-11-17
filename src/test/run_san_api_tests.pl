@@ -71,6 +71,31 @@ for my $case (
         );
     }
 }
+{
+    # a user without VM.Audit on the guest still learns that a process uses the LUN
+    my $san = Test::MockModule->new('PVE::Storage::SAN');
+    my $rpc = Test::MockModule->new('PVE::RPCEnvironment');
+    $san->mock(
+        scan_luns => sub {
+            return [
+                { wwid => '3600a', 'used-by-process' => '4242 (kvm)', 'used-by-guest' => 100 },
+                { wwid => '3600b', 'used-by-process' => '4243 (kvm)', 'used-by-guest' => 101 },
+            ];
+        },
+    );
+    {
+
+        package SANScanTestRPC;
+        sub get_user { 'auditor@pve' }
+        sub check { $_[2] eq '/vms/100' && $_[3]->[0] eq 'VM.Audit' && $_[4] }
+    }
+    $rpc->mock(get => sub { bless {}, 'SANScanTestRPC' });
+    my $scan = PVE::API2::Storage::Scan->map_method_by_name('sanlunscan')->{code};
+    my %rows = map { $_->{wwid} => $_ } $scan->({ node => 'test' })->@*;
+    is($rows{'3600a'}->{'used-by-guest'}, 100, 'a guest that the user may audit is named');
+    ok(!exists($rows{'3600b'}->{'used-by-guest'}), 'another one is not');
+    is($rows{'3600b'}->{'used-by-process'}, '4243 (kvm)', 'but its process is');
+}
 is_deeply(
     PVE::API2::ISCSI->map_method_by_name('index')->{code}->({}),
     [{ name => 'status' }, { name => 'target' }],

@@ -42,7 +42,7 @@ sub scan_luns($cfg) {
         PVE::Multipath::Config::wwids_for_node($mpcfg, PVE::INotify::nodename())->@*;
     my %listed = map { $_ => 1 } PVE::Multipath::list_etc_multipath_wwids()->@*;
     my $derived = PVE::Multipath::Generator::derived_wwids($cfg, $ids);
-    my (%storage, %expected, %vg_owner, %target_owner, %base_owner, %targets, %unmapped);
+    my (%storage, %expected, %vg_owner, %target_owner, %base_owner, %targets, %paths, %unmapped);
 
     my $wanted =
         PVE::Multipath::Generator::wanted_wwids($mpcfg, PVE::INotify::nodename(), $derived);
@@ -109,6 +109,7 @@ sub scan_luns($cfg) {
             $row->{$key} //= $value if defined($value) && $value ne 'unknown';
         }
         for my $member (map { basename($_) } ($disk->{slaves} // [$disk->{devpath}])->@*) {
+            $paths{$wwid}->{"/dev/$member"} = 1;
             my $session = $sessions->{$member} // next;
             $targets{$wwid}->{ $session->{target} } = 1;
             $row->{'iscsi-target'} //= $session->{target};
@@ -169,7 +170,29 @@ sub scan_luns($cfg) {
             $path->{address} //= $portal if length($portal // '');
         }
     }
+    # A guest can have a LUN as disk by its device path or from a third-party storage plugin, also
+    # by one of its paths or partitions. The scans of LVM and udev only read a device, and are gone
+    # again a moment later.
+    for my $wwid (sort keys %rows) {
+        my %seen;
+        for my $device ($rows{$wwid}->{devpath}, sort keys(($paths{$wwid} // {})->%*)) {
+            next if $seen{$device}++;
+            my $parts = eval { lun_partitions({ devpath => $device, wwid => $wwid }) } // [];
+            $paths{$wwid}->{$_} = 1 for @$parts;
+        }
+    }
+    my %devices = map { $_ => 1 } (map { $_->{devpath} } values %rows),
+        map { keys %$_ } values %paths;
+    my $openers = PVE::Diskmanage::device_openers([sort keys %devices], writable => 1);
     for my $row (values %rows) {
+        my ($opener) = map { $openers->{$_} // () } abs_path($row->{devpath}) // $row->{devpath},
+            sort keys(($paths{ $row->{wwid} } // {})->%*);
+        if ($opener) {
+            $row->{'used-by-process'} = "$opener->{pid} ($opener->{command})";
+            # a virtual machine runs in a control group of its own that is named after its ID
+            my $cgroup = file_read_firstline("/proc/$opener->{pid}/cgroup") // '';
+            $row->{'used-by-guest'} = int($1) if $cgroup =~ m{^0::/qemu\.slice/(\d+)\.scope$};
+        }
         # the devices of a LUN whose requested map is missing do not tell the state of the LUN
         if (defined($row->{'paths-active'}) && $row->{multipath} ne 'pending') {
             $row->{state} = PVE::Multipath::derive_health(

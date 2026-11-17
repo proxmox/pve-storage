@@ -59,7 +59,9 @@ $scan->redefine(
         $code->($_) for grep { /^$regex$/ } qw(sda sdb sdc sdd sde sdf dm-0 loop0 nvme0n1);
     },
 );
+my ($openers, @opener_query) = ({});
 $disk->mock(
+    device_openers => sub { @opener_query = @_; return $openers },
     get_disks => sub {
         ok($_[3], 'SAN inventory opts into iSCSI');
         @listed = sort $_[0]->@*;
@@ -97,6 +99,8 @@ $mp->mock(
 );
 $scan->mock(abs_path => sub { $_[0] });
 $scan->mock(stable_path => sub { '/dev/disk/by-id/scsi-' . $_[1] });
+my %partitions;
+$scan->mock(lun_partitions => sub { [($partitions{ $_[0]->{devpath} } // [])->@*] });
 my %device_state;
 $scan->mock(
     device_state => sub { exists($device_state{ $_[0] }) ? $device_state{ $_[0] } : 'running' },
@@ -117,6 +121,63 @@ is($row{'3600plain'}->{'used-by-storage'}, 'direct', 'a storage serving the LUNs
     local $cfg->{ids}->{direct}->{content} = { none => 1 };
     my %plain = map { $_->{wwid} => $_ } PVE::Storage::SAN::scan_luns($cfg)->@*;
     is($plain{'3600plain'}->{'used-by-storage'}, undef, 'a connection storage does not');
+}
+{
+    # a process has a map open by the device it resolves to
+    $scan->mock(abs_path => sub { $_[0] eq '/dev/mapper/lun' ? '/dev/dm-0' : $_[0] });
+    my $cgroup = '0::/qemu.slice/100.scope';
+    $scan->mock(
+        file_read_firstline => sub {
+            return $_[0] eq '/proc/4242/cgroup' ? $cgroup : PVE::Tools::file_read_firstline(@_);
+        },
+    );
+    local $openers->{'/dev/dm-0'} = { pid => 4242, command => 'kvm' };
+    my %open = map { $_->{wwid} => $_ } PVE::Storage::SAN::scan_luns($cfg)->@*;
+    is($open{'3600map'}->{'used-by-process'}, '4242 (kvm)', 'a process with the map open');
+    is($open{'3600map'}->{'used-by-guest'}, 100, 'that belongs to a virtual machine');
+    ok(!exists($open{'3600plain'}->{'used-by-process'}), 'no process for the other LUN');
+    my ($devices, %param) = @opener_query;
+    is_deeply(
+        [sort @$devices],
+        [qw(/dev/mapper/lun /dev/sdb /dev/sdc /dev/sdd /dev/sdf)],
+        'asked once for all LUNs and their paths',
+    );
+    ok($param{writable}, 'a process that only reads a LUN does not use it');
+    {
+        local $openers->{'/dev/sdc'} = { pid => 4243, command => 'kvm' };
+        local $openers->{'/dev/sdf'} = { pid => 4244, command => 'kvm' };
+        my %path = map { $_->{wwid} => $_ } PVE::Storage::SAN::scan_luns($cfg)->@*;
+        is($path{'3600plain'}->{'used-by-process'}, '4243 (kvm)', 'a process with another path');
+        is($path{'3600map'}->{'used-by-process'}, '4242 (kvm)', 'the map before its paths');
+    }
+    {
+        # a kernel partition of a path, one that kpartx maps on the map, and one of a member
+        local $partitions{'/dev/sdc'} = ['/dev/sdc1'];
+        local $partitions{'/dev/mapper/lun'} = ['/dev/dm-5'];
+        local $partitions{'/dev/sdf'} = ['/dev/sdf1'];
+        delete local $openers->{'/dev/dm-0'};
+        local $openers->{'/dev/sdc1'} = { pid => 4242, command => 'kvm' };
+        local $openers->{'/dev/dm-5'} = { pid => 4242, command => 'kvm' };
+        my %part = map { $_->{wwid} => $_ } PVE::Storage::SAN::scan_luns($cfg)->@*;
+        is($part{'3600plain'}->{'used-by-guest'}, 100, 'a guest that writes to a partition');
+        is($part{'3600map'}->{'used-by-guest'}, 100, 'also to one that kpartx maps');
+        ($devices) = @opener_query;
+        is_deeply(
+            [sort @$devices],
+            [qw(/dev/dm-5 /dev/mapper/lun /dev/sdb /dev/sdc /dev/sdc1 /dev/sdd /dev/sdf /dev/sdf1)],
+            'the partitions in the same query',
+        );
+    }
+    my $schema = PVE::API2::Storage::Scan->map_method_by_name('sanlunscan')->{returns};
+    eval { PVE::JSONSchema::validate([values %open], $schema) };
+    is($@, '', 'rows with a process match the public schema');
+
+    $cgroup = '0::/system.slice/100.scope';
+    ($open{'3600map'}) = grep { $_->{wwid} eq '3600map' } PVE::Storage::SAN::scan_luns($cfg)->@*;
+    is($open{'3600map'}->{'used-by-process'}, '4242 (kvm)', 'a process of no guest');
+    ok(!exists($open{'3600map'}->{'used-by-guest'}), 'has no guest ID');
+    $scan->unmock('file_read_firstline');
+    $scan->mock(abs_path => sub { $_[0] });
 }
 is_deeply(
     $row{'3600plain'}->{'path-list'},

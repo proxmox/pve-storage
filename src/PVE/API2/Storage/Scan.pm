@@ -7,6 +7,7 @@ use warnings;
 
 use PVE::JSONSchema qw(get_standard_option);
 use PVE::RESTHandler;
+use PVE::RPCEnvironment;
 use PVE::SafeSyslog;
 
 use PVE::Storage::LVMPlugin;
@@ -534,6 +535,20 @@ __PACKAGE__->register_method({
                     type => 'string',
                     optional => 1,
                 },
+                'used-by-process' => {
+                    description => "A process of the node that has the LUN, one of its paths"
+                        . " or a partition open for writing, as PID followed by the command name"
+                        . " in parentheses. A guest shows up like this if it has the LUN as disk"
+                        . " by its device path or from a third-party storage plugin.",
+                    type => 'string',
+                    optional => 1,
+                },
+                'used-by-guest' => {
+                    description => "The ID of the virtual machine that this process belongs"
+                        . " to. Only returned with the VM.Audit privilege on it.",
+                    type => 'integer',
+                    optional => 1,
+                },
                 wwid => {
                     description => "The LUN WWID.",
                     type => 'string',
@@ -591,7 +606,17 @@ __PACKAGE__->register_method({
         },
     },
     code => sub {
-        return PVE::Storage::SAN::scan_luns(PVE::Storage::config());
+        my $rpcenv = PVE::RPCEnvironment::get();
+        my $authuser = $rpcenv->get_user();
+
+        my $rows = PVE::Storage::SAN::scan_luns(PVE::Storage::config());
+        # without VM.Audit on the guest, its process still tells that the LUN is in use
+        for my $row (@$rows) {
+            my $vmid = $row->{'used-by-guest'} // next;
+            delete $row->{'used-by-guest'}
+                if !$rpcenv->check($authuser, "/vms/$vmid", ['VM.Audit'], 1);
+        }
+        return $rows;
     },
 });
 

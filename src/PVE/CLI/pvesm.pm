@@ -745,7 +745,7 @@ our $cmddef = {
                 my ($data, $schema, $options) = @_;
                 my $columns = [
                     qw(devpath name size transport state paths-active paths-total paths-expected
-                        multipath usage vgname used-by-storage wwid)
+                        multipath usage vgname used-by-storage used-by-guest used-by-process wwid)
                 ];
                 PVE::CLIFormatter::print_api_result($data, $schema, $columns, $options);
             },
