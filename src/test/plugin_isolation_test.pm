@@ -42,8 +42,35 @@ package PVE::Storage::Custom::IsolatedFixturePlugin {
     }
 }
 
+# does not isolate its properties and derives a required one when a storage gets added
+package PVE::Storage::Custom::DerivingFixturePlugin {
+    use base qw(PVE::Storage::Plugin);
+
+    sub type {
+        return 'deriving';
+    }
+
+    sub plugindata {
+        return { content => [{ none => 1 }, { none => 1 }] };
+    }
+
+    sub properties {
+        return { 'derived-id' => { type => 'string' } };
+    }
+
+    sub options {
+        return { 'derived-id' => { fixed => 1 }, content => { optional => 1 } };
+    }
+
+    sub check_config($class, $storeid, $config, $create, $skip_schema_check) {
+        $config->{'derived-id'} //= "id-of-$storeid" if $create;
+        return $class->SUPER::check_config($storeid, $config, $create, $skip_schema_check);
+    }
+}
+
 # has to happen before loading PVE::Storage, which initializes all registered plugins
 PVE::Storage::Custom::IsolatedFixturePlugin->register();
+PVE::Storage::Custom::DerivingFixturePlugin->register();
 
 require PVE::Storage;
 require PVE::API2::Storage::Config;
@@ -161,10 +188,22 @@ my $tests = [
         qr/fixture-id: property is missing and it is not optional/,
     ],
     [
+        'create isolated storage without a required property of the base plugin',
+        'create',
+        { storage => 'new', type => 'isolated', 'fixture-id' => 'two' },
+        qr/path: property is missing and it is not optional/,
+    ],
+    [
         'create built-in storage whose path is derived from its ID',
         'create',
         { storage => 'new', type => 'nfs', server => '192.0.2.1', export => '/export' },
         [path => '/mnt/pve/new'],
+    ],
+    [
+        'create storage of a plugin that derives a required property',
+        'create',
+        { storage => 'new', type => 'deriving' },
+        ['derived-id' => 'id-of-new'],
     ],
     [
         'create built-in storage with a property of the isolating plugin',
