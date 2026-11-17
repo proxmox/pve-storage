@@ -510,11 +510,8 @@ sub volume_import {
 
 # used in LVMPlugin->volume_import
 sub volume_import_write {
-    my ($class, $input_fh, $output_file) = @_;
-    run_command(
-        ['dd', "of=$output_file", 'conv=sparse', 'bs=64k'],
-        input => '<&' . fileno($input_fh),
-    );
+    my ($class, $input_fh, $output_file, $size) = @_;
+    PVE::Storage::Plugin::import_raw_stream($input_fh, $output_file, $size, ['conv=sparse']);
 }
 
 sub rename_snapshot {

@@ -2147,6 +2147,7 @@ sub volume_import {
     die "cannot import format $format into a file of format $file_format\n"
         if $file_format ne 'raw';
 
+    my $size_bytes;
     my $allocname = $class->cluster_lock_storage(
         $storeid,
         $scfg->{shared},
@@ -2160,8 +2161,8 @@ sub volume_import {
                 $name = undef;
             }
 
-            my ($size) = PVE::Storage::Plugin::read_common_header($fh);
-            $size = PVE::Storage::Common::align_size_up($size, 1024) / 1024;
+            ($size_bytes) = PVE::Storage::Plugin::read_common_header($fh);
+            my $size = PVE::Storage::Common::align_size_up($size_bytes, 1024) / 1024;
 
             return $class->alloc_image($storeid, $scfg, $vmid, 'raw', $name, $size);
         },
@@ -2176,7 +2177,7 @@ sub volume_import {
         my $file = $class->path($scfg, $volname, $storeid)
             or die "internal error: failed to get path to newly allocated volume $volname\n";
 
-        $class->volume_import_write($fh, $file);
+        $class->volume_import_write($fh, $file, $size_bytes);
     };
     if (my $err = $@) {
         my $cleanup_worker = eval {
@@ -2195,9 +2196,10 @@ sub volume_import {
     return "$storeid:$volname";
 }
 
+# $size is the size from the header of the stream in bytes, the data has to be that long.
 sub volume_import_write {
-    my ($class, $input_fh, $output_file) = @_;
-    run_command(['dd', "of=$output_file", 'bs=64k'], input => '<&' . fileno($input_fh));
+    my ($class, $input_fh, $output_file, $size) = @_;
+    PVE::Storage::Plugin::import_raw_stream($input_fh, $output_file, $size);
 }
 
 sub rename_volume {

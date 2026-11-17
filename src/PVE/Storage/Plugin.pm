@@ -2354,6 +2354,8 @@ sub prune_backups {
 #
 #   raw+size: (image files only)
 #     A raw binary data stream such as produced via `dd if=TheImageFile`.
+#     The size is the exact length of that data in bytes, an import refuses
+#     a stream with more or less data.
 #   qcow2+size, vmdk: (image files only)
 #     A raw qcow2/vmdk/... file such as produced via `dd if=some.qcow2` for
 #     files which are already in qcow2 format, or via `qemu-img convert`.
@@ -2381,6 +2383,40 @@ sub read_common_header($) {
     return $size;
 }
 
+# Writes the data of a 'raw+size' stream from $fh to $path with dd, using the dd options $dd_opts.
+# Dies unless the stream delivers exactly the $size bytes from its header. dd takes any end of its
+# input as success, so a stream that got cut off would otherwise count as imported. Without $size
+# nothing gets checked.
+sub import_raw_stream {
+    my ($fh, $path, $size, $dd_opts) = @_;
+
+    my $copied;
+    {
+        local $ENV{LC_ALL} = 'C'; # for the summary of dd
+        run_command(
+            ['dd', "of=$path", 'bs=64k', ($dd_opts // [])->@*],
+            input => '<&' . fileno($fh),
+            errfunc => sub {
+                my ($line) = @_;
+                $copied = $1 if $line =~ m/^(\d+) bytes\b.*\bcopied\b/;
+                print STDERR "$line\n";
+            },
+        );
+    }
+
+    return if !defined($size);
+
+    if (!defined($copied)) {
+        warn "import: unable to check the amount of imported data\n";
+    } elsif ($copied < $size) {
+        die "import: stream ended after $copied of $size bytes\n";
+    } elsif ($copied > $size) {
+        die "import: stream has $copied bytes, but its header announced $size\n";
+    }
+
+    return;
+}
+
 # Export a volume into a file handle as a stream of desired format.
 sub volume_export {
     my ($class, $scfg, $storeid, $fh, $volname, $format, $snapshot, $base_snapshot, $with_snapshots)
@@ -2397,8 +2433,10 @@ sub volume_export {
 
         if ($format eq 'raw+size') {
             die $err_msg if $with_snapshots || $file_format eq 'subvol';
-            write_common_header($fh, $size);
             if ($file_format =~ /^(raw|ova|ovf)$/) {
+                # The file itself gets sent, so announce its length. The size from qemu-img is
+                # rounded up to full sectors.
+                write_common_header($fh, -s $file);
                 run_command(
                     ['dd', "if=$file", "bs=4k", "status=progress"],
                     output => '>&' . fileno($fh),
@@ -2406,6 +2444,7 @@ sub volume_export {
                     errfunc => sub { print STDERR "$_[0]\n" },
                 );
             } else {
+                write_common_header($fh, $size);
                 my $bs = 64 * 1024;
                 # Note that there is no progress indication for 'qemu-img dd' at the moment.
                 run_command(
@@ -2503,8 +2542,8 @@ sub volume_import {
         $name = undef;
     }
 
-    my ($size) = read_common_header($fh);
-    $size = PVE::Storage::Common::align_size_up($size, 1024) / 1024;
+    my ($size_bytes) = read_common_header($fh);
+    my $size = PVE::Storage::Common::align_size_up($size_bytes, 1024) / 1024;
 
     if ($is_guest_volume) {
         eval {
@@ -2517,7 +2556,10 @@ sub volume_import {
             }
             my ($file) = $class->path($scfg, $volname, $storeid)
                 or die "internal error: failed to get path to newly allocated volume $volname\n";
-            if ($data_format eq 'raw' || $data_format eq 'qcow2' || $data_format eq 'vmdk') {
+            if ($data_format eq 'raw') {
+                import_raw_stream($fh, $file, $size_bytes, ['conv=sparse']);
+            } elsif ($data_format eq 'qcow2' || $data_format eq 'vmdk') {
+                # the header has the virtual size, which says nothing about the length of the file
                 run_command(
                     ['dd', "of=$file", 'conv=sparse', 'bs=64k'],
                     input => '<&' . fileno($fh),
@@ -2538,7 +2580,13 @@ sub volume_import {
         }
     } elsif (grep { $vtype eq $_ } qw(import iso snippets vztmpl)) {
         eval {
-            run_command(['dd', "of=$file", 'conv=excl', 'bs=64k'], input => '<&' . fileno($fh));
+            # only the header of a raw stream has the length of the data that follows
+            import_raw_stream(
+                $fh,
+                $file,
+                $data_format eq 'raw' ? $size_bytes : undef,
+                ['conv=excl'],
+            );
         };
         if (my $err = $@) {
             if (-e $file) {
