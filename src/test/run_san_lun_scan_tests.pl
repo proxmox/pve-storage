@@ -47,7 +47,8 @@ my $generator = Test::MockModule->new('PVE::Multipath::Generator');
 $generator->mock(derived_wwids => sub { {} });
 $iscsi->mock(
     device_map => sub {
-        return { map { $_ => { target => 'iqn.test', lun => 1 } } qw(sdb sdc) };
+        return { map { $_ => { target => 'iqn.test', lun => 1, portal => '192.0.2.10:3260' } }
+            qw(sdb sdc) };
     },
 );
 my @listed;
@@ -119,10 +120,14 @@ is($row{'3600plain'}->{'used-by-storage'}, 'direct', 'a storage serving the LUNs
 }
 is_deeply(
     $row{'3600plain'}->{'path-list'},
-    [map { { device => $_, state => 'running' } } qw(/dev/sdb /dev/sdc)],
-    'without a map, the devices of a LUN are its paths',
+    [
+        map { { device => $_, state => 'running', address => '192.0.2.10:3260' } }
+            qw(/dev/sdb /dev/sdc)
+    ],
+    'without a map, the devices of a LUN are its paths, with the portal of their session',
 );
 is($row{'3600plain'}->{state}, 'optimal', 'their kernel state gives the health of the LUN');
+ok(!exists($row{'3600map'}->{'path-list'}->[0]->{address}), 'no portal without a session');
 {
     local $device_state{sdc} = 'transport-offline';
     my ($down) = grep { $_->{wwid} eq '3600plain' } PVE::Storage::SAN::scan_luns($cfg)->@*;
@@ -141,6 +146,14 @@ is($row{'3600plain'}->{state}, 'optimal', 'their kernel state gives the health o
     is(scalar($pending->{'path-list'}->@*), 2, 'lists its devices');
     ok(!exists($pending->{state}), 'but has no state from them');
     $mp->mock(list_etc_multipath_wwids => sub { [] });
+}
+{
+    # an iSCSI path of a map
+    my $sessions = PVE::ISCSI::Topology::device_map();
+    $iscsi->mock(device_map => sub { +{ %$sessions, sdd => { %{ $sessions->{sdb} } } } });
+    my ($map) = grep { $_->{wwid} eq '3600map' } PVE::Storage::SAN::scan_luns($cfg)->@*;
+    is($map->{'path-list'}->[0]->{address}, '192.0.2.10:3260', 'names the portal of its session');
+    $iscsi->mock(device_map => sub { $sessions });
 }
 {
     # a LUN with a single path and no map

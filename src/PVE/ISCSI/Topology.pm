@@ -55,6 +55,7 @@ sub sessions($sysfs = undef) {
                     return if !defined($dev);
                     $session->{devices}->{$dev} = {
                         target => $target,
+                        portal => $session->{portal},
                         session => int($sid),
                         channel => int($channel),
                         id => int($id),

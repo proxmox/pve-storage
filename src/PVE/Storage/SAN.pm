@@ -160,6 +160,13 @@ sub scan_luns($cfg) {
         $row->{'paths-total'} = scalar(@paths);
         $row->{'paths-active'} = scalar(grep { $_->{state} eq 'running' } @paths);
     }
+    # the portal of its session tells an iSCSI path apart, as the address does for NVMe
+    for my $row (values %rows) {
+        for my $path (($row->{'path-list'} // [])->@*) {
+            my $portal = ($sessions->{ basename($path->{device}) } // {})->{portal};
+            $path->{address} //= $portal if length($portal // '');
+        }
+    }
     for my $row (values %rows) {
         # the devices of a LUN whose requested map is missing do not tell the state of the LUN
         if (defined($row->{'paths-active'}) && $row->{multipath} ne 'pending') {

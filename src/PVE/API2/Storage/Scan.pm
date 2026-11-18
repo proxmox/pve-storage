@@ -501,7 +501,8 @@ __PACKAGE__->register_method({
                             },
                             address => {
                                 description => "The address of the NVMe controller the"
-                                    . " path uses.",
+                                    . " path uses, or the portal of the iSCSI session of the"
+                                    . " path.",
                                 type => 'string',
                                 optional => 1,
                             },
