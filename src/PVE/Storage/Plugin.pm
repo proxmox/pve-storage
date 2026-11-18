@@ -2398,7 +2398,7 @@ sub import_raw_stream {
             input => '<&' . fileno($fh),
             errfunc => sub {
                 my ($line) = @_;
-                $copied = $1 if $line =~ m/^(\d+) bytes\b.*\bcopied\b/;
+                $copied = $1 if $line =~ m/^(\d+) bytes?\b.*\bcopied\b/;
                 print STDERR "$line\n";
             },
         );

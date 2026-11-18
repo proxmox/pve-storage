@@ -77,6 +77,13 @@ subtest 'raw stream written with dd' => sub {
     );
     is($import->('', length($data)), "import: stream ended after 0 of 70000 bytes\n",
         'no data');
+    # dd reports a single byte in the singular
+    is(
+        $import->('x', length($data)),
+        "import: stream ended after 1 of 70000 bytes\n",
+        'stream of one byte is refused',
+    );
+    is($import->('x', 1), '', 'complete stream of one byte is accepted');
     is($import->($half, undef), '', 'no check without a size');
 
     is($import->($data, length($data), ['conv=sparse']), '', 'options are passed to dd');
