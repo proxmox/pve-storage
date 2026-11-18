@@ -2435,8 +2435,8 @@ sub volume_export {
             die $err_msg if $with_snapshots || $file_format eq 'subvol';
             if ($file_format =~ /^(raw|ova|ovf)$/) {
                 # The file itself gets sent, so announce its length. The size from qemu-img is
-                # rounded up to full sectors.
-                write_common_header($fh, -s $file);
+                # rounded up to full sectors. Only a regular file has a length.
+                write_common_header($fh, -f $file ? -s _ : $size);
                 run_command(
                     ['dd', "if=$file", "bs=4k", "status=progress"],
                     output => '>&' . fileno($fh),
