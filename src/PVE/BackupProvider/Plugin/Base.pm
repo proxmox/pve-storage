@@ -628,6 +628,21 @@ hash all mean that there is no limit.
 Present if the firewall configuration exists. The guest's firewall
 configuration as raw data.
 
+=item C<< $info->{'guest-uid'} >>
+
+Present if the guest has an identity. The C<uid> of that identity, also in the
+C<meta> property of C<$guest_config>. Unlike the VMID, it is kept by a restore
+or remote migration to another VMID, and a new guest on a reused VMID gets
+another one. It is only unique within one cluster, as a copy in another cluster
+can keep it. Passed since qemu-server 9.2.21.
+
+=item C<< $info->{'cluster-id'} >>
+
+Present if the cluster, or the standalone node, has an ID. Together with
+C<guest-uid>, it tells apart the guests of several clusters that back up to the
+same target. A guest that migrates to another cluster gets the ID of that
+cluster. Passed since qemu-server 9.2.21.
+
 =back
 
 =back
@@ -736,6 +751,21 @@ hash all mean that there is no limit.
 
 Present if the firewall configuration exists. The guest's firewall
 configuration as raw data.
+
+=item C<< $info->{'guest-uid'} >>
+
+Present if the guest has an identity. The C<uid> of that identity, also in the
+C<meta> property of C<$guest_config>. Unlike the VMID, it is kept by a restore
+or remote migration to another VMID, and a new guest on a reused VMID gets
+another one. It is only unique within one cluster, as a copy in another cluster
+can keep it. Passed since pve-container 6.1.25.
+
+=item C<< $info->{'cluster-id'} >>
+
+Present if the cluster, or the standalone node, has an ID. Together with
+C<guest-uid>, it tells apart the guests of several clusters that back up to the
+same target. A guest that migrates to another cluster gets the ID of that
+cluster. Passed since pve-container 6.1.25.
 
 =back
 
