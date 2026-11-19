@@ -625,7 +625,7 @@ my sub lock_storage_with_acquire_retry {
 }
 
 my sub rename_after_failed_cleanup {
-    my ($class, $scfg, $storeid, $vg, $name) = @_;
+    my ($class, $scfg, $storeid, $vg, $del_name) = @_;
 
     eval {
         my $failed_name;
@@ -642,7 +642,7 @@ my sub rename_after_failed_cleanup {
                 my $existing = $lvs->{$vg} // {};
 
                 my $prefix = 'failed-';
-                my $suffix = "-del-$name";
+                my $suffix = "-$del_name";
 
                 my $last_fail = max(
                     -1,
@@ -653,17 +653,17 @@ my sub rename_after_failed_cleanup {
 
                 $failed_name = $prefix . ($last_fail + 1) . $suffix;
 
-                my $cmd = ['/sbin/lvrename', $vg, "del-$name", $failed_name];
+                my $cmd = ['/sbin/lvrename', $vg, $del_name, $failed_name];
                 run_command(
                     $cmd,
-                    errmsg => "lvrename '$vg/del-$name' to '$vg/$failed_name' error",
+                    errmsg => "lvrename '$vg/$del_name' to '$vg/$failed_name' error",
                 );
-                print "renamed '$vg/del-$name' to '$vg/$failed_name'\n";
+                print "renamed '$vg/$del_name' to '$vg/$failed_name'\n";
             },
         );
     };
     if (my $rename_err = $@) {
-        print STDERR "ERROR: unable to rename '$vg/del-$name': $rename_err";
+        print STDERR "ERROR: unable to rename '$vg/$del_name': $rename_err";
     }
 }
 
@@ -686,10 +686,23 @@ my sub parse_saferemove_throughput {
     return $number * $multiplier;
 }
 
+# Freeing a volume again while an earlier one with the same name is still being cleaned up, e.g.
+# after two rollbacks in a row, must not collide with the earlier one's name.
+my sub cleanup_name {
+    my ($existing, $name) = @_;
+
+    return "del-$name" if !$existing->{"del-$name"};
+
+    my $n = 1;
+    $n++ while $existing->{"del-$n-$name"};
+    return "del-$n-$name";
+}
+
 my sub free_lvm_volumes_locked {
-    my ($class, $scfg, $storeid, $volnames) = @_;
+    my ($class, $scfg, $storeid, $volnames, $cleanup_names) = @_;
 
     my $vg = $scfg->{vgname};
+    my $del_names = {};
 
     my $on_remove_opts = {};
     if ($scfg->{'on-volume-remove'}) {
@@ -919,7 +932,8 @@ my sub free_lvm_volumes_locked {
 
         my $total_cleanup_errors = 0;
         for my $name (@$volnames) {
-            my $lvmpath = "/dev/$vg/del-$name";
+            my $del_name = $del_names->{$name};
+            my $lvmpath = "/dev/$vg/$del_name";
 
             my $discard_action;
             if ($scfg->{saferemove} && $on_remove_opts->{discard}) {
@@ -950,7 +964,7 @@ my sub free_lvm_volumes_locked {
             };
             if (my $activation_err = $@) {
                 print STDERR "ERROR: $activation_err";
-                eval { rename_after_failed_cleanup($class, $scfg, $storeid, $vg, $name) };
+                eval { rename_after_failed_cleanup($class, $scfg, $storeid, $vg, $del_name) };
                 $total_cleanup_errors += 1;
                 next;
             }
@@ -962,18 +976,18 @@ my sub free_lvm_volumes_locked {
                     $storeid,
                     $scfg,
                     sub {
-                        my $cmd = ['/sbin/lvremove', '-f', "$vg/del-$name"];
-                        run_command($cmd, errmsg => "lvremove '$vg/del-$name' error");
+                        my $cmd = ['/sbin/lvremove', '-f', "$vg/$del_name"];
+                        run_command($cmd, errmsg => "lvremove '$vg/$del_name' error");
                     },
                 );
             };
             if (my $cleanup_err = $@) {
                 print STDERR "ERROR: cleanup failed for lv $name: $cleanup_err";
-                eval { rename_after_failed_cleanup($class, $scfg, $storeid, $vg, $name) };
+                eval { rename_after_failed_cleanup($class, $scfg, $storeid, $vg, $del_name) };
                 $total_cleanup_errors += 1;
                 next;
             }
-            print "successfully removed volume $name ($vg/del-$name)\n";
+            print "successfully removed volume $name ($vg/$del_name)\n";
         }
         if ($total_cleanup_errors != 0) {
             my $number_of_vols = scalar @$volnames;
@@ -989,11 +1003,15 @@ my sub free_lvm_volumes_locked {
             my $cmd = ['/sbin/lvchange', '-aln', "$vg/$name"];
             run_command($cmd, errmsg => "can't deactivate LV '$vg/$name'");
         }
+        my $existing = lvm_list_volumes($vg)->{$vg} // {};
         for my $name (@$volnames) {
             # avoid long running task, so we only rename here
-            my $cmd = ['/sbin/lvrename', $vg, $name, "del-$name"];
+            my $del_name = cleanup_name($existing, $name);
+            my $cmd = ['/sbin/lvrename', $vg, $name, $del_name];
             run_command($cmd, errmsg => "lvrename '$vg/$name' error");
+            $del_names->{$name} = $del_name;
         }
+        $cleanup_names->%* = $del_names->%* if $cleanup_names;
         return $cleanup_worker;
     } else {
         for my $name (@$volnames) {
@@ -1620,10 +1638,10 @@ my sub alloc_snap_image {
 }
 
 my sub free_snap_image_locked {
-    my ($class, $storeid, $scfg, $volname, $snap) = @_;
+    my ($class, $storeid, $scfg, $volname, $snap, $cleanup_names) = @_;
 
     my $snap_volname = get_snap_name($class, $volname, $snap);
-    return free_lvm_volumes_locked($class, $scfg, $storeid, [$snap_volname]);
+    return free_lvm_volumes_locked($class, $scfg, $storeid, [$snap_volname], $cleanup_names);
 }
 
 # Must be called with the storage lock held.
@@ -2063,19 +2081,22 @@ my sub volume_snapshot_rollback_locked {
 
     die "can't rollback snapshot for '$format' volume\n" if $format ne 'qcow2';
 
-    my $cleanup_worker =
-        eval { free_snap_image_locked($class, $storeid, $scfg, $volname, 'current'); };
+    my $cleanup_names = {};
+    my $cleanup_worker = eval {
+        free_snap_image_locked($class, $storeid, $scfg, $volname, 'current', $cleanup_names);
+    };
     die "error deleting snapshot $snap $@\n" if $@;
 
     eval { alloc_snap_image($class, $storeid, $scfg, $volname, $snap) };
     if (my $err = $@) {
         my $original_state = '';
         if ($cleanup_worker) { # rename original image back
-            eval { lvrename($scfg, "del-${volname}", $volname) };
+            my $del_name = $cleanup_names->{$volname};
+            eval { lvrename($scfg, $del_name, $volname) };
             if ($@) {
                 warn $@;
                 # no cleanup worker is started, so the original stays available under that name
-                $original_state = " (original volume kept as 'del-${volname}')";
+                $original_state = " (original volume kept as '$del_name')";
             } else {
                 $original_state = ' (original volume restored)';
             }
