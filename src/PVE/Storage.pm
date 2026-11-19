@@ -1303,7 +1303,15 @@ sub vdisk_free {
     my $rpcenv = PVE::RPCEnvironment::get();
     my $authuser = $rpcenv->get_user();
 
-    $rpcenv->fork_worker('imgdel', undef, $authuser, $cleanup_worker);
+    $rpcenv->fork_worker(
+        'imgdel',
+        undef,
+        $authuser,
+        sub {
+            PVE::Tools::close_inherited_lock_handles();
+            $cleanup_worker->(@_);
+        },
+    );
 }
 
 sub vdisk_list {
