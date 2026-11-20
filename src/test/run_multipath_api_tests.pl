@@ -623,9 +623,11 @@ subtest 'only managed maps and those under a storage get a row' => sub {
     PVE::Multipath::Status::update_node_status();
     is(scalar($report->{luns}->@*), 5, 'all maps without the storage configuration');
     ok(!exists($report->{'other-maps'}), 'and no count');
+    ok($report->{'scope-unknown'}, 'and the report says that it lists all maps');
     $storage->mock(config => sub { { ids => $ids } });
     $mp->mock(get_maps => sub { [] });
     PVE::Multipath::Status::update_node_status();
+    ok(!exists($report->{'scope-unknown'}), 'a report of the managed maps only does not');
     ok(!exists($report->{'vgs-unknown'}),
         'unknown volume groups only matter for left out maps');
 };

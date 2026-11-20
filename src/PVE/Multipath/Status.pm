@@ -84,6 +84,8 @@ sub update_node_status() {
         }
         # without the wanted WWIDs or the storages nothing tells the maps apart
         my $all = !$wanted || !$storages;
+        # a consumer cannot tell such rows from those of managed maps otherwise
+        $report->{'scope-unknown'} = 1 if $all;
         my %mapped;
         for my $map (PVE::Multipath::get_maps()->@*) {
             my $wwid = $map->{wwid} // next;
