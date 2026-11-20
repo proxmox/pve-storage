@@ -107,6 +107,18 @@ Future changes should be documented in here.
   Set 'sensitive-properties' in such a plugin, even if empty. Without it, the fallback list of
   version 11 also applies to the plugin's own properties of these names.
 
+* Pass the guest identity to backup providers
+
+  The info hash of `backup_vm()`, `backup_container_prepare()` and `backup_container()` has the
+  `guest-uid` and the registration time `guest-rtime` of the guest, and the `cluster-id`. A key is
+  left out if its value is not known. The guest config of the call has the same values in its
+  `meta` property. Whether the keys are passed depends on the versions of qemu-server and
+  pve-container, not on the API version, see `PVE::BackupProvider::Plugin::Base`.
+
+  A restore takes the identity from the `meta` property of the config that
+  `archive_get_guest_config()` returns, so return that config unchanged. A restore over a guest with
+  another `uid` is refused unless `allow-identity-mismatch` is set.
+
 ## Version 16:
 
 * Add `volname_for_format()`, `get_parsed_format()`, `volname_with_format()`, `is_valid_format()` and
