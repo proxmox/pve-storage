@@ -60,7 +60,7 @@ sub options {
         disable => { optional => 1 },
         content => { optional => 1 },
         # FIXME: bwlimit => { optional => 1 },
-        server => {},
+        server => { fixed => 1 },
         username => {},
         password => { optional => 1 },
         'skip-cert-verification' => { optional => 1 },
