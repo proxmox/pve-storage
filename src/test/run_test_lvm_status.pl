@@ -155,7 +155,7 @@ like(join('', @$warnings), qr/no result from/, 'the missing result is reported')
 }
 
 {
-    my $slow = { cmd => [$^X, '-e', 'sleep 60'], timeout => 1 };
+    my $slow = { cmd => [$^X, '-e', 'sleep 60'], timeout => 0.2 };
     for my $command ('vgs', 'vgs --nohints', 'pvscan', 'lvs') {
         my $commands = { vgs => $vgs, lvs => $lvs, $command => $slow };
         if ($command eq 'vgs --nohints' || $command eq 'pvscan') {
@@ -177,7 +177,8 @@ like(join('', @$warnings), qr/no result from/, 'the missing result is reported')
     );
     is_deeply(calls(), ['vgs'], 'the failed listing is not retried within the pass');
 
-    local $PVE::Storage::LVMPlugin::LVM_STATUS_TIMEOUT = 2;
+    # a pass waits for the lock until one second before the limit
+    local $PVE::Storage::LVMPlugin::LVM_STATUS_TIMEOUT = 1.2;
     sysopen(my $lock, "$dir/lock", O_RDWR | O_CREAT, 0600) or die $!;
     flock($lock, LOCK_EX) or die $!;
     for (1 .. 2) {
@@ -205,6 +206,7 @@ syscall(PVE::Syscall::prctl(), 36, 1, 0, 0, 0) == 0
     or die "cannot become a child subreaper: $!";
 {
     local $ignore_command_kill = 1;
+    local $PVE::Storage::LVMPlugin::LVM_STATUS_TIMEOUT = 2;
     my $cache = { status_only => 1 };
     $script = {
         vgs => {
@@ -223,7 +225,7 @@ syscall(PVE::Syscall::prctl(), 36, 1, 0, 0, 0) == 0
     sysopen(my $lock, "$dir/lock", O_RDWR) or die $!;
     ok(!flock($lock, LOCK_EX | LOCK_NB), 'the execed command retains the lock');
     is(readlink("/proc/$pid/fd/0"), abs_path("$dir/lock"), 'stdin holds the lock');
-    local $PVE::Storage::LVMPlugin::LVM_STATUS_TIMEOUT = 2;
+    $PVE::Storage::LVMPlugin::LVM_STATUS_TIMEOUT = 1.2;
 
     for (1 .. 2) {
         ($info, $warnings) = pass({ vgs => $vgs, lvs => $lvs });
