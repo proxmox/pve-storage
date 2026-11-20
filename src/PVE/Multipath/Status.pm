@@ -133,6 +133,7 @@ sub update_node_status() {
     }
     eval { publish($report) };
     warn "multipath: cannot publish node status - $@" if $@;
+    return $report;
 }
 
 sub cluster_status() {

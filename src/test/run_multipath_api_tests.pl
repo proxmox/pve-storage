@@ -587,11 +587,16 @@ subtest 'only managed maps and those under a storage get a row' => sub {
             { type => 'lvm', vgname => 'vgbase', base => 'conn:0.0.0.dm-uuid-mpath-36004' },
     };
     $storage->mock(config => sub { { ids => $ids } });
-    PVE::Multipath::Status::update_node_status();
+    my $returned = PVE::Multipath::Status::update_node_status();
     is_deeply(
         [map { $_->{wwid} } $report->{luns}->@*],
         ['36001', '36002', '36004'],
         'a wanted map, one with the volume group of a storage and a base volume',
+    );
+    is_deeply(
+        [map { $_->{wwid} } $returned->{luns}->@*],
+        ['36001', '36002', '36004'],
+        'the update returns the report it publishes',
     );
     is($report->{'other-maps'}, 2, 'the other maps are counted');
     ok(!exists($report->{'vgs-unknown'}), 'volume groups known from the hints of LVM');
