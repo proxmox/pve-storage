@@ -1,3 +1,50 @@
+libpve-storage-perl (9.1.19) trixie; urgency=medium
+
+  * import: refuse a raw+size stream that is shorter or longer than its
+    announced size, also a stream of a single byte, so that a broken transfer
+    fails instead of leaving a volume of the wrong size.
+
+  * export: announce the size of a raw volume on a block device from what
+    qemu-img reports, as the length of such a file is zero and an import would
+    refuse the stream.
+
+  * backup provider: document the 'guest-uid' and 'cluster-id' keys of the info
+    hash, which tell guests apart when a VMID gets reused or several clusters
+    share a backup target.
+
+  * add a cluster-wide multipath management for SAN LUNs. Each node applies the
+    entries in '/etc/pve/multipath.cfg' and the array settings in
+    '/etc/pve/multipath-overrides.conf': it adds the WWIDs to the allow-list of
+    multipath, writes its drop-ins and reloads multipathd, but never removes a
+    WWID or a map.
+    - iscsi: the new 'managed-multipath' option requests the maps of the LUNs
+      of a storage and names its volumes after them.
+    - each node reports the state of its maps, which '/cluster/multipath/status'
+      combines with the expected paths of each LUN.
+    - api: '/cluster/multipath' edits the entries and the array settings.
+    - multipath-tools becomes a recommended package.
+
+  * api: list the SAN LUNs of a node with their paths, state and usage, also
+    the process that has a LUN open, under '/nodes/{node}/scan/san-luns' and
+    with 'pvesm scan san-luns', and the iSCSI sessions under
+    '/nodes/{node}/iscsi'.
+
+  * disks: allow creating a volume group on a SAN LUN or multipath map, which
+    adds a shared storage for all nodes, and wiping a SAN LUN that no storage
+    uses. Both run under a cluster-wide lock per LUN and refuse a LUN that a
+    storage references or that a process has open.
+
+  * disks: refuse to destroy a volume group that a shared storage is
+    configured with.
+
+  * lvm: activate a missing base volume before using its volume group, for
+    example a multipath map that appears late after a boot.
+
+  * disks: list the disks of a node with many disks faster, by reading the udev
+    data of all disks at once and looking up requested disks by name.
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 20 Nov 2026 04:29:31 +0100
+
 libpve-storage-perl (9.1.18) trixie; urgency=medium
 
   * plugin api: support third-party plugins that isolate their properties, so
