@@ -124,7 +124,7 @@ my $node_schema = {
         'iscsi-initiator-name' => {
             type => 'string',
             optional => 1,
-            description => 'The iSCSI initiator name of the node.',
+            description => 'The iSCSI initiator name of the node, if open-iscsi is installed.',
         },
         'nvme-host-nqn' => {
             type => 'string',

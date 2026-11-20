@@ -101,9 +101,12 @@ sub update_node_status() {
     my $report = { luns => [] };
     $report->{'apply-error'} = $apply->{error} if defined($apply->{error});
     require PVE::Storage::ISCSIPlugin;
-    my $initiator = eval { PVE::Storage::ISCSIPlugin::read_initiator_info() };
-    $report->{'iscsi-initiator-name'} = $initiator->{name}
-        if $initiator && defined($initiator->{name});
+    # the initiator name stays if open-iscsi is removed but not purged, so skip it then
+    if (PVE::Storage::ISCSIPlugin::iscsi_supported()) {
+        my $initiator = eval { PVE::Storage::ISCSIPlugin::read_initiator_info() };
+        $report->{'iscsi-initiator-name'} = $initiator->{name}
+            if $initiator && defined($initiator->{name});
+    }
     require PVE::NVMeOF;
     my $host = eval { PVE::NVMeOF::host_identity() };
     $report->{'nvme-host-nqn'} = $host->{nqn} if $host;

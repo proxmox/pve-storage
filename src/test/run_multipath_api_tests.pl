@@ -457,7 +457,7 @@ subtest 'an unconfigured node does not write drop-ins or reload' => sub {
         $mp->mock($function => sub { push @changes, $function });
     }
     my $iscsi = Test::MockModule->new('PVE::Storage::ISCSIPlugin');
-    $iscsi->mock(read_initiator_info => sub { {} });
+    $iscsi->mock(read_initiator_info => sub { {} }, iscsi_supported => sub { 1 });
     my $nvme = Test::MockModule->new('PVE::NVMeOF');
     $nvme->mock(host_identity => sub { die "no host identity\n" });
     my $status = Test::MockModule->new('PVE::Multipath::Status');
@@ -569,7 +569,7 @@ subtest 'only managed maps and those under a storage get a row' => sub {
     my $lvm = Test::MockModule->new('PVE::Storage::LVMPlugin');
     my $report;
     $status->mock(publish => sub { $report = $_[0] });
-    $iscsi->mock(read_initiator_info => sub { undef });
+    $iscsi->mock(read_initiator_info => sub { undef }, iscsi_supported => sub { 1 });
     $mp->mock(is_supported => sub { 1 }, is_running => sub { 1 });
     $mp->mock(
         get_maps => sub {
@@ -649,7 +649,7 @@ subtest 'a LUN of a storage without a map is missing' => sub {
     my $config = Test::MockModule->new('PVE::Multipath::Config');
     my %raw;
     $status->mock(publish => sub { $raw{n1} = encode_report({ $_[0]->%*, time => $NOW }) });
-    $iscsi->mock(read_initiator_info => sub { undef });
+    $iscsi->mock(read_initiator_info => sub { undef }, iscsi_supported => sub { 1 });
     $mp->mock(is_supported => sub { 1 }, is_running => sub { 1 }, get_maps => sub { [] });
     $lvm->mock(cached_pv_volume_groups => sub { {} });
     $gen->mock(
@@ -694,7 +694,10 @@ subtest 'one entry point applies configuration and reports unavailable reasons' 
     $disks->mock(get_nvme_path_status => sub { { nvme1n1 => { active => 1, paths => [{}] } } });
     $gen->mock(sync => sub { push @order, 'apply'; { error => 'reload failed' } });
     $status->mock(publish => sub { push @order, 'publish'; $report = $_[0] });
-    $iscsi->mock(read_initiator_info => sub { { name => 'iqn.2025-01.example:node' } });
+    $iscsi->mock(
+        read_initiator_info => sub { { name => 'iqn.2025-01.example:node' } },
+        iscsi_supported => sub { 1 },
+    );
     my $nvme = Test::MockModule->new('PVE::NVMeOF');
     $nvme->mock(host_identity => sub { { nqn => 'nqn.2025-01.example:node', id => 'unused' } });
     $mp->mock(is_supported => sub { 0 });
@@ -707,6 +710,12 @@ subtest 'one entry point applies configuration and reports unavailable reasons' 
         'the configuration is applied before the status is published',
     );
     is($report->{'apply-error'}, 'reload failed', 'apply failure is separate');
+    is($report->{'iscsi-initiator-name'}, 'iqn.2025-01.example:node',
+        'initiator name reported');
+    $iscsi->mock(iscsi_supported => sub { 0 });
+    PVE::Multipath::Status::update_node_status();
+    ok(!exists($report->{'iscsi-initiator-name'}), 'no leftover name without open-iscsi');
+    $iscsi->mock(iscsi_supported => sub { 1 });
     $nvme->mock(host_identity => sub { die "no host identity\n" });
     $mp->mock(is_supported => sub { 1 });
     $mp->mock(is_running => sub { 0 });
