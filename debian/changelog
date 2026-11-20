@@ -1,3 +1,25 @@
+libpve-storage-perl (9.1.20) trixie; urgency=medium
+
+  * backup provider: document the 'guest-rtime' key of the info hash, and that
+    a restore needs the guest config from archive_get_guest_config() unchanged.
+
+  * lvm: do not fail to remove a volume while one with the same name is still
+    being wiped, for example when destroying a VM right after a snapshot
+    rollback on qcow2.
+
+  * fix #8286: do not keep the guest locked while removed volumes are wiped in
+    the background, which made re-creating or changing the guest fail with a
+    lock timeout until the wipe was done. See the ApiChangeLog for plugins.
+
+  * lvm: wait at most 15 seconds for the commands of a storage status, so that
+    one stuck in I/O, for example on a queueing multipath map without paths, no
+    longer hangs pvestatd and the API. LVM storages show as inactive meanwhile.
+
+  * fix #8211: disks: list SAS hard disks as 'hdd' with the rotation rate they
+    report, instead of type 'unknown'.
+
+ -- Proxmox Support Team <support@proxmox.com>  Fri, 20 Nov 2026 13:16:16 +0100
+
 libpve-storage-perl (9.1.19) trixie; urgency=medium
 
   * import: refuse a raw+size stream that is shorter or longer than its
