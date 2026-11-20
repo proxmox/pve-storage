@@ -104,6 +104,7 @@ is_deeply(\@opens, [$link, $link], 'native wipe opens its by-id name');
 @order = @opens = ();
 $lvm->mock(file_read_firstline => sub { $_[0] =~ m{/size$} ? 1024 : undef });
 $lvm->mock(lvm_pv_info => sub { undef });
+$lvm->mock(lvm_vgs => sub { {} });
 $lvm->mock(
     clear_first_sector => sub { push @order, 'clear'; ok(-e $_[0], 'VG clear uses held fd') });
 $lvm->mock(

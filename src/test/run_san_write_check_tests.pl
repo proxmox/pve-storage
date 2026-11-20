@@ -259,9 +259,11 @@ $scan->mock(
     assert_same_device => sub { },
     assert_lun_unreferenced => sub { push @order, 'check'; die "referenced\n" },
 );
+my $vgs = {};
 $lvm->mock(
     file_read_firstline => sub { $_[0] =~ m{/size$} ? '2048' : undef },
     lvm_pv_info => sub { $pvinfo },
+    lvm_vgs => sub { $vgs },
     clear_first_sector => sub { push @order, 'clear' },
     run_command => sub {
         my ($cmd, %param) = @_;
@@ -336,6 +338,19 @@ eval {
 like($@, qr/path in use/, 'a LUN that is in use through another path refuses');
 is_deeply(\@order, [qw(lock check paths)], 'before the first write');
 $scan->mock(assert_lun_paths_unused => sub { push @order, 'paths' });
+$vgs = { data => {} };
+@order = ();
+eval {
+    PVE::Storage::LVMPlugin::lvm_create_volume_group(
+        '/dev/null',
+        'data',
+        1,
+        { exempt => 'new' },
+    );
+};
+like($@, qr/volume group 'data' already exists/, 'a volume group name the node has refuses');
+is_deeply(\@order, [qw(lock check paths)], 'before the device is labeled');
+$vgs = {};
 @order = ();
 eval {
     PVE::Storage::LVMPlugin::lvm_create_volume_group(

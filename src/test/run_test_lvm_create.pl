@@ -52,6 +52,7 @@ $lvm->mock(
         die "unexpected read $_[0]";
     },
     clear_first_sector => sub { push @writes, 'clear' },
+    lvm_vgs => sub { {} },
     # pvs lists a multipath map by its /dev/mapper link
     abs_path => sub { $_[0] eq $pv_alias ? '/dev/sda' : $_[0] },
     run_command => sub {

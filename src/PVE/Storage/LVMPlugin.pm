@@ -393,6 +393,13 @@ my sub create_volume_group {
             if defined($opener);
     }
 
+    # vgcreate refuses a name that the node already has only after pvcreate labeled the device
+    if (lvm_vgs()->{$vgname}) {
+        my $node = PVE::INotify::nodename();
+        die
+            "unable to create volume group - volume group '$vgname' already exists on node '$node'\n";
+    }
+
     $check_name->();
     clear_first_sector($lun ? '/proc/' . $$ . '/fd/' . fileno($fh) : $device);
 
