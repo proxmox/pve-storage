@@ -14,6 +14,7 @@ use PVE::Cluster qw(cfs_read_file);
 use PVE::JSONSchema qw(get_standard_option);
 use PVE::ProcFSTools;
 use PVE::RADOS;
+use PVE::RESTEnvironment qw(log_warn);
 use PVE::RPCEnvironment;
 use PVE::Storage::Plugin;
 use PVE::Tools qw(run_command trim file_read_firstline);
@@ -422,7 +423,13 @@ sub rbd_volume_config_set {
     return if !$err && defined($current) && $current eq $value;
 
     my $cmd = $rbd_cmd->($scfg, $storeid, 'config', 'image', 'set', $volname, $key, $value);
-    run_rbd_command($cmd, errmsg => "rbd config image set $volname $key $value error");
+    # librbd re-sends a remote request after rbd_request_timed_out_seconds, 30 by default, so this
+    # allows for one retry
+    run_rbd_command(
+        $cmd,
+        errmsg => "rbd config image set $volname $key $value error",
+        timeout => 60,
+    );
 
     return;
 }
@@ -636,7 +643,12 @@ sub qemu_blockdev_options {
 
     # SPI flash does lots of read-modify-write OPs, without writeback this gets really slow #3329
     if ($options->{hints}->{'efi-disk'}) {
-        rbd_volume_config_set($scfg, $storeid, $name, 'rbd_cache_policy', 'writeback');
+        # only affects performance, so do not fail the VM start, e.g. on the migration target
+        eval { rbd_volume_config_set($scfg, $storeid, $name, 'rbd_cache_policy', 'writeback') };
+        if (my $err = $@) {
+            die $err if $err =~ m/received interrupt|interrupted by signal/; # task was stopped
+            log_warn("could not set rbd_cache_policy for EFI disk '$name' - $err");
+        }
     }
 
     return $blockdev;
