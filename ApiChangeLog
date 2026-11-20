@@ -119,6 +119,16 @@ Future changes should be documented in here.
   `archive_get_guest_config()` returns, so return that config unchanged. A restore over a guest with
   another `uid` is refused unless `allow-identity-mismatch` is set.
 
+* Run cleanup workers of `free_image()` without the caller's locks
+
+  `free_image()` can return a code reference, which `vdisk_free()` runs in a forked `imgdel` task
+  after releasing the storage lock. The caller may still hold other locks at that point, like the
+  config or migration lock of the guest. The task now closes the inherited handles of locks taken
+  with `PVE::Tools::lock_file_full()`, so it no longer keeps the guest locked until the cleanup is
+  done. A worker therefore has to take the locks it needs itself, like the storage lock with
+  `cluster_lock_storage()`, and must not rely on the guest staying locked while it runs. This
+  depends on the version of pve-storage, not on the API version.
+
 ## Version 16:
 
 * Add `volname_for_format()`, `get_parsed_format()`, `volname_with_format()`, `is_valid_format()` and
