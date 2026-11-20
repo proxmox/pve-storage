@@ -877,6 +877,11 @@ Extract the guest configuration from the given backup. Returns the raw contents
 of the backed-up configuration file. Note that this method is called
 independently from C<restore_container_init()> or C<restore_vm_init()>.
 
+Return the configuration unchanged, as the backup call got it. The restore takes
+the guest identity from its C<meta> property: a restore to a free VMID keeps the
+C<uid> if no other guest in the cluster has it, and a restore over an existing
+guest with another C<uid> is refused unless C<allow-identity-mismatch> is set.
+
 Parameters:
 
 =over
