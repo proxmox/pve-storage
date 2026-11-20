@@ -398,8 +398,28 @@ my sub rbd_volume_exists {
 }
 
 # Needs to be public, so qemu-server can mock it for cfg2cmd.
+#
+# Skips the write if the value is already set. Writing the image config is forwarded to the
+# exclusive lock owner, e.g. the source VM during live migration, and can block indefinitely if
+# the owner does not complete the request. Reading it does not involve the lock owner.
 sub rbd_volume_config_set {
     my ($scfg, $storeid, $volname, $key, $value) = @_;
+
+    my $current;
+    my $get_cmd = $rbd_cmd->($scfg, $storeid, 'config', 'image', 'get', $volname, $key);
+    # fails if the key is not set yet, so just fall back to setting it on any error, except for an
+    # interrupt, e.g. from stopping the task
+    eval {
+        run_rbd_command(
+            $get_cmd,
+            errmsg => "rbd config image get $volname $key error",
+            errfunc => sub { },
+            outfunc => sub { $current = shift },
+        );
+    };
+    my $err = $@;
+    die $err if $err =~ m/received interrupt|interrupted by signal/;
+    return if !$err && defined($current) && $current eq $value;
 
     my $cmd = $rbd_cmd->($scfg, $storeid, 'config', 'image', 'set', $volname, $key, $value);
     run_rbd_command($cmd, errmsg => "rbd config image set $volname $key $value error");
@@ -616,9 +636,6 @@ sub qemu_blockdev_options {
 
     # SPI flash does lots of read-modify-write OPs, without writeback this gets really slow #3329
     if ($options->{hints}->{'efi-disk'}) {
-        # Querying the value would just cost more and the 'rbd image config get' command will just
-        # fail if the config has not been set yet, so it's not even straight-forward to do so.
-        # Simply set the value (possibly again).
         rbd_volume_config_set($scfg, $storeid, $name, 'rbd_cache_policy', 'writeback');
     }
 
