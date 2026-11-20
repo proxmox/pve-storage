@@ -300,6 +300,27 @@ $maps = {};
 $rows = PVE::Storage::SAN::scan_luns($cfg);
 is($rows->[0]->{usage}, 'other', 'foreign data from a sibling path is retained');
 is($rows->[0]->{detail}, 'ext4', 'signature detail');
+for my $order ([qw(sdb sdc)], [qw(sdc sdb)]) {
+    my ($member, $data) = @$order;
+    local $disks->{$member}->{used} = 'mpath_member';
+    local $disks->{$data}->{used} = 'ext4';
+    $rows = PVE::Storage::SAN::scan_luns($cfg);
+    is($rows->[0]->{detail}, 'ext4', "a path claimed by multipath ($member) does not hide data");
+}
+{
+    local $disks->{sdb}->{used} = 'mpath_member';
+    local $disks->{sdc}->{used} = 'mpath_member';
+    $rows = PVE::Storage::SAN::scan_luns($cfg);
+    is($rows->[0]->{usage}, 'unused', 'paths claimed by multipath are no use of the LUN');
+    ok(!exists($rows->[0]->{detail}), 'and give no signature detail');
+    local $partitions{'/dev/sdc'} = ['/dev/sdc1'];
+    $rows = PVE::Storage::SAN::scan_luns($cfg);
+    is_deeply(
+        [$rows->[0]->@{qw(usage detail)}],
+        ['other', 'partitions'],
+        'but the partitions that one of them keeps are',
+    );
+}
 $scan->mock(stable_path => sub { $_[0] eq '/dev/sdc' ? '/dev/disk/by-id/scsi-3600plain' : undef });
 $rows = PVE::Storage::SAN::scan_luns($cfg);
 is($rows->[0]->{'by-id'}, '/dev/disk/by-id/scsi-3600plain', 'by-id link of the second path');

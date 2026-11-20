@@ -117,7 +117,8 @@ sub scan_luns($cfg) {
             $row->{transport} = 'iscsi';
         }
         my $used = $disk->{used};
-        if (defined($used)) {
+        # the signature of a path that multipath claimed, not data on the LUN
+        if (defined($used) && $used ne 'mpath_member') {
             if ($used eq 'LVM' || $used eq 'LVM2_member') {
                 $row->{usage} = 'lvm';
                 delete $row->{detail};
@@ -174,11 +175,17 @@ sub scan_luns($cfg) {
     # by one of its paths or partitions. The scans of LVM and udev only read a device, and are gone
     # again a moment later.
     for my $wwid (sort keys %rows) {
+        my $row = $rows{$wwid};
         my %seen;
-        for my $device ($rows{$wwid}->{devpath}, sort keys(($paths{$wwid} // {})->%*)) {
+        for my $device ($row->{devpath}, sort keys(($paths{$wwid} // {})->%*)) {
             next if $seen{$device}++;
             my $parts = eval { lun_partitions({ devpath => $device, wwid => $wwid }) } // [];
             $paths{$wwid}->{$_} = 1 for @$parts;
+            if (@$parts && $row->{usage} eq 'unused') {
+                # a path that multipath claimed shows its signature instead of its partitions
+                $row->{usage} = 'other';
+                $row->{detail} = 'partitions';
+            }
         }
     }
     my %devices = map { $_ => 1 } (map { $_->{devpath} } values %rows),
