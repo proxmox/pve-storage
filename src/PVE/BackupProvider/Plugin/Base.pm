@@ -636,6 +636,14 @@ or remote migration to another VMID, and a new guest on a reused VMID gets
 another one. It is only unique within one cluster, as a copy in another cluster
 can keep it. Passed since qemu-server 9.2.21.
 
+=item C<< $info->{'guest-rtime'} >>
+
+Present if the guest has an identity. Its registration time C<rtime>, in
+milliseconds since the UNIX epoch, also in the C<meta> property of
+C<$guest_config>. A new registration of the guest, for example by a restore to
+a free VMID, sets a new one, also if the C<guest-uid> stays the same. Passed
+since qemu-server 9.2.22.
+
 =item C<< $info->{'cluster-id'} >>
 
 Present if the cluster, or the standalone node, has an ID. Together with
@@ -759,6 +767,14 @@ C<meta> property of C<$guest_config>. Unlike the VMID, it is kept by a restore
 or remote migration to another VMID, and a new guest on a reused VMID gets
 another one. It is only unique within one cluster, as a copy in another cluster
 can keep it. Passed since pve-container 6.1.25.
+
+=item C<< $info->{'guest-rtime'} >>
+
+Present if the guest has an identity. Its registration time C<rtime>, in
+milliseconds since the UNIX epoch, also in the C<meta> property of
+C<$guest_config>. A new registration of the guest, for example by a restore to
+a free VMID, sets a new one, also if the C<guest-uid> stays the same. Passed
+since pve-container 6.1.26.
 
 =item C<< $info->{'cluster-id'} >>
 
