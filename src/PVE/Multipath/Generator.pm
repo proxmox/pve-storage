@@ -102,11 +102,14 @@ sub regenerate($cfg = undef, $overrides = undef, $derived = undef) {
         # check every drop-in before one changes, as a restart of multipathd loads what is there
         my @changes = grep { dropin_changes($_->@*) } @dropins;
         write_dropin($_->@*) for @changes;
-        my %current = map { $_ => 1 } PVE::Multipath::list_etc_multipath_wwids()->@*;
         # A WWID that multipath refuses, for example a blacklisted one, must not hold up the others
         # or the reload, nor cause a reload on every pass. Retry it after five minutes, or after a
-        # drop-in changed, which can lift the refusal.
-        %refused = () if @changes;
+        # drop-in changed, which can lift the refusal, as it can fix a failed reload.
+        if (@changes) {
+            %refused = ();
+            $failed_at = undef;
+        }
+        my %current = map { $_ => 1 } PVE::Multipath::list_etc_multipath_wwids()->@*;
         delete @refused{ grep { !$wanted{$_} || $current{$_} } keys %refused };
         my @failed;
         for my $wwid (sort keys %wanted) {

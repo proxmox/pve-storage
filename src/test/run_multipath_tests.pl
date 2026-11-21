@@ -219,6 +219,35 @@ subtest 'the LUN that an LVM base volume names' => sub {
     }
 };
 
+subtest 'a changed drop-in retries a failed reload at once' => sub {
+    require File::Temp;
+    require PVE::Multipath::Generator;
+    my $dir = File::Temp::tempdir(CLEANUP => 1);
+    local $PVE::Multipath::Generator::DEFAULTS_DROPIN = "$dir/defaults.conf";
+    local $PVE::Multipath::Generator::OVERRIDES_DROPIN = "$dir/overrides.conf";
+    local $PVE::Multipath::Generator::ALIASES_DROPIN = "$dir/aliases.conf";
+    local $PVE::Multipath::Generator::RECONFIGURE_PENDING = "$dir/pending";
+    my $mp = Test::MockModule->new('PVE::Multipath');
+    $mp->mock(list_etc_multipath_wwids => sub { [] });
+    my $reloads = 0;
+    $mp->mock(reconfigure => sub { $reloads++; die "reload failed\n" });
+    my $cfg = { ids => {} };
+    my $error = PVE::Multipath::Generator::regenerate($cfg, "devices {\n}\n", {})->{error};
+    is($error, "reload failed\n", 'a reload fails');
+    $error = PVE::Multipath::Generator::regenerate($cfg, "devices {\n}\n", {})->{error};
+    like($error, qr/^multipath reload pending after a failed reload/, 'and waits');
+    is($reloads, 1, 'without another attempt');
+    PVE::Multipath::Generator::regenerate($cfg, "defaults {\n}\n", {});
+    is($reloads, 2, 'unless a drop-in changed');
+    my $unreadable = 1;
+    $mp->mock(
+        list_etc_multipath_wwids => sub { die "cannot read WWIDs\n" if $unreadable-- > 0; [] });
+    $error = PVE::Multipath::Generator::regenerate($cfg, "devices {\n}\n", {})->{error};
+    is($error, "cannot read WWIDs\n", 'a pass that changed a drop-in can fail later on');
+    PVE::Multipath::Generator::regenerate($cfg, "devices {\n}\n", {});
+    is($reloads, 3, 'which does not keep the next pass from retrying the reload');
+};
+
 subtest 'command timeouts, and the wait for a map only checks its by-id link' => sub {
     my $mp = Test::MockModule->new('PVE::Multipath');
     my @calls;
