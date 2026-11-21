@@ -1,3 +1,27 @@
+libpve-storage-perl (9.1.22) trixie; urgency=medium
+
+  * api: move the SAN status to '/cluster/san/status', and the LUN inventory
+    and iSCSI sessions of a node below '/nodes/{node}/san', matching the SAN
+    views of the web UI. The old paths are not kept.
+
+  * break pve-manager older than 9.2.36, which still uses the old SAN paths.
+
+  * multipath: retry a failed reload of multipathd as soon as a drop-in
+    changes, instead of after a minute.
+
+  * SAN LUN scan: do not take the signature that multipath leaves on a path
+    for data, and count the partitions that a path keeps as use.
+
+  * lvm: refuse a volume group name that the node already uses before labeling
+    the base volume, instead of leaving a physical volume behind.
+
+  * api: config: accept a digest when removing a storage, to refuse the
+    removal if the configuration changed meanwhile.
+
+  * api: scan: list the LVM thin pool scan in the index.
+
+ -- Proxmox Support Team <support@proxmox.com>  Sun, 22 Nov 2026 00:30:32 +0100
+
 libpve-storage-perl (9.1.21) trixie; urgency=medium
 
   * esxi: do not allow changing the server of an existing storage, like
