@@ -8,3 +8,4 @@ install:
 	make -C Storage install
 	make -C Disks install
 	make -C Plugins install
+	make -C SAN install

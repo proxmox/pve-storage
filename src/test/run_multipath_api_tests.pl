@@ -13,6 +13,7 @@ use Storable qw(dclone);
 use Test::More;
 use Test::MockModule;
 use PVE::API2::Multipath;
+use PVE::API2::SAN::Cluster;
 use PVE::Multipath::Generator;
 use PVE::Storage;
 
@@ -56,9 +57,10 @@ subtest 'add, update and remove an explicit entry' => sub {
     }
     is_deeply(
         PVE::API2::Multipath->index({}),
-        [map { { name => $_ } } qw(overrides status wwid)],
+        [map { { name => $_ } } qw(overrides wwid)],
         'index',
     );
+    is_deeply(PVE::API2::SAN::Cluster->index({}), [{ name => 'status' }], 'SAN index');
 };
 
 subtest 'a parameter error under the lock keeps its status and field' => sub {
@@ -779,7 +781,7 @@ subtest 'API returns final node and LUN states' => sub {
             },
         } },
     );
-    my $res = PVE::API2::Multipath->status({});
+    my $res = PVE::API2::SAN::Cluster->status({});
     is_deeply(
         [map { $res->{nodes}->{$_}->{state} } qw(n1 n2 n3 n4 n5)],
         [qw(ok ok no-report no-report unavailable)],
@@ -816,7 +818,7 @@ subtest 'API returns final node and LUN states' => sub {
     is($lun{'3600d'}->{'used-by-storage'}, 'shared', 'shared LVM attributed by volume group');
     {
         local $raw{n2} = encode_report({ time => $NOW, luns => [], 'vgs-unknown' => 1 });
-        my %unhinted = map { $_->{wwid} => $_ } PVE::API2::Multipath->status({})->{luns}->@*;
+        my %unhinted = map { $_->{wwid} => $_ } PVE::API2::SAN::Cluster->status({})->{luns}->@*;
         is(
             $unhinted{'3600d'}->{nodes}->{n2}->{state},
             'unknown',
@@ -829,7 +831,7 @@ subtest 'API returns final node and LUN states' => sub {
             'and for one that an iSCSI storage requests there',
         );
         local $entries->{'3600d'} = { type => 'wwid', nodes => { n1 => 1 } };
-        %unhinted = map { $_->{wwid} => $_ } PVE::API2::Multipath->status({})->{luns}->@*;
+        %unhinted = map { $_->{wwid} => $_ } PVE::API2::SAN::Cluster->status({})->{luns}->@*;
         is(
             $unhinted{'3600d'}->{nodes}->{n2}->{state},
             'unknown',
@@ -839,7 +841,7 @@ subtest 'API returns final node and LUN states' => sub {
     eval {
         PVE::JSONSchema::validate(
             $res,
-            PVE::API2::Multipath->map_method_by_name('status')->{returns},
+            PVE::API2::SAN::Cluster->map_method_by_name('status')->{returns},
         );
     };
     is($@, '', 'result satisfies the API schema');
