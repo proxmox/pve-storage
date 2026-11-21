@@ -7,7 +7,7 @@ use Test::More;
 use Test::MockModule;
 
 use PVE::Storage::SAN;
-use PVE::API2::Storage::Scan;
+use PVE::API2::SAN::Node;
 
 my $disk = Test::MockModule->new('PVE::Diskmanage');
 my $mp = Test::MockModule->new('PVE::Multipath');
@@ -168,7 +168,7 @@ is($row{'3600plain'}->{'used-by-storage'}, 'direct', 'a storage serving the LUNs
             'the partitions in the same query',
         );
     }
-    my $schema = PVE::API2::Storage::Scan->map_method_by_name('sanlunscan')->{returns};
+    my $schema = PVE::API2::SAN::Node->map_method_by_name('luns')->{returns};
     eval { PVE::JSONSchema::validate([values %open], $schema) };
     is($@, '', 'rows with a process match the public schema');
 
@@ -230,7 +230,7 @@ ok(!exists($row{'3600map'}->{'path-list'}->[0]->{address}), 'no portal without a
 is($row{'3600map'}->{state}, 'degraded', 'final state counts usable paths');
 is($row{'3600map'}->{multipath}, 'manual', 'explicit map');
 is($row{'3600map'}->{devpath}, '/dev/mapper/lun', 'map is the selected device');
-my $schema = PVE::API2::Storage::Scan->map_method_by_name('sanlunscan')->{returns};
+my $schema = PVE::API2::SAN::Node->map_method_by_name('luns')->{returns};
 eval { PVE::JSONSchema::validate($rows, $schema) };
 is($@, '', 'rows match the public schema');
 is($row{'3600map'}->{name}, 'lun', 'map alias is exposed');

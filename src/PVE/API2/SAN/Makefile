@@ -1,4 +1,4 @@
-SOURCES= Cluster.pm
+SOURCES= Cluster.pm Node.pm
 
 .PHONY: install
 install:

@@ -6,7 +6,7 @@ use Test::MockModule;
 use Test::More;
 use lib qw(. ..);
 use PVE::API2::ISCSI;
-use PVE::API2::Storage::Scan;
+use PVE::API2::SAN::Node;
 use PVE::CLI::pvesm;
 
 my $plugin = Test::MockModule->new('PVE::Storage::ISCSIPlugin');
@@ -56,7 +56,7 @@ for my $case (
     is($@, '', 'rows satisfy the schema');
 }
 for my $case (
-    ['PVE::API2::ISCSI', qw(status targets)], ['PVE::API2::Storage::Scan', 'sanlunscan'],
+    ['PVE::API2::ISCSI', qw(status targets)], ['PVE::API2::SAN::Node', 'luns'],
 ) {
     my ($class, @names) = @$case;
     for my $name (@names) {
@@ -90,7 +90,7 @@ for my $case (
         sub check { $_[2] eq '/vms/100' && $_[3]->[0] eq 'VM.Audit' && $_[4] }
     }
     $rpc->mock(get => sub { bless {}, 'SANScanTestRPC' });
-    my $scan = PVE::API2::Storage::Scan->map_method_by_name('sanlunscan')->{code};
+    my $scan = PVE::API2::SAN::Node->map_method_by_name('luns')->{code};
     my %rows = map { $_->{wwid} => $_ } $scan->({ node => 'test' })->@*;
     is($rows{'3600a'}->{'used-by-guest'}, 100, 'a guest that the user may audit is named');
     ok(!exists($rows{'3600b'}->{'used-by-guest'}), 'another one is not');
@@ -101,10 +101,31 @@ is_deeply(
     [{ name => 'status' }, { name => 'target' }],
     'only read-only children',
 );
+is_deeply(
+    PVE::API2::SAN::Node->index({ node => 'test' }),
+    [{ name => 'iscsi' }, { name => 'luns' }],
+    'node SAN index',
+);
+for my $case (
+    ['/iscsi/status', 'PVE::API2::ISCSI', 'status'],
+    ['/luns', 'PVE::API2::SAN::Node', 'luns'],
+) {
+    my ($path, $class, $name) = @$case;
+    my ($handler, $info) = PVE::API2::SAN::Node->find_handler('GET', $path, {});
+    is("$handler $info->{name}", "$class $name", "node SAN path $path");
+}
+{
+    my ($class, $name) = $PVE::CLI::pvesm::cmddef->{scan}->{'san-luns'}->@[0, 1];
+    is(
+        $class->map_method_by_name($name),
+        PVE::API2::SAN::Node->map_method_by_name('luns'),
+        'CLI calls the LUN inventory',
+    );
+}
 
 my $formatter = Test::MockModule->new('PVE::CLIFormatter');
 my $data = [{ wwid => '3600abc', devpath => '/dev/sda', serial => 'S1' }];
-my $schema = PVE::API2::Storage::Scan->map_method_by_name('sanlunscan')->{returns};
+my $schema = PVE::API2::SAN::Node->map_method_by_name('luns')->{returns};
 $formatter->mock(
     print_api_result => sub {
         is($_[0], $data, 'CLI forwards complete rows');

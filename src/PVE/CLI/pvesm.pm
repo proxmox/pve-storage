@@ -26,6 +26,7 @@ use PVE::Tools qw(extract_param);
 use PVE::Storage;
 use PVE::Storage::Plugin;
 
+use PVE::API2::SAN::Node;
 use PVE::API2::Storage::Config;
 use PVE::API2::Storage::Content;
 use PVE::API2::Storage::PruneBackups;
@@ -737,8 +738,8 @@ our $cmddef = {
             $PVE::RESTHandler::standard_output_options,
         ],
         'san-luns' => [
-            "PVE::API2::Storage::Scan",
-            'sanlunscan',
+            "PVE::API2::SAN::Node",
+            'luns',
             [],
             { node => $nodename },
             sub {
