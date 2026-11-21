@@ -7,6 +7,7 @@ use Test::More;
 use lib qw(. ..);
 use PVE::API2::ISCSI;
 use PVE::API2::SAN::Node;
+use PVE::API2::Storage::Scan;
 use PVE::CLI::pvesm;
 
 my $plugin = Test::MockModule->new('PVE::Storage::ISCSIPlugin');
@@ -100,6 +101,11 @@ is_deeply(
     PVE::API2::ISCSI->map_method_by_name('index')->{code}->({}),
     [{ name => 'status' }, { name => 'target' }],
     'only read-only children',
+);
+is_deeply(
+    [map { $_->{method} } PVE::API2::Storage::Scan->index({ node => 'test' })->@*],
+    [qw(cifs iscsi lvm lvmthin nfs pbs zfs)],
+    'scan index lists the discovery scans',
 );
 is_deeply(
     PVE::API2::SAN::Node->index({ node => 'test' }),

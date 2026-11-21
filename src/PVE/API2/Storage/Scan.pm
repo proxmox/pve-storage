@@ -47,6 +47,7 @@ __PACKAGE__->register_method({
             { method => 'cifs' },
             { method => 'iscsi' },
             { method => 'lvm' },
+            { method => 'lvmthin' },
             { method => 'nfs' },
             { method => 'pbs' },
             { method => 'zfs' },
