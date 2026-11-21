@@ -470,6 +470,7 @@ __PACKAGE__->register_method({
                     completion => \&PVE::Storage::complete_storage,
                 },
             ),
+            digest => get_standard_option('pve-config-digest'),
         },
     },
     returns => { type => 'null' },
@@ -477,10 +478,13 @@ __PACKAGE__->register_method({
         my ($param) = @_;
 
         my $storeid = extract_param($param, 'storage');
+        my $digest = extract_param($param, 'digest');
 
         PVE::Storage::lock_storage_config(
             sub {
                 my $cfg = PVE::Storage::config();
+
+                PVE::SectionConfig::assert_if_modified($cfg, $digest);
 
                 my $scfg = PVE::Storage::storage_config($cfg, $storeid);
 
