@@ -12,6 +12,7 @@ use Time::HiRes ();
 
 use PVE::Tools qw(file_set_contents);
 
+use PVE::API2::Storage::Config;
 use PVE::NVMeOF;
 use PVE::Storage;
 
@@ -202,6 +203,32 @@ subtest 'configuration, portals and volumes' => sub {
         'vm-vol',
         'namespaces are VM disks',
     );
+};
+
+subtest 'the first storage of the type needs an upgraded cluster' => sub {
+    my $raw = "dir: local\n\tpath /var/lib/vz\n\tcontent iso\n";
+    my $cluster = Test::MockModule->new('PVE::Cluster');
+    my $asserted;
+    $cluster->mock(assert_min_cluster_version => sub { $asserted = join('.', @_) });
+    my $storage = Test::MockModule->new('PVE::Storage');
+    $storage->mock(
+        lock_storage_config => sub { $_[0]->() },
+        config => sub { PVE::Storage::Plugin->parse_config('storage.cfg', $raw) },
+        write_config => sub { $raw = PVE::Storage::Plugin->write_config('storage.cfg', $_[0]) },
+        activate_storage => sub { },
+    );
+    my $add = sub($storeid, $nqn) {
+        $asserted = undef;
+        PVE::API2::Storage::Config->create({
+            storage => $storeid,
+            type => 'nvmeof',
+            subsysnqn => $nqn,
+            portals => '192.0.2.1',
+        });
+        return $asserted;
+    };
+    is($add->('fabric1', 'nqn.first'), '9.2.38', 'the first one checks the cluster');
+    is($add->('fabric2', 'nqn.second'), undef, 'a further one does not');
 };
 
 subtest 'sysfs topology' => sub {

@@ -297,6 +297,11 @@ __PACKAGE__->register_method({
                     die "storage ID '$storeid' already defined\n";
                 }
 
+                # A node without the type drops its sections when it writes the configuration.
+                # FIXME: MAJOR VERSION: This check can be dropped at the next major version bump.
+                PVE::Cluster::assert_min_cluster_version(9, 2, 38)
+                    if $type eq 'nvmeof' && !grep { $_->{type} eq 'nvmeof' } values $cfg->{ids}->%*;
+
                 $cfg->{ids}->{$storeid} = $opts;
 
                 $returned_config = $plugin->on_add_hook($storeid, $opts, %$sensitive);
