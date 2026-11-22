@@ -226,7 +226,9 @@ __PACKAGE__->register_method({
     permissions => {
         check => ['perm', '/storage', ['Datastore.Allocate']],
     },
-    parameters => PVE::Storage::Plugin->createSchema(),
+    parameters => PVE::Storage::Plugin::add_sensitive_properties_to_schema(
+        PVE::Storage::Plugin->createSchema()
+    ),
     returns => {
         type => 'object',
         properties => {
@@ -328,7 +330,9 @@ __PACKAGE__->register_method({
     permissions => {
         check => ['perm', '/storage', ['Datastore.Allocate']],
     },
-    parameters => PVE::Storage::Plugin->updateSchema(),
+    parameters => PVE::Storage::Plugin::add_sensitive_properties_to_schema(
+        PVE::Storage::Plugin->updateSchema(), 1,
+    ),
     resolve_type => sub {
         my ($param) = @_;
 

@@ -339,6 +339,37 @@ sub sensitive_properties {
     return [qw(encryption-key keyring master-pubkey password)];
 }
 
+# The API takes the sensitive properties out of the parameters before it checks them against the
+# options of the type, so a plugin could take one that another plugin declares without listing it.
+# The per-type schemas that apply once a plugin isolates its properties would refuse it, so add it
+# there for plugins that do not isolate theirs, on the conditions of the schema of all plugins: to
+# update it, a plugin has to list it as an option that is not fixed.
+sub add_sensitive_properties_to_schema {
+    my ($schema, $update) = @_;
+
+    my ($plugindata, $options) = $defaultData->@{qw(plugindata options)};
+    my @shared = grep { !$plugindata->{$_}->{'isolate-properties'} } keys $options->%*;
+
+    for my $part ($schema, ($schema->{allOf} // [])->@*) {
+        for my $entry (($part->{oneOf} // [])->@*) {
+            my $type = $entry->{'instance-type'};
+            next if $plugindata->{$type}->{'isolate-properties'};
+
+            for my $property (sensitive_properties($type)->@*) {
+                next if $options->{$type}->{$property}; # its own options decide
+                my $property_schema = $defaultData->{propertyList}->{$property} or next;
+                next if $update && !grep {
+                    my $option = $options->{$_}->{$property};
+                    $option && !$option->{fixed};
+                } @shared;
+                $entry->{properties}->{$property} = { $property_schema->%*, optional => 1 };
+            }
+        }
+    }
+
+    return $schema;
+}
+
 sub storage_has_feature {
     my ($type, $feature) = @_;
 

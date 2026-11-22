@@ -65,9 +65,9 @@ Future changes should be documented in here.
   of the plugin. With the schema keyword alone it is stored and returned by the API like any other
   property.
 
-  A property in `'sensitive-properties'` has to be optional in `options()`: its value is removed
-  before the required options of a new storage are checked. A plugin that needs it can check in
-  `on_add_hook()`, like the ESXi plugin does for its password.
+  A property in `'sensitive-properties'` has to be optional if listed in `options()`: its value is
+  removed before the required options of a new storage are checked. A plugin that needs it can
+  check in `on_add_hook()`, like the ESXi plugin does for its password.
 
 * Allow plugins to isolate their properties
 
@@ -102,9 +102,11 @@ Future changes should be documented in here.
   are specific to the plugin, for example prefixed with its type.
 
   As soon as one such plugin is installed, the API checks the parameters for adding and updating a
-  storage against the options of its type alone, for all storage types. So every plugin has to
-  list the sensitive properties that it uses in `options()`.
-  Set 'sensitive-properties' in such a plugin, even if empty. Without it, the fallback list of
+  storage against the options of its type alone, for all storage types. Only the sensitive
+  properties of a plugin that does not isolate its own are still accepted without being listed in
+  its `options()`, by their own names: an alias that only another plugin declares for one is not.
+
+  Set 'sensitive-properties' in an isolating plugin, even if empty. Without it, the fallback list of
   version 11 also applies to the plugin's own properties of these names.
 
 * Pass the guest identity to backup providers

@@ -68,9 +68,74 @@ package PVE::Storage::Custom::DerivingFixturePlugin {
     }
 }
 
+my $hook_params;
+
+# does not isolate its properties and has no 'sensitive-properties', so it gets the fallback ones,
+# without listing them in its options
+package PVE::Storage::Custom::FallbackFixturePlugin {
+    use base qw(PVE::Storage::Plugin);
+
+    sub type {
+        return 'fallback';
+    }
+
+    sub plugindata {
+        return { content => [{ none => 1 }, { none => 1 }] };
+    }
+
+    sub options {
+        return { content => { optional => 1 }, disable => { optional => 1 } };
+    }
+
+    sub on_add_hook($class, $storeid, $scfg, %sensitive) {
+        $hook_params = {%sensitive};
+        return;
+    }
+
+    sub on_update_hook($class, $storeid, $scfg, %sensitive) {
+        $hook_params = {%sensitive};
+        return;
+    }
+}
+
+# lists its own sensitive property and password, which other types can change, as fixed options,
+# and declares another one that it does not list
+package PVE::Storage::Custom::FixedSecretFixturePlugin {
+    our @ISA = ('PVE::Storage::Custom::FallbackFixturePlugin');
+
+    sub type {
+        return 'fixedsecret';
+    }
+
+    sub plugindata {
+        return {
+            content => [{ none => 1 }, { none => 1 }],
+            'sensitive-properties' =>
+                { 'fixed-secret' => 1, password => 1, 'unlisted-secret' => 1 },
+        };
+    }
+
+    sub properties {
+        return {
+            'fixed-secret' => { type => 'string', optional => 1 },
+            'unlisted-secret' => { type => 'string', optional => 1 },
+        };
+    }
+
+    sub options {
+        return {
+            'fixed-secret' => { optional => 1, fixed => 1 },
+            password => { optional => 1, fixed => 1 },
+            content => { optional => 1 },
+        };
+    }
+}
+
 # has to happen before loading PVE::Storage, which initializes all registered plugins
 PVE::Storage::Custom::IsolatedFixturePlugin->register();
 PVE::Storage::Custom::DerivingFixturePlugin->register();
+PVE::Storage::Custom::FallbackFixturePlugin->register();
+PVE::Storage::Custom::FixedSecretFixturePlugin->register();
 
 require PVE::Storage;
 require PVE::API2::Storage::Config;
@@ -84,6 +149,12 @@ isolated: fixture
 	path /mnt/fixture
 	fixture-id one
 	content iso
+
+fallback: secrets
+	content none
+
+fixedsecret: fixed
+	content none
 EOF
 
 my $written;
@@ -227,6 +298,95 @@ for my $test ($tests->@*) {
         my ($property, $value) = $expected->@*;
         is("$err", '', "$description: accepted");
         is($written->{ $param->{storage} }->{$property}, $value, "$description: written");
+    }
+}
+
+# A sensitive property goes to the hooks, not to the config, so the API never checked it against
+# the options of the type. Plugins that do not isolate their properties keep relying on that.
+my $sensitive_tests = [
+    [
+        'create, fallback property',
+        'create',
+        { storage => 'new', type => 'fallback', password => 'secret' },
+        { password => 'secret' },
+    ],
+    [
+        'update, fallback property',
+        'update',
+        { storage => 'secrets', 'encryption-key' => 'key' },
+        { 'encryption-key' => 'key' },
+    ],
+    [
+        'delete a fallback property that is no option',
+        'update',
+        { storage => 'secrets', delete => 'password' },
+        qr/no such option 'password'/,
+    ],
+    [
+        'create, fixed sensitive property',
+        'create',
+        { storage => 'new', type => 'fixedsecret', 'fixed-secret' => 'secret' },
+        { 'fixed-secret' => 'secret' },
+    ],
+    [
+        'update, fixed sensitive property',
+        'update',
+        { storage => 'fixed', 'fixed-secret' => 'secret' },
+        qr/fixed-secret: property is not defined in schema/,
+    ],
+    [
+        'create, fixed sensitive property another type can change',
+        'create',
+        { storage => 'new', type => 'fixedsecret', password => 'secret' },
+        { password => 'secret' },
+    ],
+    [
+        'update, fixed sensitive property another type can change',
+        'update',
+        { storage => 'fixed', password => 'secret' },
+        qr/password: property is not defined in schema/,
+    ],
+    [
+        'create, sensitive property no plugin lists',
+        'create',
+        { storage => 'new', type => 'fixedsecret', 'unlisted-secret' => 'secret' },
+        { 'unlisted-secret' => 'secret' },
+    ],
+    [
+        'update, sensitive property no plugin lists',
+        'update',
+        { storage => 'fixed', 'unlisted-secret' => 'secret' },
+        qr/unlisted-secret: property is not defined in schema/,
+    ],
+    [
+        'isolated storage, fallback property',
+        'update',
+        { storage => 'fixture', password => 'secret' },
+        qr/password: property is not defined in schema/,
+    ],
+    [
+        'built-in storage, sensitive property of another type',
+        'update',
+        { storage => 'local', password => 'secret' },
+        qr/password: property is not defined in schema/,
+    ],
+];
+
+for my $test ($sensitive_tests->@*) {
+    my ($description, $method, $param, $expected) = $test->@*;
+
+    ($written, $hook_params) = (undef, undef);
+    eval { PVE::API2::Storage::Config->$method({ $param->%* }) };
+    my $err = $@;
+
+    if (ref($expected) eq 'Regexp') {
+        like("$err", $expected, "$description: refused");
+        is($written, undef, "$description: nothing written");
+    } else {
+        is("$err", '', "$description: accepted");
+        is_deeply($hook_params, $expected, "$description: passed to the hook");
+        my $config = $written->{ $param->{storage} };
+        ok(!grep({ exists($config->{$_}) } keys $expected->%*), "$description: not in the config");
     }
 }
 
