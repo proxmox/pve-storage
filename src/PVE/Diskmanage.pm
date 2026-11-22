@@ -555,23 +555,27 @@ sub read_subsysnqn {
 }
 
 # Returns the NVMe transport (pcie, fc, tcp, rdma, loop) of a namespace, either directly from
-# its controller, or from any controller of its subsystem for native NVMe multipath setups.
+# its controller, or from the controllers of its subsystem for native NVMe multipath setups. Of
+# several transports, one over a fabric wins, independent of the order of the controllers.
 sub get_nvme_transport {
     my ($sysdir) = @_;
 
     my $transport = file_read_firstline("$sysdir/device/transport");
     return $transport if defined($transport);
 
+    my $found = {};
     dir_glob_foreach(
         "$sysdir/device",
         'nvme\d+',
         sub {
             my ($controller) = @_;
-            $transport //= file_read_firstline("$sysdir/device/$controller/transport");
+            my $value = file_read_firstline("$sysdir/device/$controller/transport");
+            $found->{$value} = 1 if defined($value);
         },
     );
 
-    return $transport;
+    my ($first) = grep { $found->{$_} } (qw(tcp rdma fc), sort keys $found->%*);
+    return $first;
 }
 
 # SAS does not distinguish local from remote attachments, so it is not classified as remote.
@@ -614,7 +618,10 @@ sub mounted_paths {
 
 sub get_disks {
     my ($disks, $nosmart, $include_partitions, $san_inventory) = @_;
-    # SAN inventory includes iSCSI session devices and skips usage probes that read devices.
+    # Only the SAN inventory includes iSCSI LUNs and NVMe namespaces attached over TCP or RDMA, or
+    # over an unknown transport, as storages connect them for use on several nodes. Fibre Channel
+    # devices stay listed, as local disk setup is how a volume group gets onto one. The SAN
+    # inventory skips usage probes that read devices.
     my $disklist = {};
 
     my $mounted = mounted_blockdevs();
@@ -679,14 +686,19 @@ sub get_disks {
 
             return if !$san_inventory && is_iscsi_device($dev);
 
-            $udev_db //= get_udev_db() if ++$udev_queries > $udev_single;
-            my $data = get_udev_info("/sys/block/$dev", $udev_db) // return;
-            my $devpath = $data->{devpath};
-
             my $sysdir = "/sys/block/$dev";
 
             my $nvme_transport;
-            $nvme_transport = get_nvme_transport($sysdir) if $dev =~ m/^nvme/;
+            if ($dev =~ m/^nvme/) {
+                $nvme_transport = get_nvme_transport($sysdir);
+                # like a namespace whose last controller is gone, which can be one over a network
+                return if !$san_inventory && !defined($nvme_transport);
+            }
+            return if !$san_inventory && ($nvme_transport // '') =~ /^(?:tcp|rdma)$/;
+
+            $udev_db //= get_udev_db() if ++$udev_queries > $udev_single;
+            my $data = get_udev_info("/sys/block/$dev", $udev_db) // return;
+            my $devpath = $data->{devpath};
 
             my $sysdata = get_sysdir_info($sysdir);
             return if !defined($sysdata);

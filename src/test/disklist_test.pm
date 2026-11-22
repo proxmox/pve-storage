@@ -290,12 +290,63 @@ sub test_disk_list {
             for my $transport (qw(tcp rdma fc pcie)) {
                 $smart_calls = 0;
                 $diskmanage_module->mock(get_nvme_transport => sub { $transport });
-                PVE::Diskmanage::get_disks();
+                # with SMART, as the SAN inventory lists the namespaces of all transports
+                PVE::Diskmanage::get_disks(undef, 0, 0, 1);
                 $testcount++;
                 is($smart_calls, $transport eq 'pcie' ? 1 : 0, "SMART queries for $transport");
             }
             $diskmanage_module->unmock('get_smart_data');
-            $diskmanage_module->unmock('get_nvme_transport');
+
+            for my $transport ('tcp', 'rdma', 'fc', 'pcie', undef) {
+                $diskmanage_module->mock(get_nvme_transport => sub { $transport });
+                my $local = ($transport // '') =~ /^(?:fc|pcie)$/;
+                my $name = $transport // 'an unknown transport';
+                $testcount += 3;
+                is(
+                    !!PVE::Diskmanage::get_disks()->{nvme0n1},
+                    $local,
+                    "disk list for local setup with $name",
+                );
+                ok(
+                    PVE::Diskmanage::get_disks(undef, 1, 0, 1)->{nvme0n1},
+                    "SAN inventory with $name",
+                );
+                eval { PVE::Diskmanage::assert_disk_unused('/dev/nvme0n1') };
+                like(
+                    $@,
+                    $local ? qr/^$/ : qr/not a valid local disk/,
+                    "local disk setup with $name",
+                );
+            }
+
+            $diskmanage_module->mock(
+                dir_glob_foreach => sub {
+                    my ($dir, $regex, $sub) = @_;
+                    return $sub->('nvme0n1p1') if $dir eq '/sys/block/nvme0n1';
+                    return mocked_dir_glob_foreach(@_);
+                },
+                is_partition => sub { return $_[0] eq '/dev/nvme0n1p1' },
+                get_blockdev => sub { return '/dev/nvme0n1' },
+            );
+            for my $transport (qw(tcp rdma fc pcie)) {
+                $diskmanage_module->mock(get_nvme_transport => sub { $transport });
+                my $local = $transport eq 'fc' || $transport eq 'pcie';
+                $testcount += 2;
+                is(
+                    !!PVE::Diskmanage::get_disks(undef, 1, 1)->{nvme0n1p1},
+                    $local,
+                    "partition list for local setup with $transport",
+                );
+                # partitions have holders in these tests, so a listed one counts as used
+                eval { PVE::Diskmanage::assert_disk_unused('/dev/nvme0n1p1') };
+                like(
+                    $@,
+                    $local ? qr/already in use/ : qr/not a valid local disk/,
+                    "local disk setup on a partition with $transport",
+                );
+            }
+            $diskmanage_module->mock(dir_glob_foreach => \&mocked_dir_glob_foreach);
+            $diskmanage_module->unmock($_) for qw(is_partition get_blockdev get_nvme_transport);
         }
 
         if (-f "disk_tests/$testcasedir/multipathd_status_expected.json") {
@@ -342,7 +393,8 @@ sub test_disk_list {
             $udev_single_queries = 0;
             my $listed = PVE::Diskmanage::get_disks();
             $testcount++;
-            is(scalar(keys %$listed), 6, 'all disks listed');
+            is(scalar(keys %$listed), 5,
+                'all disks listed but the namespace attached over TCP');
             $testcount++;
             is(
                 $udev_single_queries,
@@ -350,8 +402,8 @@ sub test_disk_list {
                 'the database replaces the queries after the first disks',
             );
 
-            # six disks: 240 block devices are just enough to ask about each of them on its own
-            for my $count (240, 239) {
+            # five disks: 200 block devices are just enough to ask about each of them on its own
+            for my $count (200, 199) {
                 $diskmanage_module->mock(
                     get_lsblk_info => sub {
                         return { map { ("/dev/dm-$_" => {}) } 1 .. $count };
@@ -363,10 +415,38 @@ sub test_disk_list {
                 $testcount++;
                 is(
                     $udev_single_queries,
-                    $count == 240 ? 6 : 5,
-                    "single queries for six disks among $count block devices",
+                    $count == 200 ? 5 : 4,
+                    "single queries for five disks among $count block devices",
                 );
             }
+
+            my $san = PVE::Diskmanage::get_disks(undef, 1, 0, 1);
+            $testcount++;
+            is($san->{nvme9n1}->{transport}, 'nvme-tcp', 'SAN inventory lists it');
+
+            # a second controller of the subsystem over Fibre Channel, listed before or after
+            for my $order ([qw(nvme4 nvme5)], [qw(nvme5 nvme4)]) {
+                $diskmanage_module->mock(
+                    dir_glob_foreach => sub {
+                        my ($dir, $regex, $sub) = @_;
+                        return mocked_dir_glob_foreach(@_)
+                            if $dir ne '/sys/block/nvme9n1/device';
+                        $sub->($_) for $order->@*;
+                    },
+                    file_read_firstline => sub {
+                        return 'fc' if $_[0] eq '/sys/block/nvme9n1/device/nvme4/transport';
+                        return mocked_file_read_firstline(@_);
+                    },
+                );
+                $testcount++;
+                is(
+                    PVE::Diskmanage::get_nvme_transport('/sys/block/nvme9n1'),
+                    'tcp',
+                    "TCP wins over Fibre Channel listed as $order->[0], $order->[1]",
+                );
+            }
+            $diskmanage_module->mock(dir_glob_foreach => \&mocked_dir_glob_foreach);
+            $diskmanage_module->mock(file_read_firstline => \&mocked_file_read_firstline);
         }
 
         done_testing($testcount);

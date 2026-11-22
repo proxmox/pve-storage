@@ -87,21 +87,5 @@
         "osdid-list": null,
         "by_id_link": "/dev/disk/by-id/nvme-FCMODEL_FCNVME1",
         "transport": "nvme-fc"
-    },
-    "nvme9n1": {
-        "devpath": "/dev/nvme9n1",
-        "size": 10737418240,
-        "vendor": "FABVEND",
-        "model": "FABRICS CTRL",
-        "serial": "FAB1",
-        "wwn": "uuid.10000000-0000-0000-0000-000000000001",
-        "gpt": 0,
-        "rpm": 0,
-        "type": "nvme",
-        "health": "UNKNOWN",
-        "wearout": "N/A",
-        "osdid": -1,
-        "osdid-list": null,
-        "transport": "nvme-tcp"
     }
 }
