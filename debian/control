@@ -26,7 +26,7 @@ Architecture: all
 Breaks: libpve-guest-common-perl (<< 4.0-3),
         libpve-http-server-perl (<< 4.0-3),
         pve-container (<< 6.1.22),
-        pve-manager (<< 9.2.36),
+        pve-manager (<< 9.2.38),
         qemu-server (<< 9.2.17),
 Depends: bzip2,
          ceph-common (>= 12.2~),
