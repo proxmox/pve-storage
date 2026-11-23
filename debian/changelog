@@ -1,3 +1,41 @@
+libpve-storage-perl (9.1.23) trixie; urgency=medium
+
+  * api: config: activate a newly added storage only after the storage
+    configuration is written and its lock released, and activate the base of
+    a new LVM storage before taking the lock. Waiting for an unreachable iSCSI
+    target or NVMe over Fabrics portal no longer blocks other changes to the
+    storage configuration in the cluster. If the activation fails, the storage
+    is removed again.
+
+  * add the NVMe over Fabrics storage type 'nvmeof' for NVMe/TCP subsystems. It
+    connects through each configured portal, relies on the native NVMe
+    multipath of the kernel, and offers the namespaces as raw VM disks or as
+    base volumes for shared LVM.
+
+  * nvmeof: discover the subsystems of a portal through the scan API and with
+    'pvesm scan nvmeof'.
+
+  * api: add '/nodes/{node}/san/nvmeof' with the NVMe host NQN of the node and
+    its fabric controllers. A controller can be disconnected there, which is
+    refused if a namespace in use would lose its last usable path.
+
+  * multipath: include NVMe over Fabrics namespaces and the NVMe host NQN of
+    each node in the cluster-wide SAN status.
+
+  * disks: do not offer NVMe namespaces attached over TCP or RDMA for local disk
+    setup, refuse wiping them or their partitions locally, and skip SMART
+    queries for namespaces attached over a fabric.
+
+  * api: config: refuse adding the first NVMe over Fabrics storage until all
+    nodes run pve-manager 9.2.38 or newer, as older nodes drop the unknown type
+    when they write the storage configuration.
+
+  * api: config: accept the sensitive properties of a third-party plugin that
+    does not list them in its options also once another plugin isolates its
+    properties.
+
+ -- Proxmox Support Team <support@proxmox.com>  Mon, 23 Nov 2026 07:38:33 +0100
+
 libpve-storage-perl (9.1.22) trixie; urgency=medium
 
   * api: move the SAN status to '/cluster/san/status', and the LUN inventory
