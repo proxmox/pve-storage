@@ -298,16 +298,38 @@ subtest 'wipe takes names beyond the old pattern for a LUN only' => sub {
     for my $name (@other) {
         like($wipe->($name), qr/only accepted for a SAN LUN/, "$name is refused");
     }
+    my %transport = (nvme1n1 => 'pcie', nvme2n1 => 'tcp', nvme3n1 => 'rdma', nvme4n1 => undef);
+    $diskmanage_module->mock(
+        get_nvme_transport => sub { $transport{ (split('/', $_[0]))[-1] } });
     is($wipe->('/dev/sdb1'), '', 'a partition by its kernel name is wiped');
+    is($wipe->('/dev/nvme1n1p1'), '', 'so is one of a local namespace');
+    is($wipe->('/dev/nvme1n1'), '', 'and a local namespace');
+    for my $name (qw(/dev/nvme2n1p1 /dev/nvme2n1p200 /dev/nvme3n1p1)) {
+        like(
+            $wipe->($name),
+            qr/attached over a network, cannot be wiped on its own/,
+            "but not $name",
+        );
+    }
+    for my $name (qw(/dev/nvme4n1p1 /dev/nvme4n1)) {
+        like($wipe->($name), qr/transport of namespace .* cannot be read/, "nor $name");
+    }
+    like($wipe->('/dev/nvme2n1'), qr/transport changed/, 'nor one the SAN check missed');
     $lun = { wwid => '3600a' };
     is(
         $wipe->('/dev/disk/by-id/dm-uuid-mpath-3600a'),
         '',
         'a LUN by the name of its map is wiped',
     );
-    is_deeply(\@wiped, ['/dev/sdb1', '3600a'], 'nothing else got wiped');
+    is_deeply(
+        \@wiped,
+        ['/dev/sdb1', '/dev/nvme1n1p1', '/dev/nvme1n1', '3600a'],
+        'nothing else got wiped',
+    );
 
-    my @mocked = qw(verify_blockdev_path is_mounted has_holder wipe_blockdev udevadm_trigger);
+    my @mocked = qw(
+        verify_blockdev_path is_mounted has_holder wipe_blockdev udevadm_trigger get_nvme_transport
+    );
     $diskmanage_module->unmock($_) for @mocked;
 };
 

@@ -318,6 +318,29 @@ __PACKAGE__->register_method({
                     . " SAN LUN\n";
             }
 
+            # Other nodes can use a namespace attached over a network, which the checks for mounts
+            # and holders do not see, and one without a path gets written once it has one again.
+            # Under Node > SAN, it is wiped as a whole with the SAN checks. The name tells the
+            # namespace of a partition, also if its partition number is one that the checks of the
+            # partition table refuse.
+            if (basename($disk) =~ m/^(nvme[0-9]+n[0-9]+)(p[0-9]+)?$/) {
+                my ($namespace, $partition) = ($1, $2);
+                my $transport = PVE::Diskmanage::get_nvme_transport("/sys/block/$namespace");
+                die
+                    "cannot wipe '$disk' - the transport of namespace '/dev/$namespace' cannot be"
+                    . " read, as when it has no path\n"
+                    if !defined($transport);
+                if (PVE::Diskmanage::is_network_nvme_transport($transport)) {
+                    die
+                        "cannot wipe '$disk' - a partition of namespace '/dev/$namespace', which"
+                        . " is attached over a network, cannot be wiped on its own; Node > SAN"
+                        . " wipes the whole namespace\n"
+                        if defined($partition);
+                    # it got a path since the SAN check above, which found none
+                    die "cannot wipe '$disk' - its transport changed, try again\n";
+                }
+            }
+
             my $mounted = PVE::Diskmanage::is_mounted($disk);
             die "disk/partition '${mounted}' is mounted\n" if $mounted;
 

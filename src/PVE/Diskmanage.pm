@@ -578,6 +578,14 @@ sub get_nvme_transport {
     return $first;
 }
 
+# A namespace attached over TCP or RDMA is no local disk, and neither is one whose transport is
+# unknown, like one whose last controller is gone, which can be one over a network.
+sub is_network_nvme_transport {
+    my ($transport) = @_;
+
+    return !defined($transport) || $transport =~ m/^(?:tcp|rdma)$/;
+}
+
 # SAS does not distinguish local from remote attachments, so it is not classified as remote.
 sub is_remote_transport {
     my ($transport) = @_;
@@ -691,10 +699,8 @@ sub get_disks {
             my $nvme_transport;
             if ($dev =~ m/^nvme/) {
                 $nvme_transport = get_nvme_transport($sysdir);
-                # like a namespace whose last controller is gone, which can be one over a network
-                return if !$san_inventory && !defined($nvme_transport);
+                return if !$san_inventory && is_network_nvme_transport($nvme_transport);
             }
-            return if !$san_inventory && ($nvme_transport // '') =~ /^(?:tcp|rdma)$/;
 
             $udev_db //= get_udev_db() if ++$udev_queries > $udev_single;
             my $data = get_udev_info("/sys/block/$dev", $udev_db) // return;
