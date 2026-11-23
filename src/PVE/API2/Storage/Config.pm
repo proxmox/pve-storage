@@ -274,7 +274,21 @@ __PACKAGE__->register_method({
 
         assert_cluster_knows_content_types($opts->{content});
 
-        my $returned_config;
+        # An LVM storage on a SAN base activates the base in its add hook. Connecting it can wait
+        # for the network, which must not happen while the configuration is locked, so activate it
+        # before. With all paths answering, the hook then finds it active.
+        if ($type eq 'lvm' && (my $base = $opts->{base})) {
+            my ($baseid) = PVE::Storage::parse_volume_id($base, 1);
+            my $cfg = PVE::Storage::config();
+            my $basecfg =
+                defined($baseid) ? PVE::Storage::storage_config($cfg, $baseid, 1) : undef;
+            if ($basecfg && ($basecfg->{type} eq 'iscsi' || $basecfg->{type} eq 'nvmeof')) {
+                PVE::Storage::activate_storage($cfg, $baseid);
+                PVE::Storage::activate_volumes($cfg, [$base]);
+            }
+        }
+
+        my ($returned_config, $written, $added);
         PVE::Storage::lock_storage_config(
             sub {
                 my $cfg = PVE::Storage::config();
@@ -293,24 +307,49 @@ __PACKAGE__->register_method({
                         . " in Proxmox VE 9. Use 'create-base-path' or 'create-subdirs' instead.\n";
                 }
 
-                eval {
-                    # try to activate if enabled on local node,
-                    # we only do this to detect errors/problems sooner
-                    if (PVE::Storage::storage_check_enabled($cfg, $storeid, undef, 1)) {
-                        PVE::Storage::activate_storage($cfg, $storeid);
-                    }
-                };
-                if (my $err = $@) {
-                    eval { $plugin->on_delete_hook($storeid, $opts) };
-                    warn "$@\n" if $@;
-                    die $err;
-                }
-
                 PVE::Storage::write_config($cfg);
-
+                $written = $cfg;
+                $added = PVE::Storage::config()->{ids}->{$storeid};
             },
             "create storage failed",
         );
+
+        # The activation only reports a problem early. It can wait for the network, so it runs
+        # without the lock. Another activation, like the one of pvestatd, can run at the same time,
+        # and a mount or connect that lost that race fails, so a failure is retried once. If it
+        # still fails, the storage is removed again, unless it changed or got used meanwhile.
+        if (PVE::Storage::storage_check_enabled($written, $storeid, undef, 1)) {
+            eval { PVE::Storage::activate_storage($written, $storeid) };
+            if (my $err = $@) {
+                sleep(1);
+                eval { PVE::Storage::activate_storage($written, $storeid) };
+                if ($@) {
+                    my $removed;
+                    eval {
+                        local $Storable::canonical = 1;
+                        PVE::Storage::lock_storage_config(
+                            sub {
+                                my $cfg = PVE::Storage::config();
+                                my $scfg = $cfg->{ids}->{$storeid} // return;
+                                return if Storable::freeze($scfg) ne Storable::freeze($added);
+                                return if PVE::Storage::storage_is_used($cfg, $storeid);
+                                delete $cfg->{ids}->{$storeid};
+                                PVE::Storage::write_config($cfg);
+                                $removed = 1;
+                                eval { $plugin->on_delete_hook($storeid, $opts) };
+                                warn "$@\n" if $@;
+                            },
+                            "removing it failed",
+                        );
+                    };
+                    die "create storage failed: $err" if $removed;
+                    chomp(my $kept = $@);
+                    chomp($err);
+                    die "storage '$storeid' was added, but its activation failed - $err"
+                        . ($kept ? " ($kept)" : '') . "\n";
+                }
+            }
+        }
 
         my $res = {
             storage => $storeid,

@@ -131,6 +131,17 @@ Future changes should be documented in here.
   `cluster_lock_storage()`, and must not rely on the guest staying locked while it runs. This
   depends on the version of pve-storage, not on the API version.
 
+* Activate a new storage after releasing the configuration lock
+
+  Adding a storage calls `activate_storage()` once its section is written and the lock on the
+  storage configuration is released, so that waiting for a network does not block other changes to
+  the configuration. As another activation can run at the same time, a failed one is retried once.
+  If it still fails, the section is removed again, unless it changed or became the base of another
+  storage meanwhile. Other nodes can activate the storage meanwhile and keep what they connected or
+  mounted. The base storage and volume of an LVM storage on an iSCSI or NVMe over Fabrics base are
+  activated before the lock is taken, so that `on_add_hook()` usually finds them active. This
+  depends on the version of pve-storage, not on the API version.
+
 ## Version 16:
 
 * Add `volname_for_format()`, `get_parsed_format()`, `volname_with_format()`, `is_valid_format()` and

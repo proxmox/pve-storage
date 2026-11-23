@@ -25,6 +25,7 @@ test: \
     test_san_lun_scan \
     test_san_taint \
     test_sensitive_properties \
+    test_storage_create \
     test_volume_access \
     test_zfspoolplugin \
 
@@ -115,3 +116,6 @@ test_san_api: run_san_api_tests.pl run_san_wipe_tests.pl run_san_nvme_tests.pl
 
 test_disk_api: run_disk_api_tests.pl
 	./run_disk_api_tests.pl
+
+test_storage_create: run_storage_create_tests.pl
+	./run_storage_create_tests.pl
