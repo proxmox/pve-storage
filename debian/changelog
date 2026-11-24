@@ -1,3 +1,12 @@
+libpve-storage-perl (9.1.25) trixie; urgency=medium
+
+  * disks: wipe: name the device that keeps a SAN LUN from being wiped, also
+    for a holder of one of its partitions, instead of a generic error. For an
+    active logical volume, also suggest to deactivate its volume group with
+    'vgchange -an' if the group is no longer in use.
+
+ -- Proxmox Support Team <support@proxmox.com>  Tue, 24 Nov 2026 22:05:52 +0100
+
 libpve-storage-perl (9.1.24) trixie; urgency=medium
 
   * rbd: do not let setting the cache policy of an EFI disk image hang the
