@@ -318,11 +318,8 @@ __PACKAGE__->register_method({
                     . " SAN LUN\n";
             }
 
-            # Other nodes can use a namespace attached over a network, which the checks for mounts
-            # and holders do not see, and one without a path gets written once it has one again.
-            # Under Node > SAN, it is wiped as a whole with the SAN checks. The name tells the
-            # namespace of a partition, also if its partition number is one that the checks of the
-            # partition table refuse.
+            # Refuse local wipes on network/pathless NVMe namespaces (including partitions),
+            # since local mount/holder checks miss other nodes; wipe whole namespaces via SAN.
             if (basename($disk) =~ m/^(nvme[0-9]+n[0-9]+)(p[0-9]+)?$/) {
                 my ($namespace, $partition) = ($1, $2);
                 my $transport = PVE::Diskmanage::get_nvme_transport("/sys/block/$namespace");

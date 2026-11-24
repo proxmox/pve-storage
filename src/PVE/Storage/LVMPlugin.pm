@@ -185,9 +185,7 @@ sub lun_volume_groups {
             '/sbin/pvs',
             '--nohints',
             '--readonly',
-            # Every PV on the devices counts. Without these options, pvs leaves out a path whose
-            # WWID is in the wwids file of multipath, also while no map holds it, and the volume
-            # groups of other hosts or of lvmlockd.
+            # disable multipath component filtering and include foreign/shared VGs
             '--config',
             'devices/multipath_component_detection=0',
             '--foreign',
@@ -229,9 +227,8 @@ sub lun_volume_groups {
                 // file_read_firstline("/sys/class/block/$name/../queue/logical_block_size") // '')
             =~ m/^([0-9]+)$/;
         $block //= 512;
-        # LVM looks for its label in the first four 512-byte sectors. One block of at least 4 KiB
-        # covers them and is aligned for a direct read. A device can be smaller, like the 1 KiB of
-        # an extended partition. The data fits in a pipe, outfunc would split it into lines.
+        # read first >=4 KiB block (direct-IO aligned) covering LVM's 4-sector label area;
+        # clamp for smaller devices (e.g. 1 KiB extended partitions) and read raw via pipe
         my $size = max(4096, $block);
         my $expected = min($size, $sectors * 512);
         next if !$expected;

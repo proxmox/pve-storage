@@ -38,7 +38,6 @@ sub worst_state(@states) {
     return $worst;
 }
 
-# Namespaces use the native multipath of the kernel, so their state does not depend on multipathd.
 my sub namespace_luns($pv_vgs) {
     require PVE::Storage;
     my $cfg = PVE::Storage::config();
@@ -115,9 +114,7 @@ sub update_node_status() {
     eval {
         die "multipath-tools is not installed\n" if !PVE::Multipath::is_supported();
         die "multipathd is not running or does not respond\n" if !PVE::Multipath::is_running();
-        # A node can have many maps that something else set up, for example a storage plugin with
-        # one LUN per guest disk. Only the maps that the node manages, that are the base volume of a
-        # storage or hold its volume group get a row, the others are counted.
+        # only report maps we manage or use for storage; count unrelated maps under other-maps
         require PVE::Storage;
         my $wanted = $apply->{wwids};
         my $storages = eval { PVE::Storage::config()->{ids} };
@@ -127,9 +124,8 @@ sub update_node_status() {
             my $lun = PVE::Multipath::parse_base_volume($scfg->{base});
             $base{ $lun->{wwid} } = 1 if $lun;
         }
-        # without the wanted WWIDs or the storages nothing tells the maps apart
+        # if wanted WWIDs or storage config is missing, report all maps and flag scope-unknown
         my $all = !$wanted || !$storages;
-        # a consumer cannot tell such rows from those of managed maps otherwise
         $report->{'scope-unknown'} = 1 if $all;
         my %mapped;
         for my $map (PVE::Multipath::get_maps()->@*) {
@@ -207,7 +203,6 @@ sub cluster_status() {
     my $storage_nodes = sub($scfg) {
         return $scfg->{nodes} && $scfg->{nodes}->%* ? [keys $scfg->{nodes}->%*] : $all_nodes;
     };
-    # only an enabled iSCSI storage with the option requests the maps of its LUNs, on its nodes
     my %current = map { $_ => 1 } @$all_nodes;
     my $requests_maps = sub($sid, $node = undef) {
         my $scfg = defined($sid) ? $storage->{ids}->{$sid} : undef;

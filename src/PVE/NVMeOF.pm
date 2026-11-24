@@ -145,7 +145,6 @@ sub subsystem_controllers($subsystem) {
     };
 }
 
-# The NQN of a subsystem, untainted, or undef if it is invalid or the one of the discovery service.
 sub subsystem_nqn($nqn) {
     my ($res) = ($nqn // '') =~ /\A($NQN_PATTERN)\z/;
     return undef if !defined($res) || length($res) > 223 || $res eq $DISCOVERY_NQN;
@@ -156,9 +155,7 @@ sub namespace_wwid($dev) {
     return file_read_firstline("$SYSFS/block/$dev/wwid");
 }
 
-# Native NVMe multipath shows a namespace as a device of its subsystem. If the target does not
-# declare that the subsystem may have several controllers, a namespace is a device of each
-# controller instead, without the other paths.
+# native multipath attaches namespaces to nvme-subsysN rather than individual controllers
 sub is_namespace_head($dev) {
     my $parent = abs_path("$SYSFS/block/$dev/device") // return 0;
     return basename($parent) =~ /^nvme-subsys[0-9]+$/ ? 1 : 0;
@@ -178,12 +175,9 @@ sub path_controller($controllers, $path) {
     return undef;
 }
 
-# Calls $code with the subsystem NQN and the device name of each namespace of this node, or only
-# of those of the subsystem $only.
 my sub foreach_namespace($code, $only = undef) {
     my $dir = "$SYSFS/class/nvme-subsystem";
-    # For one subsystem, the caller goes by which namespaces are missing, so a directory that cannot
-    # be read must not look empty. One that is gone is.
+    # fail on unreadable sysfs dirs when querying a single subsystem so namespaces don't look gone
     my $entries = sub($path, $pattern) {
         my $dh;
         if (!opendir($dh, $path)) {
@@ -195,8 +189,6 @@ my sub foreach_namespace($code, $only = undef) {
         return @res;
     };
     for my $subsys ($entries->($dir, 'nvme-subsys[0-9]+')) {
-        # one that cannot be read could be the subsystem asked for, whose namespaces must not
-        # look gone
         my $nqn = PVE::Diskmanage::read_subsysnqn("$dir/$subsys/subsysnqn");
         if (!defined($nqn)) {
             die "cannot read the NQN of NVMe subsystem '$subsys'\n" if defined($only);
@@ -223,7 +215,6 @@ sub namespaces($subsystem) {
     return $res;
 }
 
-# The number of namespaces of each subsystem of this node, from one pass over the subsystems.
 sub namespace_counts() {
     my $res = {};
     foreach_namespace(sub($nqn, @) { $res->{$nqn}++ });
@@ -241,8 +232,7 @@ sub with_lock($code, $limit = undef) {
         sub {
             make_path($RUN_DIR);
             open(my $lock, '>>', "$RUN_DIR/fabrics.lock") or die "cannot open NVMe lock - $!\n";
-            # A busy lock fails the operation, so wait a while for it, but give up before the time
-            # limit, which counts as a hanging operation.
+            # bound lock wait below $total so lock contention reports busy instead of timeout
             my $wait = $LOCK_WAIT < $total ? $LOCK_WAIT : $total - 1;
             my $deadline = Time::HiRes::time() + $wait;
             while (!flock($lock, LOCK_EX | LOCK_NB)) {
@@ -289,8 +279,7 @@ sub connect_path($scfg, $path, $limit = undef) {
     my $nqn = subsystem_nqn($scfg->{subsysnqn}) // die "invalid subsystem NQN\n";
     my ($fail) = ($scfg->{'fast-io-fail-tmo'} // 120) =~ /\A(-?[0-9]+)\z/;
     die "invalid fast I/O fail timeout\n" if !defined($fail) || $fail < -1;
-    # A connect that hangs until the time limit failed too, but the process that would note it is
-    # gone by then.
+    # record cooldown here too, since a timed-out child is killed before it can
     my $res = eval {
         with_lock(
             sub {
@@ -365,7 +354,6 @@ sub parse_discovery_log($raw) {
 sub discover($portal) {
     my $path = parse_portal($portal) // die "invalid portal '$portal'\n";
     my @ports = $portal =~ /:[0-9]+$/ ? ($path->{trsvcid}) : (8009, 4420);
-    # a missing prerequisite fails on every port, so report it as it is
     assert_support();
     my $host = host_identity();
     my $error;
@@ -422,19 +410,16 @@ my sub is_swap($device) {
     return 0;
 }
 
-# A mount in another mount namespace, like that of a container, is not in /proc/mounts here and has
-# no holder, but it claims the device exclusively, as holders and swap do.
+# O_EXCL catches mounts in other mount namespaces (e.g. containers) not visible in /proc/mounts
 sub is_claimed($device) {
     sysopen(my $fh, $device, O_RDONLY | O_EXCL) and return 0;
     return $! == EBUSY;
 }
 
-# The expected subsystem and portal refuse a controller that replaced the one the caller listed.
 sub disconnect_guarded($controller, $expected = {}) {
     my ($name) = $controller =~ /\A(nvme[0-9]+)\z/;
     die "invalid controller name '$controller'\n" if !defined($name);
-    # A namespace that would lose its last usable path gets checked for use, which takes a while on
-    # a subsystem with many. A task runs this, which holds no lock on the storage configuration.
+    # 300s lock limit: checking many namespaces for active users can take a while
     return with_lock(
         sub {
             require PVE::Storage;
@@ -451,8 +436,7 @@ sub disconnect_guarded($controller, $expected = {}) {
                 die
                     "controller '$name' is no longer connected to the listed subsystem and portal\n";
             }
-            # Without native multipath a namespace is a device of its controller and has no head
-            # device, which the checks below go by. Its name can carry the number of the subsystem.
+            # refuse non-multipath controllers whose namespaces live directly under the controller
             my $own_devices = sub {
                 my $found = 0;
                 dir_glob_foreach(
@@ -498,8 +482,7 @@ sub disconnect_guarded($controller, $expected = {}) {
                         "cannot disconnect '$name' - namespace '$head' is in use and has no other"
                         . " usable path\n";
                 }
-                # an opener that is gone within a second, like an LVM scan of the status pass, is no
-                # use of the namespace
+                # retry briefly to ignore transient openers like LVM status scans
                 my $opener;
                 for my $try (1 .. 4) {
                     Time::HiRes::usleep(300_000) if $try > 1;
@@ -511,8 +494,7 @@ sub disconnect_guarded($controller, $expected = {}) {
                         "cannot disconnect '$name' - process $opener has namespace '$head' open and"
                         . " it has no other usable path\n";
                 }
-                # The check of the storage references reads the namespace. Removing a path that is not
-                # usable either costs no usable path, and a reconnecting one cannot be read.
+                # skip reference I/O check on unusable paths (reconnecting paths can't be read)
                 next if !grep {
                     $_->{device} eq "/dev/$name" && PVE::Diskmanage::nvme_path_is_usable($_)
                 } @$paths;
@@ -525,9 +507,7 @@ sub disconnect_guarded($controller, $expected = {}) {
                 die "cannot disconnect '$name' - $@" if $@;
                 $referenced{$head} = 1;
             }
-            # The checks take a while, in which a path can fail or recover, a namespace can appear
-            # and the controller number can pass to a new controller, so look again right before
-            # the removal. That narrows what can change unseen, but cannot rule it out.
+            # re-verify paths, namespaces, and controller right before disconnect to narrow the race
             my $changed =
                 "cannot disconnect '$name' - the paths of the subsystem changed meanwhile\n";
             $status = PVE::Diskmanage::get_nvme_path_status();
@@ -538,7 +518,6 @@ sub disconnect_guarded($controller, $expected = {}) {
                 next if grep {
                     $_->{device} ne "/dev/$name" && PVE::Diskmanage::nvme_path_is_usable($_)
                 } @paths;
-                # it loses its last usable path, which the checks above have to have covered
                 die $changed
                     if $relied{$head}
                     || !$heads{$head}

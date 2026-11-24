@@ -370,9 +370,7 @@ sub get_ceph_volume_infos {
     return $result;
 }
 
-# Returns the udev information of all block devices by their kernel name, in the format that
-# 'udevadm info --query all' prints for a single device. One call for all devices takes a fraction
-# of the time that a call per device takes on a node with many disks.
+# Bulk-export block udev db keyed by kernel name (much faster than per-device queries).
 sub get_udev_db {
     my $db = {};
     my $entry = '';
@@ -626,10 +624,8 @@ sub mounted_paths {
 
 sub get_disks {
     my ($disks, $nosmart, $include_partitions, $san_inventory) = @_;
-    # Only the SAN inventory includes iSCSI LUNs and NVMe namespaces attached over TCP or RDMA, or
-    # over an unknown transport, as storages connect them for use on several nodes. Fibre Channel
-    # devices stay listed, as local disk setup is how a volume group gets onto one. The SAN
-    # inventory skips usage probes that read devices.
+    # Without $san_inventory, omit iSCSI and network/pathless NVMe (kept for SAN); FC stays
+    # visible for local VG setup. $san_inventory also skips device-reading usage probes.
     my $disklist = {};
 
     my $mounted = mounted_blockdevs();
@@ -666,10 +662,8 @@ sub get_disks {
         # another one, so the pattern with all names would be compiled again for every disk.
         $wanted = { map { $_ => 1 } @$disks };
     }
-    # Reading the database of all block devices takes about as long as single queries for a 40th
-    # of the devices that lsblk lists, and a node with multipath maps or many volumes has far more
-    # of those than disks to list. So ask about single disks until that took as long as reading the
-    # database would, and about the first few in any case.
+    # Fall back to bulk udev db export once per-disk queries exceed ~1/40 of lsblk device count
+    # (at least 4), since nodes with many volumes/maps make a single export faster.
     my ($udev_db, $udev_queries) = (undef, 0);
     my $udev_single = scalar(keys %$lsblk_info) / 40;
     $udev_single = 4 if $udev_single < 4;
@@ -1202,10 +1196,8 @@ sub change_parttype {
     run_command(['sgdisk', "-t${partnum}:${parttype}", $blockdev], errmsg => $err);
 }
 
-# Returns the PID and command name of a process for each of the block devices that a process has
-# open, as hash by the resolved path of the device. With 'writable', a process that opened the
-# device only for reading does not count. Only detects an open through the device nodes in /dev
-# of the host, not one through the device node that a container has of its own.
+# Map resolved device path -> { pid, command } for host processes holding it open (optionally
+# writable => 1). Does not detect opens via a container's own /dev device node.
 sub device_openers {
     my ($devices, %param) = @_;
 
@@ -1238,7 +1230,6 @@ sub device_openers {
     return $openers;
 }
 
-# Returns the PID and command name of a process that has one of the block devices open, if any.
 sub device_opener {
     my (@devices) = @_;
 

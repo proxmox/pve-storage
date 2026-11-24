@@ -339,11 +339,9 @@ sub sensitive_properties {
     return [qw(encryption-key keyring master-pubkey password)];
 }
 
-# The API takes the sensitive properties out of the parameters before it checks them against the
-# options of the type, so a plugin could take one that another plugin declares without listing it.
-# The per-type schemas that apply once a plugin isolates its properties would refuse it, so add it
-# there for plugins that do not isolate theirs, on the conditions of the schema of all plugins: to
-# update it, a plugin has to list it as an option that is not fixed.
+# Non-isolated plugins can accept sensitive properties declared by other plugins without listing
+# them in options(), because the API strips them before option checks. Mirror those into their
+# per-type schemas (on update, only when another shared plugin allows updating the property).
 sub add_sensitive_properties_to_schema {
     my ($schema, $update) = @_;
 

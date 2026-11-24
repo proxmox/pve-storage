@@ -58,8 +58,6 @@ my sub write_dropin($path, $content) {
     }
 }
 
-# The WWIDs of the explicit entries for the node and of the storages, with the storages that request
-# each and the highest of the expected path counts of the entry and the storages.
 sub wanted_wwids($cfg, $node, $derived) {
     my %wanted = map {
         my $count = $cfg->{ids}->{$_}->{'paths-expected'};
@@ -102,9 +100,8 @@ sub regenerate($cfg = undef, $overrides = undef, $derived = undef) {
         # check every drop-in before one changes, as a restart of multipathd loads what is there
         my @changes = grep { dropin_changes($_->@*) } @dropins;
         write_dropin($_->@*) for @changes;
-        # A WWID that multipath refuses, for example a blacklisted one, must not hold up the others
-        # or the reload, nor cause a reload on every pass. Retry it after five minutes, or after a
-        # drop-in changed, which can lift the refusal, as it can fix a failed reload.
+        # cache refused WWIDs for 5 min so one failure doesn't block others or loop reloads;
+        # reset cooldowns when drop-ins change since that may lift refusals or reload errors
         if (@changes) {
             %refused = ();
             $failed_at = undef;
@@ -121,8 +118,7 @@ sub regenerate($cfg = undef, $overrides = undef, $derived = undef) {
             }
             eval { PVE::Multipath::add_wwid($wwid) };
             if (my $err = $@) {
-                # if multipath hangs for one WWID, it would for the next one as well, so stop here
-                # and report the timeout first, where the summary of refused WWIDs cannot hide it
+                # abort on timeout and report it first so the truncation summary cannot hide it
                 if ($err =~ /got timeout/) {
                     unshift(@failed, $err);
                     last;

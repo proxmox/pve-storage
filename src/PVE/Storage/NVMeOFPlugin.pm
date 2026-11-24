@@ -13,9 +13,7 @@ use PVE::Storage::Plugin;
 
 use base qw(PVE::Storage::Plugin);
 
-# Adding a storage activates it under the lock of the storage configuration, so no further portal is
-# tried after this many seconds once a controller is live, or after three times as long without one.
-# Later activations connect the rest.
+# Time budget (s) for connecting remaining portals once one is live (3x when none are live yet).
 our $ACTIVATION_BUDGET = 15;
 
 sub type { return 'nvmeof' }
@@ -97,7 +95,6 @@ sub on_add_hook($class, $storeid, $scfg, %param) {
         die "storage '$sid' already uses this subsystem\n"
             if $ids->{$sid}->{subsysnqn} eq $scfg->{subsysnqn};
     }
-    # adding the storage again, for example once the array allows the node, tries all portals
     PVE::NVMeOF::clear_connect_failures($scfg);
     return;
 }
@@ -108,7 +105,6 @@ sub on_update_hook_full($class, $storeid, $scfg, $update, $delete, $sensitive, @
     # without the property, the default of the plugin applies, which serves images
     $merged->{content} //= $class->plugindata()->{content}->[1];
     assert_valid_config($merged);
-    # the namespace of a volume group must not become a disk image of a guest as well
     if (
         PVE::Storage::san_storage_serves_images($merged)
         && !PVE::Storage::san_storage_serves_images($scfg)
@@ -121,7 +117,6 @@ sub on_update_hook_full($class, $storeid, $scfg, $update, $delete, $sensitive, @
                 && ($ids->{$sid}->{base} // '') =~ /^\Q$storeid\E:/;
         }
     }
-    # a changed portal list, for example with a portal fixed and added again, tries all of them
     PVE::NVMeOF::clear_connect_failures($merged) if exists($update->{portals});
     return $class->SUPER::on_update_hook_full($storeid, $scfg, $update, $delete, $sensitive);
 }
@@ -133,8 +128,6 @@ sub parse_volname($class, $volname) {
     die "unable to parse NVMe over Fabrics volume name '$volname'\n";
 }
 
-# The name of a volume can be the by-id name of any NVMe device, also of a local disk or of a
-# namespace of another subsystem.
 sub assert_namespace($scfg, $volname, $real) {
     my ($dev) = $real =~ m!^/dev/(nvme[0-9]+n[0-9]+)$!;
     die "volume '$volname' is not an NVMe namespace\n" if !defined($dev);
@@ -202,13 +195,11 @@ sub activate_storage($class, $storeid, $scfg, $cache = undef, @) {
     my @missing = grep { !defined(PVE::NVMeOF::path_controller($controllers, $_)) }
         PVE::NVMeOF::storage_paths($scfg)->@*;
     if (!@missing) {
-        # the kernel reconnects them, but meanwhile the namespaces cannot be used
         die "no controller of the subsystem is live\n"
             if !PVE::NVMeOF::has_live_controller($controllers);
         return;
     }
-    # A missing prerequisite is no failure of a portal, so the portals stay eligible for the next
-    # attempt. A storage with a usable path still works, with fewer paths.
+    # missing prerequisites are not portal failures; continue degraded if a controller is live
     eval {
         PVE::NVMeOF::assert_support();
         PVE::NVMeOF::host_identity();
@@ -221,8 +212,6 @@ sub activate_storage($class, $storeid, $scfg, $cache = undef, @) {
     my @errors;
     my $live = PVE::NVMeOF::has_live_controller($controllers);
     my $start = Time::HiRes::time();
-    # The time limit also bounds an attempt that starts late, so that an activation, like the one of
-    # a status pass, does not wait long for one storage.
     my $left = sub { $start + ($live ? 1 : 3) * $ACTIVATION_BUDGET - Time::HiRes::time() };
     for my $path (@missing) {
         my $portal = PVE::NVMeOF::format_path($path);
@@ -251,7 +240,6 @@ sub activate_storage($class, $storeid, $scfg, $cache = undef, @) {
                 PVE::NVMeOF::subsystem_controllers($scfg->{subsysnqn}));
         }
     }
-    # some paths are enough, but without a usable one the namespaces cannot be used
     $controllers = PVE::NVMeOF::subsystem_controllers($scfg->{subsysnqn});
     if (!PVE::NVMeOF::has_live_controller($controllers)) {
         die "cannot connect to any portal - " . join('; ', @errors) . "\n" if @errors;
@@ -269,8 +257,7 @@ sub check_connection($class, $storeid, $scfg, @) {
     # with a controller for each portal, there is nothing to connect, only to wait for the kernel
     die "no controller of the subsystem is live\n"
         if !grep { !defined(PVE::NVMeOF::path_controller($controllers, $_)) } @$paths;
-    # Many portals that do not answer must not hold up an activation, so the check has a time limit
-    # too. The portals left untried go to the activation, which skips those that just failed.
+    # bound check time; remaining portals are deferred to activate_storage
     my $deadline = Time::HiRes::time() + $ACTIVATION_BUDGET;
     for my $path (@$paths) {
         return 1 if Time::HiRes::time() >= $deadline;

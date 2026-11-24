@@ -274,9 +274,8 @@ __PACKAGE__->register_method({
 
         assert_cluster_knows_content_types($opts->{content});
 
-        # An LVM storage on a SAN base activates the base in its add hook. Connecting it can wait
-        # for the network, which must not happen while the configuration is locked, so activate it
-        # before. With all paths answering, the hook then finds it active.
+        # Pre-activate SAN base storage/volume outside the config lock so on_add_hook does
+        # not block on network I/O while holding it.
         if ($type eq 'lvm' && (my $base = $opts->{base})) {
             my ($baseid) = PVE::Storage::parse_volume_id($base, 1);
             my $cfg = PVE::Storage::config();
@@ -319,10 +318,8 @@ __PACKAGE__->register_method({
             "create storage failed",
         );
 
-        # The activation only reports a problem early. It can wait for the network, so it runs
-        # without the lock. Another activation, like the one of pvestatd, can run at the same time,
-        # and a mount or connect that lost that race fails, so a failure is retried once. If it
-        # still fails, the storage is removed again, unless it changed or got used meanwhile.
+        # Activate outside the config lock to fail fast on bad config; retry once in case
+        # pvestatd raced with us, and roll back if it still fails and was not changed or used.
         if (PVE::Storage::storage_check_enabled($written, $storeid, undef, 1)) {
             eval { PVE::Storage::activate_storage($written, $storeid) };
             if (my $err = $@) {

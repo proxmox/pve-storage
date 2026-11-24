@@ -24,8 +24,7 @@ sub scan_luns($cfg) {
     my $ids = PVE::Multipath::Identity::collect(all => 1);
     my $map_info = PVE::Multipath::map_info();
     my $members = PVE::Multipath::member_map($map_info);
-    # A map stands for its paths, of which a node with many LUNs has thousands. Leave them out of
-    # the disk list, which reads the sysfs attributes and partitions of each disk it returns.
+    # skip multipath member paths to avoid per-path sysfs/partition probes
     my @names;
     dir_glob_foreach(
         '/sys/block',
@@ -165,8 +164,6 @@ sub scan_luns($cfg) {
         $add->($disk);
     }
     $add->($maps->{$_}, 1) for sort keys %$maps;
-    # Without a map, the paths of a LUN are disks of their own, each in the state that the kernel
-    # keeps for it, which is 'running' while it takes I/O.
     for my $wwid (sort keys %unmapped) {
         my $row = $rows{$wwid};
         next if defined($row->{'paths-total'});
@@ -176,16 +173,12 @@ sub scan_luns($cfg) {
         $row->{'paths-total'} = scalar(@paths);
         $row->{'paths-active'} = scalar(grep { $_->{state} eq 'running' } @paths);
     }
-    # the portal of its session tells an iSCSI path apart, as the address does for NVMe
     for my $row (values %rows) {
         for my $path (($row->{'path-list'} // [])->@*) {
             my $portal = ($sessions->{ basename($path->{device}) } // {})->{portal};
             $path->{address} //= $portal if length($portal // '');
         }
     }
-    # A guest can have a LUN as disk by its device path or from a third-party storage plugin, also
-    # by one of its paths or partitions. The scans of LVM and udev only read a device, and are gone
-    # again a moment later.
     for my $wwid (sort keys %rows) {
         my $row = $rows{$wwid};
         my %seen;
@@ -202,13 +195,15 @@ sub scan_luns($cfg) {
     }
     my %devices = map { $_ => 1 } (map { $_->{devpath} } values %rows),
         map { keys %$_ } values %paths;
+    # A guest can use a LUN by its device path or through a third-party storage plugin, which only
+    # shows as a writable opener of the LUN, a path or a partition on the node the guest runs on.
+    # Read-only LVM/udev scans don't count.
     my $openers = PVE::Diskmanage::device_openers([sort keys %devices], writable => 1);
     for my $row (values %rows) {
         my ($opener) = map { $openers->{$_} // () } abs_path($row->{devpath}) // $row->{devpath},
             sort keys(($paths{ $row->{wwid} } // {})->%*);
         if ($opener) {
             $row->{'used-by-process'} = "$opener->{pid} ($opener->{command})";
-            # a virtual machine runs in a control group of its own that is named after its ID
             my $cgroup = file_read_firstline("/proc/$opener->{pid}/cgroup") // '';
             $row->{'used-by-guest'} = int($1) if $cgroup =~ m{^0::/qemu\.slice/(\d+)\.scope$};
         }
@@ -371,15 +366,13 @@ sub assert_lun_unreferenced($cfg, $lun, $exempt = undef) {
     return [sort keys %vgs];
 }
 
-# Serializes writes to a LUN cluster-wide. The storage configuration read in the code is current.
 sub with_lun_lock($lun, $code) {
     my $key = $lun->{wwid} =~ s/([^A-Za-z0-9_.:-])/sprintf('=%02x', ord($1))/ger;
     PVE::Cluster::cfs_lock_domain("san-$key", undef, $code);
     die $@ if $@;
 }
 
-# Device names can pass to another device while a LUN waits for its lock or is worked on. All
-# names used for it have to mean the device that is held open.
+# verify all paths still resolve to the same block device (rdev) as the open $fh
 sub assert_same_device($lun, $fh, @names) {
     my @held = stat($fh);
     for my $name ($lun->{'by-id'}, $lun->{devpath}, @names) {
@@ -389,9 +382,8 @@ sub assert_same_device($lun, $fh, @names) {
     }
 }
 
-# The SCSI paths of the LUN. Without a map, udev keeps the signatures it has seen for each of them,
-# so a wipe needs a udev trigger for every path. The members of a map count whatever their identity,
-# which without multipathd comes from udev and can differ from the one of the map.
+# include map slaves regardless of udev identity (which can diverge without multipathd);
+# callers also use this list to re-trigger udev on every unmapped path after a wipe
 sub lun_paths($lun) {
     my $paths = PVE::Multipath::Identity::collect(all => 1)->{paths};
     my %names = map { $_ => 1 } grep { $paths->{$_}->{wwid} eq $lun->{wwid} } keys %$paths;
@@ -404,8 +396,7 @@ sub lun_paths($lun) {
     return [map { m/^(sd[a-z]+)$/ ? "/dev/$1" : () } sort keys %names];
 }
 
-# The other paths of a LUN reach the same data, but neither the exclusive open of the LUN nor the
-# checks of its device cover them.
+# sibling paths reach the same LUN and are not covered by O_EXCL on the primary device
 sub assert_lun_paths_unused($lun) {
     my $device = basename(abs_path($lun->{devpath}) // $lun->{devpath});
     my %devices; # the paths and their partitions
@@ -507,8 +498,7 @@ sub wipe_lun($lun) {
         }
     }
     assert_same_device($lun, $fh, $device);
-    # claim what was checked: while the first descriptor is open, its device number cannot pass to
-    # another device, so an equal number means the same device
+    # claim exclusively while holding $fh open so matching rdev guarantees the same device
     sysopen(my $claim, $lun->{'by-id'}, O_RDWR | O_EXCL) or die "cannot claim '$device' - $!\n";
     die "cannot wipe '$device' - the device behind '$lun->{'by-id'}' changed\n"
         if (stat($claim))[6] != (stat($fh))[6];
