@@ -1,3 +1,20 @@
+libpve-storage-perl (9.1.24) trixie; urgency=medium
+
+  * rbd: do not let setting the cache policy of an EFI disk image hang the
+    start of a VM, for example on the target of a live migration, where the
+    source VM still holds the lock of the image. The policy is now only
+    written if the image does not have it yet, so usually only on the first
+    start. Writing it gives up after 60 seconds, and if it fails, the VM
+    still starts and the task logs a warning, as the policy only affects the
+    performance of EFI variable writes.
+
+  * san: status: only report the iSCSI initiator name of a node in the
+    cluster-wide SAN status if open-iscsi is installed. A name left over by
+    removing open-iscsi without purging it is not usable. Without a name, the
+    web interface shows that the node is missing open-iscsi.
+
+ -- Proxmox Support Team <support@proxmox.com>  Tue, 24 Nov 2026 08:16:16 +0100
+
 libpve-storage-perl (9.1.23) trixie; urgency=medium
 
   * api: config: activate a newly added storage only after the storage
