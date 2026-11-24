@@ -20,6 +20,7 @@ BEGIN {
 use lib qw(..);
 use Cwd qw(abs_path);
 use Fcntl qw(O_RDWR O_EXCL);
+use File::Basename qw(basename);
 use File::Temp qw(tempfile);
 use Test::MockModule;
 use Test::More;
@@ -72,8 +73,9 @@ my $referenced = 0;
 my $storage = Test::MockModule->new('PVE::Storage');
 $storage->mock(config => sub { { ids => {} } });
 my @probes;
+my $found_vgs = [];
 $san->mock(assert_lun_unreferenced =>
-    sub { push @probes, $_[1]->{devpath}; die "referenced\n" if $referenced });
+    sub { push @probes, $_[1]->{devpath}; die "referenced\n" if $referenced; $found_vgs });
 my $path_used = 0;
 $san->mock(assert_lun_paths_unused =>
     sub { push @probes, $_[0]->{devpath}; die "path in use\n" if $path_used });
@@ -116,6 +118,109 @@ eval { PVE::Storage::SAN::wipe_lun($lun) };
 like($@, qr/process 4711 \(kvm\) has it open/, 'a LUN that a process has open is refused');
 is_deeply([\@commands, \@open_modes], [[], [O_RDWR]], $held);
 $opener = undef;
+
+# a block device that holds the LUN is named, and for a logical volume, how to release it
+{
+    my $holders = '/sys/class/block/' . basename($canonical) . '/holders';
+    my ($holder, %sysfs, %listed);
+    $san->mock(
+        dir_glob_foreach => sub {
+            my ($dir, $regex, $code) = @_;
+            $code->($_) for ($listed{$dir} // [])->@*;
+        },
+    );
+    $san->mock(file_read_firstline => sub { $sysfs{ $_[0] } });
+    my $refused = sub {
+        my ($dm, $uuid, $vg, $cached, $dirs) = @_;
+        %sysfs = ();
+        %listed = $dirs ? %$dirs : ($holders => [$holder]);
+        $sysfs{"/sys/class/block/$holder/dm/name"} = $dm if defined($dm);
+        $sysfs{"/sys/class/block/$holder/dm/uuid"} = $uuid if defined($uuid);
+        $found_vgs = ref($vg) ? $vg : defined($vg) ? [$vg] : [];
+        @commands = @open_modes = ();
+        eval { PVE::Storage::SAN::wipe_lun({ %$lun, vgname => $cached }) };
+        is_deeply([\@commands, \@open_modes], [[], [O_RDWR]], $held);
+        return $@;
+    };
+    $holder = 'md0';
+    like(
+        $refused->(undef, undef, undef),
+        qr{block device '/dev/md0' uses it$},
+        'a device without a map by its kernel name',
+    );
+    $holder = 'dm-5';
+    like(
+        $refused->('', undef, undef),
+        qr{block device '/dev/dm-5' uses it$},
+        'a map with an empty name by its kernel name too',
+    );
+    like(
+        $refused->('crypt0', 'CRYPT-LUKS2-0123-crypt0', 'oldvg'),
+        qr{block device '/dev/mapper/crypt0' uses it$},
+        'another map by its name',
+    );
+    is(
+        $refused->('oldvg-vm--100--disk--0', 'LVM-abc', 'oldvg'),
+        "cannot wipe '$canonical' - logical volume '/dev/mapper/oldvg-vm--100--disk--0' is active"
+            . " on it; if volume group 'oldvg' is no longer in use, deactivate it with"
+            . " 'vgchange -an oldvg' first\n",
+        'an active logical volume with how to release it',
+    );
+    like(
+        $refused->('san--vg-vm--100--disk--0', 'LVM-abc', 'san-vg'),
+        qr{'vgchange -an san-vg' first$},
+        'also for a volume group with a hyphen in its name',
+    );
+    like(
+        $refused->('san--vg-vm--100--disk--0', 'LVM-abc', 'san'),
+        qr{logical volume '/dev/mapper/san--vg-vm--100--disk--0' is active on it$},
+        'a prefix of a hyphenated volume group name is not named',
+    );
+    like(
+        $refused->('other-vm--100--disk--0', 'LVM-abc', 'oldvg'),
+        qr{logical volume '/dev/mapper/other-vm--100--disk--0' is active on it$},
+        'a volume group the logical volume does not belong to is not named',
+    );
+    like(
+        $refused->('oldvg-vm--100--disk--0', 'LVM-abc', undef),
+        qr{logical volume '/dev/mapper/oldvg-vm--100--disk--0' is active on it$},
+        'nor is one without a volume group on the LUN',
+    );
+    like(
+        $refused->('oldvg-vm--100--disk--0', 'LVM-abc', undef, 'oldvg'),
+        qr{is active on it$},
+        'the volume group cached for the LUN list does not count',
+    );
+    like(
+        $refused->('san--vg-vm--100--disk--0', 'LVM-abc', ['other', 'san-vg']),
+        qr{'vgchange -an san-vg' first$},
+        'of several volume groups on the LUN, the one of the logical volume is named',
+    );
+    # a holder of a partition of the LUN, with the partition among the holders of the LUN
+    @parts = ('/dev/dm-1');
+    my $on_part = sub {
+        my ($dm, $uuid, $vg) = @_;
+        my $dirs = { $holders => ['dm-1'], '/sys/class/block/dm-1/holders' => [$holder] };
+        return $refused->($dm, $uuid, $vg, undef, $dirs);
+    };
+    $holder = 'dm-9';
+    is(
+        $on_part->('oldvg-lv', 'LVM-abc', 'oldvg'),
+        "cannot wipe '$canonical' - logical volume '/dev/mapper/oldvg-lv' is active on"
+            . " '/dev/dm-1'; if volume group 'oldvg' is no longer in use, deactivate it with"
+            . " 'vgchange -an oldvg' first\n",
+        'an active logical volume on a partition, with how to release it',
+    );
+    like(
+        $on_part->('crypt0', 'CRYPT-LUKS2-0123-crypt0', undef),
+        qr{block device '/dev/mapper/crypt0' uses '/dev/dm-1'$},
+        'another holder of a partition by its name',
+    );
+    @parts = ();
+    $found_vgs = [];
+    $san->unmock('file_read_firstline');
+    $san->mock(dir_glob_foreach => sub { });
+}
 
 for my $count (0, 2, 10) {
     @parts = map { "/dev/dm-$_" } 1 .. $count;

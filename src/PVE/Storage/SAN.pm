@@ -316,6 +316,7 @@ sub lun_partitions($lun) {
     return \@parts;
 }
 
+# Returns the volume groups on the LUN and its partitions, as LVM reports them now.
 sub assert_lun_unreferenced($cfg, $lun, $exempt = undef) {
     my $name = basename($lun->{devpath});
     my $nqn;
@@ -367,7 +368,7 @@ sub assert_lun_unreferenced($cfg, $lun, $exempt = undef) {
         die "cannot use '$lun->{devpath}' - storage '$sid' uses this LUN as its base volume\n"
             if $matches;
     }
-    return;
+    return [sort keys %vgs];
 }
 
 # Serializes writes to a LUN cluster-wide. The storage configuration read in the code is current.
@@ -442,6 +443,25 @@ sub assert_lun_paths_unused($lun) {
     }
 }
 
+my sub holder_error($device, $name, $vgs, $part = undef) {
+    my $dm = file_read_firstline("/sys/class/block/$name/dm/name");
+    undef $dm if !length($dm // '');
+    my $holder = defined($dm) ? "/dev/mapper/$dm" : "/dev/$name";
+    my $on = defined($part) ? "'$part'" : 'it';
+    my $uuid = file_read_firstline("/sys/class/block/$name/dm/uuid") // '';
+    return "cannot wipe '$device' - block device '$holder' uses $on\n" if $uuid !~ /^LVM-/;
+    my $hint = '';
+    # dm-LVM doubles hyphens in VG/LV names and joins them with '-'; LV names cannot start with '-'
+    for my $vg (@$vgs) {
+        my $prefix = ($vg =~ s/-/--/gr) . '-';
+        next if !defined($dm) || $dm !~ /^\Q$prefix\E[^-]/;
+        $hint = "; if volume group '$vg' is no longer in use, deactivate it with"
+            . " 'vgchange -an $vg' first";
+        last;
+    }
+    return "cannot wipe '$device' - logical volume '$holder' is active on $on$hint\n";
+}
+
 sub wipe_lun($lun) {
     # Probe the kernel path of the held device, not a mapper alias that can pass to another LUN.
     my $device = PVE::Diskmanage::verify_blockdev_path($lun->{'by-id'});
@@ -449,7 +469,7 @@ sub wipe_lun($lun) {
     assert_same_device($lun, $fh, $device);
     PVE::Storage::LVMPlugin::assert_running_path($device);
     my $held = { %$lun, devpath => $device };
-    assert_lun_unreferenced(PVE::Storage::config(), $held);
+    my $vgs = assert_lun_unreferenced(PVE::Storage::config(), $held);
     assert_lun_paths_unused($held);
     my $parts = lun_partitions($held);
     my %parts = map { basename($_) => 1 } @$parts;
@@ -457,14 +477,17 @@ sub wipe_lun($lun) {
         '/sys/class/block/' . basename($device) . '/holders',
         '[^.].*',
         sub($name, @) {
-            die "cannot wipe '$device' - another block device uses it\n" if !$parts{$name};
+            die holder_error($device, $name, $vgs) if !$parts{$name};
         },
     );
     for my $path ($device, @$parts) {
         die "cannot wipe '$device' - '$path' is mounted\n" if PVE::Diskmanage::is_mounted($path);
         next if $path eq $device;
-        die "cannot wipe '$device' - another block device uses '$path'\n"
-            if PVE::Diskmanage::has_holder($path);
+        dir_glob_foreach(
+            '/sys/class/block/' . basename($path) . '/holders',
+            '[^.].*',
+            sub($name, @) { die holder_error($device, $name, $vgs, $path) },
+        );
     }
     # a guest with the LUN as disk has it open, without being a holder or a storage reference
     my $opener = PVE::Diskmanage::device_opener($device, @$parts);
