@@ -1,3 +1,16 @@
+libpve-storage-perl (9.1.26) trixie; urgency=medium
+
+  * iscsi: only scan for newly added LUNs when activating an iSCSI
+    storage with existing sessions, instead of running a full 'iscsiadm
+    --rescan' that revalidates every known LUN path every ten seconds.
+    This stops periodic ALUA kernel log floods and request-queue freezes
+    during disk revalidation while still discovering new LUNs
+    automatically. Growing an existing iSCSI LUN now requires running
+    'iscsiadm -m session --rescan' (or per-path 'device/rescan') on each
+    node, matching Fibre Channel.
+
+ -- Proxmox Support Team <support@proxmox.com>  Wed, 25 Nov 2026 12:36:18 +0100
+
 libpve-storage-perl (9.1.25) trixie; urgency=medium
 
   * disks: wipe: name the device that keeps a SAN LUN from being wiped, also
