@@ -3,8 +3,9 @@ package PVE::Storage::ISCSIPlugin;
 use strict;
 use warnings;
 
+use Cwd ();
 use Digest::SHA qw(sha256_hex);
-use Fcntl qw(LOCK_EX LOCK_NB);
+use Fcntl qw(LOCK_EX LOCK_NB O_TRUNC O_WRONLY);
 use IO::Dir;
 use IO::File;
 
@@ -297,19 +298,39 @@ sub claim_iscsi_rescan {
     return $claimed;
 }
 
+# Scanning a session's SCSI target discovers new LUNs while leaving existing ones untouched.
+# Running `iscsiadm --rescan` also writes to every LUN's `device/rescan`, which freezes each path's
+# request queue during disk revalidation and makes the ALUA device handler log two lines per path.
+# Filtering by target ID keeps other sessions on the same host (such as offload initiators) out of
+# the scan.
+sub iscsi_session_scan_new_luns {
+    my ($session_list) = @_;
+
+    for my $session (@$session_list) {
+        my ($sid) = ($session->{session_id} // '') =~ m/^(\d+)$/ or next;
+        my $dir = "$SYSFS/class/iscsi_session/session$sid";
+        my ($host) = (Cwd::realpath($dir) // '') =~ m!/host(\d+)/session\Q$sid\E/!;
+        next if !defined($host);
+
+        eval {
+            my ($tid) = (file_read_firstline("$dir/target_id") // '') =~ m/^(\d+)$/;
+            return if !defined($tid);
+            $tid = int($tid);
+            my $scan = "$SYSFS/class/scsi_host/host$host/scan";
+            my $fh = IO::File->new($scan, O_WRONLY | O_TRUNC)
+                or die "cannot open '$scan' - $!\n";
+            $fh->print("0 $tid -") && $fh->close() or die "cannot write '$scan' - $!\n";
+        };
+        warn "scanning iSCSI session $sid for new LUNs failed - $@" if $@;
+    }
+}
+
 sub iscsi_session_rescan {
     my ($target, $session_list) = @_;
 
-    assert_iscsi_support();
     return if !claim_iscsi_rescan($target);
 
-    foreach my $session (@$session_list) {
-        my $cmd = [$ISCSIADM, '--mode', 'session', '--sid', $session->{session_id}, '--rescan'];
-        eval {
-            run_command($cmd, outfunc => sub { });
-        };
-        warn $@ if $@;
-    }
+    iscsi_session_scan_new_luns($session_list);
 }
 
 sub load_stable_scsi_paths {
@@ -598,7 +619,7 @@ sub activate_storage {
         eval { iscsi_login($scfg->{target}, $portals, $cache); };
         warn $@ if $@;
     } else {
-        # make sure we get all devices
+        # discover new LUNs without revalidating existing ones
         iscsi_session_rescan($scfg->{target}, $sessions);
     }
 }
